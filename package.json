@@ -11,11 +11,10 @@
   "scripts": {
     "flat": "bin/flatten.sh",
     "clean": "rm -r artifacts cache",
-    "net": "ganache-cli --fork ${BSC_RPC} --account=\"${GANACHE_PK}, ${GANACHE_BAL}\" --account=\"${GANACHE_OTHER_PK}, ${GANACHE_OTHER_BAL}\" --account=\"${HARDHAT_PK}, ${GANACHE_BAL}\"",
+    "net": "ganache-cli --fork ${BSC_RPC} --account=\"${DEPLOYER_PK}, 100000000000000000000\" --account=\"${OTHER_PK}, 100000000000000000000\"",
     "compile": "hardhat compile",
     "all": "yarn clean && yarn compile && yarn net",
-    "test": "hardhat test --network localhost",
-    "nonce": "node utils/logPredictedAddresses.js "
+    "test": "hardhat test --network localhost"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
