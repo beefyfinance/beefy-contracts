@@ -190,9 +190,9 @@ contract StrategyCakeLP is Ownable, Pausable {
 
     /**
      * @dev Takes out 4.5% as system fees from the rewards. 
-     * 0.5% -> Call Fee
+     * 1.0% -> Call Fee
      * 0.5% -> Treasury fee
-     * 3.5% -> BIFI Holders
+     * 3.0% -> BIFI Holders
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(cake).balanceOf(address(this)).mul(45).div(1000);
