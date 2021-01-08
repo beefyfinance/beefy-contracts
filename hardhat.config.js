@@ -15,6 +15,11 @@ module.exports = {
       timeout: 300000,
       accounts: "remote",
     },
+    testnet: {
+      url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
+      chainId: 97,
+      accounts: [process.env.DEPLOYER_PK],
+    }
   },
   solidity: {
     version: "0.6.12",
