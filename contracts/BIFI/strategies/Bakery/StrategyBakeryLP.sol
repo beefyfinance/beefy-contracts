@@ -41,7 +41,7 @@ contract StrategyBakeryLP is Ownable, Pausable {
     /**
      * @dev Third Party Contracts:
      * {unirouter} - BakerySwap unirouter
-     * {bakeryMaster} - BakeryMaster contract. Stake Tokens, get rewards.
+     * {bakeryMaster} - BakeryMaster contract
      */
     address constant public unirouter = address(0xCDe540d7eAFE93aC5fE6233Bee57E1270D3E330F);
     address constant public bakeryMaster = address(0x20eC291bB8459b6145317E7126532CE7EcE5056f);
@@ -51,10 +51,12 @@ contract StrategyBakeryLP is Ownable, Pausable {
      * {rewards} - Reward pool where the strategy fee earnings will go.
      * {treasury} - Address of the BeefyFinance treasury
      * {vault} - Address of the vault that controls the strategy's funds.
+     * {strategist} - Address of the strategy author/deployer where strategist fee will go.
      */
     address constant public rewards  = address(0x453D4Ba9a2D594314DF88564248497F7D74d6b2C);
     address constant public treasury = address(0x4A32De8c248533C28904b24B4cFCFE18E9F2ad01);
     address public vault;
+    address public strategist;
 
     /**
      * @dev Distribution of fees earned. This allocations relative to the % implemented on doSplit().
@@ -68,10 +70,11 @@ contract StrategyBakeryLP is Ownable, Pausable {
      * {WITHDRAWAL_FEE} - Fee taxed when a user withdraws funds. 10 === 0.1% fee.
      * {WITHDRAWAL_MAX} - Aux const used to safely calc the correct amounts.
      */
-    uint constant public REWARDS_FEE  = 777;
-    uint constant public CALL_FEE     = 111;
-    uint constant public TREASURY_FEE = 112;
-    uint constant public MAX_FEE      = 1000;
+    uint constant public REWARDS_FEE    = 665;
+    uint constant public CALL_FEE       = 111;
+    uint constant public TREASURY_FEE   = 112;
+    uint constant public STRATEGIST_FEE = 112;
+    uint constant public MAX_FEE        = 1000;
 
     uint constant public WITHDRAWAL_FEE = 10;
     uint constant public WITHDRAWAL_MAX = 10000;
@@ -96,11 +99,12 @@ contract StrategyBakeryLP is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _lpPair, address _vault) public {
+    constructor(address _lpPair, address _vault, address _strategist) public {
         lpPair = _lpPair;
         lpToken0 = IBakerySwapPair(lpPair).token0();
         lpToken1 = IBakerySwapPair(lpPair).token1();
         vault = _vault;
+        strategist = _strategist;
 
         if (lpToken0 == wbnb) {
             bakeToLp0Route = [bake, wbnb];
@@ -114,6 +118,7 @@ contract StrategyBakeryLP is Ownable, Pausable {
             bakeToLp1Route = [bake, wbnb, lpToken1];
         }
 
+        IERC20(lpPair).safeApprove(bakeryMaster, uint(-1));
         IERC20(bake).safeApprove(unirouter, uint(-1));
         IERC20(wbnb).safeApprove(unirouter, uint(-1));
 
@@ -133,8 +138,6 @@ contract StrategyBakeryLP is Ownable, Pausable {
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
 
         if (pairBal > 0) {
-            IERC20(lpPair).safeApprove(bakeryMaster, 0);
-            IERC20(lpPair).safeApprove(bakeryMaster, pairBal);
             IBakeryMaster(bakeryMaster).deposit(lpPair, pairBal);
         }
     }
@@ -184,7 +187,8 @@ contract StrategyBakeryLP is Ownable, Pausable {
      * @dev Takes out 4.5% as system fees from the rewards. 
      * 0.5% -> Call Fee
      * 0.5% -> Treasury fee
-     * 3.5% -> BIFI Holders
+     * 0.5% -> Strategist fee
+     * 3.0% -> BIFI Holders
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(bake).balanceOf(address(this)).mul(45).div(1000);
@@ -201,10 +205,13 @@ contract StrategyBakeryLP is Ownable, Pausable {
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
+
+        uint256 strategistFee = wbnbBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(wbnb).safeTransfer(strategist, strategistFee);
     }
 
     /**
-     * @dev Swaps {bake} for {lpToken0}, {lpToken1} & {wbnb} using ThugSwap.
+     * @dev Swaps {bake} for {lpToken0}, {lpToken1} & {wbnb} using BakerySwap.
      */
     function addLiquidity() internal { 
         uint256 bakeHalf = IERC20(bake).balanceOf(address(this)).div(2);
@@ -249,8 +256,10 @@ contract StrategyBakeryLP is Ownable, Pausable {
      * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
      * vault, ready to be migrated to the new strat.
      */ 
-    function retireStrat() external onlyOwner {
-        panic();
+    function retireStrat() external {
+        require(msg.sender == vault, "!vault");
+
+        IBakeryMaster(bakeryMaster).emergencyWithdraw(lpPair);
 
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
         IERC20(lpPair).transfer(vault, pairBal);
@@ -270,6 +279,7 @@ contract StrategyBakeryLP is Ownable, Pausable {
     function pause() public onlyOwner {
         _pause();
 
+        IERC20(lpPair).safeApprove(bakeryMaster, 0);
         IERC20(bake).safeApprove(unirouter, 0);
         IERC20(wbnb).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
@@ -282,6 +292,7 @@ contract StrategyBakeryLP is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
+        IERC20(lpPair).safeApprove(bakeryMaster, uint(-1));
         IERC20(bake).safeApprove(unirouter, uint(-1));
         IERC20(wbnb).safeApprove(unirouter, uint(-1));
 

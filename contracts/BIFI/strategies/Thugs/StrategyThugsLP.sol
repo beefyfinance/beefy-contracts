@@ -185,8 +185,8 @@ contract StrategyThugsLP is Ownable, Pausable {
 
     /**
      * @dev Takes out 6% as system fees from the rewards. 
-     * 0.5% -> Call Fee
-     * 1.5% -> Treasury fee
+     * 1.0% -> Call Fee
+     * 1.0% -> Treasury fee
      * 4.0% -> BIFI Holders
      */
     function chargeFees() internal {

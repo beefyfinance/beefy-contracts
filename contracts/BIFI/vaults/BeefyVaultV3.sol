@@ -15,7 +15,7 @@ import "../interfaces/beefy/IStrategy.sol";
  * This is the contract that receives funds and that users interface with.
  * The yield optimizing strategy itself is implemented in a separate 'Strategy.sol' contract.
  */
-contract BeefyVault is ERC20, Ownable {
+contract BeefyVaultV3 is ERC20, Ownable {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
