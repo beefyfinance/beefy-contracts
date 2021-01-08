@@ -41,7 +41,7 @@ contract StrategyBakeryLP is Ownable, Pausable {
     /**
      * @dev Third Party Contracts:
      * {unirouter} - BakerySwap unirouter
-     * {bakeryMaster} - BakeryMaster contract. Stake Tokens, get rewards.
+     * {bakeryMaster} - BakeryMaster contract
      */
     address constant public unirouter = address(0xCDe540d7eAFE93aC5fE6233Bee57E1270D3E330F);
     address constant public bakeryMaster = address(0x20eC291bB8459b6145317E7126532CE7EcE5056f);
@@ -114,6 +114,7 @@ contract StrategyBakeryLP is Ownable, Pausable {
             bakeToLp1Route = [bake, wbnb, lpToken1];
         }
 
+        IERC20(lpPair).safeApprove(bakeryMaster, uint(-1));
         IERC20(bake).safeApprove(unirouter, uint(-1));
         IERC20(wbnb).safeApprove(unirouter, uint(-1));
 
@@ -133,8 +134,6 @@ contract StrategyBakeryLP is Ownable, Pausable {
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
 
         if (pairBal > 0) {
-            IERC20(lpPair).safeApprove(bakeryMaster, 0);
-            IERC20(lpPair).safeApprove(bakeryMaster, pairBal);
             IBakeryMaster(bakeryMaster).deposit(lpPair, pairBal);
         }
     }
@@ -204,7 +203,7 @@ contract StrategyBakeryLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Swaps {bake} for {lpToken0}, {lpToken1} & {wbnb} using ThugSwap.
+     * @dev Swaps {bake} for {lpToken0}, {lpToken1} & {wbnb} using BakerySwap.
      */
     function addLiquidity() internal { 
         uint256 bakeHalf = IERC20(bake).balanceOf(address(this)).div(2);
@@ -249,8 +248,10 @@ contract StrategyBakeryLP is Ownable, Pausable {
      * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
      * vault, ready to be migrated to the new strat.
      */ 
-    function retireStrat() external onlyOwner {
-        panic();
+    function retireStrat() external {
+        require(msg.sender == vault, "!vault");
+
+        IBakeryMaster(bakeryMaster).emergencyWithdraw(lpPair);
 
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
         IERC20(lpPair).transfer(vault, pairBal);
@@ -270,6 +271,7 @@ contract StrategyBakeryLP is Ownable, Pausable {
     function pause() public onlyOwner {
         _pause();
 
+        IERC20(lpPair).safeApprove(bakeryMaster, 0);
         IERC20(bake).safeApprove(unirouter, 0);
         IERC20(wbnb).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
@@ -282,6 +284,7 @@ contract StrategyBakeryLP is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
+        IERC20(lpPair).safeApprove(bakeryMaster, uint(-1));
         IERC20(bake).safeApprove(unirouter, uint(-1));
         IERC20(wbnb).safeApprove(unirouter, uint(-1));
 
