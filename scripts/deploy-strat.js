@@ -5,20 +5,19 @@ const getNetworkRpc = require("../utils/getNetworkRpc");
 
 const ethers = hardhat.ethers;
 
-const config = [
-  {
-    want: "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
-    mooName: "Mock Balancer",
-    mooSymbol: "mockBalancer",
-    delay: 86400,
-  },
-];
+const config = {
+  want: "0x20781bc3701C5309ac75291f5D09BdC23D7b7Fa8",
+  mooName: "Moo Pancake BSCX-BNB",
+  mooSymbol: "mooPancakeBSCX-BNB",
+  poolId: 51,
+  delay: 86400
+};
 
 async function main() {
   await hardhat.run("compile");
 
   const Vault = await ethers.getContractFactory("BeefyVaultV3");
-  const Strategy = await ethers.getContractFactory("StrategyStaticBalancer");
+  const Strategy = await ethers.getContractFactory("StrategyCakeLP");
 
   const [deployer] = await ethers.getSigners();
   const rpc = getNetworkRpc(hardhat.network.name);
@@ -36,7 +35,7 @@ async function main() {
   );
   await vault.deployed();
 
-  const strategy = await Strategy.deploy(config.want, predictedAddresses.vault);
+  const strategy = await Strategy.deploy(config.want, config.poolId, predictedAddresses.vault);
   await strategy.deployed();
 
   console.log("Vault deployed to:", vault.address);
