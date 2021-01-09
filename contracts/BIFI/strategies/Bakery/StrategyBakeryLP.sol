@@ -62,9 +62,10 @@ contract StrategyBakeryLP is Ownable, Pausable {
      * @dev Distribution of fees earned. This allocations relative to the % implemented on doSplit().
      * Current implementation separates 4.5% for fees.
      *
-     * {REWARDS_FEE} - 3.5% goes to BIFI holders through the {rewards} pool.
+     * {REWARDS_FEE} - 3% goes to BIFI holders through the {rewards} pool.
      * {CALL_FEE} - 0.5% goes to whoever executes the harvest function as gas subsidy.
      * {TREASURY_FEE} - 0.5% goes to the treasury.
+     * {STRATEGIST_FEE} - 0.5% goes to the strategist.
      * {MAX_FEE} - Aux const used to safely calc the correct amounts.
      *
      * {WITHDRAWAL_FEE} - Fee taxed when a user withdraws funds. 10 === 0.1% fee.
