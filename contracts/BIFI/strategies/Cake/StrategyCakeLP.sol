@@ -52,34 +52,38 @@ contract StrategyCakeLP is Ownable, Pausable {
      */
     address constant public unirouter  = address(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
     address constant public masterchef = address(0x73feaa1eE314F8c655E354234017bE2193C9E24E);
-    uint8 public poolId; 
+    uint8 public poolId;
 
     /**
      * @dev Beefy Contracts:
      * {rewards} - Reward pool where the strategy fee earnings will go.
      * {treasury} - Address of the BeefyFinance treasury
      * {vault} - Address of the vault that controls the strategy's funds.
+     * {strategist} - Address of the strategy author/deployer where strategist fee will go.
      */
     address constant public rewards  = address(0x453D4Ba9a2D594314DF88564248497F7D74d6b2C);
     address constant public treasury = address(0x4A32De8c248533C28904b24B4cFCFE18E9F2ad01);
     address public vault;
+    address public strategist;
 
     /**
      * @dev Distribution of fees earned. This allocations relative to the % implemented on doSplit().
      * Current implementation separates 4.5% for fees.
      *
      * {REWARDS_FEE} - 3% goes to BIFI holders through the {rewards} pool.
-     * {CALL_FEE} - 1% goes to whoever executes the harvest function as gas subsidy.
+     * {CALL_FEE} - 0.5% goes to whoever executes the harvest function as gas subsidy.
      * {TREASURY_FEE} - 0.5% goes to the treasury.
+     * {STRATEGIST_FEE} - 0.5% goes to the strategist.
      * {MAX_FEE} - Aux const used to safely calc the correct amounts.
      *
      * {WITHDRAWAL_FEE} - Fee taxed when a user withdraws funds. 10 === 0.1% fee.
      * {WITHDRAWAL_MAX} - Aux const used to safely calc the correct amounts.
      */
-    uint constant public REWARDS_FEE  = 665;
-    uint constant public CALL_FEE     = 223;
-    uint constant public TREASURY_FEE = 112;
-    uint constant public MAX_FEE      = 1000;
+    uint constant public REWARDS_FEE    = 665;
+    uint constant public CALL_FEE       = 111;
+    uint constant public TREASURY_FEE   = 112;
+    uint constant public STRATEGIST_FEE = 112;
+    uint constant public MAX_FEE        = 1000;
 
     uint constant public WITHDRAWAL_FEE = 10;
     uint constant public WITHDRAWAL_MAX = 10000;
@@ -110,6 +114,7 @@ contract StrategyCakeLP is Ownable, Pausable {
         lpToken1 = IPancakePair(lpPair).token1();
         poolId = _poolId;
         vault = _vault;
+        strategist = msg.sender;
 
         if (lpToken0 == wbnb) {
             cakeToLp0Route = [cake, wbnb];
@@ -157,15 +162,15 @@ contract StrategyCakeLP is Ownable, Pausable {
 
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
 
-        if (pairBal < _amount) {   
+        if (pairBal < _amount) {
             IMasterChef(masterchef).withdraw(poolId, _amount.sub(pairBal));
             pairBal = IERC20(lpPair).balanceOf(address(this));
         }
 
         if (pairBal > _amount) {
-            pairBal = _amount;    
+            pairBal = _amount;
         }
-        
+
         uint256 withdrawalFee = pairBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
         IERC20(lpPair).safeTransfer(vault, pairBal.sub(withdrawalFee));
     }
@@ -190,14 +195,15 @@ contract StrategyCakeLP is Ownable, Pausable {
 
     /**
      * @dev Takes out 4.5% as system fees from the rewards. 
-     * 1.0% -> Call Fee
+     * 0.5% -> Call Fee
      * 0.5% -> Treasury fee
+     * 0.5% -> Strategist fee
      * 3.0% -> BIFI Holders
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(cake).balanceOf(address(this)).mul(45).div(1000);
         IPancakeRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), now.add(600));
-        
+
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
         uint256 callFee = wbnbBal.mul(CALL_FEE).div(MAX_FEE);
@@ -209,14 +215,17 @@ contract StrategyCakeLP is Ownable, Pausable {
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
+
+        uint256 strategistFee = wbnbBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(wbnb).safeTransfer(strategist, strategistFee);
     }
 
     /**
      * @dev Swaps {cake} for {lpToken0}, {lpToken1} & {wbnb} using PancakeSwap.
      */
-    function addLiquidity() internal {   
+    function addLiquidity() internal {
         uint256 cakeHalf = IERC20(cake).balanceOf(address(this)).div(2);
-        
+
         if (lpToken0 != cake) {
             IPancakeRouter(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp0Route, address(this), now.add(600));
         }
@@ -256,7 +265,7 @@ contract StrategyCakeLP is Ownable, Pausable {
     /**
      * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
      * vault, ready to be migrated to the new strat.
-     */ 
+     */
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
@@ -302,5 +311,14 @@ contract StrategyCakeLP is Ownable, Pausable {
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, uint(-1));
+    }
+
+    /**
+     * @dev Updates address where strategist fee earnings will go.
+     * @param _strategist new strategist address.
+     */
+    function setStrategist(address _strategist) external {
+        require(msg.sender == owner() || msg.sender == strategist, "!gs");
+        strategist = _strategist;
     }
 }
