@@ -51,27 +51,31 @@ contract StrategyVenus is Ownable, Pausable {
      * {rewards}  - Reward pool where the strategy fee earnings will go.
      * {treasury} - Address of the BeefyFinance treasury
      * {vault}    - Address of the vault that controls the strategy's funds.
+     * {strategist} - Address of the strategy author/deployer where strategist fee will go.
      */
     address constant public rewards  = address(0x453D4Ba9a2D594314DF88564248497F7D74d6b2C);
     address constant public treasury = address(0x4A32De8c248533C28904b24B4cFCFE18E9F2ad01);
     address public vault;
+    address public strategist;
 
     /**
      * @dev Distribution of fees earned. This allocations relative to the % implemented on chargeFees().
-     * Current implementation separates 4.5% for fees.
+     * Current implementation separates 5.0% for fees.
      *
      * {REWARDS_FEE} - 3% goes to BIFI holders through the {rewards} pool.
      * {CALL_FEE} - 1% goes to whoever executes the harvest function as gas subsidy.
      * {TREASURY_FEE} - 0.5% goes to the treasury.
+     * {STRATEGIST_FEE} - 0.5% goes to the strategist.
      * {MAX_FEE} - Aux const used to safely calc the correct amounts.
      *
-     * {WITHDRAWAL_FEE} - Fee taxed when a user withdraws funds. 10 === 0.1% fee.
+     * {WITHDRAWAL_FEE} - Fee taxed when a user withdraws funds. 5 === 0.05% fee.
      * {WITHDRAWAL_MAX} - Aux const used to safely calc the correct amounts.
      */
-    uint256 constant public REWARDS_FEE  = 665;
-    uint256 constant public CALL_FEE     = 223;
-    uint256 constant public TREASURY_FEE = 112;
-    uint256 constant public MAX_FEE      = 1000;
+    uint256 constant public REWARDS_FEE    = 600;
+    uint256 constant public CALL_FEE       = 200;
+    uint256 constant public TREASURY_FEE   = 100;
+    uint256 constant public STRATEGIST_FEE = 100;
+    uint256 constant public MAX_FEE        = 1000;
 
     uint256 constant public WITHDRAWAL_FEE = 5;
     uint256 constant public WITHDRAWAL_MAX = 10000;
@@ -142,6 +146,7 @@ contract StrategyVenus is Ownable, Pausable {
         minLeverage = _minLeverage;
         borrowRate = _borrowRate;
         borrowDepth = _borrowDepth;
+        strategist = msg.sender;
 
         venusToWantRoute = [venus, wbnb, want];
 
@@ -273,13 +278,14 @@ contract StrategyVenus is Ownable, Pausable {
     }
 
     /**
-     * @dev Takes out 4.5% as system fees from the rewards. 
+     * @dev Takes out 5.0% as system fees from the rewards.
      * 1% -> Call Fee
      * 0.5% -> Treasury fee
+     * 0.5% -> Strategist fee
      * 3% -> BIFI Holders
      */
     function _chargeFees() internal {
-        uint256 toWbnb = IERC20(venus).balanceOf(address(this)).mul(45).div(1000);
+        uint256 toWbnb = IERC20(venus).balanceOf(address(this)).mul(50).div(1000);
         IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, venusToWbnbRoute, address(this), now.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
@@ -293,6 +299,9 @@ contract StrategyVenus is Ownable, Pausable {
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
+
+        uint256 strategistFee = wbnbBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(wbnb).safeTransfer(strategist, strategistFee);
     }
 
     /**
@@ -414,4 +423,13 @@ contract StrategyVenus is Ownable, Pausable {
          uint256 wantBal = IERC20(want).balanceOf(address(this));
          return wantBal.sub(reserves);
      }
+
+    /**
+     * @dev Updates address where strategist fee earnings will go.
+     * @param _strategist new strategist address.
+     */
+    function setStrategist(address _strategist) external {
+        require(msg.sender == strategist, "!strategist");
+        strategist = _strategist;
+    }
 } 
