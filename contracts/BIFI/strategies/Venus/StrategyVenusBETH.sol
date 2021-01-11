@@ -19,7 +19,7 @@ import "../../interfaces/venus/IVToken.sol";
  * @dev It maximizes yields doing leveraged lending with a single configurable BEP20 asset 
  * on the Venus lending platform. 
  */
-contract StrategyVenus is Ownable, Pausable {
+contract StrategyVenusBETH is Ownable, Pausable {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -42,9 +42,11 @@ contract StrategyVenus is Ownable, Pausable {
      * @dev Third Party Contracts:
      * {unirouter}  - Pancakeswap unirouter. Has the most liquidity for {venus}.
      * {unitroller} - Controller contract for the {venus} rewards.
+     * {bakeryRouter} - BakerySwap unirouter. Has the most liquidity for BETH
      */
     address constant public unirouter  = address(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
     address constant public unitroller = address(0xfD36E2c2a6789Db23113685031d7F16329158384);
+    address constant public bakeryRouter = address(0xCDe540d7eAFE93aC5fE6233Bee57E1270D3E330F);
 
     /**
      * @dev Beefy Contracts:
@@ -84,11 +86,11 @@ contract StrategyVenus is Ownable, Pausable {
      * @dev Routes we take to swap tokens using the {unirouter}.
      * {venusToWbnbRoute} - Route we take to go from {venus} into {wbnb}.
      * {wbnbToBifiRoute}  - Route we take to go from {wbnb} into {bifi}.
-     * {venusToWantRoute} - Route we take to go from {venus} into {want}.
+     * {wbnbToWantRoute} - Route we take to go from {wbnb} into {want}.
      */
     address[] public venusToWbnbRoute = [venus, wbnb];
     address[] public wbnbToBifiRoute = [wbnb, bifi];
-    address[] public venusToWantRoute;
+    address[] public wbnbToWantRoute;
 
     /**
      * @dev Variables that can be changed to config profitability and risk:
@@ -133,11 +135,11 @@ contract StrategyVenus is Ownable, Pausable {
      * @param _markets Array with a single element being the target vtoken address.
      */
     constructor(
-        address _vault, 
-        address _vtoken, 
-        uint256 _borrowRate, 
-        uint256 _borrowDepth, 
-        uint256 _minLeverage, 
+        address _vault,
+        address _vtoken,
+        uint256 _borrowRate,
+        uint256 _borrowDepth,
+        uint256 _minLeverage,
         address[] memory _markets
     ) public {
         vault = _vault;
@@ -148,11 +150,12 @@ contract StrategyVenus is Ownable, Pausable {
         borrowDepth = _borrowDepth;
         strategist = msg.sender;
 
-        venusToWantRoute = [venus, wbnb, want];
+        wbnbToWantRoute = [wbnb, want];
 
         IERC20(want).safeApprove(vtoken, uint(-1));
         IERC20(venus).safeApprove(unirouter, uint(-1));
         IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(wbnb).safeApprove(bakeryRouter, uint(-1));
 
         IUnitroller(unitroller).enterMarkets(_markets);
     }
@@ -164,7 +167,7 @@ contract StrategyVenus is Ownable, Pausable {
      */
     function deposit() public whenNotPaused {
         uint256 wantBal = availableWant();
-        
+
         if (wantBal > 0) {
             _leverage(wantBal);
         }
@@ -186,7 +189,7 @@ contract StrategyVenus is Ownable, Pausable {
         }
 
         reserves = reserves.add(_amount);
-    } 
+    }
 
     /**
      * @dev Incrementally alternates between paying part of the debt and withdrawing part of the supplied 
@@ -233,7 +236,7 @@ contract StrategyVenus is Ownable, Pausable {
         uint256 balanceOfUnderlying = IVToken(vtoken).balanceOfUnderlying(address(this));
 
         IVToken(vtoken).redeemUnderlying(balanceOfUnderlying.sub(targetUnderlying));
-        
+
         updateBalance();
 
         wantBal = IERC20(want).balanceOf(address(this));
@@ -309,7 +312,10 @@ contract StrategyVenus is Ownable, Pausable {
      */
     function _swapRewards() internal {
         uint256 venusBal = IERC20(venus).balanceOf(address(this));
-        IUniswapRouter(unirouter).swapExactTokensForTokens(venusBal, 0, venusToWantRoute, address(this), now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(venusBal, 0, venusToWbnbRoute, address(this), now.add(600));
+
+        uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
+        IUniswapRouter(bakeryRouter).swapExactTokensForTokens(wbnbBal, 0, wbnbToWantRoute, address(this), now.add(600));
     }
 
     /**
@@ -328,7 +334,7 @@ contract StrategyVenus is Ownable, Pausable {
         }
 
         if (wantBal > _amount) {
-            wantBal = _amount;    
+            wantBal = _amount;
         }
 
         uint256 withdrawalFee = wantBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
@@ -337,7 +343,7 @@ contract StrategyVenus is Ownable, Pausable {
         if (!paused()) {
             _leverage(availableWant());
         }
-  
+
         updateBalance();
     }
 
@@ -355,7 +361,7 @@ contract StrategyVenus is Ownable, Pausable {
     /**
      * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
      * vault, ready to be migrated to the new strat.
-     */ 
+     */
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
@@ -368,7 +374,7 @@ contract StrategyVenus is Ownable, Pausable {
     /**
      * @dev Pauses deposits. Withdraws all funds from the Venus Platform.
      */
-    function panic() public onlyOwner {        
+    function panic() public onlyOwner {
         _deleverage();
         updateBalance();
         pause();
@@ -383,6 +389,7 @@ contract StrategyVenus is Ownable, Pausable {
         IERC20(want).safeApprove(vtoken, 0);
         IERC20(venus).safeApprove(unirouter, 0);
         IERC20(wbnb).safeApprove(unirouter, 0);
+        IERC20(wbnb).safeApprove(bakeryRouter, 0);
     }
 
     /**
@@ -394,6 +401,7 @@ contract StrategyVenus is Ownable, Pausable {
         IERC20(want).safeApprove(vtoken, uint(-1));
         IERC20(venus).safeApprove(unirouter, uint(-1));
         IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(wbnb).safeApprove(bakeryRouter, uint(-1));
     }
 
     /**
