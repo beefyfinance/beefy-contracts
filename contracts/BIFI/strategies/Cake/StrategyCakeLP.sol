@@ -318,7 +318,7 @@ contract StrategyCakeLP is Ownable, Pausable {
      * @param _strategist new strategist address.
      */
     function setStrategist(address _strategist) external {
-        require(msg.sender == owner() || msg.sender == strategist, "!gs");
+        require(msg.sender == strategist, "!strategist");
         strategist = _strategist;
     }
 }
