@@ -18,7 +18,6 @@ import "../../interfaces/beefy/IVault.sol";
  * To-Do:
  * - addWorker should be timelocked.
  * - Add the rebalance helper functions.
- * - Make the panic() and retireStrat flow work.
  * Constrains:
  * - Can only be used with new vaults or balanceOfVaults breaks.
  * - Vaults that serve as workers can't charge withdraw fee to make it work.
@@ -99,39 +98,34 @@ contract YieldBalancer is Ownable, Pausable {
      */ 
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
-
-        for (uint8 i = 0; i < subvaults.length; i++) {
-            Vault memory _vault = subvaults[i]; 
-
-            uint256 shares = IERC20(_vault).balanceOf(address(this));
-            IERC20(_vault).approve(_vault, shares);
-            IVault(_vault).withdraw(shares);
-
-            IERC20(want).approve(_vault, uint256(0));
-        }
+       _withdrawAll();
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
-
-         _pause();
     }
 
     /**
-     * @dev Pauses deposits. Withdraws all funds from every worker.
+     * @dev Pauses deposits. Withdraws all funds from workers.
      */
     function panic() public onlyOwner {        
+        _withdrawAll();
+        pause();
+    }
+
+    /**
+     * @dev withdraws all {want} from workers.
+     */
+    function _withdrawAll() internal {
         for (uint8 i = 0; i < workers.length; i++) {
             address worker = workers[i];
             uint256 shares = IERC20(worker).balanceOf(address(this));
             IERC20(worker).approve(worker, shares);
             IVault(worker).withdraw(shares);
         }
-
-        pause();
     }
 
     /**
-     * @dev Function to give or remove want allowance from workers.
+     * @dev Function to give or remove {want} allowance from workers.
      */
     function _wantApproveAll(uint amount) internal {
         for (uint8 i = 0; i < workers.length; i++) {
