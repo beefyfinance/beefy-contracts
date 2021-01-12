@@ -17,6 +17,8 @@ import "../../interfaces/beefy/IVault.sol";
  *   
  * To-Do:
  * - addWorker should be timelocked.
+ * - Add the rebalance helper functions.
+ * - Make the panic() and retireStrat flow work.
  * Constrains:
  * - Can only be used with new vaults or balanceOfVaults breaks.
  * - Vaults that serve as workers can't charge withdraw fee to make it work.
@@ -54,18 +56,9 @@ contract YieldBalancer is Ownable, Pausable {
     }
 
     /**
-     * @dev Function to give or remove want allowance from workers.
-     */
-    function _wantApproveAll(uint amount) internal {
-        for (uint8 i = 0; i < workers.length; i++) {
-            IERC20(want).approve(workers[i], amount);
-        }
-    }
-
-    /**
      * @dev Function that puts the funds to work.
      */
-    function deposit() public {
+    function deposit() public whenNotPaused {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         for (uint8 i = 0; i < subvaults.length; i++) {
@@ -94,6 +87,12 @@ contract YieldBalancer is Ownable, Pausable {
         IERC20(want).safeTransfer(vault, _amount);
     }
 
+    // Worker managementt functions.
+    function proposeCandidate() public onlyOwner {}
+    function rejectCandidate() public onlyOwner {}
+    function acceptCandidate() public onlyOwner {}
+    function deleteWorker() public onlyOwner {}
+
     /**
      * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
      * vault, ready to be migrated to the new strat.
@@ -118,34 +117,26 @@ contract YieldBalancer is Ownable, Pausable {
     }
 
     /**
-     * @dev Pauses deposits. Withdraws all funds from the different vaults.
+     * @dev Pauses deposits. Withdraws all funds from every worker.
      */
     function panic() public onlyOwner {        
-        for (uint8 i = 0; i < subvaults.length; i++) {
-            Vault memory _vault = subvaults[i]; 
-
-            uint256 shares = IERC20(_vault).balanceOf(address(this));
-            IERC20(_vault).approve(_vault, shares);
-            IVault(vault).withdraw(shares);
+        for (uint8 i = 0; i < workers.length; i++) {
+            address worker = workers[i];
+            uint256 shares = IERC20(worker).balanceOf(address(this));
+            IERC20(worker).approve(worker, shares);
+            IVault(worker).withdraw(shares);
         }
 
         pause();
     }
 
-    function proposeCandidate() public onlyOwner {
-
-    }
-
-    function rejectCandidate() public onlyOwner {
-
-    }
-
-    function acceptCandidate() public onlyOwner {
-
-    }
-
-    function deleteWorker() public onlyOwner {
-
+    /**
+     * @dev Function to give or remove want allowance from workers.
+     */
+    function _wantApproveAll(uint amount) internal {
+        for (uint8 i = 0; i < workers.length; i++) {
+            IERC20(want).approve(workers[i], amount);
+        }
     }
 
     /**
