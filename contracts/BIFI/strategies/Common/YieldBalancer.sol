@@ -16,7 +16,7 @@ import "../../interfaces/beefy/IVault.sol";
  * @dev It serves as a load balancer for multiple vaults that optimize the same asset.
  *   
  * To-Do:
- * - addWorker should be timelocked.
+ * - addWorker should be timelocked. Implement worker management.
  * - Add the rebalance helper functions.
  * Constrains:
  * - Can only be used with new vaults or balanceOfVaults breaks.
@@ -32,12 +32,11 @@ contract YieldBalancer is Ownable, Pausable {
     struct WorkerCandidate {
         address addr;
         uint proposedTime;
-        bool accepted;
-        bool processed;
     }
 
     address public want;
     address public vault;
+    WorkerCandidate[] public candidates;
     address[] public workers;
 
     /**
@@ -45,11 +44,18 @@ contract YieldBalancer is Ownable, Pausable {
      * @param _want Address of the token to maximize.
      * @param _vault Address of the vault that will manage the strat.
      * @param _workers Array of vault addresses that will serve as workers.
+     * @param _approvalDelay Seconds that have to pass before a candidate is added.
      */
-    constructor(address _want, address _vault, address[] memory _workers) public {
+    constructor(
+        address _want,
+        address _vault, 
+        address[] memory _workers, 
+        uint256 _approvalDelay
+    ) public {
         want = _want;
         vault = _vault;
         workers = _workers;
+        approvalDelay = _approvalDelay;
 
         _wantApproveAll(uint(-1));
     }
@@ -70,12 +76,12 @@ contract YieldBalancer is Ownable, Pausable {
     /**
      * @dev It withdraws {want} from the workers and sends it to the vault.
      */
-    function withdraw(uint256 _amount) public {
+    function withdraw(uint256 amount) public {
         require(msg.sender == vault, "!vault");
 
         for (uint8 i = 0; i < subvaults.length; i++) {
             Vault memory _vault = subvaults[i]; 
-            uint256 vaultAmount = _amount.mul(_vault.currentAlloc).div(100);
+            uint256 vaultAmount = amount.mul(_vault.currentAlloc).div(100);
             uint256 pricePerFullShare = IVault(_vault).getPricePerFullShare();
             uint256 shares = vaultAmount.mul(1e18).div(pricePerFullShare);
 
@@ -83,14 +89,46 @@ contract YieldBalancer is Ownable, Pausable {
             IVault(vault).withdraw(shares);
         }
 
-        IERC20(want).safeTransfer(vault, _amount);
+        IERC20(want).safeTransfer(vault, amount);
     }
 
-    // Worker managementt functions.
-    function proposeCandidate() public onlyOwner {}
-    function rejectCandidate() public onlyOwner {}
-    function acceptCandidate() public onlyOwner {}
-    function deleteWorker() public onlyOwner {}
+    /**
+     * @dev 
+     */
+    function proposeCandidate(address candidate) external onlyOwner {
+        candidates.push(WorkerCandidate({
+            addr: candidate,
+            proposedTime: now
+        }));
+
+        emit CandidateProposed(candidate);
+    }
+
+    function rejectCandidate(uint index) external onlyOwner {
+        emit CandidateRejected(candidates[index]);
+
+        _removeCandidate(index);
+    }   
+
+    function acceptCandidate(uint index) external onlyOwner {
+         memory candidate = WorkerCandidate(candidates[index]); 
+        require(index < candidates.length, "out of bounds");   
+        require(candidate.proposedTime.add(approvalDelay) < now, "!delay");
+
+        emit CandidateAccepted(candidate.addr);
+
+        _removeCandidate(index);
+    }
+
+    function deleteWorker() external onlyOwner {
+        emit WorkerDeleted()
+    }
+
+    function _removeCandidate(uint index) internal {
+        candidates[index] = candidates[candidates.length-1];
+        delete candidates[candidates.length-1];
+        candidates.length--;
+    } 
 
     /**
      * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
