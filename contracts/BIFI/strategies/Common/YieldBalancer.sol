@@ -164,14 +164,24 @@ contract YieldBalancer is Ownable, Pausable {
         _wantApproveAll(uint(0));
     }
 
+    /**
+     * @dev Function to calculate the total underlaying {want} held by the strat.
+     * It takes into account both funds at hand, as funds allocated in every worker.
+     */
     function balanceOf() public view returns (uint256) {
         return balanceOfWant().add(balanceOfVaults());
     }
 
+    /**
+     * @dev It calculates how much {want} the contract holds.
+     */
     function balanceOfWant() public view returns (uint256) {
         return IERC20(want).balanceOf(address(this));
     }
 
+    /**
+     * @dev It calculates the total {want} locked in all workers.
+     */
     function balanceOfVaults() public view returns (uint256) {
         uint256 _balance = 0;
 
