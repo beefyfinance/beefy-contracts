@@ -185,9 +185,8 @@ contract YieldBalancer is Ownable, Pausable {
     function balanceOfVaults() public view returns (uint256) {
         uint256 _balance = 0;
 
-        for (uint8 i = 0; i < subvaults.length; i++) {
-            Vault memory _vault = subvaults[i]; 
-            _balance = _balance.add(IVault(_vault).balance());
+        for (uint8 i = 0; i < workers.length; i++) {
+            _balance = _balance.add(IVault(workers[i]).balance());
         }
 
         return _balance;
