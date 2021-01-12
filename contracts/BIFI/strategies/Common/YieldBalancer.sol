@@ -19,6 +19,7 @@ import "../../interfaces/beefy/IVault.sol";
  * - addWorker should be timelocked.
  * Constrains:
  * - Can only be used with new vaults or balanceOfVaults breaks.
+ * - Vaults that serve as workers can't charge withdraw fee to make it work.
  */
 contract YieldBalancer is Ownable, Pausable {
     using SafeERC20 for IERC20;
@@ -34,20 +35,22 @@ contract YieldBalancer is Ownable, Pausable {
         bool processed;
     }
 
-
     address public want;
     address public vault;
     address[] public workers;
 
-    constructor(address _want, address _vault) public {
+    /**
+     * @notice Initializes the strategy
+     * @param _want Address of the token to maximize.
+     * @param _vault Address of the vault that will manage the strat.
+     * @param _workers Array of vault addresses that will serve as workers.
+     */
+    constructor(address _want, address _vault, address[] memory _workers) public {
         want = _want;
         vault = _vault;
+        workers = _workers;
 
-        workers.push(0xB0BDBB9E507dBF55f4aC1ef6ADa3E216202e06FD);
-        workers.push(0xc713ca7cb8edfE238ea652D772d41dde47A9a62d);
-
-        IERC20(want).approve(0xB0BDBB9E507dBF55f4aC1ef6ADa3E216202e06FD, int(-1));
-        IERC20(want).approve(0xc713ca7cb8edfE238ea652D772d41dde47A9a62d, int(-1));
+        _wantApproveAll(uint(-1));
     }
 
     /**
@@ -129,7 +132,15 @@ contract YieldBalancer is Ownable, Pausable {
         pause();
     }
 
-    function addWorker() public onlyOwner {
+    function proposeCandidate() public onlyOwner {
+
+    }
+
+    function rejectCandidate() public onlyOwner {
+
+    }
+
+    function acceptCandidate() public onlyOwner {
 
     }
 
