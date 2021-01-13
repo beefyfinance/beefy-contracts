@@ -18,7 +18,7 @@ import "../../interfaces/beefy/IVault.sol";
  * To-Do:
  * - Add the rebalance helper functions.
  * - Be able to make a worker the main worker.
- * - Add withdraw fee
+ * - Add comments to everything
  * Constrains:
  * - Can only be used with new vaults or balanceOfVaults breaks.
  * - Vaults that serve as workers can't charge withdraw fee to make it work.
@@ -43,6 +43,14 @@ contract YieldBalancer is Ownable, Pausable {
      */
     WorkerCandidate[] public candidates;
     address[] public workers;
+
+    /**
+     * @dev Used to protect vault users against vault hoping.
+     * {WITHDRAWAL_FEE} - Fee taxed when a user withdraws funds. 10 === 0.1% fee.
+     * {WITHDRAWAL_MAX} - Aux const used to safely calc the correct amounts.
+     */
+    uint constant public WITHDRAWAL_FEE = 10;
+    uint constant public WITHDRAWAL_MAX = 10000;
 
     /**
      * @notice Initializes the strategy
@@ -97,7 +105,8 @@ contract YieldBalancer is Ownable, Pausable {
         }
 
         wantBal = IERC20(want).balanceOf(address(this));
-        IERC20(want).safeTransfer(vault, wantBal);
+        uint _fee = wantBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
+        IERC20(want).safeTransfer(vault, wantBal.sub(_fee));
     }
 
     /**
