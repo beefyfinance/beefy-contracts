@@ -17,7 +17,6 @@ import "../../interfaces/beefy/IVault.sol";
  *   
  * To-Do:
  * - Add the rebalance helper functions.
- * - Be able to make a worker the main worker.
  * - Add more events that the bot can listen to.
  * Constrains:
  * - Can only be used with new vaults or balanceOfVaults breaks.
@@ -169,6 +168,20 @@ contract YieldBalancer is Ownable, Pausable {
         deposit();
 
         emit WorkerDeleted(worker);
+    }
+
+    /**
+     * @dev Function to set any worker as the main one. The worker at index 0 has that role. 
+     * User deposits go there and withdraws try to take out from there first. 
+     * @param index Index of worker to promote.
+     */ 
+    function setMainWorker(uint index) external onlyOwner {
+        require(index != 0, "!main");
+        require(index < workers.length, "out of bounds");   
+
+        address temp = workers[0];
+        workers[0] = workers[index];
+        workers[index] = temp;
     }
 
     /** 
