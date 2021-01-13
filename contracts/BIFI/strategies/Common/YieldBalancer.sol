@@ -18,6 +18,7 @@ import "../../interfaces/beefy/IVault.sol";
  * To-Do:
  * - addWorker should be timelocked. Implement worker management.
  * - Add the rebalance helper functions.
+ * - Be able to make a worker the main worker.
  * Constrains:
  * - Can only be used with new vaults or balanceOfVaults breaks.
  * - Vaults that serve as workers can't charge withdraw fee to make it work.
@@ -111,18 +112,39 @@ contract YieldBalancer is Ownable, Pausable {
     }   
 
     function acceptCandidate(uint index) external onlyOwner {
-         memory candidate = WorkerCandidate(candidates[index]); 
+        memory candidate = WorkerCandidate(candidates[index]); 
+
         require(index < candidates.length, "out of bounds");   
         require(candidate.proposedTime.add(approvalDelay) < now, "!delay");
 
-        emit CandidateAccepted(candidate.addr);
-
+        workers.push(candidate.addr); 
+        IERC20(want).safeApprove(candidate.addr, uint(-1));
         _removeCandidate(index);
+
+        emit CandidateAccepted(candidate.addr);
     }
 
-    function deleteWorker() external onlyOwner {
-        emit WorkerDeleted()
+    function deleteWorker(uint index) external onlyOwner {
+        require(index != 0, "!main");
+        require(index < workers.length, "out of bounds");   
+
+        address worker = workers[index];
+
+        _withdrawWorker(worker);
+        _removeWorker(index);
+
+        IERC20(want).safeApprove(candidate.addr, uint(-1));
+
+        deposit();
+
+        emit WorkerDeleted(worker);
     }
+
+    function _removeWorker(uint index) internal {
+        workers[index] = workers[workers.length-1];
+        delete workers[workers.length-1];
+        workers.length--;
+    } 
 
     function _removeCandidate(uint index) internal {
         candidates[index] = candidates[candidates.length-1];
@@ -151,15 +173,19 @@ contract YieldBalancer is Ownable, Pausable {
     }
 
     /**
-     * @dev withdraws all {want} from workers.
+     * @dev Withdraws all {want} from workers.
      */
     function _withdrawAll() internal {
         for (uint8 i = 0; i < workers.length; i++) {
             address worker = workers[i];
-            uint256 shares = IERC20(worker).balanceOf(address(this));
-            IERC20(worker).approve(worker, shares);
-            IVault(worker).withdraw(shares);
+            _withdrawWorker(worker);
         }
+    }
+
+    function _withdrawWorker(address worker) internal {
+        uint256 shares = IERC20(worker).balanceOf(address(this));
+        IERC20(worker).approve(worker, shares);
+        IVault(worker).withdraw(shares);
     }
 
     /**
