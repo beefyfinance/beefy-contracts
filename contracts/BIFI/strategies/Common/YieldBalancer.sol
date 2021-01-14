@@ -240,7 +240,7 @@ contract YieldBalancer is Ownable, Pausable {
         workers.pop();
     } 
 
-    //--- INTERNAL WORKER HELPERS ---//
+    //--- WORKER FUNDS MANAGEMENT ---//
 
     /**
      * @dev Function to give or remove {want} allowance from workers.
