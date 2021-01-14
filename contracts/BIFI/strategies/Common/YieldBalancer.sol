@@ -22,17 +22,17 @@ contract YieldBalancer is Ownable, Pausable {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    address public want;
-    address public vault;
+    address public immutable want;
+    address public immutable vault;
 
     struct WorkerCandidate {
         address addr;
         uint proposedTime;
     }
 
-    WorkerCandidate[] public candidates;
     address[] public workers;
-    uint approvalDelay;
+    WorkerCandidate[] public candidates;
+    uint immutable approvalDelay;
 
     /**
      * @dev Used to protect vault users against vault hoping.
