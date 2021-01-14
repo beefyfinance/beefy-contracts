@@ -15,14 +15,13 @@ import "../../interfaces/beefy/IVault.sol";
  * @author sirbeefalot & superbeefyboy
  * @dev It serves as a load balancer for multiple vaults that optimize the same asset.
  * Constrains:
- * - Can only be used with new vaults or balanceOfVaults breaks.
  * - Subvaults that serve as workers can't charge withdraw fee.
  */
 contract YieldBalancer is Ownable, Pausable {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    address public immutable want;
+    address public want;
     address public immutable vault;
 
     struct WorkerCandidate {
@@ -44,7 +43,7 @@ contract YieldBalancer is Ownable, Pausable {
 
     /**
         * @dev Events emitted. Deposit() and Withdrawal() are used by the management bot to know if 
-        * it has to take an action to recover balance.
+        * an action that might break balance happened.
      */
     event CandidateProposed(address candidate);
     event CandidateAccepted(address candidate);
@@ -97,8 +96,7 @@ contract YieldBalancer is Ownable, Pausable {
 
         if (wantBal < amount) {
             for (uint8 i = 0; i < workers.length; i++) {
-                address worker = workers[i];
-                uint workerBal = IVault(worker).balance();
+                uint workerBal = _workerBalance(i);
                 if (workerBal < amount.sub(wantBal)) {
                     _workerWithdraw(i);
                     wantBal = IERC20(want).balanceOf(address(this));
@@ -346,7 +344,7 @@ contract YieldBalancer is Ownable, Pausable {
      * It takes into account both funds at hand, as funds allocated in every worker.
      */
     function balanceOf() public view returns (uint256) {
-        return balanceOfWant().add(balanceOfVaults());
+        return balanceOfWant().add(balanceOfWorkers());
     }
 
     /**
@@ -359,13 +357,23 @@ contract YieldBalancer is Ownable, Pausable {
     /**
      * @dev It calculates the total {want} locked in all workers.
      */
-    function balanceOfVaults() public view returns (uint256) {
-        uint256 _balance = 0;
+    function balanceOfWorkers() public view returns (uint256) {
+        uint totalBal = 0;
 
         for (uint8 i = 0; i < workers.length; i++) {
-            _balance = _balance.add(IVault(workers[i]).balance());
+            totalBal = totalBal.add(_workerBalance(i));
         }
 
-        return _balance;
+        return totalBal;
+    }
+
+    /**
+     * @dev How much {want} a balancer holds in a particular worker.
+     * @param workerIndex Index of the worker to withdraw from.
+     */
+    function _workerBalance(uint workerIndex) internal view {
+        uint shares = IERC20(workers[workerIndex]).balanceOf(address(this));  
+        uint pricePerShare = IVault(workers[workerIndex]).getPricePerFullShare();
+        return shares.mul(pricePerShare).div(1e18);
     }
 }
