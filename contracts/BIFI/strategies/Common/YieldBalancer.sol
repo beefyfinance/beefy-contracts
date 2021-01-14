@@ -139,7 +139,7 @@ contract YieldBalancer is Ownable, Pausable {
      * @dev Sends a subset funds from a vault to another one.
      * @param fromIndex Index of worker to take funds from. 
      * @param toIndex Index of worker where funds will go.
-     * @param amount 
+     * @param amount How much funds to send
      */
     function rebalancePairPartial(uint fromIndex, uint toIndex, uint amount) external onlyOwner {
         require(fromIndex < workers.length, "!from");   
@@ -169,7 +169,7 @@ contract YieldBalancer is Ownable, Pausable {
      * @param index Index of candidate in the {candidates} array.
      */
     function acceptCandidate(uint index) external onlyOwner {
-        WorkerCandidate memory candidate = WorkerCandidate(candidates[index]); 
+        WorkerCandidate memory candidate = candidates[index]; 
 
         require(index < candidates.length, "out of bounds");   
         require(candidate.proposedTime.add(approvalDelay) < now, "!delay");
@@ -187,7 +187,7 @@ contract YieldBalancer is Ownable, Pausable {
      * @param index Index of candidate in the {candidates} array.
      */
     function rejectCandidate(uint index) external onlyOwner {
-        emit CandidateRejected(candidates[index]);
+        emit CandidateRejected(candidates[index].addr);
 
         _removeCandidate(index);
     }   
@@ -198,8 +198,7 @@ contract YieldBalancer is Ownable, Pausable {
     */
     function _removeCandidate(uint index) internal {
         candidates[index] = candidates[candidates.length-1];
-        delete candidates[candidates.length-1];
-        candidates.length--;
+        candidates.pop();
     } 
 
     //--- WORKER MANAGEMENT ---//
@@ -242,8 +241,7 @@ contract YieldBalancer is Ownable, Pausable {
     */
     function _removeWorker(uint index) internal {
         workers[index] = workers[workers.length-1];
-        delete workers[workers.length-1];
-        workers.length--;
+        workers.pop();
     } 
 
     //--- INTERNAL WORKER HELPERS ---//
