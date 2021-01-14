@@ -90,7 +90,7 @@ contract YieldBalancer is Ownable, Pausable {
      * @dev It withdraws {want} from the workers and sends it to the vault.
      * @param amount how much {want} to withdraw.
      */
-    function withdraw(uint amount) public {
+    function withdraw(uint amount) external {
         require(msg.sender == vault, "!vault");
 
         uint wantBal = IERC20(want).balanceOf(address(this));
@@ -240,7 +240,7 @@ contract YieldBalancer is Ownable, Pausable {
         workers.pop();
     } 
 
-    //--- WORKER FUNDS MANAGEMENT ---//
+    //--- FUND MANAGEMENT HELPERS ---//
 
     /**
      * @dev Function to give or remove {want} allowance from workers.
@@ -308,6 +308,7 @@ contract YieldBalancer is Ownable, Pausable {
      */ 
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
+
        _workersWithdrawAll();
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
@@ -317,7 +318,7 @@ contract YieldBalancer is Ownable, Pausable {
     /**
      * @dev Pauses deposits. Withdraws all funds from workers.
      */
-    function panic() public onlyOwner {        
+    function panic() external onlyOwner {        
         _workersWithdrawAll();
         pause();
     }
