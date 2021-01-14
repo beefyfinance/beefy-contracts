@@ -14,13 +14,9 @@ import "../../interfaces/beefy/IVault.sol";
  * @title Yield Balancer
  * @author sirbeefalot & superbeefyboy
  * @dev It serves as a load balancer for multiple vaults that optimize the same asset.
- *   
- * To-Do:
- * - Add proper comments to everything.
- * - Order functions to make it clearer.
  * Constrains:
  * - Can only be used with new vaults or balanceOfVaults breaks.
- * - subvaults that serve as workers can't charge withdraw fee to make it work.
+ * - Subvaults that serve as workers can't charge withdraw fee.
  */
 contract YieldBalancer is Ownable, Pausable {
     using SafeERC20 for IERC20;
