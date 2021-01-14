@@ -78,8 +78,11 @@ contract YieldBalancer is Ownable, Pausable {
         _workerApproveAll(uint(-1));
     }
 
+    //--- USER FUNCTIONS ---//
+
     /**
-     * @dev Function that puts the funds to work.
+     * @notice Puts the funds to work.
+     * @dev Will send all the funds to the main worker, at index 0.
      */
     function deposit() public whenNotPaused {
         _workerDeposit(0);
@@ -117,8 +120,12 @@ contract YieldBalancer is Ownable, Pausable {
         emit Withdrawal();
     }
 
+    //--- FUNDS REBALANCE ---///
+
     /**
      * @dev Sends all funds from a vault to another one.
+     * @param fromIndex Index of worker to take funds from. 
+     * @param toIndex Index of worker where funds will go.
      */
     function rebalancePair(uint fromIndex, uint toIndex) external onlyOwner {
         require(fromIndex < workers.length, "!from");   
@@ -130,6 +137,9 @@ contract YieldBalancer is Ownable, Pausable {
 
     /**
      * @dev Sends a subset funds from a vault to another one.
+     * @param fromIndex Index of worker to take funds from. 
+     * @param toIndex Index of worker where funds will go.
+     * @param amount 
      */
     function rebalancePairPartial(uint fromIndex, uint toIndex, uint amount) external onlyOwner {
         require(fromIndex < workers.length, "!from");   
@@ -138,6 +148,8 @@ contract YieldBalancer is Ownable, Pausable {
         _workerPartialWithdraw(fromIndex, amount);
         _workerDeposit(toIndex);
     }
+
+    //--- CANDIDATE MANAGEMENT ---//
 
     /**
      * @dev Starts the process to add a new worker.
@@ -180,6 +192,32 @@ contract YieldBalancer is Ownable, Pausable {
         _removeCandidate(index);
     }   
 
+    /** 
+     * @dev Internal function to remove a candidate from the {candidates} array.
+     * @param index Index of candidate in the {candidates} array.
+    */
+    function _removeCandidate(uint index) internal {
+        candidates[index] = candidates[candidates.length-1];
+        delete candidates[candidates.length-1];
+        candidates.length--;
+    } 
+
+    //--- WORKER MANAGEMENT ---//
+
+    /**
+     * @dev Function to set any worker as the main one. The worker at index 0 has that role. 
+     * User deposits go there and withdraws try to take out from there first. 
+     * @param index Index of worker to promote.
+     */ 
+    function setMainWorker(uint index) external onlyOwner {
+        require(index != 0, "!main");
+        require(index < workers.length, "out of bounds");   
+
+        address temp = workers[0];
+        workers[0] = workers[index];
+        workers[index] = temp;
+    }
+
     /**
      * @dev Withdraws all {want} from a worker and removes it from the options. 
      * Can't be called with the main worker, at index 0.
@@ -198,20 +236,6 @@ contract YieldBalancer is Ownable, Pausable {
         deposit();
     }
 
-    /**
-     * @dev Function to set any worker as the main one. The worker at index 0 has that role. 
-     * User deposits go there and withdraws try to take out from there first. 
-     * @param index Index of worker to promote.
-     */ 
-    function setMainWorker(uint index) external onlyOwner {
-        require(index != 0, "!main");
-        require(index < workers.length, "out of bounds");   
-
-        address temp = workers[0];
-        workers[0] = workers[index];
-        workers[index] = temp;
-    }
-
     /** 
      * @dev Internal function to remove a worker from the {workers} array.
      * @param index Index of worker in the {workers} array.
@@ -222,51 +246,34 @@ contract YieldBalancer is Ownable, Pausable {
         workers.length--;
     } 
 
-    /** 
-     * @dev Internal function to remove a candidate from the {candidates} array.
-     * @param index Index of candidate in the {candidates} array.
-    */
-    function _removeCandidate(uint index) internal {
-        candidates[index] = candidates[candidates.length-1];
-        delete candidates[candidates.length-1];
-        candidates.length--;
-    } 
+    //--- INTERNAL WORKER HELPERS ---//
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
-     * vault, ready to be migrated to the new strat.
-     */ 
-    function retireStrat() external {
-        require(msg.sender == vault, "!vault");
-       _withdrawAll();
-
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
-        IERC20(want).transfer(vault, wantBal);
+     * @dev Function to give or remove {want} allowance from workers.
+     * @param amount Allowance to set. Either '0' or 'uint(-1)' 
+     */
+    function _workerApproveAll(uint amount) internal {
+        for (uint8 i = 0; i < workers.length; i++) {
+            IERC20(want).approve(workers[i], amount);
+        }
     }
 
     /**
-     * @dev Pauses deposits. Withdraws all funds from workers.
+     * @dev Deposits all {want} in the contract into the given worker.
+     * @param workerIndex Index of the worker where the funds will go.
      */
-    function panic() public onlyOwner {        
-        _withdrawAll();
-        pause();
+    function _workerDeposit(uint workerIndex) internal {
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        IVault(workers[workerIndex]).deposit(wantBal);
     }
 
     /**
      * @dev Withdraws all {want} from all workers.
      */
-    function _withdrawAll() internal {
+    function _workersWithdrawAll() internal {
         for (uint8 i = 0; i < workers.length; i++) {
             _workerWithdraw(i);
         }
-    }
-
-    /**
-     * @dev 
-     */
-    function _workerDeposit(uint workerIndex) internal {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
-        IVault(workers[workerIndex]).deposit(wantBal);
     }
 
     /** 
@@ -299,14 +306,26 @@ contract YieldBalancer is Ownable, Pausable {
         IVault(worker).withdraw(shares);
     }
 
+    //--- STRATEGY LIFECYCLE METHODS ---//
+
     /**
-     * @dev Function to give or remove {want} allowance from workers.
-     * @param amount Allowance to set. Either '0' or 'uint(-1)' 
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
+     * vault, ready to be migrated to the new strat.
+     */ 
+    function retireStrat() external {
+        require(msg.sender == vault, "!vault");
+       _workersWithdrawAll();
+
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        IERC20(want).transfer(vault, wantBal);
+    }
+
+    /**
+     * @dev Pauses deposits. Withdraws all funds from workers.
      */
-    function _workerApproveAll(uint amount) internal {
-        for (uint8 i = 0; i < workers.length; i++) {
-            IERC20(want).approve(workers[i], amount);
-        }
+    function panic() public onlyOwner {        
+        _workersWithdrawAll();
+        pause();
     }
 
     /**
@@ -324,6 +343,8 @@ contract YieldBalancer is Ownable, Pausable {
         _unpause();
         _workerApproveAll(uint(0));
     }
+
+    //--- VIEW FUNCTIONS ---//
 
     /**
      * @dev Function to calculate the total underlaying {want} held by the strat.
