@@ -15,11 +15,11 @@ import "../../interfaces/beefy/IVault.sol";
  * @author sirbeefalot & superbeefyboy
  * @dev It serves as a load balancer for multiple vaults that optimize the same asset.
  * Constrains:
- * - Subvaults that serve as workers can't charge withdraw fee.
+ * - Subvaults that serve as workers can't charge withdrawal fee.
  */
 contract YieldBalancer is Ownable, Pausable {
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
+    using SafeMath for uint;
 
     address public want;
     address public immutable vault;
@@ -57,13 +57,13 @@ contract YieldBalancer is Ownable, Pausable {
      * @param _want Address of the token to maximize.
      * @param _vault Address of the vault that will manage the strat.
      * @param _workers Array of vault addresses that will serve as workers.
-     * @param _approvalDelay Seconds that have to pass before a candidate is added.
+     * @param _approvalDelay Delay in seconds before a candidate can be added as worker.
      */
     constructor(
         address _want,
         address _vault, 
         address[] memory _workers, 
-        uint256 _approvalDelay
+        uint _approvalDelay
     ) public {
         want = _want;
         vault = _vault;
@@ -95,7 +95,7 @@ contract YieldBalancer is Ownable, Pausable {
         uint wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < amount) {
-            for (uint8 i = 0; i < workers.length; i++) {
+            for (uint i = 0; i < workers.length; i++) {
                 uint workerBal = _workerBalance(i);
                 if (workerBal < amount.sub(wantBal)) {
                     _workerWithdraw(i);
@@ -213,39 +213,41 @@ contract YieldBalancer is Ownable, Pausable {
 
     /**
      * @dev Withdraws all {want} from a worker and removes it from the options. 
-     * Can't be called with the main worker, at index 0.
-     * @param index Index of worker in the {workers} array.
+     * The main worker at index 0 can't be deleted.
+     * @param index Index of worker to delete.
      */
     function deleteWorker(uint index) external onlyOwner {
         require(index != 0, "!main");
         require(index < workers.length, "out of bounds");   
 
-        emit WorkerDeleted(workers[index]);
-        IERC20(want).safeApprove(workers[index], 0);
+        address worker = workers[index];
+        IERC20(want).safeApprove(worker, 0);
 
         _workerWithdraw(index);
         _removeWorker(index);
 
         deposit();
+
+        emit WorkerDeleted(worker);
     }
 
     /** 
      * @dev Internal function to remove a worker from the {workers} array.
-     * @param index Index of worker in the {workers} array.
+     * @param index Index of worker in the array.
     */
     function _removeWorker(uint index) internal {
         workers[index] = workers[workers.length-1];
         workers.pop();
     } 
 
-    //--- FUND MANAGEMENT HELPERS ---//
+    //--- FUNDS MANAGEMENT HELPERS ---//
 
     /**
-     * @dev Function to give or remove {want} allowance from workers.
+     * @dev Give or remove {want} allowance from all workers.
      * @param amount Allowance to set. Either '0' or 'uint(-1)' 
      */
     function _workerApproveAll(uint amount) internal {
-        for (uint8 i = 0; i < workers.length; i++) {
+        for (uint i = 0; i < workers.length; i++) {
             IERC20(want).approve(workers[i], amount);
         }
     }
@@ -255,7 +257,7 @@ contract YieldBalancer is Ownable, Pausable {
      * @param workerIndex Index of the worker where the funds will go.
      */
     function _workerDeposit(uint workerIndex) internal {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint wantBal = IERC20(want).balanceOf(address(this));
         IVault(workers[workerIndex]).deposit(wantBal);
     }
 
@@ -263,7 +265,7 @@ contract YieldBalancer is Ownable, Pausable {
      * @dev Withdraws all {want} from all workers.
      */
     function _workersWithdrawAll() internal {
-        for (uint8 i = 0; i < workers.length; i++) {
+        for (uint i = 0; i < workers.length; i++) {
             _workerWithdraw(i);
         }
     }
@@ -276,7 +278,7 @@ contract YieldBalancer is Ownable, Pausable {
         require(workerIndex < workers.length, "out of bounds");   
 
         address worker = workers[workerIndex];
-        uint256 shares = IERC20(worker).balanceOf(address(this));
+        uint shares = IERC20(worker).balanceOf(address(this));
 
         IERC20(worker).approve(worker, shares);
         IVault(worker).withdraw(shares);
@@ -291,8 +293,8 @@ contract YieldBalancer is Ownable, Pausable {
         require(workerIndex < workers.length, "out of bounds");   
 
         address worker = workers[workerIndex];
-        uint256 pricePerFullShare = IVault(worker).getPricePerFullShare();
-        uint256 shares = amount.mul(1e18).div(pricePerFullShare);
+        uint pricePerFullShare = IVault(worker).getPricePerFullShare();
+        uint shares = amount.mul(1e18).div(pricePerFullShare);
 
         IERC20(worker).approve(worker, shares);
         IVault(worker).withdraw(shares);
@@ -309,7 +311,7 @@ contract YieldBalancer is Ownable, Pausable {
 
        _workersWithdrawAll();
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
     }
 
@@ -322,7 +324,8 @@ contract YieldBalancer is Ownable, Pausable {
     }
 
     /**
-     * @dev Pauses the strat.
+     * @dev Pauses the strat. Current funds continue to farm but new deposits 
+     * are not allowed.
      */
     function pause() public onlyOwner {
         _pause();
@@ -340,27 +343,27 @@ contract YieldBalancer is Ownable, Pausable {
     //--- VIEW FUNCTIONS ---//
 
     /**
-     * @dev Function to calculate the total underlaying {want} held by the strat.
-     * It takes into account both funds at hand, as funds allocated in every worker.
+     * @dev Calculates the total underlaying {want} held by the strat.
+     * Takes into account both funds at hand, and funds allocated in workers.
      */
-    function balanceOf() public view returns (uint256) {
+    function balanceOf() public view returns (uint) {
         return balanceOfWant().add(balanceOfWorkers());
     }
 
     /**
-     * @dev It calculates how much {want} the contract holds.
+     * @dev Calculates how much {want} the contract holds.
      */
-    function balanceOfWant() public view returns (uint256) {
+    function balanceOfWant() public view returns (uint) {
         return IERC20(want).balanceOf(address(this));
     }
 
     /**
-     * @dev It calculates the total {want} locked in all workers.
+     * @dev Calculates the total {want} locked in all workers.
      */
-    function balanceOfWorkers() public view returns (uint256) {
+    function balanceOfWorkers() public view returns (uint) {
         uint totalBal = 0;
 
-        for (uint8 i = 0; i < workers.length; i++) {
+        for (uint i = 0; i < workers.length; i++) {
             totalBal = totalBal.add(_workerBalance(i));
         }
 
@@ -368,8 +371,8 @@ contract YieldBalancer is Ownable, Pausable {
     }
 
     /**
-     * @dev How much {want} a balancer holds in a particular worker.
-     * @param workerIndex Index of the worker to withdraw from.
+     * @dev How much {want} the balancer holds in a particular worker.
+     * @param workerIndex Index of the worker to calculate balance.
      */
     function _workerBalance(uint workerIndex) internal view {
         uint shares = IERC20(workers[workerIndex]).balanceOf(address(this));  
