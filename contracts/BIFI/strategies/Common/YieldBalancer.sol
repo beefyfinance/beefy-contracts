@@ -147,23 +147,23 @@ contract YieldBalancer is Ownable, Pausable {
 
     /**
      * @dev Rebalance all workers.
-     * @param _balance Array containing the desired balance per worker. 
+     * @param ratios Array containing the desired balance per worker. 
      */
-    function rebalance(uint256[] memory _balance) external onlyOwner {
-        require(_balance.length == workers.length, "!balance");
+    function rebalance(uint[] memory ratios) external onlyOwner {
+        require(ratios.length == workers.length, "!balance");
 
         // TODO: move to a helper method?
-        uint256 balance = 0;
-        for (uint8 i = 0; i < _balance.length; i++) {
-            balance += _balance[i];
+        uint balance = 0;
+        for (uint8 i = 0; i < ratios.length; i++) {
+            balance += ratios[i];
         }
         require(balance == BALANCE_MAX, '!unbalanced');
 
         _workersWithdrawAll();
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint wantBal = IERC20(want).balanceOf(address(this));
 
-        for (uint8 i = 0; i < _balance.length; i++) {
-            _workerDepositPartial(i, wantBal.mul(_balance[i]).div(BALANCE_MAX));
+        for (uint8 i = 0; i < ratios.length; i++) {
+            _workerDepositPartial(i, wantBal.mul(ratios[i]).div(BALANCE_MAX));
         }
     }
     //--- CANDIDATE MANAGEMENT ---//
