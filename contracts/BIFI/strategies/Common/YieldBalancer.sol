@@ -198,17 +198,18 @@ contract YieldBalancer is Ownable, Pausable {
     //--- WORKER MANAGEMENT ---//
 
     /**
-     * @dev Function to set any worker as the main one. The worker at index 0 has that role. 
-     * User deposits go there and withdraws try to take out from there first. 
-     * @param index Index of worker to promote.
+     * @dev Function to switch the order of any two workers. 
+     * @param workerA Current index of worker A to switch.
+     * @param workerB Current index of worker B to switch.
      */ 
-    function setMainWorker(uint index) external onlyOwner {
-        require(index != 0, "!main");
-        require(index < workers.length, "out of bounds");   
+    function switchWorkerOrder(uint workerA, uint workerB) external onlyOwner {
+        require(workerA != workerB, "!same");
+        require(workerA < workers.length, "A out of bounds");   
+        require(workerB < workers.length, "B out of bounds");   
 
-        address temp = workers[0];
-        workers[0] = workers[index];
-        workers[index] = temp;
+        address temp = workers[workerA];
+        workers[workerA] = workers[workerB];
+        workers[workerB] = temp;
     }
 
     /**
