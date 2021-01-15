@@ -116,7 +116,7 @@ contract YieldBalancer is Ownable, Pausable {
         emit Withdrawal();
     }
 
-    //--- FUNDS REBALANCE ---///
+    //--- FUNDS REBALANCE ---//
 
     /**
      * @dev Sends all funds from a vault to another one.
@@ -166,7 +166,7 @@ contract YieldBalancer is Ownable, Pausable {
             _workerDepositPartial(i, wantBal.mul(ratios[i]).div(BALANCE_MAX));
         }
     }
-    
+
     //--- CANDIDATE MANAGEMENT ---//
 
     /**
