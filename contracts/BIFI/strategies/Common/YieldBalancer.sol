@@ -166,6 +166,7 @@ contract YieldBalancer is Ownable, Pausable {
             _workerDepositPartial(i, wantBal.mul(ratios[i]).div(BALANCE_MAX));
         }
     }
+    
     //--- CANDIDATE MANAGEMENT ---//
 
     /**
