@@ -37,11 +37,11 @@ contract YieldBalancer is Ownable, Pausable {
      * @dev Used to protect vault users against vault hoping.
      * {WITHDRAWAL_FEE} - Fee taxed when a user withdraws funds. 10 === 0.1% fee.
      * {WITHDRAWAL_MAX} - Aux const used to safely calc the correct amounts.
-     * {BALANCE_MAX} - Fixed point 100% used to validate rebalance params.
+     * {RATIO_MAX} - Fixed point 100% used to validate rebalance params.
      */
     uint256 constant public WITHDRAWAL_FEE = 10;
     uint256 constant public WITHDRAWAL_MAX = 10000;
-    uint256 constant public BALANCE_MAX = 10000;
+    uint256 constant public RATIO_MAX = 10000;
 
     /**
         * @dev Events emitted. Deposit() and Withdrawal() are used by the management bot to know if 
@@ -149,24 +149,30 @@ contract YieldBalancer is Ownable, Pausable {
      * @dev Rebalance all workers.
      * @param ratios Array containing the desired balance per worker. 
      */
-    function rebalance(uint[] memory ratios) external onlyOwner {
+    function rebalance(uint256[] memory ratios) external onlyOwner {
         require(ratios.length == workers.length, "!balance");
-
-        // TODO: move to a helper method?
-        uint balance = 0;
-        for (uint8 i = 0; i < ratios.length; i++) {
-            balance += ratios[i];
-        }
-        require(balance == BALANCE_MAX, '!unbalanced');
+        require(_checkRatios(ratios), '!ratios');
 
         _workersWithdrawAll();
         uint wantBal = IERC20(want).balanceOf(address(this));
 
         for (uint8 i = 0; i < ratios.length; i++) {
-            _workerDepositPartial(i, wantBal.mul(ratios[i]).div(BALANCE_MAX));
+            _workerDepositPartial(i, wantBal.mul(ratios[i]).div(RATIO_MAX));
         }
     }
 
+    /** 
+     * @dev Validates that 100% of the funds are allocated
+     * @param ratios Array containing the desired balance ratio per worker. 
+    */
+    function _checkRatios(uint256[] memory ratios) pure internal returns (bool) {
+        uint ratio = 0;
+        for (uint8 i = 0; i < ratios.length; i++) {
+            ratio += ratios[i];
+        }
+        return ratio == RATIO_MAX;
+    }
+    
     //--- CANDIDATE MANAGEMENT ---//
 
     /**
