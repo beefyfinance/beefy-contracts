@@ -51,6 +51,8 @@ contract YieldBalancer is Ownable, Pausable {
     event CandidateAccepted(address candidate);
     event CandidateRejected(address candidate);
     event WorkerDeleted(address worker);
+
+    // TODO: These events are not needed.
     event Deposit();
     event Withdrawal();
 
@@ -89,12 +91,12 @@ contract YieldBalancer is Ownable, Pausable {
 
     /**
      * @dev It withdraws {want} from the workers and sends it to the vault.
-     * @param amount how much {want} to withdraw.
+     * @param amount How much {want} to withdraw.
      */
     function withdraw(uint256 amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantsBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < amount) {
             for (uint8 i = 0; i < workers.length; i++) {
