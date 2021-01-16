@@ -42,6 +42,7 @@ describe("Migrate SmartCake", () => {
     };
     return { signer, other, vault, strategy, contracts };
   };
+  
   describe("initialization", () => {
     it("should correctly connect vault/strat on deploy.", async () => {
       const { vault, strategy } = await setup();

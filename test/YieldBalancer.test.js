@@ -33,7 +33,7 @@ describe("YieldBalancer", () => {
       },
       signer
     );
-    const workerB = await deployWorker(
+    const workerC = await deployWorker(
       {
         vault: "BeefyVaultV3",
         strategy: "StrategyCake",
