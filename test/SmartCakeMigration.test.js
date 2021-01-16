@@ -1,7 +1,6 @@
 const { expect } = require("chai");
 
 const { predictAddresses } = require("../utils/predictAddresses");
-const { delay, nowInSeconds } = require("../utils/timeHelpers");
 
 // TOKENS
 const WBNB = "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c";
@@ -27,32 +26,38 @@ const PAUSED_ERROR = "Pausable: paused";
 describe("Migrate SmartCake", () => {
   const setup = async () => {
     const [signer, other] = await ethers.getSigners();
+    
+    const ERC20 = await artifacts.readArtifact("ERC20");
+    const contracts = {
+      wbnb: await ethers.getContractAt(ERC20.abi, WBNB),
+      cake: await ethers.getContractAt(ERC20.abi, CAKE)
+    };
+
+    return { signer, other, contracts };
+  };
+
+  const mockOldArch = async () => {
+    const { signer, contracts } = await setup();
+
     const predictedAddresses = await predictAddresses({ creator: signer.address, rpc: "http://127.0.0.1:8545" });
 
     const Vault = await ethers.getContractFactory("BeefyVaultV3");
     const vault = await Vault.deploy(CAKE, predictedAddresses.strategy, VAULT_NAME, VAULT_SYMBOL, 0);
     await vault.deployed();
-
+  
     const Strategy = await ethers.getContractFactory("StrategyCakeSmart");
     const strategy = await Strategy.deploy(predictedAddresses.vault, DELAY);
     await strategy.deployed();
 
-    const ERC20 = await artifacts.readArtifact("ERC20");
-    const contracts = {
-      wbnb: new ethers.Contract(WBNB, ERC20.abi, signer),
-      cake: new ethers.Contract(CAKE, ERC20.abi, signer)
-    };
-    return { signer, other, vault, strategy, contracts };
-  };
+    return { vault, strategy };
+  }
   
   describe("initialization", () => {
     it("should correctly connect vault/strat on deploy.", async () => {
-      const { vault, strategy } = await setup();
+      const { vault, strategy } = await mockOldArch();
 
       expect(await vault.strategy()).to.equal(strategy.address);
       expect(await strategy.vault()).to.equal(vault.address);
     }).timeout(TIMEOUT);
-  });
-
-  
+  });  
 });
