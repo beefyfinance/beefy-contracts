@@ -52,10 +52,6 @@ contract YieldBalancer is Ownable, Pausable {
     event CandidateRejected(address candidate);
     event WorkerDeleted(address worker);
 
-    // TODO: These events are not needed.
-    event Deposit();
-    event Withdrawal();
-
     /**
      * @notice Initializes the strategy
      * @param _want Address of the token to maximize.
@@ -74,7 +70,7 @@ contract YieldBalancer is Ownable, Pausable {
         workers = _workers;
         approvalDelay = _approvalDelay;
 
-        _workerApproveAll(uint256(-1));
+        _workersApproveAll(uint256(-1));
     }
 
     //--- USER FUNCTIONS ---//
@@ -85,8 +81,6 @@ contract YieldBalancer is Ownable, Pausable {
      */
     function deposit() public whenNotPaused {
         _workerDepositAll(0);
-
-        emit Deposit();
     }
 
     /**
@@ -114,8 +108,6 @@ contract YieldBalancer is Ownable, Pausable {
         wantBal = IERC20(want).balanceOf(address(this));
         uint256 _fee = wantBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
         IERC20(want).safeTransfer(vault, wantBal.sub(_fee));
-
-        emit Withdrawal();
     }
 
     //--- FUNDS REBALANCE ---//
@@ -156,7 +148,7 @@ contract YieldBalancer is Ownable, Pausable {
         require(_checkRatios(ratios), '!ratios');
 
         _workersWithdrawAll();
-        uint wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         for (uint8 i = 0; i < ratios.length; i++) {
             _workerDeposit(i, wantBal.mul(ratios[i]).div(RATIO_MAX));
@@ -168,7 +160,7 @@ contract YieldBalancer is Ownable, Pausable {
      * @param ratios Array containing the desired balance ratio per worker. 
     */
     function _checkRatios(uint256[] memory ratios) pure internal returns (bool) {
-        uint ratio = 0;
+        uint256 ratio = 0;
         for (uint8 i = 0; i < ratios.length; i++) {
             ratio += ratios[i];
         }
@@ -283,7 +275,7 @@ contract YieldBalancer is Ownable, Pausable {
      * @dev Give or remove {want} allowance from all workers.
      * @param amount Allowance to set. Either '0' or 'uint(-1)' 
      */
-    function _workerApproveAll(uint256 amount) internal {
+    function _workersApproveAll(uint256 amount) internal {
         for (uint8 i = 0; i < workers.length; i++) {
             IERC20(want).approve(workers[i], amount);
         }
@@ -375,7 +367,7 @@ contract YieldBalancer is Ownable, Pausable {
      */
     function pause() public onlyOwner {
         _pause();
-        _workerApproveAll(0);
+        _workersApproveAll(0);
     }
 
     /**
@@ -383,7 +375,7 @@ contract YieldBalancer is Ownable, Pausable {
      */
     function unpause() external onlyOwner {
         _unpause();
-        _workerApproveAll(uint256(-1));
+        _workersApproveAll(uint256(-1));
     }
 
     //--- VIEW FUNCTIONS ---//
