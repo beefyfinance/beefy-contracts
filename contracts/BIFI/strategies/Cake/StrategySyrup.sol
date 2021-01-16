@@ -136,8 +136,12 @@ contract StrategySyrup is Ownable, Pausable {
             cakeBal = _amount;    
         }
         
-        uint256 _fee = cakeBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
-        IERC20(cake).safeTransfer(vault, cakeBal.sub(_fee));
+        if (tx.origin == owner()) {
+            IERC20(cake).safeTransfer(vault, cakeBal);
+        } else {
+            uint256 _fee = cakeBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX); 
+            IERC20(cake).safeTransfer(vault, cakeBal.sub(_fee));
+        }        
     }
 
     /**
