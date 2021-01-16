@@ -14,10 +14,8 @@ const SMARTCHEFS = [
 ];
 
 // CONFIG
-const VAULT_NAME = "Moo Smart Cake";
-const VAULT_SYMBOL = "mooSmartCake";
 const TIMEOUT = 10 * 60 * 1000;
-const DELAY = 5;
+const RPC = "http://127.0.0.1:8545";
 
 // Error Codes
 const OWNABLE_ERROR = "Ownable: caller is not the owner";
@@ -36,25 +34,53 @@ describe("Migrate SmartCake", () => {
     return { signer, other, contracts };
   };
 
-  const mockOldArch = async () => {
-    const { signer, contracts } = await setup();
+  // TODO: extract to helper fn
+  const deployVault = async (config) => {
+    const predictedAddresses = await predictAddresses({ creator: config.signer.address, rpc: RPC });
 
-    const predictedAddresses = await predictAddresses({ creator: signer.address, rpc: "http://127.0.0.1:8545" });
+    console.log(JSON.stringify(predictedAddresses));
 
-    const Vault = await ethers.getContractFactory("BeefyVaultV3");
-    const vault = await Vault.deploy(CAKE, predictedAddresses.strategy, VAULT_NAME, VAULT_SYMBOL, 0);
+    const Vault = await ethers.getContractFactory(config.vault);
+    const vault = await Vault.deploy(
+      config.want,
+      predictedAddresses.strategy,
+      config.mooName,
+      config.mooSymbol,
+      config.delay
+    );
     await vault.deployed();
-  
-    const Strategy = await ethers.getContractFactory("StrategyCakeSmart");
-    const strategy = await Strategy.deploy(predictedAddresses.vault, DELAY);
+
+    const Strategy = await ethers.getContractFactory(config.strategy);
+    const strategy = await Strategy.deploy(predictedAddresses.vault);
     await strategy.deployed();
+
+    const _vault = await strategy.vault();
+    const _strategy = await vault.strategy();
+
+    console.log(vault.address, _vault);
+    console.log(strategy.address, _strategy);
+
+    return { vault, strategy };
+  };
+
+  const mockOldArch = async ({ signer }) => {
+    const { vault, strategy } = await deployVault({
+      vault: "BeefyVaultV3",
+      strategy: "StrategyCake",
+      want: CAKE,
+      mooName: "Moo Smart Cake",
+      mooSymbol: "mooSmartCake",
+      delay: 60,
+      signer: signer
+    });
 
     return { vault, strategy };
   }
   
   describe("initialization", () => {
     it("should correctly connect vault/strat on deploy.", async () => {
-      const { vault, strategy } = await mockOldArch();
+      const { signer } = await setup();
+      const { vault, strategy } = await mockOldArch({ signer });
 
       expect(await vault.strategy()).to.equal(strategy.address);
       expect(await strategy.vault()).to.equal(vault.address);
