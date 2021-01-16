@@ -32,4 +32,18 @@ const predictAddresses = async (config) => {
   };
 };
 
-module.exports = predictAddresses;
+const predictAddress = async ({ creator, rpc, nonce }) => {
+  const web3 = new Web3(rpc);
+
+  const nonce = nonce || await web3.eth.getTransactionCount(creator);
+  const nonceHex = `0x${parseInt(nonce).toString(16)}`;
+  
+  const rlpEncoded = rlp.encode([creator, nonceHex]);
+  const contractAddressLong = keccak("keccak256").update(rlpEncoded).digest("hex");
+  const address = `0x${contractAddressLong.substring(24)}`;
+  const checksumed = web3.utils.toChecksumAddress(address);
+
+  return checksumed;
+};
+
+module.exports = { predictAddresses, predictAddress };
