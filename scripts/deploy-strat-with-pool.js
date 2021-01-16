@@ -12,13 +12,13 @@ const config = {
   delay: 86400,
   strategyName: undefined, // StrategyBdoLP
   poolId: undefined, // 4
-  strategist: undefined // some address
+  strategist: undefined, // some address
 };
 
 async function main() {
   if (Object.values(config).some(v => v === undefined)) {
-    console.error("one of config values undefined")
-    return
+    console.error("one of config values undefined");
+    return;
   }
 
   await hardhat.run("compile");
@@ -42,12 +42,7 @@ async function main() {
   );
   await vault.deployed();
 
-  const strategy = await Strategy.deploy(
-    config.want,
-    config.poolId,
-    predictedAddresses.vault,
-    config.strategist
-  );
+  const strategy = await Strategy.deploy(config.want, config.poolId, predictedAddresses.vault, config.strategist);
   await strategy.deployed();
 
   console.log("Vault deployed to:", vault.address);
@@ -56,7 +51,7 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch((error) => {
+  .catch(error => {
     console.error(error);
     process.exit(1);
   });
