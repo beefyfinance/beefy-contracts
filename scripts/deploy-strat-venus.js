@@ -1,6 +1,6 @@
 const hardhat = require("hardhat");
 
-const predictAddresses = require("../utils/predictAddresses");
+const { predictAddresses } = require("../utils/predictAddresses");
 const getNetworkRpc = require("../utils/getNetworkRpc");
 
 const ethers = hardhat.ethers;

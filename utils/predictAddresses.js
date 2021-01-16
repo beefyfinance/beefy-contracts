@@ -2,34 +2,32 @@ const rlp = require("rlp");
 const keccak = require("keccak");
 const Web3 = require("web3");
 
-const predictAddresses = async (config) => {
-  let { creator, rpc } = config;
+const predictAddress = async ({ creator, rpc, nonce }) => {
+  nonce || await web3.eth.getTransactionCount(creator);
+  
+  const web3 = new Web3(rpc);
 
+  const nonceHex = `0x${parseInt(nonce).toString(16)}`;
+  const rlpEncoded = rlp.encode([creator, nonceHex]);
+  const contractAddressLong = keccak("keccak256").update(rlpEncoded).digest("hex");
+  const address = `0x${contractAddressLong.substring(24)}`;
+  const checksumed = web3.utils.toChecksumAddress(address);
+
+  return checksumed;
+};
+
+const predictAddresses = async ({ creator, rpc }) => {
   creator = creator || "0x565EB5e5B21F97AE9200D121e77d2760FFf106cb";
   rpc = rpc || "https://bsc-dataseed.binance.org/";
 
-  const web3 = new Web3(rpc);
-
-  let currentNonce = await web3.eth.getTransactionCount(creator);
-  let currentNonceHex = `0x${parseInt(currentNonce).toString(16)}`;
-  let currentInputArr = [creator, currentNonceHex];
-  let currentRlpEncoded = rlp.encode(currentInputArr);
-  let currentContractAddressLong = keccak("keccak256").update(currentRlpEncoded).digest("hex");
-  let currentContractAddress = `0x${currentContractAddressLong.substring(24)}`;
-  let currentContractAddressChecksum = web3.utils.toChecksumAddress(currentContractAddress);
-
-  let nextNonce = currentNonce + 1;
-  let nextNonceHex = `0x${parseInt(nextNonce).toString(16)}`;
-  let nextInputArr = [creator, nextNonceHex];
-  let nextRlpEncoded = rlp.encode(nextInputArr);
-  let nextContractAddressLong = keccak("keccak256").update(nextRlpEncoded).digest("hex");
-  let nextContractAddress = `0x${nextContractAddressLong.substring(24)}`;
-  let nextContractAddressChecksum = web3.utils.toChecksumAddress(nextContractAddress);
+  const nonce = await web3.eth.getTransactionCount(creator);
 
   return {
-    vault: currentContractAddressChecksum,
-    strategy: nextContractAddressChecksum,
+    vault: await predictAddress({creator,rpc, nonce}),
+    strategy: await predictAddress({creator,rpc, nonce: (nonce + 1)}),
   };
 };
 
-module.exports = predictAddresses;
+
+
+module.exports = { predictAddresses, predictAddress };

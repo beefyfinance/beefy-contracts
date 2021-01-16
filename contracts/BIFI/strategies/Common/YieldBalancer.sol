@@ -84,7 +84,7 @@ contract YieldBalancer is Ownable, Pausable {
      * @dev Will send all the funds to the main worker, at index 0.
      */
     function deposit() public whenNotPaused {
-        _workerDeposit(0);
+        _workerDepositAll(0);
 
         emit Deposit();
     }
@@ -96,16 +96,16 @@ contract YieldBalancer is Ownable, Pausable {
     function withdraw(uint256 amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantsBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < amount) {
             for (uint8 i = 0; i < workers.length; i++) {
                 uint256 workerBal = _workerBalance(i);
                 if (workerBal < amount.sub(wantBal)) {
-                    _workerWithdraw(i);
+                    _workerWithdrawAll(i);
                     wantBal = IERC20(want).balanceOf(address(this));
                 } else {
-                    _workerWithdrawPartial(i, amount.sub(wantBal));
+                    _workerWithdraw(i, amount.sub(wantBal));
                     break;
                 }
             }
@@ -129,8 +129,8 @@ contract YieldBalancer is Ownable, Pausable {
         require(fromIndex < workers.length, "!from");   
         require(toIndex < workers.length, "!to");   
 
-        _workerWithdraw(fromIndex);
-        _workerDeposit(toIndex);
+        _workerWithdrawAll(fromIndex);
+        _workerDepositAll(toIndex);
     }
 
     /**
@@ -143,8 +143,8 @@ contract YieldBalancer is Ownable, Pausable {
         require(fromIndex < workers.length, "!from");   
         require(toIndex < workers.length, "!to");   
 
-        _workerWithdrawPartial(fromIndex, amount);
-        _workerDeposit(toIndex);
+        _workerWithdraw(fromIndex, amount);
+        _workerDepositAll(toIndex);
     }
 
     /**
@@ -159,7 +159,7 @@ contract YieldBalancer is Ownable, Pausable {
         uint wantBal = IERC20(want).balanceOf(address(this));
 
         for (uint8 i = 0; i < ratios.length; i++) {
-            _workerDepositPartial(i, wantBal.mul(ratios[i]).div(RATIO_MAX));
+            _workerDeposit(i, wantBal.mul(ratios[i]).div(RATIO_MAX));
         }
     }
 
@@ -182,6 +182,8 @@ contract YieldBalancer is Ownable, Pausable {
      * @param candidate Address of worker vault
      */
     function proposeCandidate(address candidate) external onlyOwner {
+        require(candidate != address(0), "!zero");
+
         candidates.push(WorkerCandidate({
             addr: candidate,
             proposedTime: now
@@ -195,9 +197,9 @@ contract YieldBalancer is Ownable, Pausable {
      * @param index Index of candidate in the {candidates} array.
      */
     function acceptCandidate(uint8 index) external onlyOwner {
+        require(index < candidates.length, "out of bounds");
+        
         WorkerCandidate memory candidate = candidates[index]; 
-
-        require(index < candidates.length, "out of bounds");   
         require(candidate.proposedTime.add(approvalDelay) < now, "!delay");
 
         workers.push(candidate.addr); 
@@ -213,6 +215,8 @@ contract YieldBalancer is Ownable, Pausable {
      * @param index Index of candidate in the {candidates} array.
      */
     function rejectCandidate(uint8 index) external onlyOwner {
+        require(index < candidates.length, "out of bounds");
+
         emit CandidateRejected(candidates[index].addr);
 
         _removeCandidate(index);
@@ -256,7 +260,7 @@ contract YieldBalancer is Ownable, Pausable {
         address worker = workers[index];
         IERC20(want).safeApprove(worker, 0);
 
-        _workerWithdraw(index);
+        _workerWithdrawAll(index);
         _removeWorker(index);
 
         deposit();
@@ -289,7 +293,7 @@ contract YieldBalancer is Ownable, Pausable {
      * @dev Deposits all {want} in the contract into the given worker.
      * @param workerIndex Index of the worker where the funds will go.
      */
-    function _workerDeposit(uint8 workerIndex) internal {
+    function _workerDepositAll(uint8 workerIndex) internal {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IVault(workers[workerIndex]).deposit(wantBal);
     }
@@ -299,7 +303,7 @@ contract YieldBalancer is Ownable, Pausable {
      * @param workerIndex Index of the worker to withdraw from.
      * @param amount How much {want} to deposit.
     */
-    function _workerDepositPartial(uint8 workerIndex, uint256 amount) internal {
+    function _workerDeposit(uint8 workerIndex, uint256 amount) internal {
         IVault(workers[workerIndex]).deposit(amount);
     }
 
@@ -308,7 +312,7 @@ contract YieldBalancer is Ownable, Pausable {
      */
     function _workersWithdrawAll() internal {
         for (uint8 i = 0; i < workers.length; i++) {
-            _workerWithdraw(i);
+            _workerWithdrawAll(i);
         }
     }
 
@@ -316,7 +320,7 @@ contract YieldBalancer is Ownable, Pausable {
      * @dev Internal function to withdraw all {want} from a particular worker.
      * @param workerIndex Index of the worker to withdraw from.
     */
-    function _workerWithdraw(uint8 workerIndex) internal {
+    function _workerWithdrawAll(uint8 workerIndex) internal {
         require(workerIndex < workers.length, "out of bounds");   
 
         address worker = workers[workerIndex];
@@ -331,7 +335,7 @@ contract YieldBalancer is Ownable, Pausable {
      * @param workerIndex Index of the worker to withdraw from.
      * @param amount How much {want} to withdraw.
     */
-    function _workerWithdrawPartial(uint8 workerIndex, uint256 amount) internal {
+    function _workerWithdraw(uint8 workerIndex, uint256 amount) internal {
         require(workerIndex < workers.length, "out of bounds");   
 
         address worker = workers[workerIndex];
@@ -388,7 +392,7 @@ contract YieldBalancer is Ownable, Pausable {
      * @dev Calculates the total underlaying {want} held by the strat.
      * Takes into account both funds at hand, and funds allocated in workers.
      */
-    function balanceOf() public view returns (uint256) {
+    function balanceOf() external view returns (uint256) {
         return balanceOfWant().add(balanceOfWorkers());
     }
 

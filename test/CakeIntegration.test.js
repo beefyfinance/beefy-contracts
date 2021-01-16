@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 
-const predictContractAddress = require("../utils/predictAddresses");
+const { predictAddresses } = require("../utils/predictAddresses");
 
 const ERC20 = require("../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json");
 
@@ -24,7 +24,7 @@ const VAULT_DECIMALS = 18;
 describe("Cake Strategy", () => {
   const setup = async () => {
     const [signer] = await ethers.getSigners();
-    const predictedAddresses = await predictContractAddress({ creator: signer.address, rpc: "http://127.0.0.1:8545" });
+    const predictedAddresses = await predictAddresses({ creator: signer.address, rpc: "http://127.0.0.1:8545" });
 
     const Vault = await ethers.getContractFactory("BeefyVault");
     const vault = await Vault.deploy(CAKE, predictedAddresses.strategy, VAULT_NAME, VAULT_SYMBOL);

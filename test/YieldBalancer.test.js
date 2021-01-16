@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 
-const predictContractAddress = require("../utils/predictAddresses");
+const { predictAddresses } = require("../utils/predictAddresses");
 
 const TIMEOUT = 10 * 60 * 1000;
 
@@ -10,7 +10,7 @@ describe("YieldBalancer", () => {
   const setup = async () => {
     const [signer, other] = await ethers.getSigners();
 
-    const predictedAddresses = await predictContractAddress({ creator: signer.address, rpc: "http://127.0.0.1:8545" });
+    const predictedAddresses = await predictAddresses({ creator: signer.address, rpc: "http://127.0.0.1:8545" });
     const workerA = await deployWorker(
       {
         vault: "BeefyVaultV3",
@@ -33,7 +33,7 @@ describe("YieldBalancer", () => {
       },
       signer
     );
-    const workerB = await deployWorker(
+    const workerC = await deployWorker(
       {
         vault: "BeefyVaultV3",
         strategy: "StrategyCake",
@@ -51,7 +51,7 @@ describe("YieldBalancer", () => {
   };
 
   const deployWorker = async (config, signer) => {
-    const predictedAddresses = await predictContractAddress({ creator: signer.address, rpc: "http://127.0.0.1:8545" });
+    const predictedAddresses = await predictAddresses({ creator: signer.address, rpc: "http://127.0.0.1:8545" });
 
     console.log(JSON.stringify(predictedAddresses));
 
