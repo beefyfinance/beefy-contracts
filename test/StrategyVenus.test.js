@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { artifacts } = require("hardhat");
 
-const predictContractAddress = require("../utils/predictAddresses");
+const { predictAddresses } = require("../utils/predictAddresses");
 
 const TIMEOUT = 10 * 60 * 1000;
 
@@ -42,7 +42,7 @@ describe("StrategyVenus", () => {
   const setup = async () => {
     const [signer, other] = await ethers.getSigners();
 
-    const predictedAddresses = await predictContractAddress({ creator: signer.address, rpc: "http://127.0.0.1:8545" });
+    const predictedAddresses = await predictAddresses({ creator: signer.address, rpc: "http://127.0.0.1:8545" });
 
     const Vault = await ethers.getContractFactory("BeefyVenusVault");
     const vault = await Vault.deploy(predictedAddresses.strategy, BTCB, VAULT_NAME, VAULT_SYMBOL, DELAY);

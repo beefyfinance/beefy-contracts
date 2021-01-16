@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 
-const predictContractAddress = require("../utils/predictAddresses");
+const { predictAddresses } = require("../utils/predictAddresses");
 
 const TIMEOUT = 10 * 60 * 1000;
 
@@ -34,7 +34,7 @@ const PAUSED_ERROR = "Pausable: paused";
 describe("StrategyVenusBNB", () => {
   const setup = async () => {
     const [signer, other] = await ethers.getSigners();
-    const predictedAddresses = await predictContractAddress({ creator: signer.address, rpc: "http://127.0.0.1:8545" });
+    const predictedAddresses = await predictAddresses({ creator: signer.address, rpc: "http://127.0.0.1:8545" });
 
     const Vault = await ethers.getContractFactory("BeefyVenusVaultBNB");
     const vault = await Vault.deploy(predictedAddresses.strategy, VAULT_NAME, VAULT_SYMBOL, DELAY);

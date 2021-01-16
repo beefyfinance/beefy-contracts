@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 
-const predictContractAddress = require("../utils/predictAddresses");
+const { predictAddresses } = require("../utils/predictAddresses");
 const { delay, nowInSeconds } = require("../utils/timeHelpers");
 
 // TOKENS
@@ -15,6 +15,8 @@ const SMARTCHEFS = [
 ];
 
 // CONFIG
+const VAULT_NAME = "Moo Smart Cake";
+const VAULT_SYMBOL = "mooSmartCake";
 const TIMEOUT = 10 * 60 * 1000;
 const DELAY = 5;
 
@@ -25,7 +27,7 @@ const PAUSED_ERROR = "Pausable: paused";
 describe("Migrate SmartCake", () => {
   const setup = async () => {
     const [signer, other] = await ethers.getSigners();
-    const predictedAddresses = await predictContractAddress({ creator: signer.address, rpc: "http://127.0.0.1:8545" });
+    const predictedAddresses = await predictAddresses({ creator: signer.address, rpc: "http://127.0.0.1:8545" });
 
     const Vault = await ethers.getContractFactory("BeefyVaultV3");
     const vault = await Vault.deploy(CAKE, predictedAddresses.strategy, VAULT_NAME, VAULT_SYMBOL, 0);
