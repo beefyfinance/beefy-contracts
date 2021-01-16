@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 
-const { predictAddresses } = require("../utils/predictAddresses");
+const { deployVault } = require("../utils/deployVault");
 
 // TOKENS
 const WBNB = "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c";
@@ -34,35 +34,6 @@ describe("Migrate SmartCake", () => {
     return { signer, other, contracts };
   };
 
-  // TODO: extract to helper fn
-  const deployVault = async (config) => {
-    const predictedAddresses = await predictAddresses({ creator: config.signer.address, rpc: RPC });
-
-    console.log(JSON.stringify(predictedAddresses));
-
-    const Vault = await ethers.getContractFactory(config.vault);
-    const vault = await Vault.deploy(
-      config.want,
-      predictedAddresses.strategy,
-      config.mooName,
-      config.mooSymbol,
-      config.delay
-    );
-    await vault.deployed();
-
-    const Strategy = await ethers.getContractFactory(config.strategy);
-    const strategy = await Strategy.deploy(predictedAddresses.vault);
-    await strategy.deployed();
-
-    const _vault = await strategy.vault();
-    const _strategy = await vault.strategy();
-
-    console.log(vault.address, _vault);
-    console.log(strategy.address, _strategy);
-
-    return { vault, strategy };
-  };
-
   const mockOldArch = async ({ signer }) => {
     const { vault, strategy } = await deployVault({
       vault: "BeefyVaultV3",
@@ -71,7 +42,8 @@ describe("Migrate SmartCake", () => {
       mooName: "Moo Smart Cake",
       mooSymbol: "mooSmartCake",
       delay: 60,
-      signer: signer
+      signer: signer,
+      rpc: RPC
     });
 
     return { vault, strategy };
