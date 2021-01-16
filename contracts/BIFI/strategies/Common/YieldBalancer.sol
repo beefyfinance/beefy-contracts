@@ -182,6 +182,8 @@ contract YieldBalancer is Ownable, Pausable {
      * @param candidate Address of worker vault
      */
     function proposeCandidate(address candidate) external onlyOwner {
+        require(candidate != address(0), "!zero");
+
         candidates.push(WorkerCandidate({
             addr: candidate,
             proposedTime: now
@@ -195,9 +197,9 @@ contract YieldBalancer is Ownable, Pausable {
      * @param index Index of candidate in the {candidates} array.
      */
     function acceptCandidate(uint8 index) external onlyOwner {
+        require(index < candidates.length, "out of bounds");
+        
         WorkerCandidate memory candidate = candidates[index]; 
-
-        require(index < candidates.length, "out of bounds");   
         require(candidate.proposedTime.add(approvalDelay) < now, "!delay");
 
         workers.push(candidate.addr); 
@@ -213,6 +215,8 @@ contract YieldBalancer is Ownable, Pausable {
      * @param index Index of candidate in the {candidates} array.
      */
     function rejectCandidate(uint8 index) external onlyOwner {
+        require(index < candidates.length, "out of bounds");
+
         emit CandidateRejected(candidates[index].addr);
 
         _removeCandidate(index);
@@ -388,7 +392,7 @@ contract YieldBalancer is Ownable, Pausable {
      * @dev Calculates the total underlaying {want} held by the strat.
      * Takes into account both funds at hand, and funds allocated in workers.
      */
-    function balanceOf() public view returns (uint256) {
+    function balanceOf() external view returns (uint256) {
         return balanceOfWant().add(balanceOfWorkers());
     }
 
