@@ -376,6 +376,8 @@ contract YieldBalancer is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
         _workersApproveAll(uint256(-1));
+
+        deposit();
     }
 
     //--- VIEW FUNCTIONS ---//
