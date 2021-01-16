@@ -371,12 +371,11 @@ contract YieldBalancer is Ownable, Pausable {
     }
 
     /**
-     * @dev Unpauses the strat.
+     * @dev Unpauses the strat and restarts farming.
      */
     function unpause() external onlyOwner {
         _unpause();
         _workersApproveAll(uint256(-1));
-
         deposit();
     }
 
