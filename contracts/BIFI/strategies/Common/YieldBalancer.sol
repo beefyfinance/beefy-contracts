@@ -28,6 +28,7 @@ contract YieldBalancer is Ownable, Pausable {
         uint256 proposedTime;
     }
 
+    uint8 constant MAX_WORKERS = 12; 
     address[] public workers;
     mapping (address => bool) public workersMap;
     WorkerCandidate[] public candidates;
@@ -189,6 +190,7 @@ contract YieldBalancer is Ownable, Pausable {
      */
     function acceptCandidate(uint8 index) external onlyOwner {
         require(index < candidates.length, "out of bounds");
+        require(workers.length < MAX_WORKERS, "!capacity");
 
         WorkerCandidate memory candidate = candidates[index]; 
         require(candidate.proposedTime.add(approvalDelay) < now, "!delay");
@@ -275,11 +277,11 @@ contract YieldBalancer is Ownable, Pausable {
 
     /** 
      * @dev Adds a group of workers to the workers list and map.
-     * @param workers List of vault addresses.
+     * @param _workers List of vault addresses.
     */
-    function _addWorkers(address[] memory workers) internal {
-        for (uint8 i = 0; i < workers.length; i++) {
-            _addWorker(workers[i]);
+    function _addWorkers(address[] memory _workers) internal {
+        for (uint8 i = 0; i < _workers.length; i++) {
+            _addWorker(_workers[i]);
         }
     }
 
