@@ -28,7 +28,8 @@ contract YieldBalancer is Ownable, Pausable {
         uint256 proposedTime;
     }
 
-    uint8 constant MAX_WORKERS = 12; 
+    uint8 constant public MAX_WORKERS = 12; 
+    uint256 constant public RATIO_MAX = 10000;
     address[] public workers;
     mapping (address => bool) public workersMap;
     WorkerCandidate[] public candidates;
@@ -38,11 +39,10 @@ contract YieldBalancer is Ownable, Pausable {
      * @dev Used to protect vault users against vault hoping.
      * {WITHDRAWAL_FEE} - Fee taxed when a user withdraws funds. 10 === 0.1% fee.
      * {WITHDRAWAL_MAX} - Aux const used to safely calc the correct amounts.
-     * {RATIO_MAX} - Fixed point 100% used to validate rebalance params.
      */
     uint256 constant public WITHDRAWAL_FEE = 10;
     uint256 constant public WITHDRAWAL_MAX = 10000;
-    uint256 constant public RATIO_MAX = 10000;
+
 
     /**
         * @dev Events emitted. Deposit() and Withdrawal() are used by the management bot to know if 
