@@ -14,27 +14,45 @@ import "../../interfaces/beefy/IVault.sol";
  * @title Yield Balancer
  * @author sirbeefalot
  * @dev It serves as a load balancer for multiple vaults that optimize the same asset.
- * Subvaults that serve as workers can't charge withdrawal fee.
+ * Subvaults that serve as workers can't charge withdrawal fees to the balancer.
  */
 contract YieldBalancer is Ownable, Pausable {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
+    /**
+     * {want} - The token that the vault looks to maximize.
+     * {vault} - The parent vault, entry and exit point for users.
+     */
     address public want;
     address public immutable vault;
 
+    /**
+     * @dev Struct to store proposed candidates before they are accepted as workers.   
+     */
     struct WorkerCandidate {
         address addr;
         uint256 proposedTime;
     }
-
-    uint8 constant public WORKERS_MAX = 12; 
-    uint256 constant public RATIO_MAX = 10000;
     
+    /**
+     * @dev Variables for worker and candidate management.
+     * {workers} - Array to keep track of active workers.
+     * {workersMap} - Used to check if a worker exists. Prevents accepting a duplicate worker.
+     * {candidates} - Array to keep track of potential workers that haven't been accepted/rejected.
+     * {approvalDelay} - Seconds that have to pass after a candidate is proposed before it can be accepted.
+     */
     address[] public workers;
     mapping (address => bool) public workersMap;
     WorkerCandidate[] public candidates;
     uint256 immutable approvalDelay;
+
+    /**
+     * {WORKERS_MAX} - Max number of workers that the balancer can manage. Prevents out of gas errors. 
+     * {RATIO_MAX} - Aux const used to make sure all funds are allocated on rebalance.
+     */
+    uint8 constant public WORKERS_MAX = 12; 
+    uint256 constant public RATIO_MAX = 10000;
 
     /**
      * @dev Used to protect vault users against vault hoping.
@@ -44,11 +62,6 @@ contract YieldBalancer is Ownable, Pausable {
     uint256 constant public WITHDRAWAL_FEE = 10;
     uint256 constant public WITHDRAWAL_MAX = 10000;
 
-
-    /**
-        * @dev Events emitted. Deposit() and Withdrawal() are used by the management bot to know if 
-        * an action that might break balance happened.
-     */
     event CandidateProposed(address candidate);
     event CandidateAccepted(address candidate);
     event CandidateRejected(address candidate);
