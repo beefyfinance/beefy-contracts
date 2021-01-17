@@ -1,7 +1,6 @@
 const { expect } = require("chai");
 
-const { predictAddresses } = require("../utils/predictAddresses");
-const { delay, nowInSeconds } = require("../utils/timeHelpers");
+const { deployVault } = require("../utils/deployVault");
 
 // TOKENS
 const WBNB = "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c";
@@ -15,10 +14,8 @@ const SMARTCHEFS = [
 ];
 
 // CONFIG
-const VAULT_NAME = "Moo Smart Cake";
-const VAULT_SYMBOL = "mooSmartCake";
 const TIMEOUT = 10 * 60 * 1000;
-const DELAY = 5;
+const RPC = "http://127.0.0.1:8545";
 
 // Error Codes
 const OWNABLE_ERROR = "Ownable: caller is not the owner";
@@ -27,32 +24,38 @@ const PAUSED_ERROR = "Pausable: paused";
 describe("Migrate SmartCake", () => {
   const setup = async () => {
     const [signer, other] = await ethers.getSigners();
-    const predictedAddresses = await predictAddresses({ creator: signer.address, rpc: "http://127.0.0.1:8545" });
-
-    const Vault = await ethers.getContractFactory("BeefyVaultV3");
-    const vault = await Vault.deploy(CAKE, predictedAddresses.strategy, VAULT_NAME, VAULT_SYMBOL, 0);
-    await vault.deployed();
-
-    const Strategy = await ethers.getContractFactory("StrategyCakeSmart");
-    const strategy = await Strategy.deploy(predictedAddresses.vault, DELAY);
-    await strategy.deployed();
-
+    
     const ERC20 = await artifacts.readArtifact("ERC20");
     const contracts = {
-      wbnb: new ethers.Contract(WBNB, ERC20.abi, signer),
-      cake: new ethers.Contract(CAKE, ERC20.abi, signer)
+      wbnb: await ethers.getContractAt(ERC20.abi, WBNB),
+      cake: await ethers.getContractAt(ERC20.abi, CAKE)
     };
-    return { signer, other, vault, strategy, contracts };
+
+    return { signer, other, contracts };
   };
+
+  const mockOldArch = async ({ signer }) => {
+    const { vault, strategy } = await deployVault({
+      vault: "BeefyVaultV3",
+      strategy: "StrategyCake",
+      want: CAKE,
+      mooName: "Moo Smart Cake",
+      mooSymbol: "mooSmartCake",
+      delay: 60,
+      signer: signer,
+      rpc: RPC
+    });
+
+    return { vault, strategy };
+  }
   
   describe("initialization", () => {
     it("should correctly connect vault/strat on deploy.", async () => {
-      const { vault, strategy } = await setup();
+      const { signer } = await setup();
+      const { vault, strategy } = await mockOldArch({ signer });
 
       expect(await vault.strategy()).to.equal(strategy.address);
       expect(await strategy.vault()).to.equal(vault.address);
     }).timeout(TIMEOUT);
-  });
-
-  
+  });  
 });

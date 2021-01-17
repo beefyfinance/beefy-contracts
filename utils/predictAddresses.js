@@ -28,6 +28,4 @@ const predictAddresses = async ({ creator, rpc }) => {
   };
 };
 
-
-
 module.exports = { predictAddresses, predictAddress };
