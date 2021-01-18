@@ -16,20 +16,20 @@ import "../../interfaces/beefy/IVault.sol";
  * @dev This strategy serves as a load balancer for multiple vaults that optimize the same asset. 
  * 
  * It doesn't implement its own farming strategy and doesn't implement a 'harvest()' function. It insteads 
- * distributes the funds deposited into its parent vault into a group of subvaults called 'workers' within this contract. 
+ * distributes the funds deposited into its parent vault into a group of subvaults called 'workers'. 
  * Each worker implements its own farming strategy and harvest frequency. 
  * 
- * It can manage up to {WORKERS_MAX} workers, due to gas concerns. It can allocate from 0% to 100% of the available 
+ * The balancer can manage up to {WORKERS_MAX} workers, due to gas concerns. It can allocate from 0% to 100% of the available 
  * funds into each of these workers.
  * 
  * The implementation looks to make it as cheap as possible for users to use the vault. The worker at index '0' works as 
  * the 'main' worker. It's where user deposits go and where user withdrawals come out first.
  * The balancer then has a few toggles like {rebalancePair} or the global {rebalance} to make sure it achieves and maintains 
- * the desired fund distribution between all the workers. The owner can use {switchWorkerOrder} to optimize worker order within 
- * the {workers} array.
+ * the desired fund distribution between all the workers. The strategy owner can use {switchWorkerOrder} to optimize worker 
+ * order within the {workers} array.
  *
- * This architecture works on the pragmatic assumption that there's usually a farm on a given platform or with a given asset 
- * that can withstand the most TVL. There are other secondary farms that can be used to relieve pressure from the main one 
+ * This architecture works on the pragmatic assumption that there's usually a farm on a given platform or within a given asset 
+ * that can withstand the most TVL. There are secondary farms that can be used to relieve pressure from the main one 
  * and to increase overall APY. The calcs to determine optimal allocation ratios happen offchain. This contract provides the tools
  * for trustless fund management and rebalance.
  *
@@ -41,10 +41,11 @@ import "../../interfaces/beefy/IVault.sol";
  */
 contract YieldBalancer is Ownable, Pausable {
     using SafeERC20 for IERC20;
-    using SafeMath for uint;
+    using SafeMath for uint256;
 
     /**
-     * @dev The token that the vault looks to maximize.
+     * @dev The token that the vault looks to maximize. Configured through the constructor and can't be 
+     * changed afterwards.
      */
     address public want;
 
