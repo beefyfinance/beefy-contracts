@@ -74,9 +74,9 @@ contract StrategyThugsLP is Ownable, Pausable {
      * {WITHDRAWAL_MAX} - Aux const used to safely calc the correct amounts.
      */
     uint constant public REWARDS_FEE  = 667;
-    uint constant public CALL_FEE     = 166;
+    uint constant public CALL_FEE     = 83;
     uint constant public TREASURY_FEE = 167;
-    uint constant public STRATEGIST_FEE = 112;
+    uint constant public STRATEGIST_FEE = 83;
     uint constant public MAX_FEE      = 1000;
 
     uint constant public WITHDRAWAL_FEE = 10;

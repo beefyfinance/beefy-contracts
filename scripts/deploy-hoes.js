@@ -19,7 +19,7 @@ async function main() {
   await hardhat.run("compile");
 
   const Vault = await ethers.getContractFactory("BeefyVaultV3");
-  const Strategy = await ethers.getContractFactory("StrategyHoes");
+  const Strategy = await ethers.getContractFactory("StrategyHoesBurnOnTransfer");
 
   for (const pool of pools) {
     console.log("---");
