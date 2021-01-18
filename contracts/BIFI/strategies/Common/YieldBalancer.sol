@@ -81,14 +81,6 @@ contract YieldBalancer is Ownable, Pausable {
     uint256 constant public RATIO_MAX = 10000;
 
     /**
-     * @dev Used to protect vault users against vault hoping.
-     * {WITHDRAWAL_FEE} - Fee taxed when a user withdraws funds. 10 === 0.1% fee.
-     * {WITHDRAWAL_MAX} - Aux const used to safely calc the correct amounts.
-     */
-    uint256 constant public WITHDRAWAL_FEE = 10;
-    uint256 constant public WITHDRAWAL_MAX = 10000;
-
-    /**
      * @dev All the events that the contract emits.  
      */
     event CandidateProposed(address candidate);
@@ -151,8 +143,7 @@ contract YieldBalancer is Ownable, Pausable {
         }
 
         wantBal = IERC20(want).balanceOf(address(this));
-        uint256 _fee = wantBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
-        IERC20(want).safeTransfer(vault, wantBal.sub(_fee));
+        IERC20(want).safeTransfer(vault, wantBal);
     }
 
     //--- FUNDS REBALANCE ---//
@@ -231,17 +222,17 @@ contract YieldBalancer is Ownable, Pausable {
 
     /**
      * @dev Adds a candidate to the worker pool. Can only be done after {approvalDelay} has passed.
-     * @param index Index of candidate in the {candidates} array.
+     * @param candidateIndex Index of candidate in the {candidates} array.
      */
-    function acceptCandidate(uint8 index) external onlyOwner {
-        require(index < candidates.length, "out of bounds");
+    function acceptCandidate(uint8 candidateIndex) external onlyOwner {
+        require(candidateIndex < candidates.length, "out of bounds");
         require(workers.length < WORKERS_MAX, "!capacity");
 
-        WorkerCandidate memory candidate = candidates[index]; 
+        WorkerCandidate memory candidate = candidates[candidateIndex]; 
         require(candidate.proposedTime.add(approvalDelay) < now, "!delay");
         require(workersMap[candidate.addr] == false, "!unique");
 
-        _removeCandidate(index);
+        _removeCandidate(candidateIndex);
         _addWorker(candidate.addr);
 
         emit CandidateAccepted(candidate.addr);
@@ -250,22 +241,22 @@ contract YieldBalancer is Ownable, Pausable {
     /**
      * @dev Cancels an attempt to add a worker. Useful in case of an erronoeus proposal,
      * or a bug found later in an upcoming candidate.
-     * @param index Index of candidate in the {candidates} array.
+     * @param candidateIndex Index of candidate in the {candidates} array.
      */
-    function rejectCandidate(uint8 index) external onlyOwner {
-        require(index < candidates.length, "out of bounds");
+    function rejectCandidate(uint8 candidateIndex) external onlyOwner {
+        require(candidateIndex < candidates.length, "out of bounds");
 
-        emit CandidateRejected(candidates[index].addr);
+        emit CandidateRejected(candidates[candidateIndex].addr);
 
-        _removeCandidate(index);
+        _removeCandidate(candidateIndex);
     }   
 
     /** 
      * @dev Internal function to remove a candidate from the {candidates} array.
-     * @param index Index of candidate in the {candidates} array.
+     * @param candidateIndex Index of candidate in the {candidates} array.
     */
-    function _removeCandidate(uint8 index) internal {
-        candidates[index] = candidates[candidates.length-1];
+    function _removeCandidate(uint8 candidateIndex) internal {
+        candidates[candidateIndex] = candidates[candidates.length-1];
         candidates.pop();
     } 
 
@@ -289,17 +280,17 @@ contract YieldBalancer is Ownable, Pausable {
     /**
      * @dev Withdraws all {want} from a worker and removes it from the options. 
      * The main worker at index 0 can't be deleted.
-     * @param index Index of worker to delete.
+     * @param workerIndex Index of worker to delete.
      */
-    function deleteWorker(uint8 index) external onlyOwner {
-        require(index != 0, "!main");
-        require(index < workers.length, "out of bounds");   
+    function deleteWorker(uint8 workerIndex) external onlyOwner {
+        require(workerIndex != 0, "!main");
+        require(workerIndex < workers.length, "out of bounds");   
 
-        address worker = workers[index];
+        address worker = workers[workerIndex];
         IERC20(want).safeApprove(worker, 0);
 
-        _workerWithdrawAll(index);
-        _removeWorker(index);
+        _workerWithdrawAll(workerIndex);
+        _removeWorker(workerIndex);
 
         deposit();
 
