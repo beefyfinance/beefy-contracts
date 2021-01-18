@@ -13,18 +13,44 @@ import "../../interfaces/beefy/IVault.sol";
 /**
  * @title Yield Balancer
  * @author sirbeefalot
- * @dev It serves as a load balancer for multiple vaults that optimize the same asset.
- * Subvaults that serve as workers can't charge withdrawal fees to the balancer.
+ * @dev This strategy serves as a load balancer for multiple vaults that optimize the same asset. 
+ * 
+ * It doesn't implement its own farming strategy and doesn't implement a 'harvest()' function. It insteads 
+ * distributes the funds deposited into its parent vault into a group of subvaults called 'workers' within this contract. 
+ * Each worker implements its own farming strategy and harvest frequency. 
+ * 
+ * It can manage up to {WORKERS_MAX} workers, due to gas concerns. It can allocate from 0% to 100% of the available 
+ * funds into each of these workers.
+ * 
+ * The implementation looks to make it as cheap as possible for users to use the vault. The worker at index '0' works as 
+ * the 'main' worker. It's where user deposits go and where user withdrawals come out first.
+ * The balancer then has a few toggles like {rebalancePair} or the global {rebalance} to make sure it achieves and maintains 
+ * the desired fund distribution between all the workers. The owner can use {switchWorkerOrder} to optimize worker order within 
+ * the {workers} array.
+ *
+ * This architecture works on the pragmatic assumption that there's usually a farm on a given platform or with a given asset 
+ * that can withstand the most TVL. There are other secondary farms that can be used to relieve pressure from the main one 
+ * and to increase overall APY. The calcs to determine optimal allocation ratios happen offchain. This contract provides the tools
+ * for trustless fund management and rebalance.
+ *
+ * It doesn't need exclusive usage of a worker. This is meant so that balancers can be deployed to take advantage of previously
+ * deployed vaults, or vaults that some users might want to use directly.
+ *
+ * Requirements:
+ * - Subvaults that serve as workers can't charge withdrawal fees to the balancer.
  */
 contract YieldBalancer is Ownable, Pausable {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
     /**
-     * {want} - The token that the vault looks to maximize.
-     * {vault} - The parent vault, entry and exit point for users.
+     * @dev The token that the vault looks to maximize.
      */
     address public want;
+
+    /**
+     * @dev The parent vault, entry and exit point for users.
+     */
     address public immutable vault;
 
     /**
@@ -49,7 +75,7 @@ contract YieldBalancer is Ownable, Pausable {
 
     /**
      * {WORKERS_MAX} - Max number of workers that the balancer can manage. Prevents out of gas errors. 
-     * {RATIO_MAX} - Aux const used to make sure all funds are allocated on rebalance.
+     * {RATIO_MAX} - Aux const used to make sure all available funds are allocated on rebalance.
      */
     uint8 constant public WORKERS_MAX = 12; 
     uint256 constant public RATIO_MAX = 10000;
@@ -62,13 +88,18 @@ contract YieldBalancer is Ownable, Pausable {
     uint256 constant public WITHDRAWAL_FEE = 10;
     uint256 constant public WITHDRAWAL_MAX = 10000;
 
+    /**
+     * @dev All the events that the contract emits.  
+     */
     event CandidateProposed(address candidate);
     event CandidateAccepted(address candidate);
     event CandidateRejected(address candidate);
     event WorkerDeleted(address worker);
 
     /**
-     * @notice Initializes the strategy
+     * @dev Initializes the strategy with its parent {vault} and the token that will maximize {want}. It also sets up the 
+     * {approvalDelay} that candidates proposed as workers will have to wait before the owner can accept them as workers.
+     * 
      * @param _want Address of the token to maximize.
      * @param _vault Address of the vault that will manage the strat.
      * @param _workers Array of vault addresses that will serve as workers.

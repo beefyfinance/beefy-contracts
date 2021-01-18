@@ -13,14 +13,17 @@ import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/pancake/IMasterChef.sol";
 
 /**
- * @title Strategy Cake
+ * @title Strategy Cake VaultV2
  * @author sirbeefalot & superbeefyboy
- * @dev Implementation of a strategy to get yields from farming a Cake pool.
+ * @dev Implementation of a strategy to get yields from farming a Cake pool. This is meant to be
+ * used as an upgrade candidate for vaults implementing the V2 interface. Newer vaults use BeefyVaultV3
+ * and should use the 'StrategyCake.sol' version of this strategy. The only difference is that newer vaults
+ * can upgrade strat with a single transaction (After the proper delay has transcurred).
  *
  * The strategy simply deposits whatever funds it receives from the vault into the MasterChef.
  * Rewards from the MasterChef can be regularly compounded.
  */
-contract StrategyCake is Ownable, Pausable {
+contract StrategyCakeVaultV2 is Ownable, Pausable {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -197,9 +200,7 @@ contract StrategyCake is Ownable, Pausable {
      * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
      * vault, ready to be migrated to the new strat.
      */ 
-    function retireStrat() external {
-        require(msg.sender == vault, "!vault");
-
+    function retireStrat() external onlyOwner {
         IMasterChef(masterchef).emergencyWithdraw(0);
 
         uint256 cakeBal = IERC20(cake).balanceOf(address(this));
