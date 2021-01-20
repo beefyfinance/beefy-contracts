@@ -13,8 +13,10 @@ const deployVault = async config => {
   );
   await vault.deployed();
 
+  console.log(vault.address);
+
   const Strategy = await ethers.getContractFactory(config.strategy);
-  const strategy = await Strategy.deploy([...config.stratArgs], predictedAddresses.vault);
+  const strategy = await Strategy.deploy(...config.stratArgs, predictedAddresses.vault);
   await strategy.deployed();
 
   return { vault, strategy };

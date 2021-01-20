@@ -94,15 +94,15 @@ contract YieldBalancer is Ownable, Pausable {
      * {approvalDelay} that candidates proposed as workers will have to wait before the owner can accept them as workers.
      * 
      * @param _want Address of the token to maximize.
-     * @param _vault Address of the vault that will manage the strat.
      * @param _workers Array of vault addresses that will serve as workers.
      * @param _approvalDelay Delay in seconds before a candidate can be added as worker.
+     * @param _vault Address of the vault that will manage the strat.
      */
     constructor(
         address _want,
-        address _vault, 
         address[] memory _workers, 
-        uint256 _approvalDelay
+        uint256 _approvalDelay,
+        address _vault
     ) public {
         want = _want;
         vault = _vault;

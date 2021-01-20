@@ -49,7 +49,7 @@ describe("StrategyVenusBNB", () => {
 
     const contracts = {
       wbnb: new ethers.Contract(WBNB, IWBNB.abi, signer),
-      unitroller: new ethers.Contract(UNITROLLER, IUnitroller.abi, signer)
+      unitroller: new ethers.Contract(UNITROLLER, IUnitroller.abi, signer),
     };
     return { signer, other, vault, strategy, predictedAddresses, contracts };
   };
@@ -181,13 +181,7 @@ describe("StrategyVenusBNB", () => {
   it("exposed _leverage: it should deposit into venus following the config", async () => {
     const { signer, strategy } = await setup();
     const depositAmount = new ethers.BigNumber.from(DEPOSIT_AMOUNT);
-    const finalAmount = depositAmount
-      .mul(BORROW_RATE)
-      .mul(BORROW_RATE)
-      .mul(BORROW_RATE)
-      .div(100)
-      .div(100)
-      .div(100);
+    const finalAmount = depositAmount.mul(BORROW_RATE).mul(BORROW_RATE).mul(BORROW_RATE).div(100).div(100).div(100);
     await signer.sendTransaction({ to: strategy.address, value: depositAmount });
 
     const stratBal = await signer.provider.getBalance(strategy.address);
