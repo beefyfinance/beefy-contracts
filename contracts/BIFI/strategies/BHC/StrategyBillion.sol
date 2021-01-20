@@ -15,7 +15,7 @@ import "../../interfaces/common/IRewardPool.sol";
 /**
  * @dev Strategy to farm BHC through a Synthetix based rewards pool contract.
  */
-contract StrategyCake is Ownable, Pausable {
+contract StrategyBillion is Ownable, Pausable {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -73,7 +73,7 @@ contract StrategyCake is Ownable, Pausable {
     uint constant public WITHDRAWAL_MAX = 10000;
 
     /**
-     * @dev Routes we take to swap tokens using PancakeSwap.
+     * @dev Routes we take to swap tokens using Thugswap.
      * {bhcToWbnbRoute} - Route we take to go from {bhc} into {wbnb}.
      * {wbnbToBifiRoute} - Route we take to go from {wbnb} into {bifi}.
      */
@@ -125,7 +125,7 @@ contract StrategyCake is Ownable, Pausable {
             bhcBal = _amount;    
         }
         
-        if (tx.origin === owner()) {
+        if (tx.origin == owner()) {
             IERC20(bhc).safeTransfer(vault, bhcBal);
         } else {
             uint256 withdrawalFee = bhcBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
@@ -213,7 +213,7 @@ contract StrategyCake is Ownable, Pausable {
      */
     function panic() external onlyOwner {
         pause();
-        IRewardPool(rewardPool).withdraw(balanceOfPool());∫  
+        IRewardPool(rewardPool).withdraw(balanceOfPool());
     }
 
     /**
