@@ -19,7 +19,7 @@ import "../../interfaces/beefy/IVault.sol";
  * distributes the funds deposited into its parent vault into a group of subvaults called 'workers'. 
  * Each worker implements its own farming strategy and harvest frequency. 
  * 
- * The balancer can manage up to {WORKERS_MAX} workers, due to gas concerns. It can allocate from 0% to 100% of the available 
+ * The balancer can manage up to {workersMax} workers, due to gas concerns. It can allocate from 0% to 100% of the available 
  * funds into each of these workers.
  * 
  * The implementation looks to make it as cheap as possible for users to use the vault. The worker at index '0' works as 
@@ -75,10 +75,10 @@ contract YieldBalancer is Ownable, Pausable {
     uint256 immutable approvalDelay;
 
     /**
-     * {WORKERS_MAX} - Max number of workers that the balancer can manage. Prevents out of gas errors. 
+     * {workersMax} - Max number of workers that the balancer can manage. Prevents out of gas errors. 
      * {RATIO_MAX} - Aux const used to make sure all available funds are allocated on rebalance.
      */
-    uint8 constant public WORKERS_MAX = 12; 
+    uint8 constant public workersMax; 
     uint256 constant public RATIO_MAX = 10000;
 
     /**
@@ -96,17 +96,20 @@ contract YieldBalancer is Ownable, Pausable {
      * @param _want Address of the token to maximize.
      * @param _workers Array of vault addresses that will serve as workers.
      * @param _approvalDelay Delay in seconds before a candidate can be added as worker.
+     * @param _workersMax Max number of workers that this balancer is allowed to manage.
      * @param _vault Address of the vault that will manage the strat.
      */
     constructor(
         address _want,
         address[] memory _workers, 
         uint256 _approvalDelay,
+        uint8 _workersMax,
         address _vault
     ) public {
         want = _want;
         vault = _vault;
         approvalDelay = _approvalDelay;
+        workersMax = _workersMax;
 
         _addWorkers(_workers);
     }
@@ -227,7 +230,7 @@ contract YieldBalancer is Ownable, Pausable {
      */
     function acceptCandidate(uint8 candidateIndex) external onlyOwner {
         require(candidateIndex < candidates.length, "out of bounds");
-        require(workers.length < WORKERS_MAX, "!capacity");
+        require(workers.length < workersMax, "!capacity");
 
         WorkerCandidate memory candidate = candidates[candidateIndex]; 
         require(candidate.proposedTime.add(approvalDelay) < now, "!delay");

@@ -26,7 +26,7 @@ describe("YieldBalancer", () => {
         want: CAKE,
         mooName: "Worker Simple",
         mooSymbol: "workerSimple",
-        delay: 60,
+        delay: 5,
         stratArgs: [],
         signer: signer,
         rpc: RPC,
@@ -37,7 +37,7 @@ describe("YieldBalancer", () => {
         want: CAKE,
         mooName: "Worker Syrup A",
         mooSymbol: "workerSyrupA",
-        delay: 60,
+        delay: 5,
         stratArgs: [HELMET_SMARTCHEF],
         signer: signer,
         rpc: RPC,
@@ -48,7 +48,7 @@ describe("YieldBalancer", () => {
         want: CAKE,
         mooName: "Worker Syrup B",
         mooSymbol: "workerSyrupB",
-        delay: 60,
+        delay: 5,
         stratArgs: [DITO_SMARTCHEF],
         signer: signer,
         rpc: RPC,
@@ -61,7 +61,7 @@ describe("YieldBalancer", () => {
       want: CAKE,
       mooName: "Yield Balancer",
       mooSymbol: "mooBalancer",
-      delay: 60,
+      delay: 5,
       stratArgs: [CAKE, [workers.simple.vault.address, workers.syrupA.vault.address, workers.syrupB.vault.address], 60],
       signer: signer,
       rpc: RPC,
@@ -110,6 +110,31 @@ describe("YieldBalancer", () => {
       expect(candidatesLengthAfter).to.equal(candidatesLength + 1);
       expect(candidate.addr).to.equal(VALID_CANDIDATE);
       expect(candidate.proposedTime).to.be.below(now);
+    }).timeout(TIMEOUT);
+
+    it("acceptCandidate: other account can't call it.", async () => {
+      const { strategy, other } = await setup();
+
+      const tx = strategy.connect(other).acceptCandidate(0);
+
+      await expect(tx).to.be.revertedWith(OWNABLE_ERROR);
+    }).timeout(TIMEOUT);
+
+    it("acceptCandidate: reverts with out of bounds parameter.", async () => {
+      const { strategy } = await setup();
+
+      const tx = strategy.acceptCandidate(1);
+
+      await expect(tx).to.be.revertedWith("out of bounds");
+    }).timeout(TIMEOUT);
+
+    it("acceptCandidate: reverts if worker capacity is full.", async () => {
+      const { strategy } = await setup();
+      for (let i = 0; i < 9; i++) {}
+    }).timeout(TIMEOUT);
+
+    it("acceptCandidate: ", async () => {
+      const { strategy } = await setup();
     }).timeout(TIMEOUT);
 
     it("rejectCandidate: other account can't call it.", async () => {
