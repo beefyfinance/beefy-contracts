@@ -1,6 +1,5 @@
 const { expect } = require("chai");
 
-const { predictAddresses } = require("../utils/predictAddresses");
 const { deployVault } = require("../utils/deployVault");
 
 const TIMEOUT = 10 * 60 * 1000;
@@ -9,6 +8,10 @@ const RPC = "http://127.0.0.1:8545";
 const CAKE = "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82";
 const HELMET_SMARTCHEF = "0x9F23658D5f4CEd69282395089B0f8E4dB85C6e79";
 const DITO_SMARTCHEF = "0x624ef5C2C6080Af188AF96ee5B3160Bb28bb3E02";
+const TENET_CANDIDATE = "0x4A26b082B432B060B1b00A84eE4E823F04a6f69a";
+
+const OWNABLE_ERROR = "Ownable: caller is not the owner";
+const PAUSED_ERROR = "Pausable: paused";
 
 describe("YieldBalancer", () => {
   const setup = async () => {
@@ -50,7 +53,7 @@ describe("YieldBalancer", () => {
       }),
     };
 
-    const balancer = await deployVault({
+    const { vault, strategy } = await deployVault({
       vault: "BeefyVaultV3",
       strategy: "YieldBalancer",
       want: CAKE,
@@ -62,10 +65,22 @@ describe("YieldBalancer", () => {
       rpc: RPC,
     });
 
-    return { balancer, workers, signer, other };
+    return { strategy, vault, workers, signer, other };
   };
 
-  it("testing", async () => {
-    const { balancer } = await setup();
+  it("proposeCandidate: other account can't call it", async () => {
+    const { strategy, other } = await setup();
+
+    const tx = strategy.connect(other).proposeCandidate(TENET_CANDIDATE);
+
+    await expect(tx).to.be.revertedWith(OWNABLE_ERROR);
+  }).timeout(TIMEOUT);
+
+  it("proposeCandidate: candidate cannot be 0x00", async () => {
+    const { strategy } = await setup();
+
+    const tx = strategy.proposeCandidate(ethers.constants.AddressZero);
+
+    await expect(tx).to.be.revertedWith("!zero");
   }).timeout(TIMEOUT);
 });
