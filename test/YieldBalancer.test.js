@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 
 const { deployVault } = require("../utils/deployVault");
+const { nowInSeconds, delay } = require("../utils/timeHelpers");
 
 const TIMEOUT = 10 * 60 * 1000;
 const RPC = "http://127.0.0.1:8545";
@@ -95,10 +96,17 @@ describe("YieldBalancer", () => {
   it("proposeCandidate: correctly adds candidate to 'candidates'", async () => {
     const { strategy } = await setup();
 
-    const candidates = await strategy.candidates();
-    console.log("Yo", candidates);
-    // await strategy.proposeCandidate(TENET_CANDIDATE);
-    // const candidatesAfter = await strategy.candidates();
-    // console.log("Yo", candidatesAfter);
+    const candidatesLength = await strategy.candidatesLength();
+
+    await strategy.proposeCandidate(TENET_CANDIDATE);
+
+    const candidatesLengthAfter = await strategy.candidatesLength();
+    const candidate = await strategy.candidates(candidatesLengthAfter - 1);
+    await delay(1000);
+    const now = nowInSeconds();
+
+    expect(candidatesLengthAfter).to.equal(candidatesLength + 1);
+    expect(candidate.addr).to.equal(TENET_CANDIDATE);
+    expect(candidate.proposedTime).to.be.below(now);
   }).timeout(TIMEOUT);
 });
