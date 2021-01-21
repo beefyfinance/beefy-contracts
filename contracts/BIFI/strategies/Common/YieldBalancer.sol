@@ -266,7 +266,7 @@ contract YieldBalancer is Ownable, Pausable {
     /**
      * @dev Function to switch the order of any two workers. 
      * @param workerA Current index of worker A to switch.
-     * @param workerB Current index of worker B to switch.
+     * @param workerB ºCurrent index of worker B to switch.
      */ 
     function switchWorkerOrder(uint8 workerA, uint8 workerB) external onlyOwner {
         require(workerA != workerB, "!same");
@@ -480,5 +480,19 @@ contract YieldBalancer is Ownable, Pausable {
         uint256 shares = IERC20(workers[workerIndex]).balanceOf(address(this));  
         uint256 pricePerShare = IVault(workers[workerIndex]).getPricePerFullShare();
         return shares.mul(pricePerShare).div(1e18);
+    }
+
+    /**
+     * @dev Helps UIs and tests know how many {candidates} there are.
+     */
+    function candidatesLength() external view returns (uint256) {
+        return candidates.length;
+    }
+
+    /**
+     * @dev Helps UIs and tests know how many {workers} there are.
+     */
+    function workersLength() external view returns (uint256) {
+        return workers.length;
     }
 }

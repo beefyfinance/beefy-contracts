@@ -68,7 +68,7 @@ describe("YieldBalancer", () => {
     return { strategy, vault, workers, signer, other };
   };
 
-  it("proposeCandidate: other account can't call it", async () => {
+  it("proposeCandidate: other account can't call it.", async () => {
     const { strategy, other } = await setup();
 
     const tx = strategy.connect(other).proposeCandidate(TENET_CANDIDATE);
@@ -76,11 +76,29 @@ describe("YieldBalancer", () => {
     await expect(tx).to.be.revertedWith(OWNABLE_ERROR);
   }).timeout(TIMEOUT);
 
-  it("proposeCandidate: candidate cannot be 0x00", async () => {
+  it("proposeCandidate: candidate cannot be the 0x00 address.", async () => {
     const { strategy } = await setup();
 
     const tx = strategy.proposeCandidate(ethers.constants.AddressZero);
 
     await expect(tx).to.be.revertedWith("!zero");
+  }).timeout(TIMEOUT);
+
+  it("proposeCandidate: emits the correct event.", async () => {
+    const { strategy } = await setup();
+
+    const tx = strategy.proposeCandidate(TENET_CANDIDATE);
+
+    await expect(tx).to.emit(strategy, "CandidateProposed").withArgs(TENET_CANDIDATE);
+  }).timeout(TIMEOUT);
+
+  it("proposeCandidate: correctly adds candidate to 'candidates'", async () => {
+    const { strategy } = await setup();
+
+    const candidates = await strategy.candidates();
+    console.log("Yo", candidates);
+    // await strategy.proposeCandidate(TENET_CANDIDATE);
+    // const candidatesAfter = await strategy.candidates();
+    // console.log("Yo", candidatesAfter);
   }).timeout(TIMEOUT);
 });
