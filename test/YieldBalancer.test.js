@@ -130,7 +130,9 @@ describe("YieldBalancer", () => {
 
     it("acceptCandidate: reverts if worker capacity is full.", async () => {
       const { strategy } = await setup();
-      for (let i = 0; i < 9; i++) {}
+      for (let i = 0; i < 9; i++) {
+        let fakeCand
+      }
     }).timeout(TIMEOUT);
 
     it("acceptCandidate: ", async () => {
