@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IWBNB.sol";
 import "../../interfaces/thugs/IThugswapRouter.sol";
-import "../../interfaces/beefy/IRewardPool.sol";
+import "../../interfaces/common/IRewardPool.sol";
 
 /**
  * @dev BIFI MAXIMALIST STRATEGY. DEPOSIT BIFI. USE THE BNB REWARDS TO GET MORE BIFI!
