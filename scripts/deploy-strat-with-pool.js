@@ -12,6 +12,7 @@ const config = {
   delay: 86400,
   strategyName: undefined, // StrategyBdoLP
   poolId: undefined, // 4
+  unirouter: undefined, // Pancakeswap Router
   strategist: undefined // some address
 };
 
@@ -46,6 +47,7 @@ async function main() {
     config.want,
     config.poolId,
     predictedAddresses.vault,
+    // config.unirouter,
     config.strategist
   );
   await strategy.deployed();
