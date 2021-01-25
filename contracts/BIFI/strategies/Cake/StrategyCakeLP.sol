@@ -108,13 +108,13 @@ contract StrategyCakeLP is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _lpPair, uint8 _poolId, address _vault) public {
+    constructor(address _lpPair, uint8 _poolId, address _vault, address _strategist) public {
         lpPair = _lpPair;
         lpToken0 = IPancakePair(lpPair).token0();
         lpToken1 = IPancakePair(lpPair).token1();
         poolId = _poolId;
         vault = _vault;
-        strategist = msg.sender;
+        strategist = _strategist;
 
         if (lpToken0 == wbnb) {
             cakeToLp0Route = [cake, wbnb];
