@@ -62,7 +62,12 @@ describe("YieldBalancer", () => {
       mooName: "Yield Balancer",
       mooSymbol: "mooBalancer",
       delay: 5,
-      stratArgs: [CAKE, [workers.simple.vault.address, workers.syrupA.vault.address, workers.syrupB.vault.address], 60],
+      stratArgs: [
+        CAKE,
+        [workers.simple.vault.address, workers.syrupA.vault.address, workers.syrupB.vault.address],
+        60,
+        4,
+      ],
       signer: signer,
       rpc: RPC,
     });
@@ -131,7 +136,7 @@ describe("YieldBalancer", () => {
     it("acceptCandidate: reverts if worker capacity is full.", async () => {
       const { strategy } = await setup();
       for (let i = 0; i < 9; i++) {
-        let fakeCand
+        let fakeCand;
       }
     }).timeout(TIMEOUT);
 

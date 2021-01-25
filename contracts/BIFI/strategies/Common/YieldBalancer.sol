@@ -78,7 +78,7 @@ contract YieldBalancer is Ownable, Pausable {
      * {workersMax} - Max number of workers that the balancer can manage. Prevents out of gas errors. 
      * {RATIO_MAX} - Aux const used to make sure all available funds are allocated on rebalance.
      */
-    uint8 constant public workersMax; 
+    uint8 immutable public workersMax; 
     uint256 constant public RATIO_MAX = 10000;
 
     /**
