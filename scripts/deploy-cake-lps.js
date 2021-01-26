@@ -43,7 +43,7 @@ async function main() {
   const Vault = await ethers.getContractFactory("BeefyVaultV3");
   const Strategy = await ethers.getContractFactory("StrategyCakeMirrorLP");
 
-  const pool = pools[0];
+  const pool = pools[3];
 
   console.log("Deploying:", pool.mooName);
 
