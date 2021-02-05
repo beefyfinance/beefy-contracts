@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
-import "../../interfaces/pancake/IPancakeRouter.sol";
+import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/helmet/IStakingRewards.sol";
 
 /**
@@ -164,7 +164,7 @@ contract StrategyHelmet is Ownable, Pausable {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(helmet).balanceOf(address(this)).mul(45).div(1000);
-        IPancakeRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, helmetToWbnbRoute, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, helmetToWbnbRoute, address(this), now.add(600));
         
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -173,7 +173,7 @@ contract StrategyHelmet is Ownable, Pausable {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IPancakeRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);

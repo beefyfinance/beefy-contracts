@@ -9,8 +9,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
-import "../../interfaces/pancake/IPancakeRouter.sol";
-import "../../interfaces/pancake/IPancakePair.sol";
+import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/helmet/IStakingRewards.sol";
 
 /**
@@ -178,7 +177,7 @@ contract StrategyBdoLP is Ownable, Pausable {
      */
     function chargeFees(address token) internal {
         uint256 toWbnb = IERC20(token).balanceOf(address(this)).mul(45).div(1000);
-        IPancakeRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, helmetToWbnbRoute, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, helmetToWbnbRoute, address(this), now.add(600));
         
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -187,7 +186,7 @@ contract StrategyBdoLP is Ownable, Pausable {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IPancakeRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -201,14 +200,14 @@ contract StrategyBdoLP is Ownable, Pausable {
      */
     function addLiquidity() internal {
         uint256 cakeBal = IERC20(cake).balanceOf(address(this));
-        IPancakeRouter(unirouter).swapExactTokensForTokens(cakeBal, 0, cakeToHelmetRoute, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeBal, 0, cakeToHelmetRoute, address(this), now.add(600));
 
         uint256 helmetHalf = IERC20(helmet).balanceOf(address(this)).div(2);
-        IPancakeRouter(unirouter).swapExactTokensForTokens(helmetHalf, 0, helmetToWbnbRoute, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(helmetHalf, 0, helmetToWbnbRoute, address(this), now.add(600));
 
         uint256 helmetBal = IERC20(helmet).balanceOf(address(this));
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
-        IPancakeRouter(unirouter).addLiquidity(helmet, wbnb, helmetBal, wbnbBal, 1, 1, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).addLiquidity(helmet, wbnb, helmetBal, wbnbBal, 1, 1, address(this), now.add(600));
     }
 
     /**

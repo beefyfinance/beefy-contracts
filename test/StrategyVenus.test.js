@@ -50,19 +50,19 @@ describe("StrategyVenus", () => {
 
     const Strategy = await ethers.getContractFactory("ExposedStrategyVenus");
     const strategy = await Strategy.deploy(predictedAddresses.vault, VBTC, BORROW_RATE, BORROW_DEPTH, MIN_LEVERAGE, [
-      VBTC
+      VBTC,
     ]);
     await strategy.deployed();
 
     const ERC20 = await artifacts.readArtifact("ERC20");
     const IVToken = await artifacts.readArtifact("IVToken");
     const IUnitroller = await artifacts.readArtifact("IUnitroller");
-    const IRouter = await artifacts.readArtifact("IPancakeRouter");
+    const IRouter = await artifacts.readArtifact("IUniswapRouterETH");
     const contracts = {
       btcb: new ethers.Contract(BTCB, ERC20.abi, signer),
       vbtc: new ethers.Contract(VBTC, IVToken.abi, signer),
       router: new ethers.Contract(UNIROUTER, IRouter.abi, signer),
-      unitroller: new ethers.Contract(UNITROLLER, IUnitroller.abi, signer)
+      unitroller: new ethers.Contract(UNITROLLER, IUnitroller.abi, signer),
     };
 
     return { signer, other, vault, strategy, predictedAddresses, contracts };

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.6.0;
 
-interface IPancakeRouter {
+interface IUniswapRouterETH {
     function addLiquidity(
         address tokenA,
         address tokenB,
