@@ -33,7 +33,7 @@ describe("BeefyTreasury", () => {
     await signer.sendTransaction({ to: treasury.address, value });
 
     const balanceBefore = await provider.getBalance(other.address);
-    await treasury.withdrawBnb(other.address, value);
+    await treasury.withdrawNative(other.address, value);
     const balanceAfter = await provider.getBalance(other.address);
 
     expect(balanceAfter).to.equal(balanceBefore.add(value));
@@ -42,7 +42,7 @@ describe("BeefyTreasury", () => {
   it("other account can't send BNB", async () => {
     const { other, treasury } = await setup();
 
-    const tx = treasury.connect(other).withdrawBnb(other.address, 0);
+    const tx = treasury.connect(other).withdrawNative(other.address, 0);
 
     await expect(tx).to.be.revertedWith("Ownable: caller is not the owner");
   });

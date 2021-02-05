@@ -13,7 +13,7 @@ contract BeefyTreasury is Ownable {
         IERC20(_token).safeTransfer(_to, _amount);
     }
 
-    function withdrawBnb(address payable _to, uint256 _amount) external onlyOwner {
+    function withdrawNative(address payable _to, uint256 _amount) external onlyOwner {
         _to.transfer(_amount);
     }
 

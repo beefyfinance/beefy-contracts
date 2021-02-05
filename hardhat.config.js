@@ -5,9 +5,14 @@ module.exports = {
   defaultNetwork: "localhost",
   networks: {
     hardhat: {},
-    mainnet: {
+    bsc: {
       url: "https://bsc-dataseed.binance.org",
       chainId: 56,
+      accounts: [process.env.DEPLOYER_PK],
+    },
+    heco: {
+      url: "https://http-mainnet.hecochain.com",
+      chainId: 128,
       accounts: [process.env.DEPLOYER_PK],
     },
     localhost: {
@@ -19,7 +24,7 @@ module.exports = {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
       chainId: 97,
       accounts: [process.env.DEPLOYER_PK],
-    }
+    },
   },
   solidity: {
     version: "0.6.12",

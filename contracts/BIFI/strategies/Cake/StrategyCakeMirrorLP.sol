@@ -14,7 +14,7 @@ import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/pancake/IMasterChef.sol";
 
 /**
- * @dev Implementation of a strategy to get yields from farming LP Pools in PancakeSwap.
+ * @dev Implementation of a strategy to get yields from farming LP Pools in DMex.
  * PancakeSwap is an automated market maker (“AMM”) that allows two tokens to be exchanged on the Binance Smart Chain.
  * It is fast, cheap, and allows anyone to participate. PancakeSwap is aiming to be the #1 liquidity provider on BSC.
  *

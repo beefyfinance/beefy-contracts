@@ -15,7 +15,7 @@
     "compile": "hardhat compile",
     "all": "yarn clean && yarn compile && yarn net",
     "test": "hardhat test --network localhost",
-    "deploy-strat:mainnet": "hardhat run --network mainnet scripts/deploy-strat-with-pool.js"
+    "deploy-strat:bsc": "hardhat run --network bsc scripts/deploy-strat-with-pool.js"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
