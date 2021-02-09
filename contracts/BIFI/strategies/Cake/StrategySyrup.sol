@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
-import "../../interfaces/common/IUniswapRouter.sol";
+import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/pancake/ISmartChef.sol";
 
 /**
@@ -167,7 +167,7 @@ contract StrategySyrup is Ownable, Pausable {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(output).balanceOf(address(this)).mul(6).div(100);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, outputToWbnbRoute, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, outputToWbnbRoute, address(this), now.add(600));
     
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -176,7 +176,7 @@ contract StrategySyrup is Ownable, Pausable {
         
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
         
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -187,7 +187,7 @@ contract StrategySyrup is Ownable, Pausable {
      */
     function swapRewards() internal {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        IUniswapRouter(unirouter).swapExactTokensForTokens(outputBal, 0, outputToCakeRoute, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToCakeRoute, address(this), now.add(600));
     }
 
     /**
