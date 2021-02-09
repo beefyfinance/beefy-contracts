@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-import "../../interfaces/common/IUniswapRouter.sol";
+import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/fortube/IFor.sol";
 import "../../interfaces/fortube/IFToken.sol";
 import "../../interfaces/fortube/IBankController.sol";
@@ -170,12 +170,12 @@ contract StrategyFortube {
     function doswap() internal {
         uint256 _2token = IERC20(output).balanceOf(address(this)).mul(98).div(100);
         uint256 _2wbnb = IERC20(output).balanceOf(address(this)).mul(2).div(100);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(_2token, 0, swap2TokenRouting, address(this), now.add(600));
-        IUniswapRouter(unirouter).swapExactTokensForTokens(_2wbnb, 0, swap2WbnbRouting, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(_2token, 0, swap2TokenRouting, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(_2wbnb, 0, swap2WbnbRouting, address(this), now.add(600));
         
         uint256 _want = IERC20(want).balanceOf(address(this));
         if (_want > 0) {
-            IUniswapRouter(unirouter).swapExactTokensForTokens(_want, 0, want2WbnbRouting, address(this), now.add(600));
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(_want, 0, want2WbnbRouting, address(this), now.add(600));
         }
     }
 
