@@ -1,5 +1,6 @@
 const hardhat = require("hardhat");
 
+const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const getNetworkRpc = require("../utils/getNetworkRpc");
 
@@ -13,13 +14,13 @@ const config = {
   strategyName: undefined, // StrategyBdoLP
   poolId: undefined, // 4
   unirouter: undefined, // Pancakeswap Router
-  strategist: undefined // some address
+  strategist: undefined, // some address
 };
 
 async function main() {
-  if (Object.values(config).some(v => v === undefined)) {
-    console.error("one of config values undefined")
-    return
+  if (Object.values(config).some((v) => v === undefined)) {
+    console.error("one of config values undefined");
+    return;
   }
 
   await hardhat.run("compile");
@@ -54,6 +55,9 @@ async function main() {
 
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
+
+  await registerSubsidy(vault.address, deployer);
+  await registerSubsidy(strategy.address, deployer);
 }
 
 main()

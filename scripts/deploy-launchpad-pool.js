@@ -1,5 +1,7 @@
 const hardhat = require("hardhat");
 
+const registerSubsidy = require("../utils/registerSubsidy");
+
 const ethers = hardhat.ethers;
 
 const pools = [
@@ -24,6 +26,8 @@ async function main() {
     await launchpad.deployed();
 
     console.log("Launchpad pool deployed to:", launchpad.address);
+
+    await registerSubsidy(launchpad.address, deployer);
   }
 }
 

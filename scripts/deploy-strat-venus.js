@@ -1,5 +1,6 @@
 const hardhat = require("hardhat");
 
+const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const getNetworkRpc = require("../utils/getNetworkRpc");
 
@@ -14,7 +15,7 @@ const config = {
   borrowRate: 56,
   borrowDepth: 4,
   minLeverage: 1000000000000,
-  markets: ["0xf91d58b5ae142dacc749f58a49fcbac340cb0343"]
+  markets: ["0xf91d58b5ae142dacc749f58a49fcbac340cb0343"],
 };
 
 async function main() {
@@ -51,6 +52,9 @@ async function main() {
 
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
+
+  await registerSubsidy(vault.address, deployer);
+  await registerSubsidy(strategy.address, deployer);
 }
 
 main()

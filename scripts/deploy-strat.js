@@ -1,5 +1,6 @@
 const hardhat = require("hardhat");
 
+const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const getNetworkRpc = require("../utils/getNetworkRpc");
 
@@ -10,7 +11,7 @@ const config = {
   mooName: "Moo Pancake BSCX-BNB",
   mooSymbol: "mooPancakeBSCX-BNB",
   poolId: 51,
-  delay: 86400
+  delay: 86400,
 };
 
 async function main() {
@@ -40,6 +41,9 @@ async function main() {
 
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
+
+  await registerSubsidy(vault.address, deployer);
+  await registerSubsidy(strategy.address, deployer);
 }
 
 main()
