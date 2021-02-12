@@ -13,6 +13,8 @@ import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/pancake/IMasterChef.sol";
 
 /**
+ * @title Strategy Cake
+ * @author sirbeefalot & superbeefyboy
  * @dev Implementation of a strategy to get yields from farming a Cake pool.
  * PancakeSwap is an automated market maker (“AMM”) that allows two tokens to be exchanged on the Binance Smart Chain.
  * It is fast, cheap, and allows anyone to participate.
@@ -59,7 +61,7 @@ contract StrategyCake is Ownable, Pausable {
      *
      * {REWARDS_FEE} - 4% goes to BIFI holders through the {rewards} pool.
      * {CALL_FEE} - 0.5% goes to whoever executes the harvest function as gas subsidy.
-     * {TREASURY_FEE} - 1.5% goes to the treasury.
+     * {TREASURY_FEE} - 1.5% goes to the community managed beefy {treasury}.
      * {MAX_FEE} - Aux const used to safely calc the correct amounts.
      *
      * {WITHDRAWAL_FEE} - Fee taxed when a user withdraws funds. 10 === 0.1% fee.
@@ -83,12 +85,14 @@ contract StrategyCake is Ownable, Pausable {
 
     /**
      * @dev Initializes the strategy with the token that it will look to maximize.
+     * @param _vault Address of parent vault
      */
     constructor(address _vault) public {
         vault = _vault;
 
         IERC20(cake).safeApprove(unirouter, uint(-1));
         IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(cake).safeApprove(masterchef, uint(-1));
     }
 
     /**
@@ -100,14 +104,15 @@ contract StrategyCake is Ownable, Pausable {
         uint256 cakeBal = IERC20(cake).balanceOf(address(this));
 
         if (cakeBal > 0) {
-            IERC20(cake).safeApprove(masterchef, 0);
-            IERC20(cake).safeApprove(masterchef, cakeBal);
             IMasterChef(masterchef).enterStaking(cakeBal);
         }
     }
 
     /**
-     * @dev It withdraws cake from the MasterChef and sends it to the vault.
+     * @dev It withdraws {cake} from the MasterChef and sends it to the vault. The contract owner
+     * doesn't pay withdrawal fees. It makes it so that this strat can also be used as a worker 
+     * under a YieldBalancer.
+     * @param _amount How much {cake} to withdraw.
      */
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
@@ -123,8 +128,12 @@ contract StrategyCake is Ownable, Pausable {
             cakeBal = _amount;    
         }
         
-        uint256 withdrawalFee = cakeBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
-        IERC20(cake).safeTransfer(vault, cakeBal.sub(withdrawalFee));
+        if (tx.origin == owner()) {
+            IERC20(cake).safeTransfer(vault, cakeBal); 
+        } else {
+            uint256 withdrawalFee = cakeBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
+            IERC20(cake).safeTransfer(vault, cakeBal.sub(withdrawalFee)); 
+        }
     }
 
     /**
@@ -187,18 +196,35 @@ contract StrategyCake is Ownable, Pausable {
     }
 
     /**
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
+     * vault, ready to be migrated to the new strat.
+     */ 
+    function retireStrat() external {
+        require(msg.sender == vault, "!vault");
+
+        IMasterChef(masterchef).emergencyWithdraw(0);
+
+        uint256 cakeBal = IERC20(cake).balanceOf(address(this));
+        IERC20(cake).transfer(vault, cakeBal);
+    }
+
+    /**
      * @dev Pauses deposits. Withdraws all funds from the MasterChef, leaving rewards behind
      */
     function panic() external onlyOwner {
-        _pause();
+        pause();
         IMasterChef(masterchef).emergencyWithdraw(0);
     }
 
     /**
      * @dev Pauses the strat.
      */
-    function pause() external onlyOwner {
+    function pause() public onlyOwner {
         _pause();
+
+        IERC20(cake).safeApprove(unirouter, 0);
+        IERC20(wbnb).safeApprove(unirouter, 0);
+        IERC20(cake).safeApprove(masterchef, 0);
     }
 
     /**
@@ -206,5 +232,9 @@ contract StrategyCake is Ownable, Pausable {
      */
     function unpause() external onlyOwner {
         _unpause();
+
+        IERC20(cake).safeApprove(unirouter, uint(-1));
+        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(cake).safeApprove(masterchef, uint(-1));
     }
 }

@@ -1,5 +1,4 @@
 const { expect } = require("chai");
-const timeMachine = require("ganache-time-traveler");
 
 const predictContractAddress = require("../utils/predictAddresses");
 const { delay, nowInSeconds } = require("../utils/timeHelpers");
