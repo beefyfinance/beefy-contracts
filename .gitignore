@@ -22,6 +22,7 @@ yarn-debug.log*
 yarn-error.log*
 /tmp
 .idea
+.vscode
 
 bin/flatten.sh
 
