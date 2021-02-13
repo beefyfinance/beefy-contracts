@@ -72,7 +72,7 @@ contract YieldBalancer is Ownable, Pausable {
     address[] public workers;
     mapping (address => bool) public workersMap;
     WorkerCandidate[] public candidates;
-    uint256 immutable approvalDelay;
+    uint256 immutable public approvalDelay;
 
     /**
      * {workersMax} - Max number of workers that the balancer can manage. Prevents out of gas errors. 
