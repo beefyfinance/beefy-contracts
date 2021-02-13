@@ -30,8 +30,8 @@ describe("Migrate SmartCake", () => {
   const setup = async () => {
     const [signer, other] = await ethers.getSigners();
     
-    const ERC20 = await artifacts.readArtifact("ERC20");
-    const ROUTER = await artifacts.readArtifact("IPancakeRouter");
+    const ERC20 = await artifacts.readArtifact("@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20");
+    const ROUTER = await artifacts.readArtifact("IUniswapRouterETH");
 
     const contracts = {
       wbnb: await ethers.getContractAt(ERC20.abi, WBNB),

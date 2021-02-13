@@ -1,4 +1,4 @@
-const { predictAddresses } = require("../utils/predictAddresses");
+const predictAddresses = require("../utils/predictAddresses");
 
 const deployVault = async config => {
   const predictedAddresses = await predictAddresses({ creator: config.signer.address, rpc: config.rpc });

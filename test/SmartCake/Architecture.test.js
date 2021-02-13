@@ -27,13 +27,13 @@ function fmt(n, p = 4) {
   return Number(n / 1e18).toFixed(p);
 }
 
-describe("SmartCake Architectures", () => {
+describe("SmartCakeArch", () => {
   const setup = async () => {
     const [signer, other] = await ethers.getSigners();
     
     const abis = {
-      erc20: await artifacts.readArtifact("ERC20"),
-      router: await artifacts.readArtifact("IPancakeRouter"),
+      erc20: await artifacts.readArtifact("@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20"),
+      router: await artifacts.readArtifact("IUniswapRouterETH"),
       balancer: await artifacts.readArtifact("YieldBalancer"),
     }
 
