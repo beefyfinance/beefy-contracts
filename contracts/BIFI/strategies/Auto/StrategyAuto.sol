@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/auto/IAutoFarmV2.sol";
+import "../../interfaces/auto/IStratX.sol";
 
 /**
  * @dev Strategy to farm single tokens through AutoFarm contract.
@@ -196,7 +197,7 @@ contract StrategyAuto is Ownable, Pausable {
      * It takes into account both the funds in hand, as the funds allocated in AutoFarm.
      */
     function balanceOf() public view returns (uint256) {
-        return balanceOfWant().add(balanceOfPool());
+        return balanceOfWant().add(balanceOfPool()).add(balanceOfPoolPending());
     }
 
     /**
@@ -211,6 +212,17 @@ contract StrategyAuto is Ownable, Pausable {
      */
     function balanceOfPool() public view returns (uint256) {
         return IAutoFarmV2(autofarm).stakedWantTokens(poolId, address(this));
+    }
+
+    /**
+     * @dev It calculates how much {want} the strategy has on the AutoFarm balance not staked yet
+     */
+    function balanceOfPoolPending() public view returns (uint256) {
+        (, , , , address autostrat) = IAutoFarmV2(autofarm).poolInfo(poolId);
+        (uint256 shares,) = IAutoFarmV2(autofarm).userInfo(poolId, address(this));
+        uint256 totalShares = IStratX(autostrat).sharesTotal();
+        uint256 wantBalInAuto = IERC20(want).balanceOf(autostrat);
+        return wantBalInAuto.mul(shares).div(totalShares);
     }
 
     /**
