@@ -12,11 +12,12 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/auto/IAutoFarmV2.sol";
 import "../../interfaces/auto/IStratX.sol";
+import "../../interfaces/pancake/IMasterChef.sol";
 
 /**
- * @dev Strategy to farm single tokens through AutoFarm contract.
+ * @dev Strategy to farm Cake through AutoFarm contract.
  */
-contract StrategyAuto is Ownable, Pausable {
+contract StrategyAutoCake is Ownable, Pausable {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -37,10 +38,14 @@ contract StrategyAuto is Ownable, Pausable {
      * @dev Third Party Contracts:
      * {unirouter} - PancakeSwap unirouter
      * {autofarm} - AutoFarm contract
+     * {masterchef} - PancakeSwap MasterChef contract
+     * {autostrat} - AutoFarm underlying strategy contract
      * {poolId} - AutoFarm pool id
      */
     address constant public unirouter  = address(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
     address constant public autofarm = address(0x0895196562C7868C5Be92459FaE7f877ED450452);
+    address constant public masterchef = address(0x73feaa1eE314F8c655E354234017bE2193C9E24E);
+    address public autostrat;
     uint8 public poolId;
 
     /**
@@ -95,6 +100,9 @@ contract StrategyAuto is Ownable, Pausable {
         vault = _vault;
         strategist = _strategist;
 
+        (, , , , address _autostrat) = IAutoFarmV2(autofarm).poolInfo(poolId);
+        autostrat = _autostrat;
+
         if (want == wbnb) {
             autoToWantRoute = [Auto, wbnb];
         } else {
@@ -121,11 +129,15 @@ contract StrategyAuto is Ownable, Pausable {
 
     /**
      * @dev Withdraws funds and sents them back to the vault.
+     * It redeposits harvested and pending cakes in AutoFarm strategy via farm()
      * It withdraws {want} from the AutoFarm.
      * The available {want} is returned to the vault.
      */
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
+
+        IStratX(autostrat).farm();
+        IStratX(autostrat).farm();
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
@@ -218,11 +230,16 @@ contract StrategyAuto is Ownable, Pausable {
      * @dev It calculates how much {want} the strategy has on the AutoFarm balance not staked yet
      */
     function balanceOfPoolPending() public view returns (uint256) {
-        (, , , , address autostrat) = IAutoFarmV2(autofarm).poolInfo(poolId);
         (uint256 shares,) = IAutoFarmV2(autofarm).userInfo(poolId, address(this));
         uint256 totalShares = IStratX(autostrat).sharesTotal();
+
         uint256 wantBalInAuto = IERC20(want).balanceOf(autostrat);
-        return wantBalInAuto.mul(shares).div(totalShares);
+        uint256 harvestedBal = wantBalInAuto.mul(shares).div(totalShares);
+
+        uint256 wantPendingInPCS = IMasterChef(masterchef).pendingCake(0, autostrat);
+        uint256 pendingBal = wantPendingInPCS.mul(shares).div(totalShares);
+
+        return harvestedBal.add(pendingBal);
     }
 
     /**
