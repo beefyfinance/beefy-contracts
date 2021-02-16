@@ -11,14 +11,14 @@ const config = {
   mooName: "Moo Balancer",
   mooSymbol: "mooBalancer",
   delay: 86400,
-  workers: ["0x59f5ca5Dd77025D55B0f0b4E52D4778E0b10bf7A", "0x1D1133A1B2306d65203a6Caed87EC6554a75062e"],
+  workers: ["0x2eEDD755EB0731470Bd59Dc9A6A1464503aE1949", "0x5aB36D9534BE86360A902E694aA9c7aE53651998"],
   workersMax: 3,
 };
 
 async function main() {
   await hardhat.run("compile");
 
-  const Vault = await ethers.getContractFactory("BeefyVaultV3");
+  const Vault = await ethers.getContractFactory("BeefyVaultV4");
   const Strategy = await ethers.getContractFactory("YieldBalancer");
 
   const [deployer] = await ethers.getSigners();

@@ -8,8 +8,8 @@ const ethers = hardhat.ethers;
 
 const config = {
   want: "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
-  mooName: "Moo Worker B",
-  mooSymbol: "mooWorkerB",
+  mooName: "Moo Worker A",
+  mooSymbol: "mooWorkerA",
   poolId: 51,
   delay: 86400,
 };
@@ -17,7 +17,7 @@ const config = {
 async function main() {
   await hardhat.run("compile");
 
-  const Vault = await ethers.getContractFactory("BeefyVaultV3");
+  const Vault = await ethers.getContractFactory("BeefyVaultV4");
   const Strategy = await ethers.getContractFactory("StrategyCake");
 
   const [deployer] = await ethers.getSigners();
