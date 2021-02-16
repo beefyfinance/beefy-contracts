@@ -11,7 +11,7 @@ const config = {
   mooName: "Moo Balancer",
   mooSymbol: "mooBalancer",
   delay: 86400,
-  workers: ["0x16c497e80C0b7fa2855C6D8Ba4c745aD396a8Bf2", "0x1D8A890e971379Ccdcc03DdF2FbB014B9daF353D"],
+  workers: ["0x59f5ca5Dd77025D55B0f0b4E52D4778E0b10bf7A", "0x1D1133A1B2306d65203a6Caed87EC6554a75062e"],
   workersMax: 3,
 };
 
