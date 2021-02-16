@@ -307,7 +307,7 @@ contract YieldBalancer is Ownable, Pausable {
     */
     function _removeWorker(uint8 workerIndex) internal {
         address worker = workers[workerIndex];
-        IERC20(want).approve(worker, 0);
+        IERC20(want).safeApprove(worker, 0);
 
         workersMap[worker] = false;
 
@@ -332,7 +332,7 @@ contract YieldBalancer is Ownable, Pausable {
     function _addWorker(address worker) internal {
         workersMap[worker] = true;
         workers.push(worker); 
-        IERC20(want).approve(worker, uint256(-1));
+        IERC20(want).safeApprove(worker, uint256(-1));
     } 
 
     //--- FUNDS MANAGEMENT HELPERS ---//
@@ -343,7 +343,7 @@ contract YieldBalancer is Ownable, Pausable {
      */
     function _workersApprove(uint256 amount) internal {
         for (uint8 i = 0; i < workers.length; i++) {
-            IERC20(want).approve(workers[i], amount);
+            IERC20(want).safeApprove(workers[i], amount);
         }
     }
 
@@ -383,9 +383,11 @@ contract YieldBalancer is Ownable, Pausable {
 
         address worker = workers[workerIndex];
         uint256 shares = IERC20(worker).balanceOf(address(this));
-
-        IERC20(worker).approve(worker, shares);
-        IVault(worker).withdraw(shares);
+        
+        if(shares > 0) {
+            IERC20(worker).safeApprove(worker, shares);
+            IVault(worker).withdraw(shares);
+        }
     }
 
     /** 
@@ -400,8 +402,10 @@ contract YieldBalancer is Ownable, Pausable {
         uint256 pricePerFullShare = IVault(worker).getPricePerFullShare();
         uint256 shares = amount.mul(1e18).div(pricePerFullShare);
 
-        IERC20(worker).approve(worker, shares);
-        IVault(worker).withdraw(shares);
+        if(shares > 0) {
+            IERC20(worker).safeApprove(worker, shares);
+            IVault(worker).withdraw(shares);
+        }
     }
 
     //--- STRATEGY LIFECYCLE METHODS ---//
