@@ -6,16 +6,18 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "../interfaces/beefy/IStrategy.sol";
+import "../interfaces/beefy/IBurningStrategy.sol";
 
 /**
  * @dev Implementation of a vault to deposit funds for yield optimizing.
  * This is the contract that receives funds and that users interface with.
+ * It supports deposits of burning tokens and strategies with entrance fee.
  * The yield optimizing strategy itself is implemented in a separate 'Strategy.sol' contract.
  */
-contract BeefyVaultV3 is ERC20, Ownable {
+contract BeefyBurningVault is ERC20, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -69,7 +71,7 @@ contract BeefyVaultV3 is ERC20, Ownable {
      *  and the balance deployed in other contracts as part of the strategy.
      */
     function balance() public view returns (uint) {
-        return token.balanceOf(address(this)).add(IStrategy(strategy).balanceOf());
+        return token.balanceOf(address(this)).add(IBurningStrategy(strategy).balanceOf());
     }
 
     /**
@@ -101,12 +103,14 @@ contract BeefyVaultV3 is ERC20, Ownable {
      * @dev The entrypoint of funds into the system. People deposit with this function
      * into the vault. The vault is then in charge of sending funds into the strategy.
      */
-    function deposit(uint _amount) public {
+    function deposit(uint _amount) public nonReentrant {
+        IBurningStrategy(strategy).updateBalance();
+
         uint256 _pool = balance();
-        uint256 _before = token.balanceOf(address(this));
         token.safeTransferFrom(msg.sender, address(this), _amount);
-        uint256 _after = token.balanceOf(address(this));
-        _amount = _after.sub(_before); // Additional check for deflationary tokens
+        earn();
+        uint256 _after = balance();
+        _amount = _after.sub(_pool); // Additional check for deflationary tokens
         uint256 shares = 0;
         if (totalSupply() == 0) {
             shares = _amount;
@@ -114,8 +118,6 @@ contract BeefyVaultV3 is ERC20, Ownable {
             shares = (_amount.mul(totalSupply())).div(_pool);
         }
         _mint(msg.sender, shares);
-
-        earn();
     }
 
     /**
@@ -125,7 +127,7 @@ contract BeefyVaultV3 is ERC20, Ownable {
     function earn() public {
         uint _bal = available();
         token.safeTransfer(strategy, _bal);
-        IStrategy(strategy).deposit();
+        IBurningStrategy(strategy).deposit();
     }
 
     /**
@@ -147,7 +149,7 @@ contract BeefyVaultV3 is ERC20, Ownable {
         uint b = token.balanceOf(address(this));
         if (b < r) {
             uint _withdraw = r.sub(b);
-            IStrategy(strategy).withdraw(_withdraw);
+            IBurningStrategy(strategy).withdraw(_withdraw);
             uint _after = token.balanceOf(address(this));
             uint _diff = _after.sub(b);
             if (_diff < _withdraw) {
@@ -183,7 +185,7 @@ contract BeefyVaultV3 is ERC20, Ownable {
         
         emit UpgradeStrat(stratCandidate.implementation);
 
-        IStrategy(strategy).retireStrat();
+        IBurningStrategy(strategy).retireStrat();
         strategy = stratCandidate.implementation;
         stratCandidate.implementation = address(0);
         stratCandidate.proposedTime = 5000000000;

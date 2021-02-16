@@ -7,9 +7,9 @@ const getNetworkRpc = require("../utils/getNetworkRpc");
 const ethers = hardhat.ethers;
 
 const config = {
-  want: "0x20781bc3701C5309ac75291f5D09BdC23D7b7Fa8",
-  mooName: "Moo Worker A",
-  mooSymbol: "mooWorkerA",
+  want: "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
+  mooName: "Moo Worker B",
+  mooSymbol: "mooWorkerB",
   poolId: 51,
   delay: 86400,
 };
