@@ -48,7 +48,7 @@ describe("SmartCakeArch", () => {
 
   const mockOldArch = async ({ signer }) => {
     const { vault, strategy } = await deployVault({
-      vault: "BeefyVaultV3",
+      vault: "BeefyVaultV4",
       strategy: "StrategyCake",
       want: CAKE,
       mooName: "Moo Smart Cake",
@@ -65,7 +65,7 @@ describe("SmartCakeArch", () => {
   const mockSimpleArch = async({ signer }) => {
     const workers = {
       simple: await deployVault({
-        vault: "BeefyVaultV3",
+        vault: "BeefyVaultV4",
         strategy: "StrategyCake",
         want: CAKE,
         mooName: "Worker Simple",
@@ -78,7 +78,7 @@ describe("SmartCakeArch", () => {
     };
 
     const { vault, strategy } = await deployVault({
-      vault: "BeefyVaultV3",
+      vault: "BeefyVaultV4",
       strategy: "YieldBalancer",
       want: CAKE,
       mooName: "Yield Balancer",
@@ -95,7 +95,7 @@ describe("SmartCakeArch", () => {
   const mockNewArch = async({ signer }) => {
     const workers = {
       cakeA: await deployVault({
-        vault: "BeefyVaultV3",
+        vault: "BeefyVaultV4",
         strategy: "StrategyCake",
         want: CAKE,
         mooName: "Worker A",
@@ -107,7 +107,7 @@ describe("SmartCakeArch", () => {
       }),
 
       cakeB: await deployVault({
-        vault: "BeefyVaultV3",
+        vault: "BeefyVaultV4",
         strategy: "StrategyCake",
         want: CAKE,
         mooName: "Worker B",
@@ -119,7 +119,7 @@ describe("SmartCakeArch", () => {
       }),
 
       cakeC: await deployVault({
-        vault: "BeefyVaultV3",
+        vault: "BeefyVaultV4",
         strategy: "StrategyCake",
         want: CAKE,
         mooName: "Worker C",
@@ -132,7 +132,7 @@ describe("SmartCakeArch", () => {
     };
 
     const { vault, strategy } = await deployVault({
-      vault: "BeefyVaultV3",
+      vault: "BeefyVaultV4",
       strategy: "YieldBalancer",
       want: CAKE,
       mooName: "Yield Balancer",
