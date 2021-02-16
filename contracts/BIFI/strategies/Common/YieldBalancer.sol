@@ -402,7 +402,7 @@ contract YieldBalancer is Ownable, Pausable {
         uint256 pricePerFullShare = IVault(worker).getPricePerFullShare();
         uint256 shares = amount.mul(1e18).div(pricePerFullShare);
 
-        if(shares > 0) {
+        if (shares > 0) {
             IERC20(worker).safeApprove(worker, shares);
             IVault(worker).withdraw(shares);
         }

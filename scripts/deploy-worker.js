@@ -8,8 +8,8 @@ const ethers = hardhat.ethers;
 
 const config = {
   want: "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
-  mooName: "Moo Worker A",
-  mooSymbol: "mooWorkerA",
+  mooName: "Moo Worker B",
+  mooSymbol: "mooWorkerB",
   poolId: 51,
   delay: 86400,
 };
