@@ -384,7 +384,8 @@ contract YieldBalancer is Ownable, Pausable {
         address worker = workers[workerIndex];
         uint256 shares = IERC20(worker).balanceOf(address(this));
         
-        if(shares > 0) {
+        if (shares > 0) {
+            IERC20(worker).safeApprove(worker, 0);
             IERC20(worker).safeApprove(worker, shares);
             IVault(worker).withdraw(shares);
         }
@@ -403,6 +404,7 @@ contract YieldBalancer is Ownable, Pausable {
         uint256 shares = amount.mul(1e18).div(pricePerFullShare);
 
         if (shares > 0) {
+            IERC20(worker).safeApprove(worker, 0);
             IERC20(worker).safeApprove(worker, shares);
             IVault(worker).withdraw(shares);
         }
