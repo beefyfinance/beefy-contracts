@@ -21,7 +21,7 @@ describe("YieldBalancer", () => {
 
     const workers = {
       simple: await deployVault({
-        vault: "BeefyVaultV3",
+        vault: "BeefyVaultV4",
         strategy: "StrategyCake",
         want: CAKE,
         mooName: "Worker Simple",
@@ -32,7 +32,7 @@ describe("YieldBalancer", () => {
         rpc: RPC,
       }),
       syrupA: await deployVault({
-        vault: "BeefyVaultV3",
+        vault: "BeefyVaultV4",
         strategy: "StrategySyrup",
         want: CAKE,
         mooName: "Worker Syrup A",
@@ -43,7 +43,7 @@ describe("YieldBalancer", () => {
         rpc: RPC,
       }),
       syrupB: await deployVault({
-        vault: "BeefyVaultV3",
+        vault: "BeefyVaultV4",
         strategy: "StrategySyrup",
         want: CAKE,
         mooName: "Worker Syrup B",
@@ -56,7 +56,7 @@ describe("YieldBalancer", () => {
     };
 
     const { vault, strategy } = await deployVault({
-      vault: "BeefyVaultV3",
+      vault: "BeefyVaultV4",
       strategy: "YieldBalancer",
       want: CAKE,
       mooName: "Yield Balancer",
