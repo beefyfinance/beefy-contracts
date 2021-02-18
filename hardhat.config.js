@@ -1,5 +1,21 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-web3");
+require("@nomiclabs/hardhat-ethers");
+
+task("panic", "Panics a given strategy.")
+  .addParam("strat", "The strategy to panic.")
+  .setAction(async (taskArgs) => {
+    const IStrategy = await hre.artifacts.readArtifact("IStrategy");
+    const strategy = await ethers.getContractAt(IStrategy.abi, taskArgs.strat);
+
+    try {
+      const tx = await strategy.panic({ gasPrice: 10000000000, gasLimit: 3500000 });
+      const url = `https://bscscan.com/tx/${tx.hash}`;
+      console.log(`Successful panic with tx at ${url}`);
+    } catch (err) {
+      console.log(`Couldn't panic due to ${err}`);
+    }
+  });
 
 module.exports = {
   defaultNetwork: "localhost",

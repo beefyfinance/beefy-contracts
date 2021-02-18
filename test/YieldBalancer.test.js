@@ -21,7 +21,7 @@ describe("YieldBalancer", () => {
 
     const workers = {
       simple: await deployVault({
-        vault: "BeefyVaultV3",
+        vault: "BeefyVaultV4",
         strategy: "StrategyCake",
         want: CAKE,
         mooName: "Worker Simple",
@@ -32,7 +32,7 @@ describe("YieldBalancer", () => {
         rpc: RPC,
       }),
       syrupA: await deployVault({
-        vault: "BeefyVaultV3",
+        vault: "BeefyVaultV4",
         strategy: "StrategySyrup",
         want: CAKE,
         mooName: "Worker Syrup A",
@@ -43,7 +43,7 @@ describe("YieldBalancer", () => {
         rpc: RPC,
       }),
       syrupB: await deployVault({
-        vault: "BeefyVaultV3",
+        vault: "BeefyVaultV4",
         strategy: "StrategySyrup",
         want: CAKE,
         mooName: "Worker Syrup B",
@@ -56,13 +56,18 @@ describe("YieldBalancer", () => {
     };
 
     const { vault, strategy } = await deployVault({
-      vault: "BeefyVaultV3",
+      vault: "BeefyVaultV4",
       strategy: "YieldBalancer",
       want: CAKE,
       mooName: "Yield Balancer",
       mooSymbol: "mooBalancer",
       delay: 5,
-      stratArgs: [CAKE, [workers.simple.vault.address, workers.syrupA.vault.address, workers.syrupB.vault.address], 60, 10],
+      stratArgs: [
+        CAKE,
+        [workers.simple.vault.address, workers.syrupA.vault.address, workers.syrupB.vault.address],
+        60,
+        10,
+      ],
       signer: signer,
       rpc: RPC,
     });
@@ -133,10 +138,6 @@ describe("YieldBalancer", () => {
       for (let i = 0; i < 9; i++) {
         let fakeCand;
       }
-    }).timeout(TIMEOUT);
-
-    it("acceptCandidate: ", async () => {
-      const { strategy } = await setup();
     }).timeout(TIMEOUT);
 
     it("rejectCandidate: other account can't call it.", async () => {
