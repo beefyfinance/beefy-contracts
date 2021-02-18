@@ -17,6 +17,21 @@ task("panic", "Panics a given strategy.")
     }
   });
 
+task("harvest", "Harvests a given strategy.")
+  .addParam("strat", "The strategy to harvest.")
+  .setAction(async (taskArgs) => {
+    const IStrategy = await hre.artifacts.readArtifact("IStrategy");
+    const strategy = await ethers.getContractAt(IStrategy.abi, taskArgs.strat);
+
+    try {
+      const tx = await strategy.harvest({ gasPrice: 10000000000, gasLimit: 3500000 });
+      const url = `https://bscscan.com/tx/${tx.hash}`;
+      console.log(`Successful harvest with tx at ${url}`);
+    } catch (err) {
+      console.log(`Couldn't harvest due to ${err}`);
+    }
+  });
+
 module.exports = {
   defaultNetwork: "localhost",
   networks: {
