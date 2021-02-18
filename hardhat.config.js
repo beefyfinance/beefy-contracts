@@ -17,6 +17,21 @@ task("panic", "Panics a given strategy.")
     }
   });
 
+task("unpause", "Unpauses a given strategy.")
+  .addParam("strat", "The strategy to unpause.")
+  .setAction(async (taskArgs) => {
+    const IStrategy = await hre.artifacts.readArtifact("IStrategy");
+    const strategy = await ethers.getContractAt(IStrategy.abi, taskArgs.strat);
+
+    try {
+      const tx = await strategy.unpause({ gasPrice: 10000000000, gasLimit: 3500000 });
+      const url = `https://bscscan.com/tx/${tx.hash}`;
+      console.log(`Successful unpaused with tx at ${url}`);
+    } catch (err) {
+      console.log(`Couldn't unpause due to ${err}`);
+    }
+  });
+
 task("harvest", "Harvests a given strategy.")
   .addParam("strat", "The strategy to harvest.")
   .setAction(async (taskArgs) => {
@@ -37,7 +52,7 @@ module.exports = {
   networks: {
     hardhat: {},
     bsc: {
-      url: "https://bsc-dataseed.binance.org",
+      url: "https://bsc-dataseed.nariox.org/",
       chainId: 56,
       accounts: [process.env.DEPLOYER_PK],
     },
