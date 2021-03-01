@@ -173,7 +173,7 @@ contract StrategyCake is Ownable, Pausable {
      * @dev Function to calculate the total underlaying {cake} held by the strat.
      * It takes into account both the funds in hand, as the funds allocated in the MasterChef.
      */
-    function balanceOf() public view returns (uint256) {
+    function balanceOf() external view returns (uint256) {
         return balanceOfCake().add(balanceOfPool());
     }
 
