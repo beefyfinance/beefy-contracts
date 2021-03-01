@@ -192,7 +192,7 @@ contract StrategySyrup is Ownable, Pausable {
      * @dev Function to calculate the total underlaying {cake} held by the strat.
      * It takes into account both funds at hand and funds allocated in the SmartChef.
      */
-    function balanceOf() public view returns (uint256) {
+    function balanceOf() external view returns (uint256) {
         return balanceOfCake().add(balanceOfPool());
     }
 
