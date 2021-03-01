@@ -221,7 +221,7 @@ contract StrategySyrup is Ownable, Pausable {
         ISmartChef(smartchef).emergencyWithdraw();
 
         uint256 cakeBal = IERC20(cake).balanceOf(address(this));
-        IERC20(cake).transfer(vault, cakeBal);
+        IERC20(cake).safeTransfer(vault, cakeBal);
     }
 
     /**
