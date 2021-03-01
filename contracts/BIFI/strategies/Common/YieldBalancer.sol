@@ -132,14 +132,14 @@ contract YieldBalancer is Ownable, Pausable, ReentrancyGuard {
     function withdraw(uint256 amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal < amount) {
             for (uint8 i = 0; i < workers.length; i++) {
                 uint256 workerBal = _workerBalance(i);
                 if (workerBal < amount.sub(wantBal)) {
                     _workerWithdrawAll(i);
-                    wantBal = IERC20(want).balanceOf(address(this));
+                    wantBal = balanceOfWant();
                 } else {
                     _workerWithdraw(i, amount.sub(wantBal));
                     break;
@@ -147,7 +147,7 @@ contract YieldBalancer is Ownable, Pausable, ReentrancyGuard {
             }
         }
 
-        wantBal = IERC20(want).balanceOf(address(this));
+        wantBal = balanceOfWant();
         IERC20(want).safeTransfer(vault, wantBal);
     }
 
@@ -189,7 +189,7 @@ contract YieldBalancer is Ownable, Pausable, ReentrancyGuard {
         require(_checkRatios(ratios), '!ratios');
 
         _workersWithdrawAll();
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         for (uint8 i = 0; i < ratios.length; i++) {
             _workerDeposit(i, wantBal.mul(ratios[i]).div(RATIO_MAX));
@@ -353,7 +353,7 @@ contract YieldBalancer is Ownable, Pausable, ReentrancyGuard {
      * @param workerIndex Index of the worker where the funds will go.
      */
     function _workerDepositAll(uint8 workerIndex) internal {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
         IVault(workers[workerIndex]).deposit(wantBal);
     }
 
@@ -422,8 +422,8 @@ contract YieldBalancer is Ownable, Pausable, ReentrancyGuard {
 
        _workersWithdrawAll();
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
-        IERC20(want).transfer(vault, wantBal);
+        uint256 wantBal = balanceOfWant();
+        IERC20(want).safeTransfer(vault, wantBal);
     }
 
     /**
