@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "../interfaces/beefy/IStrategy.sol";
 
@@ -15,7 +16,7 @@ import "../interfaces/beefy/IStrategy.sol";
  * This is the contract that receives funds and that users interface with.
  * The yield optimizing strategy itself is implemented in a separate 'Strategy.sol' contract.
  */
-contract BeefyVaultV4 is ERC20, Ownable {
+contract BeefyVaultV4 is ERC20, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -101,7 +102,7 @@ contract BeefyVaultV4 is ERC20, Ownable {
      * @dev The entrypoint of funds into the system. People deposit with this function
      * into the vault. The vault is then in charge of sending funds into the strategy.
      */
-    function deposit(uint _amount) public {
+    function deposit(uint _amount) public nonReentrant {
         uint256 _pool = balance();
         uint256 _before = token.balanceOf(address(this));
         token.safeTransferFrom(msg.sender, address(this), _amount);
@@ -140,7 +141,7 @@ contract BeefyVaultV4 is ERC20, Ownable {
      * from the strategy and pay up the token holder. A proportional number of IOU
      * tokens are burned in the process.
      */
-    function withdraw(uint256 _shares) public {
+    function withdraw(uint256 _shares) public nonReentrant {
         uint256 r = (balance().mul(_shares)).div(totalSupply());
         _burn(msg.sender, _shares);
 
@@ -177,7 +178,7 @@ contract BeefyVaultV4 is ERC20, Ownable {
      * happening in +100 years for safety. 
      */
 
-    function upgradeStrat() external onlyOwner {
+    function upgradeStrat() external onlyOwner nonReentrant {
         require(stratCandidate.implementation != address(0), "There is no candidate");
         require(stratCandidate.proposedTime.add(approvalDelay) < block.timestamp, "Delay has not passed");
         
