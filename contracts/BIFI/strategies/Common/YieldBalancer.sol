@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "../../interfaces/beefy/IVault.sol";
 
@@ -39,7 +40,7 @@ import "../../interfaces/beefy/IVault.sol";
  * Requirements:
  * - Subvaults that serve as workers can't charge withdrawal fees to the balancer.
  */
-contract YieldBalancer is Ownable, Pausable {
+contract YieldBalancer is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -286,7 +287,7 @@ contract YieldBalancer is Ownable, Pausable {
      * The main worker at index 0 can't be deleted.
      * @param workerIndex Index of worker to delete.
      */
-    function deleteWorker(uint8 workerIndex) external onlyOwner {
+    function deleteWorker(uint8 workerIndex) external onlyOwner nonReentrant {
         require(workerIndex != 0, "!main");
         require(workerIndex < workers.length, "out of bounds");   
 
