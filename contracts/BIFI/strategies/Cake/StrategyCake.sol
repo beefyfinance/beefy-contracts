@@ -202,7 +202,7 @@ contract StrategyCake is Ownable, Pausable {
         IMasterChef(masterchef).emergencyWithdraw(0);
 
         uint256 cakeBal = IERC20(cake).balanceOf(address(this));
-        IERC20(cake).transfer(vault, cakeBal);
+        IERC20(cake).safeTransfer(vault, cakeBal);
     }
 
     /**
