@@ -23,7 +23,6 @@ import "../../interfaces/pancake/IMasterChef.sol";
  */
 contract StrategyCake is Ownable, Pausable {
     using SafeERC20 for IERC20;
-    using Address for address;
     using SafeMath for uint256;
 
     /**
