@@ -86,7 +86,7 @@ contract BeefyVaultV4 is ERC20, Ownable {
      * @dev Function for various UIs to display the current value of one of our yield tokens.
      * Returns an uint256 with 18 decimals of how much underlying asset one vault share represents.
      */
-    function getPricePerFullShare() public view returns (uint256) {
+    function getPricePerFullShare() external view returns (uint256) {
         return totalSupply() == 0 ? 1e18 : balance().mul(1e18).div(totalSupply());
     }
 
@@ -162,7 +162,7 @@ contract BeefyVaultV4 is ERC20, Ownable {
      * @dev Sets the candidate for the new strat to use with this vault.
      * @param _implementation The address of the candidate strategy.  
      */
-    function proposeStrat(address _implementation) public onlyOwner {
+    function proposeStrat(address _implementation) external onlyOwner {
         stratCandidate = StratCandidate({ 
             implementation: _implementation,
             proposedTime: block.timestamp
@@ -177,7 +177,7 @@ contract BeefyVaultV4 is ERC20, Ownable {
      * happening in +100 years for safety. 
      */
 
-    function upgradeStrat() public onlyOwner {
+    function upgradeStrat() external onlyOwner {
         require(stratCandidate.implementation != address(0), "There is no candidate");
         require(stratCandidate.proposedTime.add(approvalDelay) < block.timestamp, "Delay has not passed");
         
