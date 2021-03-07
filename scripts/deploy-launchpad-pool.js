@@ -8,11 +8,11 @@ const abi = ["function notifyRewards() external"];
 
 const pools = [
   {
-    name: "SALT Pool",
-    stakedToken: "0xe0B473c0dD6D7Fea5B395c3Ce7ffd4FEF0ab4373",
-    rewardsToken: "0x2849b1aE7E04A3D9Bc288673A92477CF63F28aF4",
+    name: "Soups Pool",
+    stakedToken: "0xF3C1EB01E40c47fd32D0397e56569809aae0e9c7",
+    rewardsToken: "0x69F27E70E820197A6e495219D9aC34C8C6dA7EeE",
     durationInSec: 432000,
-    capPerAddr: "1000000000000000000000000000000",
+    capPerAddr: "10000000000000000000000000000000",
   },
 ];
 
