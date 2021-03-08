@@ -16,6 +16,7 @@
     "compile": "hardhat compile",
     "all": "yarn clean && yarn compile && yarn net",
     "test": "hardhat test --network localhost",
+    "test:vault": "hardhat test test/BeefyVaultV4.test.js ",
     "deploy-strat:bsc": "hardhat run --network bsc scripts/deploy-strat-with-pool.js"
   },
   "devDependencies": {
