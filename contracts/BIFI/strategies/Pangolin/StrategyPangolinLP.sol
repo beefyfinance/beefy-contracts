@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IStakingRewards.sol";
+import "../../interfaces/pangolin/IStakingRewards.sol";
 
 
 
