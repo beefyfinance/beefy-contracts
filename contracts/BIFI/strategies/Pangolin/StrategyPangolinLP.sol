@@ -11,9 +11,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/pangolin/IStakingRewards.sol";
-
-
+import "../../interfaces/common/IRewardPool.sol";
 
 /**
  * @dev Strategy to farm PNG through a Synthetix based rewards pool contract.
@@ -132,7 +130,7 @@ contract StrategyPangolinLP is Ownable, Pausable {
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
 
         if (pairBal > 0) {
-            IStakingRewards(rewardPool).stake(pairBal);
+            IRewardPool(rewardPool).stake(pairBal);
         }
     }
 
@@ -147,7 +145,7 @@ contract StrategyPangolinLP is Ownable, Pausable {
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
 
         if (pairBal < _amount) {
-            IStakingRewards(rewardPool).withdraw(_amount.sub(pairBal));
+            IRewardPool(rewardPool).withdraw(_amount.sub(pairBal));
             pairBal = IERC20(lpPair).balanceOf(address(this));
         }
 
@@ -170,7 +168,7 @@ contract StrategyPangolinLP is Ownable, Pausable {
      */
     function harvest() external whenNotPaused {
         require(!Address.isContract(msg.sender), "!contract");
-        IStakingRewards(rewardPool).getReward();
+        IRewardPool(rewardPool).getReward();
         chargeFees();
         addLiquidity();
         deposit();
@@ -240,7 +238,7 @@ contract StrategyPangolinLP is Ownable, Pausable {
      * @dev It calculates how much {lpPair} the strategy has allocated in the Reward Pool
      */
     function balanceOfPool() public view returns (uint256) {
-        return IStakingRewards(rewardPool).balanceOf(address(this));
+        return IRewardPool(rewardPool).balanceOf(address(this));
     }
 
     /**
@@ -250,7 +248,7 @@ contract StrategyPangolinLP is Ownable, Pausable {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IStakingRewards(rewardPool).withdraw(balanceOfPool());
+        IRewardPool(rewardPool).withdraw(balanceOfPool());
 
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
         IERC20(lpPair).transfer(vault, pairBal);
@@ -261,7 +259,7 @@ contract StrategyPangolinLP is Ownable, Pausable {
      */
     function panic() public onlyOwner {
         pause();
-        IStakingRewards(rewardPool).withdraw(balanceOfPool());
+        IRewardPool(rewardPool).withdraw(balanceOfPool());
     }
 
     /**
