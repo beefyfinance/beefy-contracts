@@ -10,11 +10,12 @@ describe("BeefyLaunchpadPool", () => {
     const Token = await ethers.getContractFactory("TestToken");
     const stakedToken = await Token.deploy("10000", "Staked Token", "STAKED");
     const rewardToken = await Token.deploy("10000", "Reward Token", "REWARD");
+    const otherToken = await Token.deploy("10000", "Other Token", "OTHER");
 
     const Pool = await ethers.getContractFactory("BeefyLaunchpadPool");
     const pool = await Pool.deploy(stakedToken.address, rewardToken.address, DURATION, CAP_PER_ADDR);
 
-    return { signer, other, pool, stakedToken, rewardToken };
+    return { signer, other, pool, stakedToken, rewardToken, otherToken };
   };
 
   it("initializes correctly", async () => {
@@ -71,8 +72,46 @@ describe("BeefyLaunchpadPool", () => {
     const tx = pool.stake(smallAmount);
 
     await expect(tx).not.to.be.reverted;
+    const balanceAfter = await pool.balanceOf(signer.address);
 
     expect(balance).to.be.below(balanceAfter);
     expect(balanceAfter).to.equal(smallAmount);
+  });
+
+  it("should not let other account withdraw stuck tokens", async () => {
+    const { other, pool, otherToken } = await setup();
+
+    const tx = pool.connect(other).inCaseTokensGetStuck(otherToken.address);
+
+    await expect(tx).to.be.revertedWith("Ownable: caller is not the owner");
+  });
+
+  it("should not let owner withdraw staked tokens", async () => {
+    const { pool, stakedToken } = await setup();
+
+    const tx = pool.inCaseTokensGetStuck(stakedToken.address);
+
+    await expect(tx).to.be.revertedWith("!staked");
+  });
+
+  it("should not let owner withdraw reward tokens", async () => {
+    const { pool, rewardToken } = await setup();
+
+    const tx = pool.inCaseTokensGetStuck(rewardToken.address);
+
+    await expect(tx).to.be.revertedWith("!reward");
+  });
+
+  it("should let owner withdraw other tokens", async () => {
+    const { pool, otherToken } = await setup();
+
+    const bal = await otherToken.balanceOf(pool.address);
+
+    await otherToken.transfer(pool.address, "100");
+    await pool.inCaseTokensGetStuck(otherToken.address);
+
+    const balAfter = await otherToken.balanceOf(pool.address);
+
+    expect(bal).to.equal(balAfter);
   });
 });
