@@ -7,14 +7,14 @@ const getNetworkRpc = require("../utils/getNetworkRpc");
 const ethers = hardhat.ethers;
 
 const config = {
-  want: "0x74690f829fec83ea424ee1F1654041b2491A7bE9",
-  mooName: "Moo BDollar BDO-BNB",
-  mooSymbol: "mooBdollarBDO-BNB",
+  want: "0x51a2ffa5B7DE506F9a22549E48B33F6Cf0D9030e",
+  mooName: "Moo Pancake JUV-BNB",
+  mooSymbol: "mooPancakeJUV-BNB",
   delay: 86400,
-  strategyName: undefined, // StrategyBdoLP
-  poolId: undefined, // 4
-  unirouter: undefined, // Pancakeswap Router
-  strategist: undefined, // some address
+  strategyName: "StrategyCakeLP",
+  poolId: 43,
+  unirouter: "0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F", // Pancakeswap Router
+  strategist: "0xB1f1F1ed9e874cF4c81C6b16eFc2642B4c8Fb8A5", // some address
 };
 
 async function main() {
@@ -25,7 +25,7 @@ async function main() {
 
   await hardhat.run("compile");
 
-  const Vault = await ethers.getContractFactory("BeefyVaultV3");
+  const Vault = await ethers.getContractFactory("BeefyVaultV4");
   const Strategy = await ethers.getContractFactory(config.strategyName);
 
   const [deployer] = await ethers.getSigners();

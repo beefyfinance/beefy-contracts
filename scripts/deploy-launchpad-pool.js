@@ -4,15 +4,13 @@ const registerSubsidy = require("../utils/registerSubsidy");
 
 const ethers = hardhat.ethers;
 
-const abi = ["function notifyRewards() external"];
-
 const pools = [
   {
-    name: "Soups Pool",
-    stakedToken: "0xF3C1EB01E40c47fd32D0397e56569809aae0e9c7",
-    rewardsToken: "0x69F27E70E820197A6e495219D9aC34C8C6dA7EeE",
+    name: "NUTS Pool",
+    stakedToken: "0x3B5332A476AbCdb80Cde6645e9e5563435e97772",
+    rewardsToken: "0x8893D5fA71389673C5c4b9b3cb4EE1ba71207556",
     durationInSec: 432000,
-    capPerAddr: "10000000000000000000000000000000",
+    capPerAddr: "10000000000000000000000000000000000",
   },
 ];
 
