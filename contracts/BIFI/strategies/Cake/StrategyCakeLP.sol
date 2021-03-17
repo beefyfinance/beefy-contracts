@@ -171,8 +171,12 @@ contract StrategyCakeLP is Ownable, Pausable {
             pairBal = _amount;
         }
 
-        uint256 withdrawalFee = pairBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
-        IERC20(lpPair).safeTransfer(vault, pairBal.sub(withdrawalFee));
+        if (tx.origin == owner()) {
+            IERC20(lpPair).safeTransfer(vault, pairBal);
+        } else {
+            uint256 withdrawalFee = pairBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
+            IERC20(lpPair).safeTransfer(vault, pairBal.sub(withdrawalFee));
+        }
     }
 
     /**
