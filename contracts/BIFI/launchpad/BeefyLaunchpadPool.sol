@@ -112,4 +112,12 @@ contract BeefyLaunchpadPool is LPTokenWrapper, IRewardDistributionRecipient {
         periodFinish = block.timestamp.add(duration);
         emit RewardAdded(reward);
     }
+
+    function inCaseTokensGetStuck(address _token) external onlyOwner {
+        require(_token != address(stakedToken), "!staked");
+        require(_token != address(rewardToken), "!reward");
+
+        uint256 amount = IERC20(_token).balanceOf(address(this));
+        IERC20(_token).safeTransfer(msg.sender, amount);
+    }
 }
