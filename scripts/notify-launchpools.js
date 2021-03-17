@@ -12,26 +12,13 @@ const pools = [
 async function main() {
   await hardhat.run("compile");
 
-  const [rewarder] = await ethers.getSigners();
-
   for (pool of pools) {
-    let tx;
     const baseUrl = "https://bscscan.com/tx/";
 
     const BeefyLaunchpadPool = await hardhat.artifacts.readArtifact("BeefyLaunchpadPool");
     const rewardsContract = await ethers.getContractAt(BeefyLaunchpadPool.abi, pool.launchpool);
 
-    const rewardDistribution = await rewardsContract.rewardDistribution();
-
-    if (rewardDistribution !== rewarder.address) {
-      tx = await rewardsContract.setRewardDistribution(rewarder.address);
-      tx = await tx.wait();
-      tx.status === 1
-        ? console.log(`Successfully set rewardDistribution with tx: ${baseUrl}${tx.transactionHash}`)
-        : console.log(`Could not set rewardDistribution with tx: ${baseUrl}${tx.transactionHash}`);
-    }
-
-    tx = await rewardsContract.notifyRewardAmount(pool.amount);
+    let tx = await rewardsContract.notifyRewardAmount(pool.amount);
     tx = await tx.wait();
     tx.status === 1
       ? console.log(`Pool ${pool.name} notified at: ${baseUrl}${tx.transactionHash}`)
