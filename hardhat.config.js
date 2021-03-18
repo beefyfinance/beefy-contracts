@@ -61,6 +61,11 @@ module.exports = {
       chainId: 128,
       accounts: [process.env.DEPLOYER_PK],
     },
+    avax: {
+      url: "https://api.avax.network/ext/bc/C/rpc",
+      chainId: 43114,
+      accounts: [process.env.DEPLOYER_PK],
+    },
     localhost: {
       url: "http://127.0.0.1:8545",
       timeout: 300000,

@@ -2,11 +2,11 @@ pragma solidity ^0.5.0;
 
 import "@openzeppelin-2/contracts/math/Math.sol";
 import "@openzeppelin-2/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin-2/contracts/ownership/Ownable.sol";
 
-import "./IRewardDistributionRecipient.sol";
 import "./LPTokenWrapper.sol";
 
-contract BeefyLaunchpadPool is LPTokenWrapper, IRewardDistributionRecipient {
+contract BeefyLaunchpadPool is LPTokenWrapper, Ownable {
     IERC20 public rewardToken;
     uint256 public duration;
     uint256 public capPerAddr;
@@ -98,7 +98,7 @@ contract BeefyLaunchpadPool is LPTokenWrapper, IRewardDistributionRecipient {
 
     function notifyRewardAmount(uint256 reward)
         external
-        onlyRewardDistribution
+        onlyOwner
         updateReward(address(0))
     {
         if (block.timestamp >= periodFinish) {
@@ -111,5 +111,13 @@ contract BeefyLaunchpadPool is LPTokenWrapper, IRewardDistributionRecipient {
         lastUpdateTime = block.timestamp;
         periodFinish = block.timestamp.add(duration);
         emit RewardAdded(reward);
+    }
+
+    function inCaseTokensGetStuck(address _token) external onlyOwner {
+        require(_token != address(stakedToken), "!staked");
+        require(_token != address(rewardToken), "!reward");
+
+        uint256 amount = IERC20(_token).balanceOf(address(this));
+        IERC20(_token).safeTransfer(msg.sender, amount);
     }
 }
