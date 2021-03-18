@@ -4,6 +4,7 @@ const getNetworkRpc = (network) => {
   } else if (network === "heco") {
     process.env.HECO_RPC;
   } else if (network === "testnet") return "https://data-seed-prebsc-1-s1.binance.org:8545/";
+  else if (network === "avax") return "https://api.avax.network/ext/bc/C/rpc";
   else {
     return "http://127.0.0.1:8545";
   }
