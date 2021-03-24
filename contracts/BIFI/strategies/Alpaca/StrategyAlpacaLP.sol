@@ -11,7 +11,8 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/pancake/IMasterChef.sol";
+import "../../interfaces/alpaca/IFairLaunch.sol";
+import "../../util/GasThrottler.sol";
 
 /**
  * @dev Implementation of a strategy to get yields from farming an LP from Alpaca.
@@ -21,7 +22,7 @@ import "../../interfaces/pancake/IMasterChef.sol";
  * The corresponding pair of assets are bought and more liquidity is added to the FairLaunch pool.
  * 
  */
-contract StrategyAlpacaLP is Ownable, Pausable {
+contract StrategyAlpacaLP is Ownable, Pausable, GasThrottler {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -100,7 +101,7 @@ contract StrategyAlpacaLP is Ownable, Pausable {
     /**
      * @dev Event that is fired each time someone harvests the strat.
      */
-    event StratHarvest(address indexed harvester);
+    event StratHarvest();
 
     /**
      * @dev Initializes the strategy with the token to maximize.
@@ -114,19 +115,19 @@ contract StrategyAlpacaLP is Ownable, Pausable {
         strategist = _strategist;
 
         if (lpToken0 == wbnb) {
-            cakeToLp0Route = [cake, wbnb];
-        } else if (lpToken0 != cake) {
-            cakeToLp0Route = [cake, wbnb, lpToken0];
+            alpacaToLp0Route = [alpaca, wbnb];
+        } else if (lpToken0 != alpaca) {
+            alpacaToLp0Route = [alpaca, wbnb, lpToken0];
         }
 
         if (lpToken1 == wbnb) {
-            cakeToLp1Route = [cake, wbnb];
-        } else if (lpToken1 != cake) {
-            cakeToLp1Route = [cake, wbnb, lpToken1];
+            alpacaToLp1Route = [alpaca, wbnb];
+        } else if (lpToken1 != alpaca) {
+            alpacaToLp1Route = [alpaca, wbnb, lpToken1];
         }
 
-        IERC20(lpPair).safeApprove(masterchef, uint(-1));
-        IERC20(cake).safeApprove(unirouter, uint(-1));
+        IERC20(lpPair).safeApprove(fairLaunch, uint(-1));
+        IERC20(alpaca).safeApprove(unirouter, uint(-1));
         IERC20(wbnb).safeApprove(unirouter, uint(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
@@ -139,19 +140,19 @@ contract StrategyAlpacaLP is Ownable, Pausable {
     /**
      * @dev Function that puts the funds to work.
      * It gets called whenever someone deposits in the strategy's vault contract.
-     * It deposits {lpPair} in the MasterChef to farm {cake}
+     * It deposits {lpPair} in the FairLaunch to farm {alpaca}
      */
     function deposit() public whenNotPaused {
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
 
         if (pairBal > 0) {
-            IMasterChef(masterchef).deposit(poolId, pairBal);
+            IFairLaunch(fairLaunch).deposit(poolId, pairBal);
         }
     }
 
     /**
      * @dev Withdraws funds and sents them back to the vault.
-     * It withdraws {lpPair} from the MasterChef.
+     * It withdraws {lpPair} from the FairLaunch.
      * The available {lpPair} minus fees is returned to the vault.
      */
     function withdraw(uint256 _amount) external {
@@ -160,7 +161,7 @@ contract StrategyAlpacaLP is Ownable, Pausable {
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
 
         if (pairBal < _amount) {
-            IMasterChef(masterchef).withdraw(poolId, _amount.sub(pairBal));
+            IFairLaunch(fairLaunch).withdraw(poolId, _amount.sub(pairBal));
             pairBal = IERC20(lpPair).balanceOf(address(this));
         }
 
@@ -168,7 +169,7 @@ contract StrategyAlpacaLP is Ownable, Pausable {
             pairBal = _amount;
         }
 
-        if (tx.origin == owner()) {
+        if (tx.origin == owner() || paused()) {
             IERC20(lpPair).safeTransfer(vault, pairBal);
         } else {
             uint256 withdrawalFee = pairBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
@@ -178,20 +179,20 @@ contract StrategyAlpacaLP is Ownable, Pausable {
 
     /**
      * @dev Core function of the strat, in charge of collecting and re-investing rewards.
-     * 1. It claims rewards from the MasterChef.
+     * 1. It claims rewards from the FairLaunch.
      * 2. It charges the system fees to simplify the split.
      * 3. It swaps the {cake} token for {lpToken0} & {lpToken1}
      * 4. Adds more liquidity to the pool.
      * 5. It deposits the new LP tokens.
      */
-    function harvest() external whenNotPaused {
+    function harvest() external whenNotPaused gasThrottle {
         require(!Address.isContract(msg.sender), "!contract");
-        IMasterChef(masterchef).deposit(poolId, 0);
+        IFairLaunch(fairLaunch).deposit(poolId, 0);
         chargeFees();
         addLiquidity();
         deposit();
 
-        emit StratHarvest(msg.sender);
+        emit StratHarvest();
     }
 
     /**
@@ -242,7 +243,7 @@ contract StrategyAlpacaLP is Ownable, Pausable {
 
     /**
      * @dev Function to calculate the total underlaying {lpPair} held by the strat.
-     * It takes into account both the funds in hand, as the funds allocated in the MasterChef.
+     * It takes into account both the funds in hand, as the funds allocated in the FairLaunch.
      */
     function balanceOf() public view returns (uint256) {
         return balanceOfLpPair().add(balanceOfPool());
@@ -256,10 +257,10 @@ contract StrategyAlpacaLP is Ownable, Pausable {
     }
 
     /**
-     * @dev It calculates how much {lpPair} the strategy has allocated in the MasterChef
+     * @dev It calculates how much {lpPair} the strategy has allocated in the FairLaunch
      */
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMasterChef(masterchef).userInfo(poolId, address(this));
+        (uint256 _amount, ) = IFairLaunch(fairLaunch).userInfo(poolId, address(this));
         return _amount;
     }
 
@@ -270,18 +271,18 @@ contract StrategyAlpacaLP is Ownable, Pausable {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChef(masterchef).emergencyWithdraw(poolId);
+        IFairLaunch(fairLaunch).emergencyWithdraw(poolId);
 
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
         IERC20(lpPair).transfer(vault, pairBal);
     }
 
     /**
-     * @dev Pauses deposits. Withdraws all funds from the MasterChef, leaving rewards behind
+     * @dev Pauses deposits. Withdraws all funds from the FairLaunch, leaving rewards behind
      */
     function panic() public onlyOwner {
         pause();
-        IMasterChef(masterchef).emergencyWithdraw(poolId);
+        IFairLaunch(fairLaunch).emergencyWithdraw(poolId);
     }
 
     /**
@@ -290,7 +291,7 @@ contract StrategyAlpacaLP is Ownable, Pausable {
     function pause() public onlyOwner {
         _pause();
 
-        IERC20(lpPair).safeApprove(masterchef, 0);
+        IERC20(lpPair).safeApprove(fairLaunch, 0);
         IERC20(cake).safeApprove(unirouter, 0);
         IERC20(wbnb).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
@@ -303,7 +304,7 @@ contract StrategyAlpacaLP is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(lpPair).safeApprove(masterchef, uint(-1));
+        IERC20(lpPair).safeApprove(fairLaunch, uint(-1));
         IERC20(cake).safeApprove(unirouter, uint(-1));
         IERC20(wbnb).safeApprove(unirouter, uint(-1));
 
