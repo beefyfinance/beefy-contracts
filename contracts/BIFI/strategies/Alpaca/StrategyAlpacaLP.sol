@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/alpaca/IFairLaunch.sol";
-import "../../util/GasThrottler.sol";
+import "../../utils/GasThrottler.sol";
 
 /**
  * @dev Implementation of a strategy to get yields from farming an LP from Alpaca.
@@ -45,7 +45,7 @@ contract StrategyAlpacaLP is Ownable, Pausable, GasThrottler {
     /**
      * @dev Third Party Contracts:
      * {unirouter} - PancakeSwap unirouter
-     * {fairLaunch} - FairLaunch contract
+     * {fairLaunch} - Alpaca FairLaunch contract
      * {poolId} - FairLaunch pool id
      */
     address constant public unirouter  = address(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
@@ -146,12 +146,12 @@ contract StrategyAlpacaLP is Ownable, Pausable, GasThrottler {
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
 
         if (pairBal > 0) {
-            IFairLaunch(fairLaunch).deposit(poolId, pairBal);
+            IFairLaunch(fairLaunch).deposit(address(this), poolId, pairBal);
         }
     }
 
     /**
-     * @dev Withdraws funds and sents them back to the vault.
+     * @dev Withdraws funds and sends them back to the vault.
      * It withdraws {lpPair} from the FairLaunch.
      * The available {lpPair} minus fees is returned to the vault.
      */
@@ -161,7 +161,7 @@ contract StrategyAlpacaLP is Ownable, Pausable, GasThrottler {
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
 
         if (pairBal < _amount) {
-            IFairLaunch(fairLaunch).withdraw(poolId, _amount.sub(pairBal));
+            IFairLaunch(fairLaunch).withdraw(address(this), poolId, _amount.sub(pairBal));
             pairBal = IERC20(lpPair).balanceOf(address(this));
         }
 
@@ -181,13 +181,13 @@ contract StrategyAlpacaLP is Ownable, Pausable, GasThrottler {
      * @dev Core function of the strat, in charge of collecting and re-investing rewards.
      * 1. It claims rewards from the FairLaunch.
      * 2. It charges the system fees to simplify the split.
-     * 3. It swaps the {cake} token for {lpToken0} & {lpToken1}
+     * 3. It swaps the {alpaca} token for {lpToken0} & {lpToken1}
      * 4. Adds more liquidity to the pool.
      * 5. It deposits the new LP tokens.
      */
     function harvest() external whenNotPaused gasThrottle {
         require(!Address.isContract(msg.sender), "!contract");
-        IFairLaunch(fairLaunch).deposit(poolId, 0);
+        IFairLaunch(fairLaunch).harvest(poolId);
         chargeFees();
         addLiquidity();
         deposit();
@@ -203,8 +203,8 @@ contract StrategyAlpacaLP is Ownable, Pausable, GasThrottler {
      * 3.0% -> BIFI Holders
      */
     function chargeFees() internal {
-        uint256 toWbnb = IERC20(cake).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), now.add(600));
+        uint256 toWbnb = IERC20(alpaca).balanceOf(address(this)).mul(45).div(1000);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, alpacaToWbnbRoute, address(this), now.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -223,17 +223,17 @@ contract StrategyAlpacaLP is Ownable, Pausable, GasThrottler {
     }
 
     /**
-     * @dev Swaps {cake} for {lpToken0}, {lpToken1} & {wbnb} using PancakeSwap.
+     * @dev Swaps {alpaca} for {lpToken0} and {lpToken1} using PancakeSwap.
      */
     function addLiquidity() internal {
-        uint256 cakeHalf = IERC20(cake).balanceOf(address(this)).div(2);
+        uint256 alpacaHalf = IERC20(alpaca).balanceOf(address(this)).div(2);
 
-        if (lpToken0 != cake) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp0Route, address(this), now.add(600));
+        if (lpToken0 != alpaca) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(alpacaHalf, 0, alpacaToLp0Route, address(this), now.add(600));
         }
 
-        if (lpToken1 != cake) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp1Route, address(this), now.add(600));
+        if (lpToken1 != alpaca) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(alpacaHalf, 0, alpacaToLp1Route, address(this), now.add(600));
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
@@ -292,7 +292,7 @@ contract StrategyAlpacaLP is Ownable, Pausable, GasThrottler {
         _pause();
 
         IERC20(lpPair).safeApprove(fairLaunch, 0);
-        IERC20(cake).safeApprove(unirouter, 0);
+        IERC20(alpaca).safeApprove(unirouter, 0);
         IERC20(wbnb).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
@@ -305,7 +305,7 @@ contract StrategyAlpacaLP is Ownable, Pausable, GasThrottler {
         _unpause();
 
         IERC20(lpPair).safeApprove(fairLaunch, uint(-1));
-        IERC20(cake).safeApprove(unirouter, uint(-1));
+        IERC20(alpaca).safeApprove(unirouter, uint(-1));
         IERC20(wbnb).safeApprove(unirouter, uint(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
