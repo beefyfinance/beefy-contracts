@@ -249,7 +249,7 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
         IFairLaunch(fairLaunch).emergencyWithdraw(poolId);
 
         uint256 sAlpacaBal = IERC20(sAlpaca).balanceOf(address(this));
-        IERC20(sAlpaca).transfer(vault, sAlpacaBal);
+        IERC20(sAlpaca).safeTransfer(vault, sAlpacaBal);
     }
 
     /**
@@ -301,9 +301,25 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
      * @dev Updates address of the strat keeper.
      * @param _keeper new keeper address.
      */
-    function setKeeper(address _keeper) external onlyOwner {
+    function setKeeper(address _keeper) external {
         require(msg.sender == owner() || msg.sender == keeper, "!authorized");
         
         keeper = _keeper;
+    }
+
+    /**
+     * @dev Rescues random funds stuck that the strat can't handle.
+     * @param _token address oof the tkoen to rescue.
+     */
+    function inCaseTokensGetStuck(address _token) external {
+        require(msg.sender == owner() || msg.sender == keeper, "!authorized");
+
+        require(_token != wbnb, "!wbnb");
+        require(_token != bifi, "!bifi");
+        require(_token != alpaca, "!alpaca");
+        require(_token != sAlpaca, "!sAlpaca");
+
+        uint256 amount = IERC20(_token).balanceOf(address(this));
+        IERC20(_token).safeTransfer(msg.sender, amount);
     }
 }

@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
@@ -24,7 +23,6 @@ import "../../utils/GasThrottler.sol";
  */
 contract StrategyAlpacaLP is Ownable, Pausable, GasThrottler {
     using SafeERC20 for IERC20;
-    using Address for address;
     using SafeMath for uint256;
 
     /**
@@ -186,7 +184,6 @@ contract StrategyAlpacaLP is Ownable, Pausable, GasThrottler {
      * 5. It deposits the new LP tokens.
      */
     function harvest() external whenNotPaused gasThrottle {
-        require(!Address.isContract(msg.sender), "!contract");
         IFairLaunch(fairLaunch).harvest(poolId);
         chargeFees();
         addLiquidity();
@@ -274,7 +271,7 @@ contract StrategyAlpacaLP is Ownable, Pausable, GasThrottler {
         IFairLaunch(fairLaunch).emergencyWithdraw(poolId);
 
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
-        IERC20(lpPair).transfer(vault, pairBal);
+        IERC20(lpPair).safeTransfer(vault, pairBal);
     }
 
     /**
