@@ -52,11 +52,13 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
      * {treasury} - Address of the BeefyFinance treasury
      * {vault} - Address of the vault that controls the strategy's funds.
      * {strategist} - Address of the strategy author/deployer where strategist fee will go.
+     * {keeper} - Address used as an alternative maintainer of the strat. Assigned to community multisig.
      */
     address constant public rewards  = address(0x453D4Ba9a2D594314DF88564248497F7D74d6b2C);
     address constant public treasury = address(0x4A32De8c248533C28904b24B4cFCFE18E9F2ad01);
     address public vault;
     address public strategist;
+    address public keeper;
 
     /**
      * @dev Distribution of fees earned. This allocations relative to the % implemented on doSplit().
@@ -157,7 +159,9 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
     /**
      * @dev Harvest to keep the strat working while paused. Helpful in some cases.
      */
-    function sudoHarvest() external onlyOwner {
+    function sudoHarvest() external {
+        require(msg.sender == owner() || msg.sender == keeper, "!authorized");
+
         _harvest();
     }
 
@@ -251,7 +255,9 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
     /**
      * @dev Pauses deposits. Withdraws all funds from the FairLaunch, leaving rewards behind
      */
-    function panic() public onlyOwner {
+    function panic() public {
+        require(msg.sender == owner() || msg.sender == keeper, "!authorized");
+
         pause();
         IFairLaunch(fairLaunch).emergencyWithdraw(poolId);
     }
@@ -259,7 +265,9 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
     /**
      * @dev Pauses the strat.
      */
-    function pause() public onlyOwner {
+    function pause() public {
+        require(msg.sender == owner() || msg.sender == keeper, "!authorized");
+
         _pause();
 
         IERC20(sAlpaca).safeApprove(fairLaunch, 0);
@@ -270,7 +278,9 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
     /**
      * @dev Unpauses the strat.
      */
-    function unpause() external onlyOwner {
+    function unpause() external {
+        require(msg.sender == owner() || msg.sender == keeper, "!authorized");
+
         _unpause();
 
         IERC20(sAlpaca).safeApprove(fairLaunch, uint(-1));
@@ -285,5 +295,15 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
     function setStrategist(address _strategist) external {
         require(msg.sender == strategist, "!strategist");
         strategist = _strategist;
+    }
+
+    /**
+     * @dev Updates address of the strat keeper.
+     * @param _keeper new keeper address.
+     */
+    function setKeeper(address _keeper) external onlyOwner {
+        require(msg.sender == owner() || msg.sender == keeper, "!authorized");
+        
+        keeper = _keeper;
     }
 }
