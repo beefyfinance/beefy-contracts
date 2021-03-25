@@ -64,20 +64,22 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
      * @dev Distribution of fees earned. This allocations relative to the % implemented on doSplit().
      * Current implementation separates 4.5% for fees.
      *
-     * {REWARDS_FEE} - 3% goes to BIFI holders through the {rewards} pool.
-     * {CALL_FEE} - 0.5% goes to whoever executes the harvest function as gas subsidy.
      * {TREASURY_FEE} - 0.5% goes to the treasury.
      * {STRATEGIST_FEE} - 0.5% goes to the strategist.
+     * {callFee} - 0.5% goes to whoever executes the harvest. Can be lowered and the extra goes to the rewards pool.
+     * {rewardsFee} - 3% that goes to BIFI holders. Can be increased by decreasing the {callFee}.
      * {MAX_FEE} - Aux const used to safely calc the correct amounts.
+     * {MAX_CALL_FEE} - Max value that the {callFee} can be configured to. 
      *
      * {WITHDRAWAL_FEE} - Fee taxed when a user withdraws funds. 10 === 0.1% fee.
      * {WITHDRAWAL_MAX} - Aux const used to safely calc the correct amounts.
      */
-    uint constant public REWARDS_FEE    = 665;
-    uint constant public CALL_FEE       = 111;
     uint constant public TREASURY_FEE   = 112;
     uint constant public STRATEGIST_FEE = 112;
-    uint constant public MAX_FEE        = 1000;
+    uint public callFee = 111;
+    uint public rewardsFee = MAX_FEE - TREASURY_FEE - STRATEGIST_FEE - callFee;
+    uint constant public MAX_FEE = 1000;
+    uint constant public MAX_CALL_FEE = 111;
 
     uint constant public WITHDRAWAL_FEE = 10;
     uint constant public WITHDRAWAL_MAX = 10000;
@@ -194,15 +196,15 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
-        uint256 callFee = wbnbBal.mul(CALL_FEE).div(MAX_FEE);
-        IERC20(wbnb).safeTransfer(msg.sender, callFee);
+        uint256 callFeeAmount = wbnbBal.mul(callFee).div(MAX_FEE);
+        IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
 
-        uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
-        IERC20(wbnb).safeTransfer(rewards, rewardsFee);
+        uint256 rewardsFeeAmount = wbnbBal.mul(rewardsFee).div(MAX_FEE);
+        IERC20(wbnb).safeTransfer(rewards, rewardsFeeAmount);
 
         uint256 strategistFee = wbnbBal.mul(STRATEGIST_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(strategist, strategistFee);
@@ -305,6 +307,18 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
         require(msg.sender == owner() || msg.sender == keeper, "!authorized");
         
         keeper = _keeper;
+    }
+
+    /**
+     * @dev Updates the harvest {callFee}. Capped by {MAX_CALL_FEE}.
+     * @param _fee new fee to give harvesters. 
+     */
+    function setCallFee(uint256 _fee) external {
+        require(msg.sender == owner() || msg.sender == keeper, "!authorized");
+        require(_fee < MAX_CALL_FEE, "!cap");
+        
+        callFee = _fee;
+        rewardsFee = MAX_FEE - TREASURY_FEE - STRATEGIST_FEE - callFee;
     }
 
     /**
