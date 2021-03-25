@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
@@ -23,7 +22,6 @@ import "../../utils/GasThrottler.sol";
  */
 contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
     using SafeERC20 for IERC20;
-    using Address for address;
     using SafeMath for uint256;
 
     /**
@@ -150,14 +148,27 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
     }
 
     /**
+     * @dev Public harvest. Doesn't work when the strat is paused.
+     */
+    function harvest() external whenNotPaused {
+        _harvest();
+    }
+
+    /**
+     * @dev Harvest to keep the strat working while paused. Helpful in some cases.
+     */
+    function sudoHarvest() external onlyOwner {
+        _harvest();
+    }
+
+    /**
      * @dev Core function of the strat, in charge of collecting and re-investing rewards.
      * 1. It claims rewards from the FairLaunch.
      * 2. It charges the system fees to simplify the split.
      * 3. It swaps the {alpaca} token for more {sAlpaca}
      * 4. Deposits {sAlpaca} into the FairLaunch again.
      */
-    function harvest() external whenNotPaused gasThrottle {
-        require(!Address.isContract(msg.sender), "!contract");
+    function _harvest() internal gasThrottle {
         IFairLaunch(fairLaunch).harvest(poolId);
         chargeFees();
         swapRewards();
