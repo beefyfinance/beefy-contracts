@@ -40,7 +40,7 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
      * @dev Third Party Contracts:
      * {unirouter} - PancakeSwap unirouter
      * {fairLaunch} - Alpaca FairLaunch contract
-     * {poolId} - FairLaunch pool id
+     * {poolId} - FairLaunch pool id for {sAlpaca}
      */
     address constant public unirouter  = address(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
     address constant public fairLaunch = address(0xA625AB01B08ce023B2a342Dbb12a16f2C8489A8F);
@@ -52,7 +52,7 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
      * {treasury} - Address of the BeefyFinance treasury
      * {vault} - Address of the vault that controls the strategy's funds.
      * {strategist} - Address of the strategy author/deployer where strategist fee will go.
-     * {keeper} - Address used as an alternative maintainer of the strat. Assigned to community multisig.
+     * {keeper} - Address used as an extra strat manager. 
      */
     address constant public rewards  = address(0x453D4Ba9a2D594314DF88564248497F7D74d6b2C);
     address constant public treasury = address(0x4A32De8c248533C28904b24B4cFCFE18E9F2ad01);
@@ -66,8 +66,8 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
      *
      * {TREASURY_FEE} - 0.5% goes to the treasury.
      * {STRATEGIST_FEE} - 0.5% goes to the strategist.
-     * {callFee} - 0.5% goes to whoever executes the harvest. Can be lowered and the extra goes to the rewards pool.
-     * {rewardsFee} - 3% that goes to BIFI holders. Can be increased by decreasing the {callFee}.
+     * {callFee} - 0.5% goes to whoever executes the harvest. Can be lowered.
+     * {rewardsFee} - 3% that goes to BIFI holders. Can be increased by decreasing {callFee}.
      * {MAX_FEE} - Aux const used to safely calc the correct amounts.
      * {MAX_CALL_FEE} - Max value that the {callFee} can be configured to. 
      *
