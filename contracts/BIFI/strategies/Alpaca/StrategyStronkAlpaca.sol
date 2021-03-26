@@ -101,10 +101,14 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
 
     /**
      * @dev Initializes the strategy with the token to maximize.
+     * @param _vault address of the parent vault
+     * @param _strategist address that will receive the {STRATEGIST_FEE}
+     * @param _keeper address that will help manage the strat
      */
-    constructor(address _vault, address _strategist) public {
+    constructor(address _vault, address _strategist, address _keeper) public {
         vault = _vault;
         strategist = _strategist;
+        keeper = _keeper;
 
         IERC20(sAlpaca).safeApprove(fairLaunch, uint(-1));
         IERC20(alpaca).safeApprove(unirouter, uint(-1));

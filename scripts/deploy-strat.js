@@ -7,19 +7,18 @@ const getNetworkRpc = require("../utils/getNetworkRpc");
 const ethers = hardhat.ethers;
 
 const config = {
-  want: "0xF3CE6Aac24980E6B657926dfC79502Ae414d3083",
-  mooName: "Moo Alpaca ALPACA-BNB",
-  mooSymbol: "mooAlpacaALPACA-BNB",
-  poolId: 4,
-  delay: 86400,
+  want: "0x6F695Bd5FFD25149176629f8491A5099426Ce7a7",
+  mooName: "Moo Alpaca sALPACA",
+  mooSymbol: "mooAlpacasALPACA",
+  delay: 21600,
   strategist: "0xB60d9512CC129f539313b7Bdbd13bBa1Fd2fE3C3",
 };
 
 async function main() {
   await hardhat.run("compile");
 
-  const Vault = await ethers.getContractFactory("BeefyVaultV4");
-  const Strategy = await ethers.getContractFactory("StrategyAlpacaLP");
+  const Vault = await ethers.getContractFactory("BeefyVaultV5");
+  const Strategy = await ethers.getContractFactory("StrategyStronkAlpaca");
 
   const [deployer] = await ethers.getSigners();
   const rpc = getNetworkRpc(hardhat.network.name);
@@ -37,14 +36,14 @@ async function main() {
   );
   await vault.deployed();
 
-  const strategy = await Strategy.deploy(config.want, config.poolId, predictedAddresses.vault, config.strategist);
+  const strategy = await Strategy.deploy(predictedAddresses.vault, config.strategist);
   await strategy.deployed();
 
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
 
-  await registerSubsidy(vault.address, deployer);
-  await registerSubsidy(strategy.address, deployer);
+  // await registerSubsidy(vault.address, deployer);
+  // await registerSubsidy(strategy.address, deployer);
 }
 
 main()
