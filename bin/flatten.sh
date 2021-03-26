@@ -10,8 +10,8 @@ echo "// SPDX-License-Identifier: MIT" > tmp/Vault.sol
 # echo "// SPDX-License-Identifier: MIT" > tmp/Pool.sol
 
 
-truffle-flattener contracts/BIFI/vaults/BeefyVaultV4.sol | sed '/SPDX-License-Identifier/d' >> tmp/Vault.sol
-truffle-flattener contracts/BIFI/strategies/Alpaca/StrategyAlpacaLP.sol | sed '/SPDX-License-Identifier/d' >> tmp/Strategy.sol
+truffle-flattener contracts/BIFI/vaults/BeefyVaultV5.sol | sed '/SPDX-License-Identifier/d' >> tmp/Vault.sol
+truffle-flattener contracts/BIFI/strategies/Alpaca/StrategyStronkAlpaca.sol | sed '/SPDX-License-Identifier/d' >> tmp/Strategy.sol
 # # truffle-flattener contracts/BIFI/strategies/Cake/StrategyCakeCommunityLP.sol | sed '/SPDX-License-Identifier/d' >> tmp/Candidate.sol
 # # truffle-flattener contracts/BIFI/experiments/BeefyTreasury.sol | sed '/SPDX-License-Identifier/d' >> tmp/Treasury.sol
 # truffle-flattener contracts/BIFI/strategies/Common/YieldBalancer.sol | sed '/SPDX-License-Identifier/d' >> tmp/Balancer.sol

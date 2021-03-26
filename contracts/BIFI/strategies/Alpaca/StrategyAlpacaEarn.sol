@@ -66,25 +66,23 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
      *
      * {TREASURY_FEE} - 0.5% goes to the treasury.
      * {STRATEGIST_FEE} - 0.5% goes to the strategist.
-     * {MAX_CALL_FEE} - Max value that the {callFee} can be configured to. 
+     * {callFee} - 0.5% goes to whoever executes the harvest. Can be lowered.
+     * {rewardsFee} - 3% that goes to BIFI holders. Can be increased by decreasing {callFee}.
      * {MAX_FEE} - Aux const used to safely calc the correct amounts.
+     * {MAX_CALL_FEE} - Max value that the {callFee} can be configured to. 
      *
      * {WITHDRAWAL_FEE} - Fee taxed when a user withdraws funds. 10 === 0.1% fee.
      * {WITHDRAWAL_MAX} - Aux const used to safely calc the correct amounts.
-     *
-     * {callFee} - 0.5% goes to whoever executes the harvest. Can be lowered.
-     * {rewardsFee} - 3% that goes to BIFI holders. Can be increased by decreasing {callFee}.
      */
     uint constant public TREASURY_FEE   = 112;
     uint constant public STRATEGIST_FEE = 112;
+    uint public callFee = 111;
+    uint public rewardsFee = MAX_FEE - TREASURY_FEE - STRATEGIST_FEE - callFee;
     uint constant public MAX_FEE = 1000;
     uint constant public MAX_CALL_FEE = 111;
 
     uint constant public WITHDRAWAL_FEE = 10;
     uint constant public WITHDRAWAL_MAX = 10000;
-
-    uint public callFee = 111;
-    uint public rewardsFee = MAX_FEE - TREASURY_FEE - STRATEGIST_FEE - callFee;
 
     /**
      * @dev Routes we take to swap tokens using PancakeSwap.
@@ -321,7 +319,7 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
      */
     function setCallFee(uint256 _fee) external {
         require(msg.sender == owner() || msg.sender == keeper, "!authorized");
-        require(_fee <= MAX_CALL_FEE, "!cap");
+        require(_fee < MAX_CALL_FEE, "!cap");
         
         callFee = _fee;
         rewardsFee = MAX_FEE - TREASURY_FEE - STRATEGIST_FEE - callFee;
@@ -334,8 +332,6 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
     function inCaseTokensGetStuck(address _token) external {
         require(msg.sender == owner() || msg.sender == keeper, "!authorized");
 
-        require(_token != wbnb, "!wbnb");
-        require(_token != bifi, "!bifi");
         require(_token != alpaca, "!alpaca");
         require(_token != sAlpaca, "!sAlpaca");
 

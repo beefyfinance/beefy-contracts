@@ -194,7 +194,7 @@ contract BeefyVaultV5 is ERC20, Ownable {
      * @param _token address of the token to rescue.
      */
     function inCaseTokensGetStuck(address _token) external onlyOwner {
-        require(_token != token, "!token");
+        require(_token != address(token), "!token");
 
         uint256 amount = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransfer(msg.sender, amount);
