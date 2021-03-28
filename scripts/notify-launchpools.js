@@ -3,9 +3,9 @@ const ethers = hardhat.ethers;
 
 const pools = [
   {
-    name: "NUTS",
-    launchpool: "0x02e2B4212b8F5610E2ab548cB680cb58E61056F6",
-    amount: "19000000000000000000000",
+    name: "ASTRONAUT",
+    launchpool: "0x47F7CbE34aD6f857662759CDAECC48152237d135",
+    amount: "9511021900000",
   },
 ];
 
