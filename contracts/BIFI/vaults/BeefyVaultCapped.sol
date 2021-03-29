@@ -48,6 +48,7 @@ contract BeefyVaultV5 is ERC20, Ownable {
      * @param _name the name of the vault token.
      * @param _symbol the symbol of the vault token.
      * @param _approvalDelay the delay before a new strat can be approved.
+     * @param _depositCap max amount of funds that the vault can manage.
      */
     constructor (
         address _token, 
