@@ -266,8 +266,8 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
     function panic() public {
         require(msg.sender == owner() || msg.sender == keeper, "!authorized");
 
-        pause();
         IFairLaunch(fairLaunch).emergencyWithdraw(poolId);
+        pause();
     }
 
     /**

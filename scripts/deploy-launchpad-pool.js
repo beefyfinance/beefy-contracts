@@ -6,10 +6,10 @@ const ethers = hardhat.ethers;
 
 const pools = [
   {
-    name: "NUTS Pool",
-    stakedToken: "0x3B5332A476AbCdb80Cde6645e9e5563435e97772",
-    rewardsToken: "0x8893D5fA71389673C5c4b9b3cb4EE1ba71207556",
-    durationInSec: 432000,
+    name: "Astronaut Pool",
+    stakedToken: "0x5B06aA1ebd2e15bC6001076355E5B4C39Cbc83F3",
+    rewardsToken: "0x05B339B0A346bF01f851ddE47a5d485c34FE220c",
+    durationInSec: 604800,
     capPerAddr: "10000000000000000000000000000000000",
   },
 ];
