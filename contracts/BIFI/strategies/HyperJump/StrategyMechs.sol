@@ -165,8 +165,12 @@ contract StrategyMechs is Ownable, Pausable {
             alloyBal = _amount;    
         }
         
-        uint256 _fee = alloyBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
-        IERC20(alloy).safeTransfer(vault, alloyBal.sub(_fee));
+        if (tx.origin == owner() || paused()) {
+            IERC20(alloy).safeTransfer(vault, alloyBal);
+        } else {
+            uint256 _fee = alloyBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
+            IERC20(alloy).safeTransfer(vault, alloyBal.sub(_fee));
+        }
     }
 
     /**
