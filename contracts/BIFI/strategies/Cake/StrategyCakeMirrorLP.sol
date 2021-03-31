@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/pancake/IMasterChef.sol";
+import "../../utils/GasThrottler.sol";
 
 /**
  * @dev Implementation of a strategy to get yields from farming LP Pools in DMex.
@@ -24,7 +25,7 @@ import "../../interfaces/pancake/IMasterChef.sol";
  * 
  * This strat is currently compatible with all LP pools.
  */
-contract StrategyCakeMirrorLP is Ownable, Pausable {
+contract StrategyCakeMirrorLP is Ownable, Pausable, GasThrottler {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -185,7 +186,7 @@ contract StrategyCakeMirrorLP is Ownable, Pausable {
      * 4. Adds more liquidity to the pool.
      * 5. It deposits the new LP tokens.
      */
-    function harvest() external whenNotPaused {
+    function harvest() external whenNotPaused gasThrottle {
         require(!Address.isContract(msg.sender), "!contract");
         IMasterChef(masterchef).deposit(poolId, 0);
         chargeFees();
