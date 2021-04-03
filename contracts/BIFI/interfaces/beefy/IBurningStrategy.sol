@@ -10,4 +10,7 @@ interface IBurningStrategy {
     function balanceOf() external view returns (uint256);
     function retireStrat() external;
     function harvest() external;
+    function panic() external;
+    function pause() external;
+    function unpause() external;
 }
