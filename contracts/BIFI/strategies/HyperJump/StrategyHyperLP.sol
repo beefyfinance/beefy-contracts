@@ -238,6 +238,13 @@ contract StrategyHyperLP is Ownable, Pausable {
     }
 
     /**
+     * @dev Function to synchronize AutoFarm balance of {lpPair}.
+     * Can be called by the vault before minting shares.
+     * No-op as underlying Auto strategy doesn't need to be synced
+     */
+    function updateBalance() public {}
+
+    /**
      * @dev Function to calculate the total underlaying {lpPair} held by the strat.
      * It takes into account both the funds in hand, as the funds allocated in the HyperCity.
      */
