@@ -4,34 +4,26 @@ const registerSubsidy = require("../utils/registerSubsidy");
 
 const ethers = hardhat.ethers;
 
-const pools = [
-  {
-    stakedToken: "0xb35Dc0b5eFd7c75590a9da55BE46d968c5804e24",
-    rewardsToken: "0x9768E5b2d8e761905BC81Dfc554f9437A46CdCC6",
-    days: 5,
-    capPerAddr: "10000000000000000000000000000000000",
-  },
-];
+const pool = {
+  stakedToken: "0x4d1A2b3119895d887b87509693338b86730bCE06",
+  rewardsToken: "0xA25Dab5B75aC0E0738E58E49734295baD43d73F1",
+  days: 5,
+  capPerAddr: "10000000000000000000000000000000000",
+};
 
 async function main() {
   await hardhat.run("compile");
 
   const Launchpad = await ethers.getContractFactory("BeefyLaunchpadPool");
 
-  for (pool of pools) {
-    console.log("Deploying...");
+  console.log("Deploying...");
 
-    const [deployer] = await ethers.getSigners();
+  const durationInSec = 3600 * 24 * pool.days;
 
-    const durationInSec = 3600 * 24 * pool.days;
+  const launchpad = await Launchpad.deploy(pool.stakedToken, pool.rewardsToken, durationInSec, pool.capPerAddr);
+  await launchpad.deployed();
 
-    const launchpad = await Launchpad.deploy(pool.stakedToken, pool.rewardsToken, durationInSec, pool.capPerAddr);
-    await launchpad.deployed();
-
-    console.log("Launchpad pool deployed to:", launchpad.address);
-
-    await registerSubsidy(launchpad.address, deployer);
-  }
+  console.log("Launchpad pool deployed to:", launchpad.address);
 }
 
 main()
