@@ -6,10 +6,9 @@ const ethers = hardhat.ethers;
 
 const pools = [
   {
-    name: "Astronaut Pool",
-    stakedToken: "0x5B06aA1ebd2e15bC6001076355E5B4C39Cbc83F3",
-    rewardsToken: "0x05B339B0A346bF01f851ddE47a5d485c34FE220c",
-    durationInSec: 604800,
+    stakedToken: "0xb35Dc0b5eFd7c75590a9da55BE46d968c5804e24",
+    rewardsToken: "0x9768E5b2d8e761905BC81Dfc554f9437A46CdCC6",
+    days: 5,
     capPerAddr: "10000000000000000000000000000000000",
   },
 ];
@@ -20,11 +19,13 @@ async function main() {
   const Launchpad = await ethers.getContractFactory("BeefyLaunchpadPool");
 
   for (pool of pools) {
-    console.log("Deploying:", pool.name);
+    console.log("Deploying...");
 
     const [deployer] = await ethers.getSigners();
 
-    const launchpad = await Launchpad.deploy(pool.stakedToken, pool.rewardsToken, pool.durationInSec, pool.capPerAddr);
+    const durationInSec = 3600 * 24 * pool.days;
+
+    const launchpad = await Launchpad.deploy(pool.stakedToken, pool.rewardsToken, durationInSec, pool.capPerAddr);
     await launchpad.deployed();
 
     console.log("Launchpad pool deployed to:", launchpad.address);
