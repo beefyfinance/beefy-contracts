@@ -85,6 +85,11 @@ contract StrategyAutoVenus is Ownable, Pausable, GasThrottler {
     address[] public autoToWantRoute;
 
     /**
+     * @dev If rewards are locked in AutoFarm, retire() will use emergencyWithdraw.
+     */
+    bool public rewardsLocked = false;
+
+    /**
      * @dev Event that is fired each time someone harvests the strat.
      */
     event StratHarvest(address indexed harvester);
@@ -235,20 +240,25 @@ contract StrategyAutoVenus is Ownable, Pausable, GasThrottler {
      */
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
+        if (rewardsLocked) {
+            _retireStratEmergency();
+        } else {
+            _retireStrat();
+        }
+    }
 
+    function setRewardsLocked(bool _rewardsLocked) external onlyOwner {
+        rewardsLocked = _rewardsLocked;
+    }
+
+    function _retireStrat() internal {
         IAutoFarmV2(autofarm).withdraw(poolId, uint(-1));
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
     }
 
-    /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
-     * vault, ready to be migrated to the new strat.
-     */
-    function retireStratEmergency() external {
-        require(msg.sender == vault, "!vault");
-
+    function _retireStratEmergency() internal {
         IAutoFarmV2(autofarm).emergencyWithdraw(poolId);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
