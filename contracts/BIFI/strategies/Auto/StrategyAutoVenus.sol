@@ -12,11 +12,12 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/auto/IAutoFarmV2.sol";
 import "../../interfaces/auto/IStratVLEV.sol";
+import "../../utils/GasThrottler.sol";
 
 /**
  * @dev Strategy to farm single tokens through AutoFarm contract.
  */
-contract StrategyAutoVenus is Ownable, Pausable {
+contract StrategyAutoVenus is Ownable, Pausable, GasThrottler {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -153,7 +154,7 @@ contract StrategyAutoVenus is Ownable, Pausable {
      * 3. It charges the system fee and sends it to BIFI stakers.
      * 4. It re-invests the remaining profits.
      */
-    function harvest() external whenNotPaused {
+    function harvest() external whenNotPaused gasThrottle {
         require(!Address.isContract(msg.sender), "!contract");
         IAutoFarmV2(autofarm).deposit(poolId, 0);
         chargeFees();
@@ -235,6 +236,19 @@ contract StrategyAutoVenus is Ownable, Pausable {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
+        IAutoFarmV2(autofarm).withdraw(poolId, uint(-1));
+
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        IERC20(want).transfer(vault, wantBal);
+    }
+
+    /**
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
+     * vault, ready to be migrated to the new strat.
+     */
+    function retireStratEmergency() external {
+        require(msg.sender == vault, "!vault");
+
         IAutoFarmV2(autofarm).emergencyWithdraw(poolId);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
@@ -245,6 +259,14 @@ contract StrategyAutoVenus is Ownable, Pausable {
      * @dev Pauses deposits. Withdraws all funds from the MasterChef, leaving rewards behind
      */
     function panic() public onlyOwner {
+        pause();
+        IAutoFarmV2(autofarm).withdraw(poolId, uint(-1));
+    }
+
+    /**
+     * @dev Pauses deposits. Withdraws all funds from the MasterChef, leaving rewards behind
+     */
+    function panicEmergency() public onlyOwner {
         pause();
         IAutoFarmV2(autofarm).emergencyWithdraw(poolId);
     }
