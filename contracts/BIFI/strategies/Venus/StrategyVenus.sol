@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/venus/IUnitroller.sol";
 import "../../interfaces/venus/IVToken.sol";
+import "../../utils/GasThrottler.sol";
 
 /**
  * @title Strategy Venus
@@ -19,7 +20,7 @@ import "../../interfaces/venus/IVToken.sol";
  * @dev It maximizes yields doing leveraged lending with a single configurable BEP20 asset 
  * on the Venus lending platform. 
  */
-contract StrategyVenus is Ownable, Pausable {
+contract StrategyVenus is Ownable, Pausable, GasThrottler {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -266,7 +267,7 @@ contract StrategyVenus is Ownable, Pausable {
      * 4. It swaps the remaining rewards into more {want}.
      * 4. It re-invests the remaining profits.
      */
-    function harvest() external whenNotPaused {
+    function harvest() external whenNotPaused gasThrottle {
         require(!Address.isContract(msg.sender), "!contract");
 
         IUnitroller(unitroller).claimVenus(address(this));
