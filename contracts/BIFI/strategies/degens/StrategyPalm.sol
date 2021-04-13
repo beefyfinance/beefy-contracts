@@ -181,11 +181,12 @@ contract StrategyPalm is Ownable, Pausable, GasThrottler {
     }
 
     /**
-     * @dev Function to synchronize balance of {lpPair}.
-     * Can be called by the vault before minting shares.
-     * No-op as underlying contract doesn't need to be synced
+     * @dev Function to synchronize balance of {want}.
+     * It harvests pending rewards from the pool.
      */
-    function updateBalance() public {}
+    function updateBalance() public {
+        IMasterChef(masterchef).leaveStaking(0);
+    }
 
     /**
      * @dev Function to calculate the total underlying {want} held by the strat.
