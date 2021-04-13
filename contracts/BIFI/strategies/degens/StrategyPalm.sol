@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
@@ -18,7 +17,6 @@ import "../../utils/GasThrottler.sol";
  */
 contract StrategyPalm is Ownable, Pausable, GasThrottler {
     using SafeERC20 for IERC20;
-    using Address for address;
     using SafeMath for uint256;
 
     /**
@@ -144,13 +142,15 @@ contract StrategyPalm is Ownable, Pausable, GasThrottler {
      * 3. It charges the system fee and sends it to BIFI stakers.
      * 4. It re-invests the remaining profits.
      */
-    function harvest() external whenNotPaused gasThrottle {
-        require(!Address.isContract(msg.sender), "!contract");
+    function harvest() public whenNotPaused gasThrottle {
+        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
         IMasterChef(masterchef).leaveStaking(0);
-        chargeFees();
-        deposit();
-
-        emit StratHarvest(msg.sender);
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        if (wantBal > 0) {
+            chargeFees();
+            deposit();
+            emit StratHarvest(msg.sender);
+        }
     }
 
     /**
@@ -185,7 +185,7 @@ contract StrategyPalm is Ownable, Pausable, GasThrottler {
      * It harvests pending rewards from the pool.
      */
     function updateBalance() public {
-        IMasterChef(masterchef).leaveStaking(0);
+        harvest();
     }
 
     /**
