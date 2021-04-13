@@ -144,7 +144,7 @@ contract StrategyPalm is Ownable, Pausable, GasThrottler {
      * 3. It charges the system fee and sends it to BIFI stakers.
      * 4. It re-invests the remaining profits.
      */
-    function harvest() external whenNotPaused {
+    function harvest() external whenNotPaused gasThrottle {
         require(!Address.isContract(msg.sender), "!contract");
         IMasterChef(masterchef).leaveStaking(0);
         chargeFees();
