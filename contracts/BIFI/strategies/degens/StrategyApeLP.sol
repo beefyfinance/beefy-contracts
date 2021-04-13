@@ -12,13 +12,14 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/pancake/IMasterChef.sol";
+import "../../utils/GasThrottler.sol";
 
 /**
  * @dev Implementation of a strategy to get yields from farming LP Pools in ApeSwap.
  *
  * This strat is currently compatible with all LP pools.
  */
-contract StrategyApeLP is Ownable, Pausable {
+contract StrategyApeLP is Ownable, Pausable, GasThrottler {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -154,7 +155,7 @@ contract StrategyApeLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Withdraws funds and sents them back to the vault.
+     * @dev Withdraws funds and sends them back to the vault.
      * It withdraws {lpPair} from the MasterChef.
      * The available {lpPair} minus fees is returned to the vault.
      */
@@ -172,8 +173,12 @@ contract StrategyApeLP is Ownable, Pausable {
             pairBal = _amount;
         }
 
-        uint256 withdrawalFee = pairBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
-        IERC20(lpPair).safeTransfer(vault, pairBal.sub(withdrawalFee));
+        if (tx.origin == owner() || paused()) {
+            IERC20(lpPair).safeTransfer(vault, pairBal);
+        } else {
+            uint256 withdrawalFee = pairBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
+            IERC20(lpPair).safeTransfer(vault, pairBal.sub(withdrawalFee));
+        }
     }
 
     /**
@@ -184,7 +189,7 @@ contract StrategyApeLP is Ownable, Pausable {
      * 4. Adds more liquidity to the pool.
      * 5. It deposits the new LP tokens.
      */
-    function harvest() external whenNotPaused {
+    function harvest() external whenNotPaused gasThrottle {
         require(!Address.isContract(msg.sender), "!contract");
         IMasterChef(masterchef).deposit(poolId, 0);
         chargeFees();
@@ -241,7 +246,7 @@ contract StrategyApeLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Function to calculate the total underlaying {lpPair} held by the strat.
+     * @dev Function to calculate the total underlying {lpPair} held by the strat.
      * It takes into account both the funds in hand, as the funds allocated in the MasterChef.
      */
     function balanceOf() public view returns (uint256) {
