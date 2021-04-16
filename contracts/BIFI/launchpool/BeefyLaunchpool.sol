@@ -6,10 +6,9 @@ import "@openzeppelin-2/contracts/ownership/Ownable.sol";
 
 import "../utils/LPTokenWrapper.sol";
 
-contract BeefyLaunchpadPool is LPTokenWrapper, Ownable {
+contract BeefyLaunchpool is LPTokenWrapper, Ownable {
     IERC20 public rewardToken;
     uint256 public duration;
-    uint256 public capPerAddr;
 
     uint256 public periodFinish = 0;
     uint256 public rewardRate = 0;
@@ -23,13 +22,12 @@ contract BeefyLaunchpadPool is LPTokenWrapper, Ownable {
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
 
-    constructor(address _stakedToken, address _rewardToken,  uint256 _duration, uint256 _capPerAddr)
+    constructor(address _stakedToken, address _rewardToken,  uint256 _duration)
         public
         LPTokenWrapper(_stakedToken)
     {
         rewardToken = IERC20(_rewardToken);
         duration = _duration;
-        capPerAddr = _capPerAddr;
     }
 
     modifier updateReward(address account) {
@@ -71,7 +69,6 @@ contract BeefyLaunchpadPool is LPTokenWrapper, Ownable {
     // stake visibility is public as overriding LPTokenWrapper's stake() function
     function stake(uint256 amount) public updateReward(msg.sender) {
         require(amount > 0, "Cannot stake 0");
-        require(balanceOf(msg.sender).add(amount) <= capPerAddr, "Cap reached");
         super.stake(amount);
         emit Staked(msg.sender, amount);
     }
