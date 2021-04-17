@@ -5,26 +5,27 @@ pragma solidity ^0.6.12;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/pancake/IMasterChef.sol";
-import "./BeefyStrategy.sol";
+import "./StratManager.sol";
+import "./FeeManager.sol";
 
 /*
     Implement:
     - Should work [ ] 
     - Exclusive deposit from balancer. [ ] 
     - Optional delegateCompounding(). [ ] 
-    - Can't deposit() iin less than 3 days. [ ] 
+    - Can't deposit() in less than 3 days. [ ] 
     - Add strategist and other new features. [ ] 
     - Implement base strat manager. [ ] 
     - Implement correct emergencyWithdrawal [ ]
+    - make sure we take EVERY instance of value into account for balanceOf()
+    - make retireStrat work [ ]
 */ 
 
-contract StrategyBunnyCake is BeefyStrategy {
+contract StrategyBunnyCake is FeeManager, StratManager {
     using SafeERC20 for IERC20;
-    using Address for address;
     using SafeMath for uint256;
 
     // Tokens used
@@ -42,67 +43,33 @@ contract StrategyBunnyCake is BeefyStrategy {
     address constant public treasury = address(0x4A32De8c248533C28904b24B4cFCFE18E9F2ad01);
     address public vault;
 
-    /**
-     * @dev Distribution of fees earned. This allocations relative to the % implemented on chargeFees().
-     * Current implementation separates 6% for fees.
-     *
-     * {REWARDS_FEE} - 4% goes to BIFI holders through the {rewardPool}.
-     * {CALL_FEE} - 0.5% goes to whoever executes the harvest function as gas subsidy.
-     * {TREASURY_FEE} - 1.5% goes to the community managed beefy {treasury}.
-     * {MAX_FEE} - Aux const used to safely calc the correct amounts.
-     *
-     * {WITHDRAWAL_FEE} - Fee taxed when a user withdraws funds. 10 === 0.1% fee.
-     * {WITHDRAWAL_MAX} - Aux const used to safely calc the correct amounts.
-     */
-    uint constant public REWARDS_FEE  = 667;
-    uint constant public CALL_FEE     = 83;
-    uint constant public TREASURY_FEE = 250;
-    uint constant public MAX_FEE      = 1000;
-
-    uint constant public WITHDRAWAL_FEE = 10;
-    uint constant public WITHDRAWAL_MAX = 10000;
-
     // Routes
     address[] public bunnyToCakeRoute = [bunny, cake];
     address[] public cakeToWbnbRoute = [cake, wbnb];
     address[] public wbnbToBifiRoute = [wbnb, bifi];
 
-    /**
-     * @dev Initializes the strategy with the token that it will look to maximize.
-     * @param _vault Address of parent vault
-     */
+    // @param _vault Address of parent vault
     constructor(address _vault) public {
         vault = _vault;
 
         _giveAllowances();
     }
 
-    /**
-     * @dev Function that puts the funds to work.
-     * It gets called whenever someone deposits in the strategy's vault contract.
-     * It deposits cake in the MasterChef to earn rewards in cake.
-     */
     function deposit() public whenNotPaused {
         uint256 cakeBal = IERC20(cake).balanceOf(address(this));
 
         if (cakeBal > 0) {
-            IMasterChef(masterchef).enterStaking(cakeBal);
+            IBunnyVault(bunnyVault).deposit(cakeBal);
         }
     }
 
-    /**
-     * @dev It withdraws {cake} from the MasterChef and sends it to the vault. The contract owner
-     * doesn't pay withdrawal fees. It makes it so that this strat can also be used as a worker 
-     * under a YieldBalancer.
-     * @param _amount How much {cake} to withdraw.
-     */
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
         uint256 cakeBal = IERC20(cake).balanceOf(address(this));
 
         if (cakeBal < _amount) {
-            IMasterChef(masterchef).leaveStaking(_amount.sub(cakeBal));
+            IBunnyVault(bunnyVault).withdrawUnderlying(_amount.sub(cakeBal));
             cakeBal = IERC20(cake).balanceOf(address(this));
         }
 
@@ -110,7 +77,7 @@ contract StrategyBunnyCake is BeefyStrategy {
             cakeBal = _amount;    
         }
         
-        if (tx.origin == owner()) {
+        if (tx.origin == owner() || paused()) {
             IERC20(cake).safeTransfer(vault, cakeBal); 
         } else {
             uint256 withdrawalFee = cakeBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
@@ -118,23 +85,32 @@ contract StrategyBunnyCake is BeefyStrategy {
         }
     }
 
-    // Core function of the strat, in charge of collecting and re-investing rewards.
-    function harvest() external whenNotPaused {
-        require(!Address.isContract(msg.sender), "!contract");
-        IMasterChef(masterchef).leaveStaking(0);
-        chargeFees();
+    function harvest() external whenNotPaused onlyEOA {
+        _harvest();
+    }
+
+    function managerHarvest() external onlyManager {
+        harvest();
+    }
+
+    function _harvest() internal {
+        IBunnyVault(bunnyVault).getRewards();
+        _chargeFees();
         deposit();
     }
 
     // Performance fees
-    function chargeFees() internal {
+    function _chargeFees() internal {
+        uint256 toCake = IERC20(bunny).balanceOf(address(this));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toCake, 0, bunnyToCakeRoute, address(this), now.add(600));
+
         uint256 toWbnb = IERC20(cake).balanceOf(address(this)).mul(6).div(100);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), now.add(600));
     
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
         
-        uint256 callFee = wbnbBal.mul(CALL_FEE).div(MAX_FEE);
-        IERC20(wbnb).safeTransfer(msg.sender, callFee);
+        uint256 callFeeAmount = wbnbBal.mul(callFee).div(MAX_FEE);
+        IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
         
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
@@ -142,24 +118,24 @@ contract StrategyBunnyCake is BeefyStrategy {
         
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewardPool, rewardsFee);
+
+        uint256 strategistFee = wbnbBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(wbnb).safeTransfer(strategist, strategistFee);
     }
 
-    /**
-     * @dev Function to calculate the total underlaying {cake} held by the strat.
-     * It takes into account both the funds in hand, as the funds allocated in the MasterChef.
-     */
+
+    // Calculate the total underlaying {cake} held by the strat.
     function balanceOf() public view returns (uint256) {
         return balanceOfCake().add(balanceOfPool());
     }
 
-    /**
-     * @dev It calculates how much {cake} the contract holds.
-     */
+
+    // It calculates how much {cake} the contract holds.
     function balanceOfCake() public view returns (uint256) {
         return IERC20(cake).balanceOf(address(this));
     }
 
-    // It calculates how much {cake} the strategy has allocated in the MasterChef
+    // It calculates how much {cake} the strategy has allocated in the {bunnyVault}
     function balanceOfPool() public view returns (uint256) {
         (uint256 _amount, ) = IMasterChef(masterchef).userInfo(0, address(this));
         return _amount;
@@ -196,15 +172,15 @@ contract StrategyBunnyCake is BeefyStrategy {
 
     function _giveAllowances() internal {
         IERC20(bunny).safeApprove(unirouter, uint(-1));
-        IERC20(cake).safeApprove(unirouter, uint(-1));
         IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(cake).safeApprove(unirouter, uint(-1));
         IERC20(cake).safeApprove(bunnyVault, uint(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(bunny).safeApprove(unirouter, 0);
-        IERC20(cake).safeApprove(unirouter, 0);
         IERC20(wbnb).safeApprove(unirouter, 0);
+        IERC20(cake).safeApprove(unirouter, 0);
         IERC20(cake).safeApprove(bunnyVault, 0);
     }
 

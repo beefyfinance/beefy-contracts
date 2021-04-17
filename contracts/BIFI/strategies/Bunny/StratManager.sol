@@ -5,7 +5,7 @@ pragma solidity ^0.6.12;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
-contract BeefyStrategy is Ownable, Pausable {
+contract StratManager is Ownable, Pausable {
     /**
      * @dev Beefy Contracts:
      * {keeper} - Address used as an extra owner. Should be a community multisig.
