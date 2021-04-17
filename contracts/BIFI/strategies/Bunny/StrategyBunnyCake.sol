@@ -2,15 +2,14 @@
 
 pragma solidity ^0.6.12;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/pancake/IMasterChef.sol";
+import "./BeefyStrategy.sol";
 
 /*
     Implement:
@@ -23,7 +22,7 @@ import "../../interfaces/pancake/IMasterChef.sol";
     - Implement correct emergencyWithdrawal [ ]
 */ 
 
-contract StrategyBunnyCake is Ownable, Pausable {
+contract StrategyBunnyCake is BeefyStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -160,18 +159,13 @@ contract StrategyBunnyCake is Ownable, Pausable {
         return IERC20(cake).balanceOf(address(this));
     }
 
-    /**
-     * @dev It calculates how much {cake} the strategy has allocated in the MasterChef
-     */
+    // It calculates how much {cake} the strategy has allocated in the MasterChef
     function balanceOfPool() public view returns (uint256) {
         (uint256 _amount, ) = IMasterChef(masterchef).userInfo(0, address(this));
         return _amount;
     }
 
-    /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
-     * vault, ready to be migrated to the new strat.
-     */ 
+    // Called as part of strat migration. Sends all the available funds back to the vault.
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
@@ -181,36 +175,25 @@ contract StrategyBunnyCake is Ownable, Pausable {
         IERC20(cake).transfer(vault, cakeBal);
     }
 
-    /**
-     * @dev Pauses deposits. Withdraws all funds from the MasterChef, leaving rewards behind
-     */
-    function panic() external onlyOwner {
+    // Pauses deposits and withdraws all funds from third party systems.
+    function panic() external onlyManager {
         IMasterChef(masterchef).emergencyWithdraw(0);
 
         pause();
     }
 
-    /**
-     * @dev Pauses the strat.
-     */
-    function pause() public onlyOwner {
+    function pause() public onlyManager {
         _pause();
 
         _removeAllowances();
     }
 
-    /**
-     * @dev Unpauses the strat.
-     */
-    function unpause() external onlyOwner {
+    function unpause() external onlyManager {
         _unpause();
 
         _giveAllowances();
     }
 
-    /**
-     * @dev Gives allowances to underlying systems.
-     */
     function _giveAllowances() internal {
         IERC20(bunny).safeApprove(unirouter, uint(-1));
         IERC20(cake).safeApprove(unirouter, uint(-1));
@@ -218,9 +201,6 @@ contract StrategyBunnyCake is Ownable, Pausable {
         IERC20(cake).safeApprove(bunnyVault, uint(-1));
     }
 
-    /**
-     * @dev Removes allowances from underlying systems.
-     */
     function _removeAllowances() internal {
         IERC20(bunny).safeApprove(unirouter, 0);
         IERC20(cake).safeApprove(unirouter, 0);
@@ -228,16 +208,9 @@ contract StrategyBunnyCake is Ownable, Pausable {
         IERC20(cake).safeApprove(bunnyVault, 0);
     }
 
-    /**
-     * @notice Rescues tokens stuck that the strat can't handle.
-     * @dev Can be overriden in case you need to add extra exceptions.
-     * @param _token address of the token to rescue.
-     */
-    function inCaseTokensGetStuck(address _token) external virtual onlyManager {
-        require(_token != wbnb, "!wbnb");
-        require(_token != bifi, "!bifi");
-        require(_token != output, "!output");
-        require(_token != want, "!want");
+    function inCaseTokensGetStuck(address _token) external onlyManager {
+        require(_token != cake, "!safe");
+        require(_token != bunny, "!safe");
 
         uint256 amount = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransfer(msg.sender, amount);
