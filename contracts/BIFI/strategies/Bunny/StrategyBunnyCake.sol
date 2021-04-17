@@ -11,13 +11,15 @@ import "../../interfaces/pancake/IMasterChef.sol";
 import "./StratManager.sol";
 import "./FeeManager.sol";
 import "../../utils/GasThrottler.sol";
+
 /*
     Special Features:
     - Exclusive deposit from balancer [ ] 
     - Optional delegateCompounding() [ ] 
     - Can't deposit() in less than 3 days [ ] 
     - make sure we take EVERY instance of value into account for balanceOf() [ ]
-    - Can their DUST const lock our funds?
+    - Can their DUST const lock our funds? [ ]
+    - Add function with large delay that can execute any code? [ ]
 */ 
 
 contract StrategyBunnyCake is FeeManager, StratManager, GasThrottler {
@@ -44,8 +46,16 @@ contract StrategyBunnyCake is FeeManager, StratManager, GasThrottler {
     address[] public cakeToWbnbRoute = [cake, wbnb];
     address[] public wbnbToBifiRoute = [wbnb, bifi];
 
-    // @param _vault Address of parent vault
-    constructor(address _vault) public {
+    /*
+     @param _vault Address of parent vault
+     @param _keeper Address of extra maintainer
+     @param _strategist Address where stategist fees go.
+    */
+    constructor(
+        address _vault, 
+        address _keeper, 
+        address _strategist
+    ) StratManager(_keeper, _strategist) public {
         vault = _vault;
 
         _giveAllowances();
