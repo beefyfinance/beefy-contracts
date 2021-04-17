@@ -11,6 +11,7 @@ import "../../interfaces/pancake/IMasterChef.sol";
 import "./StratManager.sol";
 import "./FeeManager.sol";
 import "../../utils/GasThrottler.sol";
+import "../../interfaces/bunny/IBunnyVault.sol";
 
 /*
     Special Features:
@@ -22,7 +23,7 @@ import "../../utils/GasThrottler.sol";
     - Add function with large delay that can execute any code? [ ]
 */ 
 
-contract StrategyBunnyCake is FeeManager, StratManager, GasThrottler {
+contract StrategyBunnyCake is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -114,8 +115,8 @@ contract StrategyBunnyCake is FeeManager, StratManager, GasThrottler {
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
         
-        uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
-        IERC20(wbnb).safeTransfer(rewardPool, rewardsFee);
+        uint256 rewardsFeeAmount = wbnbBal.mul(rewardsFee).div(MAX_FEE);
+        IERC20(wbnb).safeTransfer(rewardPool, rewardsFeeAmount);
 
         uint256 strategistFee = wbnbBal.mul(STRATEGIST_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(strategist, strategistFee);

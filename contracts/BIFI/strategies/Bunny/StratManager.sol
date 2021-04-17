@@ -23,7 +23,7 @@ contract StratManager is Ownable, Pausable {
     constructor(        
         address _keeper, 
         address _strategist
-    ) external {
+    ) public {
         keeper = _keeper;
         strategist = _strategist;
     }
