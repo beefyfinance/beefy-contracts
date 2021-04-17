@@ -42,7 +42,7 @@ contract StrategyBunnyCake is FeeManager, StratManager, GasThrottler {
     address public vault;
 
     // Routes
-    address[] public bunnyToCakeRoute = [bunny, cake];
+    address[] public bunnyToCakeRoute = [bunny, wbnb, cake];
     address[] public cakeToWbnbRoute = [cake, wbnb];
     address[] public wbnbToBifiRoute = [wbnb, bifi];
 
@@ -62,7 +62,7 @@ contract StrategyBunnyCake is FeeManager, StratManager, GasThrottler {
     }
 
     function deposit() public whenNotPaused {
-        uint256 cakeBal = IERC20(cake).balanceOf(address(this));
+        uint256 cakeBal = balanceOfCake();
 
         if (cakeBal > 0) {
             IBunnyVault(bunnyVault).deposit(cakeBal);
@@ -72,11 +72,11 @@ contract StrategyBunnyCake is FeeManager, StratManager, GasThrottler {
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 cakeBal = IERC20(cake).balanceOf(address(this));
+        uint256 cakeBal = balanceOfCake();
 
         if (cakeBal < _amount) {
             IBunnyVault(bunnyVault).withdrawUnderlying(_amount.sub(cakeBal));
-            cakeBal = IERC20(cake).balanceOf(address(this));
+            cakeBal = balanceOfCake();
         }
 
         if (cakeBal > _amount) {
@@ -144,7 +144,7 @@ contract StrategyBunnyCake is FeeManager, StratManager, GasThrottler {
 
         IBunnyVault(bunnyVault).withdrawUnderlying(uint(-1));
 
-        uint256 cakeBal = IERC20(cake).balanceOf(address(this));
+        uint256 cakeBal = balanceOfCake();
         IERC20(cake).transfer(vault, cakeBal);
     }
 
