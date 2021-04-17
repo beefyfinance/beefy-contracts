@@ -1,0 +1,28 @@
+Approve CAKE:
+https://bscscan.com/tx/0xacb4b364b13d165190097931ea7f577548a6404c8ebb90cd6ebbf9bbe731d7e5
+
+Deposit CAKE:
+https://bscscan.com/tx/0xdeaa933a689952323da7475f804de59f72c1640897e08f8f7a2810883bbfbf8d
+
+- calls deposit(uint256 _amount)
+
+Claim Rewards:
+https://bscscan.com/tx/0x747c2e296dadbef8e2ce8aae485cc59d55813eb72950bb9f04e3b29f1231e863
+
+- calls getRewards()
+
+Withdraw: 
+https://bscscan.com/tx/0x5a98419258881d3a0964b6ce7d1be0ed0c05c8e5de12ff3daafefc630644d320
+
+- calls withdrawUnderlying()
+
+Withdraw + Clam (Alternative):
+https://bscscan.com/tx/0x47c73c85def70ed3af21b989b10a48834baf2028df0bf32d0648732b4ea51e70
+
+- calls withdrawAll()
+
+Proxy=0xEDfcB78e73f7bA6aD2D829bf5D462a0924da28eD
+Implementation=0x272D425a4Ab32FAc776533078cf1801Dd1A100f6
+
+
+
