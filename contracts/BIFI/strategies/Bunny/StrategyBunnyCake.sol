@@ -10,22 +10,17 @@ import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/pancake/IMasterChef.sol";
 import "./StratManager.sol";
 import "./FeeManager.sol";
-
+import "../../utils/GasThrottler.sol";
 /*
-    Implement:
-    - Should work [ ] 
-    - Exclusive deposit from balancer. [ ] 
-    - Optional delegateCompounding(). [ ] 
-    - Can't deposit() in less than 3 days. [ ] 
-    - Add strategist and other new features. [ ] 
-    - Implement base strat manager. [ ] 
-    - Implement correct emergencyWithdrawal [ ]
-    - make sure we take EVERY instance of value into account for balanceOf()
-    - make retireStrat work [x]
-    - make panicWork [x]
+    Special Features:
+    - Exclusive deposit from balancer [ ] 
+    - Optional delegateCompounding() [ ] 
+    - Can't deposit() in less than 3 days [ ] 
+    - make sure we take EVERY instance of value into account for balanceOf() [ ]
+    - Can their DUST const lock our funds?
 */ 
 
-contract StrategyBunnyCake is FeeManager, StratManager {
+contract StrategyBunnyCake is FeeManager, StratManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -86,7 +81,7 @@ contract StrategyBunnyCake is FeeManager, StratManager {
         }
     }
 
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused onlyEOA gasThrottle {
         IBunnyVault(bunnyVault).getRewards();
         _chargeFees();
         deposit();
@@ -137,7 +132,7 @@ contract StrategyBunnyCake is FeeManager, StratManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IBunnyVault(bunnyVault).withdrawUnderlying(balanceOfPool());
+        IBunnyVault(bunnyVault).withdrawUnderlying(uint(-1));
 
         uint256 cakeBal = IERC20(cake).balanceOf(address(this));
         IERC20(cake).transfer(vault, cakeBal);
@@ -145,7 +140,7 @@ contract StrategyBunnyCake is FeeManager, StratManager {
 
     // Pauses deposits and withdraws all funds from third party systems.
     function panic() external onlyManager {
-        IBunnyVault(bunnyVault).withdrawUnderlying(balanceOfPool());
+        IBunnyVault(bunnyVault).withdrawUnderlying(uint(-1));
         pause();
     }
 
