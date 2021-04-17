@@ -21,7 +21,8 @@ import "./FeeManager.sol";
     - Implement base strat manager. [ ] 
     - Implement correct emergencyWithdrawal [ ]
     - make sure we take EVERY instance of value into account for balanceOf()
-    - make retireStrat work [ ]
+    - make retireStrat work [x]
+    - make panicWork [x]
 */ 
 
 contract StrategyBunnyCake is FeeManager, StratManager {
@@ -86,14 +87,6 @@ contract StrategyBunnyCake is FeeManager, StratManager {
     }
 
     function harvest() external whenNotPaused onlyEOA {
-        _harvest();
-    }
-
-    function managerHarvest() external onlyManager {
-        harvest();
-    }
-
-    function _harvest() internal {
         IBunnyVault(bunnyVault).getRewards();
         _chargeFees();
         deposit();
@@ -137,15 +130,14 @@ contract StrategyBunnyCake is FeeManager, StratManager {
 
     // It calculates how much {cake} the strategy has allocated in the {bunnyVault}
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMasterChef(masterchef).userInfo(0, address(this));
-        return _amount;
+        return IBunnyVault(bunnyVault).balanceOf(address(this));
     }
 
     // Called as part of strat migration. Sends all the available funds back to the vault.
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChef(masterchef).emergencyWithdraw(0);
+        IBunnyVault(bunnyVault).withdrawUnderlying(balanceOfPool());
 
         uint256 cakeBal = IERC20(cake).balanceOf(address(this));
         IERC20(cake).transfer(vault, cakeBal);
@@ -153,21 +145,19 @@ contract StrategyBunnyCake is FeeManager, StratManager {
 
     // Pauses deposits and withdraws all funds from third party systems.
     function panic() external onlyManager {
-        IMasterChef(masterchef).emergencyWithdraw(0);
-
+        IBunnyVault(bunnyVault).withdrawUnderlying(balanceOfPool());
         pause();
     }
 
     function pause() public onlyManager {
         _pause();
-
         _removeAllowances();
     }
 
     function unpause() external onlyManager {
         _unpause();
-
         _giveAllowances();
+        deposit();
     }
 
     function _giveAllowances() internal {

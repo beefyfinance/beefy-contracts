@@ -7,4 +7,5 @@ interface IBunnyVault {
     function getRewards() external;
     function withdrawUnderlying(uint256 _amount) external;
     function withdrawAll() external;
+    function balanceOf(address _account) external view returns(uint256);
 }
