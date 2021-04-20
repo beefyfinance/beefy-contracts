@@ -1,7 +1,0 @@
-Addresses
-keeper=0x793074d9799dc3c6039f8056f1ba884a73462051 (EOA)
-
-Notes
-Cake Strat burnt its BunnyChef.
-Has never been paused.
-There are "pool types" this one is poolType=2
