@@ -19,12 +19,12 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
     // Tokens used
     address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
     address constant public bifi = address(0xCa3F508B8e4Dd382eE878A314789373D80A5190A);
-    address immutable public  want;
-    address immutable public  output;
+    address public want;
+    address public output;
 
     // Third party contracts
     address constant public unirouter = address(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
-    address immutable public targetRewardPool;
+    address public targetRewardPool;
 
     // Beefy contracts
     address constant public beefyRewardPool = address(0x453D4Ba9a2D594314DF88564248497F7D74d6b2C);
@@ -58,7 +58,7 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
         vault = _vault;
 
         if (want != output) {
-            outputToWant = [output, wbnb, want];
+            outputToWantRoute = [output, wbnb, want];
         }
 
         _giveAllowances();
@@ -97,7 +97,7 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
 
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA gasThrottle {
-        IRewardPool(targetRewardPool).getRewards();
+        IRewardPool(targetRewardPool).getReward();
         _chargeFees();
         _swapRewards();
         deposit();
