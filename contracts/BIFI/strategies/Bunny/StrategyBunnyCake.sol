@@ -8,8 +8,8 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/pancake/IMasterChef.sol";
-import "./StratManager.sol";
-import "./FeeManager.sol";
+import "../common/StratManager.sol";
+import "../common/FeeManager.sol";
 import "../../utils/GasThrottler.sol";
 import "../../interfaces/bunny/IBunnyVault.sol";
 

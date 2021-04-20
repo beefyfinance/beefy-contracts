@@ -26,3 +26,21 @@ Implementation=0x272D425a4Ab32FAc776533078cf1801Dd1A100f6
 
 
 
+// Bunny --> Bunny
+
+bunnyVault: 0xCADc8CB26c8C7cB46500E61171b5F27e9bd7889D
+
+deposit(uint256 amount)
+https://bscscan.com/tx/0x92ac842dbe957ce0d90762ab61d044eee9b17f30486be7586ede2f5fd04379de
+
+getReward()
+https://bscscan.com/tx/0xaf33bc545481a3c77c3c270f98e727c69650cb9683352d64ffda34c14a5f8633
+
+withdraw(uint256 amount)
+https://bscscan.com/tx/0x8d407b68cccdcbcf46fa5d41664bdb350134cb0a5f50cbf073c4fb39654b581d
+
+
+
+bunny: 0xC9849E6fdB743d08fAeE3E34dd2D1bc69EA11a51
+0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c
+0xCa3F508B8e4Dd382eE878A314789373D80A5190A
