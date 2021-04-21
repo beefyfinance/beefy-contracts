@@ -1,6 +1,6 @@
 const predictAddresses = require("../utils/predictAddresses");
 
-const deployVault = async config => {
+const deployVault = async (config) => {
   const predictedAddresses = await predictAddresses({ creator: config.signer.address, rpc: config.rpc });
 
   const Vault = await ethers.getContractFactory(config.vault);
@@ -15,10 +15,8 @@ const deployVault = async config => {
 
   const Strategy = await ethers.getContractFactory(config.strategy);
   const strategy = await Strategy.deploy(...config.stratArgs, predictedAddresses.vault);
-  
-  await strategy.deployed();
 
-  // console.log('Vault deployed', config.vault, vault.address, strategy.address);
+  await strategy.deployed();
 
   return { vault, strategy };
 };

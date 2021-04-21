@@ -7,21 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
-import "../../interfaces/pancake/IMasterChef.sol";
+import "../../interfaces/bunny/IBunnyVault.sol";
+import "../../utils/GasThrottler.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
-import "../../utils/GasThrottler.sol";
-import "../../interfaces/bunny/IBunnyVault.sol";
-
-/*
-    Special Features:
-    - Exclusive deposit from balancer [ ] 
-    - Optional delegateCompounding() [ ] 
-    - Can't deposit() in less than 3 days [ ] 
-    - make sure we take EVERY instance of value into account for balanceOf() [ ]
-    - Can their DUST const lock our funds? [ ]
-    - Add function with large delay that can execute any code? [ ]
-*/ 
 
 contract StrategyBunnyCake is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
@@ -48,14 +37,14 @@ contract StrategyBunnyCake is StratManager, FeeManager, GasThrottler {
     address[] public wbnbToBifiRoute = [wbnb, bifi];
 
     /*
-     @param _vault Address of parent vault
-     @param _keeper Address of extra maintainer
-     @param _strategist Address where stategist fees go.
+     * @param _keeper Address of extra maintainer
+     * @param _strategist Address where stategist fees go.
+     * @param _vault Address of parent vault
     */
     constructor(
-        address _vault, 
         address _keeper, 
-        address _strategist
+        address _strategist,
+        address _vault
     ) StratManager(_keeper, _strategist) public {
         vault = _vault;
 
@@ -84,16 +73,12 @@ contract StrategyBunnyCake is StratManager, FeeManager, GasThrottler {
             cakeBal = _amount;    
         }
         
-        if (tx.origin == owner() || paused()) {
-            IERC20(cake).safeTransfer(vault, cakeBal); 
-        } else {
-            uint256 withdrawalFee = cakeBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
-            IERC20(cake).safeTransfer(vault, cakeBal.sub(withdrawalFee)); 
-        }
+        // No withdrawal fee because bunny charges 0.5% already.
+        IERC20(cake).safeTransfer(vault, cakeBal); 
     }
 
     function harvest() external whenNotPaused onlyEOA gasThrottle {
-        IBunnyVault(bunnyVault).getRewards();
+        IBunnyVault(bunnyVault).getReward();
         _chargeFees();
         deposit();
     }
@@ -103,7 +88,7 @@ contract StrategyBunnyCake is StratManager, FeeManager, GasThrottler {
         uint256 toCake = IERC20(bunny).balanceOf(address(this));
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toCake, 0, bunnyToCakeRoute, address(this), now.add(600));
 
-        uint256 toWbnb = IERC20(cake).balanceOf(address(this)).mul(6).div(100);
+        uint256 toWbnb = balanceOfCake().mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), now.add(600));
     
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
@@ -122,12 +107,10 @@ contract StrategyBunnyCake is StratManager, FeeManager, GasThrottler {
         IERC20(wbnb).safeTransfer(strategist, strategistFee);
     }
 
-
     // Calculate the total underlaying {cake} held by the strat.
     function balanceOf() public view returns (uint256) {
         return balanceOfCake().add(balanceOfPool());
     }
-
 
     // It calculates how much {cake} the contract holds.
     function balanceOfCake() public view returns (uint256) {
