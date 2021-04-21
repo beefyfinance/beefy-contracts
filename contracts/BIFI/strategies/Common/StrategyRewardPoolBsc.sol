@@ -113,12 +113,15 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
 
     // performance fees
     function _chargeFees() internal {
+        uint256 wbnbBal;
+
         if (output != wbnb) {
             uint256 toWbnb = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
             IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, outputToWbnbRoute, address(this), now);
+            wbnbBal = IERC20(wbnb).balanceOf(address(this));
+        } else {
+            wbnbBal = IERC20(wbnb).balanceOf(address(this)).mul(45).div(1000);
         }
-    
-        uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
         
         uint256 callFeeAmount = wbnbBal.mul(callFee).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
