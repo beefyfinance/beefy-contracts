@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../interfaces/beefy/IStrategy.sol";
-import "../interfaces/beefy/IVault.sol";
+import "../interfaces/beefy/ISeededVault.sol";
 
 /**
  * @dev Implementation of a vault to deposit funds for yield optimizing.
@@ -33,6 +33,12 @@ contract BeefySeededVault is ERC20, Ownable {
     // The minimum time it has to pass before a strat candidate can be approved.
     uint256 public immutable approvalDelay;
 
+    /*
+     * Used to seed the vault:
+     * {burnAddr} - Address where the {seedMoo} tokens will be burnt when swapped.
+     * {seedMoo} - Address of the vault that is being taken over.
+     * {initialized} - Tracks if a vault was seeded. Prevents early deposits.
+    */
     address public constant burnAddr = address(0x00000000000000000000000000000000DeaDBeef);    
     address public immutable seedMoo;
     bool public initialized;
@@ -47,6 +53,7 @@ contract BeefySeededVault is ERC20, Ownable {
      * to withdraw the corresponding portion of the underlying assets.
      * @param _token the token to maximize.
      * @param _strategy the address of the strategy.
+     * @param _seedMoo the vault to take over.
      * @param _name the name of the vault token.
      * @param _symbol the symbol of the vault token.
      * @param _approvalDelay the delay before a new strat can be approved.
@@ -54,7 +61,7 @@ contract BeefySeededVault is ERC20, Ownable {
     constructor (
         address _token, 
         address _strategy, 
-        address _seedMoo;
+        address _seedMoo,
         string memory _name, 
         string memory _symbol, 
         uint256 _approvalDelay
@@ -198,16 +205,22 @@ contract BeefySeededVault is ERC20, Ownable {
         earn();
     }
 
-    function initialize() {
-        require(msg.sender == IVault(seedMoo).strategy(), "!strat");
+    /*
+     * @dev Initilizes the vault. 
+    */
+    function seed() external {
+        require(msg.sender == ISeededVault(seedMoo).strategy(), "!strat");
 
         _mint(address(this), IERC20(seedMoo).totalSupply());
 
         initialized = true;
     }
 
-    function exchangeMoos(uint _amount) {
-        IERC20(seedMoo).safeTransferFrom(msg.sender, address(this), burnAddr);
+    /*
+     * @dev Burns old moo tokens and gives the new one in return.
+    */ 
+    function exchangeMoos(uint _amount) external {
+        IERC20(seedMoo).safeTransferFrom(msg.sender, burnAddr, _amount);
         IERC20(address(this)).safeTransfer(msg.sender, _amount);
     }
 
