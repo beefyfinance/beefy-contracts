@@ -61,7 +61,7 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
         address _unirouter, 
         address _keeper, 
         address _strategist
-    ) public {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault) public {
         lpPair = _lpPair;
         lpToken0 = IUniswapV2Pair(lpPair).token0();
         lpToken1 = IUniswapV2Pair(lpPair).token1();

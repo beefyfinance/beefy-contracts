@@ -22,15 +22,18 @@ contract StratManager is Ownable, Pausable {
      * @dev Initializes the base strategy.
      * @param _keeper address to use as alternative owner.
      * @param _strategist address where strategist fees go.
+     * @param _unirouter router to use for swaps
      * @param _vault address of parent vault.
      */
     constructor(        
         address _keeper, 
-        address _strategist
+        address _strategist,
+        address _unirouter,
         address _vault
     ) public {
         keeper = _keeper;
         strategist = _strategist;
+        unirouter = _unirouter;
         vault = _vault;
     }
 

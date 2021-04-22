@@ -23,29 +23,23 @@ contract StrategyBunnyCake is StratManager, FeeManager, GasThrottler {
     address constant public bunny = address(0xC9849E6fdB743d08fAeE3E34dd2D1bc69EA11a51);
 
     // Third party contracts
-    address constant public unirouter  = address(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
     address constant public bunnyVault = address(0xEDfcB78e73f7bA6aD2D829bf5D462a0924da28eD);
 
     // Beefy contracts
     address constant public rewardPool  = address(0x453D4Ba9a2D594314DF88564248497F7D74d6b2C);
     address constant public treasury = address(0x4A32De8c248533C28904b24B4cFCFE18E9F2ad01);
-    address public vault;
 
     // Routes
     address[] public bunnyToCakeRoute = [bunny, wbnb, cake];
     address[] public cakeToWbnbRoute = [cake, wbnb];
     address[] public wbnbToBifiRoute = [wbnb, bifi];
 
-    /*
-     * @param _keeper Address of extra maintainer
-     * @param _strategist Address where stategist fees go.
-     * @param _vault Address of parent vault
-    */
     constructor(
         address _keeper, 
         address _strategist,
+        address _unirouter,
         address _vault
-    ) StratManager(_keeper, _strategist) public {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault)  public {
         vault = _vault;
 
         _giveAllowances();
