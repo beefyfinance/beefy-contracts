@@ -219,8 +219,11 @@ contract BeefySeededVault is ERC20, Ownable {
 
     /*
      * @dev Burns old moo tokens and gives the new one in return.
+     * @param _amount amount of moo tokens to exchange.
     */ 
     function exchangeMoos(uint _amount) external {
+        require(initialized, "!initialized");
+
         IERC20(seedMoo).safeTransferFrom(msg.sender, burnAddr, _amount);
         IERC20(address(this)).safeTransfer(msg.sender, _amount);
     }

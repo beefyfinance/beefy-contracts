@@ -23,13 +23,11 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
     address public output;
 
     // Third party contracts
-    address constant public unirouter = address(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
     address public targetRewardPool;
 
     // Beefy contracts
-    address constant public beefyRewardPool = address(0x453D4Ba9a2D594314DF88564248497F7D74d6b2C);
-    address constant public treasury = address(0x4A32De8c248533C28904b24B4cFCFE18E9F2ad01);
-    address immutable public vault;
+    address public beefyRewardPool = address(0x453D4Ba9a2D594314DF88564248497F7D74d6b2C);
+    address public treasury = address(0x4A32De8c248533C28904b24B4cFCFE18E9F2ad01);
 
     // Routes
     address[] public outputToWantRoute;
@@ -41,6 +39,7 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
      @param _output Reward token
      @param targetRewardPool Reward pool to farm
      @param _vault Address of parent vault
+     @param _unirouter Address of router for swaps
      @param _keeper Address of extra maintainer
      @param _strategist Address where stategist fees go.
     */
@@ -48,14 +47,14 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
         address _want,
         address _output,
         address _targetRewardPool,
-        address _vault, 
+        address _vault,
+        address _unirouter, 
         address _keeper, 
         address _strategist
-    ) StratManager(_keeper, _strategist) public {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault) public {
         want = _want;
         output = _output;
         targetRewardPool = _targetRewardPool;
-        vault = _vault;
 
         if (output != wbnb) {
             outputToWbnbRoute = [output, wbnb];

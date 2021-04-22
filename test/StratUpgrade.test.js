@@ -1,9 +1,9 @@
 const { expect } = require("chai");
 
-const { nowInSeconds, delay } = require("../utils/timeHelpers");
+const { delay } = require("../utils/timeHelpers");
 
 const config = {
-  vault: "0x044e87f30bd9bD961c04028aC69155493E1b9eD0",
+  vault: "0x7f56672fCB5D1d1760511803A0a54c4d1e911dFD",
 };
 
 describe("StratUpgrade", () => {
