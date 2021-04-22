@@ -8,9 +8,10 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 contract StratManager is Ownable, Pausable {
     /**
      * @dev Beefy Contracts:
-     * {keeper} - Address used as an extra owner. Should be a community multisig.
+     * {keeper} - Address to manage a few lower risk features of the strat
      * {strategist} - Address of the strategy author/deployer where strategist fee will go.
      * {vault} - Address of the vault that controls the strategy's funds.
+     * {unirouter} - Address of exchange to execute swaps.
      */
     address public keeper;
     address public strategist;
