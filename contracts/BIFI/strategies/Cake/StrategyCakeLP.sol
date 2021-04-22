@@ -166,11 +166,11 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
 
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
-        return balanceOfLpPair().add(balanceOfPool());
+        return balanceOfWant().add(balanceOfPool());
     }
 
     // it calculates how much 'want' this contract holds.
-    function balanceOfLpPair() public view returns (uint256) {
+    function balanceOfWant() public view returns (uint256) {
         return IERC20(lpPair).balanceOf(address(this));
     }
 
