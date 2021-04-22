@@ -209,7 +209,8 @@ contract BeefySeededVault is ERC20, Ownable {
      * @dev Initilizes the vault. 
     */
     function seed() external {
-        require(msg.sender == ISeededVault(seedMoo).strategy(), "!strat");
+        require(msg.sender == ISeededVault(seedMoo).strategy(), "!seeder");
+        require(!initialized, "already initialized");
 
         _mint(address(this), IERC20(seedMoo).totalSupply());
 
