@@ -15,8 +15,8 @@ contract StratManager is Ownable, Pausable {
      */
     address public keeper;
     address public strategist;
-    address public vault;
     address public unirouter;
+    address public vault;
 
     /**
      * @dev Initializes the base strategy.
