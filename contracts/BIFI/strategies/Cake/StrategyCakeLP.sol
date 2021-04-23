@@ -21,7 +21,6 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
     // Tokens used
     address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
     address constant public cake = address(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
-    address constant public bifi = address(0xCa3F508B8e4Dd382eE878A314789373D80A5190A);
     address public lpPair;
     address public lpToken0;
     address public lpToken1;
@@ -30,13 +29,8 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
     address constant public masterchef = address(0x73feaa1eE314F8c655E354234017bE2193C9E24E);
     uint8 public poolId;
 
-    // Beefy contracts
-    address constant public rewards  = address(0x453D4Ba9a2D594314DF88564248497F7D74d6b2C);
-    address constant public treasury = address(0x4A32De8c248533C28904b24B4cFCFE18E9F2ad01);
-
     // Routes
     address[] public cakeToWbnbRoute = [cake, wbnb];
-    address[] public wbnbToBifiRoute = [wbnb, bifi];
     address[] public cakeToLp0Route;
     address[] public cakeToLp1Route;
 
@@ -51,8 +45,9 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
         address _vault, 
         address _unirouter, 
         address _keeper, 
-        address _strategist
-    ) StratManager(_keeper, _strategist, _unirouter, _vault) public {
+        address _strategist,
+        address _beefyFeeRecipient
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         lpPair = _lpPair;
         lpToken0 = IUniswapV2Pair(lpPair).token0();
         lpToken1 = IUniswapV2Pair(lpPair).token1();
@@ -125,12 +120,8 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
         uint256 callFeeAmount = wbnbBal.mul(callFee).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
         
-        uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
-        IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now);
-        
-        uint256 rewardsFeeAmount = wbnbBal.mul(rewardsFee).div(MAX_FEE);
-        IERC20(wbnb).safeTransfer(rewards, rewardsFeeAmount);
+        uint256 beefyFeeAmount = wbnbBal.mul(beefyFee).div(MAX_FEE);
+        IERC20(wbnb).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
         uint256 strategistFee = wbnbBal.mul(STRATEGIST_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(strategist, strategistFee);

@@ -33,6 +33,8 @@ contract GasPrice is Ownable, GasThrottler {
         treasury = _treasury;
         rewardPool = _rewardPool;
         unirouter = _unirouter;
+
+        IERC20(wbnb).safeApprove(unirouter, uint256(-1));
     }
 
     event NewRewardPool(address oldRewardPool, address newRewardPool);
@@ -69,6 +71,10 @@ contract GasPrice is Ownable, GasThrottler {
 
     function setUnirouter(address _unirouter) external onlyOwner {
         emit NewUnirouter(unirouter, _unirouter);
+
+        IERC20(wbnb).safeApprove(_unirouter, uint256(-1));
+        IERC20(wbnb).safeApprove(unirouter, 0);
+
         unirouter = _unirouter;
     }
     
