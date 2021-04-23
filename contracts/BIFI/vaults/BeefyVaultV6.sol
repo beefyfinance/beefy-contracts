@@ -8,30 +8,31 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../interfaces/beefy/IStrategy.sol";
+import "../interfaces/beefy/IVault.sol";
 
 /**
  * @dev Implementation of a vault to deposit funds for yield optimizing.
  * This is the contract that receives funds and that users interface with.
  * The yield optimizing strategy itself is implemented in a separate 'Strategy.sol' contract.
  */
-contract BeefyVaultV6 is ERC20, Ownable {
+contract BeefyVaultV6 is ERC20, Ownable, IVault {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     struct StratCandidate {
-        address implementation;
-        uint proposedTime;
+        IStrategy implementation;
+        uint256 proposedTime;
     }
 
     // The last proposed strategy to switch to.
     StratCandidate public stratCandidate; 
     // The strategy currently in use by the vault.
-    IStrategy public strategy;
+    IStrategy public override strategy;
     // The minimum time it has to pass before a strat candidate can be approved.
     uint256 public immutable approvalDelay;
 
-    event NewStratCandidate(address implementation);
-    event UpgradeStrat(address implementation);
+    event NewStratCandidate(IStrategy implementation);
+    event UpgradeStrat(IStrategy implementation);
     
     /**
      * @dev Sets the value of {token} to the token that the vault will
@@ -56,8 +57,8 @@ contract BeefyVaultV6 is ERC20, Ownable {
         approvalDelay = _approvalDelay;
     }
 
-    function want() public view returns (IERC20) {
-        return IERC20(strategy.want());
+    function want() public view override returns (IERC20) {
+        return strategy.want();
     }
 
     /**
@@ -65,8 +66,8 @@ contract BeefyVaultV6 is ERC20, Ownable {
      * It takes into account the vault contract balance, the strategy contract balance
      *  and the balance deployed in other contracts as part of the strategy.
      */
-    function balance() public view returns (uint) {
-        return want().balanceOf(address(this)).add(IStrategy(strategy).balanceOf());
+    function balance() public view override returns (uint256) {
+        return want().balanceOf(address(this)).add(strategy.balanceOf());
     }
 
     /**
@@ -83,14 +84,14 @@ contract BeefyVaultV6 is ERC20, Ownable {
      * @dev Function for various UIs to display the current value of one of our yield tokens.
      * Returns an uint256 with 18 decimals of how much underlying asset one vault share represents.
      */
-    function getPricePerFullShare() public view returns (uint256) {
+    function getPricePerFullShare() public view override returns (uint256) {
         return totalSupply() == 0 ? 1e18 : balance().mul(1e18).div(totalSupply());
     }
 
     /**
      * @dev A helper function to call deposit() with all the sender's funds.
      */
-    function depositAll() external {
+    function depositAll() override public {
         deposit(want().balanceOf(msg.sender));
     }
 
@@ -98,7 +99,7 @@ contract BeefyVaultV6 is ERC20, Ownable {
      * @dev The entrypoint of funds into the system. People deposit with this function
      * into the vault. The vault is then in charge of sending funds into the strategy.
      */
-    function deposit(uint _amount) public {
+    function deposit(uint256 _amount) override public {
         uint256 _pool = balance();
         uint256 _before = want().balanceOf(address(this));
         want().safeTransferFrom(msg.sender, address(this), _amount);
@@ -128,7 +129,7 @@ contract BeefyVaultV6 is ERC20, Ownable {
     /**
      * @dev A helper function to call withdraw() with all the sender's funds.
      */
-    function withdrawAll() external {
+    function withdrawAll() override public {
         withdraw(balanceOf(msg.sender));
     }
 
@@ -137,7 +138,7 @@ contract BeefyVaultV6 is ERC20, Ownable {
      * from the strategy and pay up the token holder. A proportional number of IOU
      * tokens are burned in the process.
      */
-    function withdraw(uint256 _shares) public {
+    function withdraw(uint256 _shares) override public {
         uint256 r = (balance().mul(_shares)).div(totalSupply());
         _burn(msg.sender, _shares);
 
@@ -159,7 +160,9 @@ contract BeefyVaultV6 is ERC20, Ownable {
      * @dev Sets the candidate for the new strat to use with this vault.
      * @param _implementation The address of the candidate strategy.  
      */
-    function proposeStrat(address _implementation) public onlyOwner {
+    function proposeStrat(IStrategy _implementation) override public onlyOwner {
+        require(this == _implementation.vault(), "Proposal not valid for this Vault");
+
         stratCandidate = StratCandidate({ 
             implementation: _implementation,
             proposedTime: block.timestamp
@@ -174,15 +177,15 @@ contract BeefyVaultV6 is ERC20, Ownable {
      * happening in +100 years for safety. 
      */
 
-    function upgradeStrat() public onlyOwner {
-        require(stratCandidate.implementation != address(0), "There is no candidate");
+    function upgradeStrat() override public onlyOwner {
+        require(address(stratCandidate.implementation) != address(0), "There is no candidate");
         require(stratCandidate.proposedTime.add(approvalDelay) < block.timestamp, "Delay has not passed");
         
         emit UpgradeStrat(stratCandidate.implementation);
 
         strategy.retireStrat();
-        strategy = IStrategy(stratCandidate.implementation);
-        stratCandidate.implementation = address(0);
+        strategy = stratCandidate.implementation;
+        stratCandidate.implementation = IStrategy(address(0));
         stratCandidate.proposedTime = 5000000000;
         
         earn();
@@ -192,7 +195,7 @@ contract BeefyVaultV6 is ERC20, Ownable {
      * @dev Rescues random funds stuck that the strat can't handle.
      * @param _token address of the token to rescue.
      */
-    function inCaseTokensGetStuck(address _token) external onlyOwner {
+    function inCaseTokensGetStuck(address _token) public onlyOwner {
         require(_token != address(want()), "!token");
 
         uint256 amount = IERC20(_token).balanceOf(address(this));
