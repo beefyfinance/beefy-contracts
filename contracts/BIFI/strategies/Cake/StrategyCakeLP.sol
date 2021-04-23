@@ -45,15 +45,6 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
      */
     event StratHarvest(address indexed harvester);
 
-    /**
-     * @dev Initializes the strategy with the token to maximize.
-     * @param _lpPair Token to maximize
-     * @param _poolId Id within the MasterChef
-     * @param _vault Address of parent vault
-     * @param _unirouter Address of router for swaps
-     * @param _keeper Address of extra maintainer
-     * @param _strategist Address where stategist fees go.
-     */
     constructor(
         address _lpPair, 
         uint8 _poolId, 
@@ -66,8 +57,6 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
         lpToken0 = IUniswapV2Pair(lpPair).token0();
         lpToken1 = IUniswapV2Pair(lpPair).token1();
         poolId = _poolId;
-        vault = _vault;
-        strategist = _strategist;
 
         if (lpToken0 == wbnb) {
             cakeToLp0Route = [cake, wbnb];
