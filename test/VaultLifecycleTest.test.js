@@ -3,9 +3,9 @@ const { expect } = require("chai");
 const { delay } = require("../utils/timeHelpers");
 
 const config = {
-  vault: "0x6BE4741AB0aD233e4315a10bc783a7B923386b71",
+  vault: "0x8da7167860EDfc2bFfd790f217AB5e398803Bbc8",
   vaultContract: "BeefyVaultV5",
-  unirouter: "0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F",
+  unirouterAddr: "0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F",
   nativeTokenAddr: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
   testAmount: ethers.utils.parseEther("0.1"),
 };
@@ -39,6 +39,8 @@ describe("VaultLifecycleTest", () => {
     const strategyAddr = await vault.strategy();
     const strategy = await ethers.getContractAt("IStrategy", strategyAddr);
 
+    const unirouter = await ethers.getContractAt("IUniswapRouterETH", config.unirouterAddr);
+
     // 1. Get the want of a vault.
     const want = await getWant(vault);
 
@@ -49,20 +51,36 @@ describe("VaultLifecycleTest", () => {
     }
 
     // B. Figure out if it's a single token. In that case buy it and return.
+    let isLpToken, lpPair, token0, token1;
+    try {
+      lpPair = await ethers.getContractAt("IUniswapV2Pair", want.address);
+      token0 = await lpPair.token0();
+      token1 = await lpPair.token1();
+      isLpToken = true;
+    } catch (e) {
+      isLpToken = false;
+    }
+
+    if (isLpToken) {
+    } else {
+      const wantBal = await want.balanceOf(signer.address);
+      await unirouter.swapExactETHForTokens(0, [config.nativeTokenAddr, want.address], signer.address, 5000000000, {
+        value: config.testAmount,
+      });
+      const wantBalAfter = await want.balanceOf(signer.address);
+    }
 
     // 3. Figure out if
 
-    // await router.swapExactETHForTokens(0, [WBNB, BTCB], signer.address, 5000000000, { value: DEPOSIT_AMOUNT });
+    //
 
-    return { signer, other, vault, strategy };
+    return { signer, other, vault, strategy, unirouter };
   };
   it("User can deposit and withdraw.", async () => {
     const { signer, other, vault, strategy } = await setup();
     // get want into our wallet.
-    let amount = 0,
-      router = 0;
 
-    await zap(amount, vault, router, signer);
+    // await zap(amount, vault, router, signer);
 
     // deposit into vault
 
