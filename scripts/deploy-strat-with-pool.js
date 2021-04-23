@@ -8,13 +8,15 @@ const ethers = hardhat.ethers;
 
 const config = {
   want: "0x51a2ffa5B7DE506F9a22549E48B33F6Cf0D9030e",
-  mooName: "Moo Pancake JUV-BNB",
-  mooSymbol: "mooPancakeJUV-BNB",
-  delay: 86400,
+  mooName: "Moo Pancake UNI-BNB V2",
+  mooSymbol: "mooPancakeUNI-BNBV2",
+  delay: 21600,
   strategyName: "StrategyCakeLP",
-  poolId: 43,
-  unirouter: "0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F", // Pancakeswap Router
+  poolId: 157,
+  unirouter: "0x2AD2C5314028897AEcfCF37FD923c079BeEb2C56", // Pancakeswap Router
   strategist: "0xB1f1F1ed9e874cF4c81C6b16eFc2642B4c8Fb8A5", // some address
+  keeper: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
+  beefyFeeRecipient: "0xEB41298BA4Ea3865c33bDE8f60eC414421050d53",
 };
 
 async function main() {
@@ -35,21 +37,17 @@ async function main() {
 
   const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
 
-  const vault = await Vault.deploy(
-    config.want,
-    predictedAddresses.strategy,
-    config.mooName,
-    config.mooSymbol,
-    config.delay
-  );
+  const vault = await Vault.deploy(predictedAddresses.strategy, config.mooName, config.mooSymbol, config.delay);
   await vault.deployed();
 
   const strategy = await Strategy.deploy(
     config.want,
     config.poolId,
     predictedAddresses.vault,
-    // config.unirouter,
-    config.strategist
+    config.unirouter,
+    config.keeper,
+    config.strategist,
+    config.beefyFeeRecipient
   );
   await strategy.deployed();
 

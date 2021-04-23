@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../interfaces/common/IUniswapRouterETH.sol";
 import "../utils/GasThrottler.sol";
 
-contract GasPrice is Ownable, GasThrottler {
+contract BeefyFeeBatch is Ownable, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 

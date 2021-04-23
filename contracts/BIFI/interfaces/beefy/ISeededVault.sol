@@ -6,5 +6,4 @@ import "./IVault.sol";
 
 interface ISeededVault is IVault {
     function seed() external;
-    function strategy() external returns (address);
 }

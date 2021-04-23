@@ -19,6 +19,6 @@ abstract contract FeeManager is StratManager {
         require(_fee <= MAX_CALL_FEE, "!cap");
         
         callFee = _fee;
-        rewardsFee = MAX_FEE - TREASURY_FEE - STRATEGIST_FEE - callFee;
+        beefyFee = MAX_FEE - STRATEGIST_FEE - callFee;
     }
 }
