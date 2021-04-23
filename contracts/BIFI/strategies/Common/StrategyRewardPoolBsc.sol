@@ -35,13 +35,13 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
     address[] public wbnbToBifiRoute = [wbnb, bifi];
 
     /*
-     @param _want Token to maximize
-     @param _output Reward token
-     @param targetRewardPool Reward pool to farm
-     @param _vault Address of parent vault
-     @param _unirouter Address of router for swaps
-     @param _keeper Address of extra maintainer
-     @param _strategist Address where stategist fees go.
+     * @param _want Token to maximize
+     * @param _output Reward token
+     * @param targetRewardPool Reward pool to farm
+     * @param _vault Address of parent vault
+     * @param _unirouter Address of router for swaps
+     * @param _keeper Address of extra maintainer
+     * @param _strategist Address where stategist fees go.
     */
     constructor(
         address _want,

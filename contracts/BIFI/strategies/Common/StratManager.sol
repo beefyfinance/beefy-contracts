@@ -15,23 +15,30 @@ contract StratManager is Ownable, Pausable {
      */
     address public keeper;
     address public strategist;
-    address public vault;
     address public unirouter;
+    address public vault;
+    address public beefyFeeRecipient;
 
     /**
      * @dev Initializes the base strategy.
      * @param _keeper address to use as alternative owner.
      * @param _strategist address where strategist fees go.
+     * @param _unirouter router to use for swaps
      * @param _vault address of parent vault.
+     * @param _beefyFeeRecipient address where to send Beefy's fees.
      */
     constructor(        
         address _keeper, 
-        address _strategist
-        address _vault
+        address _strategist,
+        address _unirouter,
+        address _vault,
+        address _beefyFeeRecipient
     ) public {
         keeper = _keeper;
         strategist = _strategist;
+        unirouter = _unirouter;
         vault = _vault;
+        beefyFeeRecipient = _beefyFeeRecipient;
     }
 
     // checks that caller is either owner or keeper.
@@ -77,5 +84,13 @@ contract StratManager is Ownable, Pausable {
      */
     function setVault(address _vault) external onlyOwner {
         vault = _vault;
+    }
+
+    /**
+     * @dev Updates beefy fee recipient.
+     * @param _beefyFeeRecipient new beefy fee recipient address.
+     */
+    function setBeefyFeeRecipient(address _beefyFeeRecipient) external onlyOwner {
+        beefyFeeRecipient = _beefyFeeRecipient;
     }
 }

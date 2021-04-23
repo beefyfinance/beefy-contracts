@@ -22,13 +22,11 @@ contract StrategyCake is StratManager, FeeManager, GasThrottler {
     address constant public bifi = address(0xCa3F508B8e4Dd382eE878A314789373D80A5190A);
 
     // Third Party Contracts
-    address constant public unirouter  = address(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
     address constant public masterchef = address(0x73feaa1eE314F8c655E354234017bE2193C9E24E);
 
     // Beefy Contracts
     address constant public rewardPool  = address(0x453D4Ba9a2D594314DF88564248497F7D74d6b2C);
     address constant public treasury = address(0x4A32De8c248533C28904b24B4cFCFE18E9F2ad01);
-    address public vault;
 
     // Routes
     address[] public cakeToWbnbRoute = [cake, wbnb];
@@ -37,13 +35,15 @@ contract StrategyCake is StratManager, FeeManager, GasThrottler {
     /**
      * @param _keeper Address of extra maintainer
      * @param _strategist Address where stategist fees go.
+     * @param _unirouter Address of router for swaps
      * @param _vault Address of parent vault
      */
     constructor(
         address _keeper, 
         address _strategist,
+        address _unirouter,
         address _vault 
-    ) StratManager(_keeper, _strategist) public {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault) public {
         vault = _vault;
 
         _giveAllowances();
