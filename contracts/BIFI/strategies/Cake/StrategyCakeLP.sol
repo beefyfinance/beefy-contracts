@@ -21,13 +21,13 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
     // Tokens used
     address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
     address constant public cake = address(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
-    address public lpPair;
+    address public want;
     address public lpToken0;
     address public lpToken1;
 
     // Third party contracts
     address constant public masterchef = address(0x73feaa1eE314F8c655E354234017bE2193C9E24E);
-    uint8 public poolId;
+    uint256 public poolId;
 
     // Routes
     address[] public cakeToWbnbRoute = [cake, wbnb];
@@ -40,17 +40,17 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
     event StratHarvest(address indexed harvester);
 
     constructor(
-        address _lpPair, 
-        uint8 _poolId, 
+        address _want, 
+        uint256 _poolId, 
         address _vault, 
         address _unirouter, 
         address _keeper, 
         address _strategist,
         address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
-        lpPair = _lpPair;
-        lpToken0 = IUniswapV2Pair(lpPair).token0();
-        lpToken1 = IUniswapV2Pair(lpPair).token1();
+        want = _want;
+        lpToken0 = IUniswapV2Pair(want).token0();
+        lpToken1 = IUniswapV2Pair(want).token1();
         poolId = _poolId;
 
         if (lpToken0 == wbnb) {
@@ -70,7 +70,7 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
 
     // puts the funds to work
     function deposit() public whenNotPaused {
-        uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
+        uint256 pairBal = IERC20(want).balanceOf(address(this));
 
         if (pairBal > 0) {
             IMasterChef(masterchef).deposit(poolId, pairBal);
@@ -80,11 +80,11 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
+        uint256 pairBal = IERC20(want).balanceOf(address(this));
 
         if (pairBal < _amount) {
             IMasterChef(masterchef).withdraw(poolId, _amount.sub(pairBal));
-            pairBal = IERC20(lpPair).balanceOf(address(this));
+            pairBal = IERC20(want).balanceOf(address(this));
         }
 
         if (pairBal > _amount) {
@@ -92,10 +92,10 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
         }
 
         if (tx.origin == owner() || paused()) {
-            IERC20(lpPair).safeTransfer(vault, pairBal);
+            IERC20(want).safeTransfer(vault, pairBal);
         } else {
             uint256 withdrawalFee = pairBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
-            IERC20(lpPair).safeTransfer(vault, pairBal.sub(withdrawalFee));
+            IERC20(want).safeTransfer(vault, pairBal.sub(withdrawalFee));
         }
     }
 
@@ -151,7 +151,7 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
 
     // it calculates how much 'want' this contract holds.
     function balanceOfWant() public view returns (uint256) {
-        return IERC20(lpPair).balanceOf(address(this));
+        return IERC20(want).balanceOf(address(this));
     }
 
     // it calculates how much 'want' the strategy has working in the farm.
@@ -166,8 +166,8 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
 
         IMasterChef(masterchef).emergencyWithdraw(poolId);
 
-        uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
-        IERC20(lpPair).transfer(vault, pairBal);
+        uint256 pairBal = IERC20(want).balanceOf(address(this));
+        IERC20(want).transfer(vault, pairBal);
     }
 
     // pauses deposits and withdraws all funds from third party systems.
@@ -189,7 +189,7 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(lpPair).safeApprove(masterchef, uint256(-1));
+        IERC20(want).safeApprove(masterchef, uint256(-1));
         IERC20(cake).safeApprove(unirouter, uint256(-1));
         IERC20(wbnb).safeApprove(unirouter, uint256(-1));
 
@@ -201,7 +201,7 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
     }
 
     function _removeAllowances() internal {
-        IERC20(lpPair).safeApprove(masterchef, 0);
+        IERC20(want).safeApprove(masterchef, 0);
         IERC20(cake).safeApprove(unirouter, 0);
         IERC20(wbnb).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
