@@ -5,7 +5,6 @@ pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -101,7 +100,6 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
 
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA gasThrottle {
-        require(!Address.isContract(msg.sender), "!contract");
         IMasterChef(masterchef).deposit(poolId, 0);
         chargeFees();
         addLiquidity();
