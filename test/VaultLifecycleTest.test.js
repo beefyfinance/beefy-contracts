@@ -64,12 +64,43 @@ describe("VaultLifecycleTest", () => {
     await strategy.harvest({ gasPrice: 5000000 });
     const vaultBalAfterHarvest = await vault.balance();
 
+    expect(vaultBalAfterHarvest).to.be.gt(vaultBal);
+
     await vault.withdrawAll();
     const wantBalFinal = await want.balanceOf(signer.address);
-
-    console.log(vaultBal.toString(), vaultBalAfterHarvest.toString());
-    expect(vaultBalAfterHarvest).to.be.gt(vaultBal);
     expect(wantBalFinal).to.be.lte(wantBalStart);
     expect(wantBalFinal).to.be.gt(wantBalStart.mul(95).div(100));
   }).timeout(TIMEOUT);
+
+  it("Manager can panic.", async () => {
+    const { signer, want, vault, strategy } = await setup();
+
+    const wantBalStart = await want.balanceOf(signer.address);
+    await want.approve(vault.address, wantBalStart);
+    await vault.depositAll();
+
+    const vaultBal = await vault.balance();
+    const balOfPool = await strategy.balanceOfPool();
+    const balOfWant = await strategy.balanceOfWant();
+    await strategy.panic();
+    const vaultBalAfterPanic = await vault.balance();
+    const balOfPoolAfterPanic = await strategy.balanceOfPool();
+    const balOfWantAfterPanic = await strategy.balanceOfWant();
+
+    expect(vaultBalAfterPanic).to.be.gt(vaultBal.mul(99).div(100));
+    expect(balOfPoolAfterPanic).to.equal(0);
+    expect(balOfPool).to.be.gt(balOfPoolAfterPanic);
+    expect(balOfWantAfterPanic).to.be.gt(balOfWant);
+
+    const tx = vault.depositAll();
+
+    await expect(tx).to.be.revertedWith("Pausable: paused");
+
+    await vault.withdrawAll();
+    const wantBalFinal = await want.balanceOf(signer.address);
+    expect(wantBalFinal).to.be.lte(wantBalStart);
+    expect(wantBalFinal).to.be.gt(wantBalStart.mul(95).div(100));
+  }).timeout(TIMEOUT);
+
+  // New user doesn't lower price per share.
 });

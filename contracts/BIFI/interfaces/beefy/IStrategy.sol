@@ -11,6 +11,8 @@ interface IStrategy {
     function deposit() external;
     function withdraw(uint256) external;
     function balanceOf() external view returns (uint256);
+    function balanceOfWant() external view returns (uint256);
+    function balanceOfPool() external view returns (uint256);
     function harvest() external;
     function retireStrat() external;
     function panic() external;
