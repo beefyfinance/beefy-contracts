@@ -5,7 +5,6 @@ pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -21,13 +20,13 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
     // Tokens used
     address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
     address constant public cake = address(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
-    address public lpPair;
+    address public want;
     address public lpToken0;
     address public lpToken1;
 
     // Third party contracts
     address constant public masterchef = address(0x73feaa1eE314F8c655E354234017bE2193C9E24E);
-    uint8 public poolId;
+    uint256 public poolId;
 
     // Routes
     address[] public cakeToWbnbRoute = [cake, wbnb];
@@ -40,17 +39,17 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
     event StratHarvest(address indexed harvester);
 
     constructor(
-        address _lpPair, 
-        uint8 _poolId, 
-        address _vault, 
-        address _unirouter, 
-        address _keeper, 
+        address _want,
+        uint256 _poolId,
+        address _vault,
+        address _unirouter,
+        address _keeper,
         address _strategist,
         address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
-        lpPair = _lpPair;
-        lpToken0 = IUniswapV2Pair(lpPair).token0();
-        lpToken1 = IUniswapV2Pair(lpPair).token1();
+        want = _want;
+        lpToken0 = IUniswapV2Pair(want).token0();
+        lpToken1 = IUniswapV2Pair(want).token1();
         poolId = _poolId;
 
         if (lpToken0 == wbnb) {
@@ -70,38 +69,37 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
 
     // puts the funds to work
     function deposit() public whenNotPaused {
-        uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
 
-        if (pairBal > 0) {
-            IMasterChef(masterchef).deposit(poolId, pairBal);
+        if (wantBal > 0) {
+            IMasterChef(masterchef).deposit(poolId, wantBal);
         }
     }
 
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
 
-        if (pairBal < _amount) {
-            IMasterChef(masterchef).withdraw(poolId, _amount.sub(pairBal));
-            pairBal = IERC20(lpPair).balanceOf(address(this));
+        if (wantBal < _amount) {
+            IMasterChef(masterchef).withdraw(poolId, _amount.sub(wantBal));
+            wantBal = IERC20(want).balanceOf(address(this));
         }
 
-        if (pairBal > _amount) {
-            pairBal = _amount;
+        if (wantBal > _amount) {
+            wantBal = _amount;
         }
 
         if (tx.origin == owner() || paused()) {
-            IERC20(lpPair).safeTransfer(vault, pairBal);
+            IERC20(want).safeTransfer(vault, wantBal);
         } else {
-            uint256 withdrawalFee = pairBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
-            IERC20(lpPair).safeTransfer(vault, pairBal.sub(withdrawalFee));
+            uint256 withdrawalFee = wantBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
+            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFee));
         }
     }
 
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA gasThrottle {
-        require(!Address.isContract(msg.sender), "!contract");
         IMasterChef(masterchef).deposit(poolId, 0);
         chargeFees();
         addLiquidity();
@@ -113,13 +111,13 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
     // performance fees
     function chargeFees() internal {
         uint256 toWbnb = IERC20(cake).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), now);
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
         uint256 callFeeAmount = wbnbBal.mul(callFee).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
-        
+
         uint256 beefyFeeAmount = wbnbBal.mul(beefyFee).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
@@ -132,16 +130,16 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
         uint256 cakeHalf = IERC20(cake).balanceOf(address(this)).div(2);
 
         if (lpToken0 != cake) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp0Route, address(this), now.add(600));
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp0Route, address(this), now);
         }
 
         if (lpToken1 != cake) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp1Route, address(this), now.add(600));
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp1Route, address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -151,7 +149,7 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
 
     // it calculates how much 'want' this contract holds.
     function balanceOfWant() public view returns (uint256) {
-        return IERC20(lpPair).balanceOf(address(this));
+        return IERC20(want).balanceOf(address(this));
     }
 
     // it calculates how much 'want' the strategy has working in the farm.
@@ -166,8 +164,8 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
 
         IMasterChef(masterchef).emergencyWithdraw(poolId);
 
-        uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
-        IERC20(lpPair).transfer(vault, pairBal);
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        IERC20(want).transfer(vault, wantBal);
     }
 
     // pauses deposits and withdraws all funds from third party systems.
@@ -186,12 +184,13 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
         _unpause();
 
         _giveAllowances();
+
+        deposit();
     }
 
     function _giveAllowances() internal {
-        IERC20(lpPair).safeApprove(masterchef, uint256(-1));
+        IERC20(want).safeApprove(masterchef, uint256(-1));
         IERC20(cake).safeApprove(unirouter, uint256(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint256(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
@@ -201,9 +200,8 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
     }
 
     function _removeAllowances() internal {
-        IERC20(lpPair).safeApprove(masterchef, 0);
+        IERC20(want).safeApprove(masterchef, 0);
         IERC20(cake).safeApprove(unirouter, 0);
-        IERC20(wbnb).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }

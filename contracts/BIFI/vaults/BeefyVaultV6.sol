@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "../interfaces/beefy/IStrategy.sol";
 
@@ -14,7 +15,7 @@ import "../interfaces/beefy/IStrategy.sol";
  * This is the contract that receives funds and that users interface with.
  * The yield optimizing strategy itself is implemented in a separate 'Strategy.sol' contract.
  */
-contract BeefyVaultV6 is ERC20, Ownable {
+contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -24,7 +25,7 @@ contract BeefyVaultV6 is ERC20, Ownable {
     }
 
     // The last proposed strategy to switch to.
-    StratCandidate public stratCandidate; 
+    StratCandidate public stratCandidate;
     // The strategy currently in use by the vault.
     IStrategy public strategy;
     // The minimum time it has to pass before a strat candidate can be approved.
@@ -32,7 +33,7 @@ contract BeefyVaultV6 is ERC20, Ownable {
 
     event NewStratCandidate(address implementation);
     event UpgradeStrat(address implementation);
-    
+
     /**
      * @dev Sets the value of {token} to the token that the vault will
      * hold as underlying value. It initializes the vault's own 'moo' token.
@@ -45,8 +46,8 @@ contract BeefyVaultV6 is ERC20, Ownable {
      */
     constructor (
         IStrategy _strategy,
-        string memory _name, 
-        string memory _symbol, 
+        string memory _name,
+        string memory _symbol,
         uint256 _approvalDelay
     ) public ERC20(
         _name,
@@ -98,12 +99,14 @@ contract BeefyVaultV6 is ERC20, Ownable {
      * @dev The entrypoint of funds into the system. People deposit with this function
      * into the vault. The vault is then in charge of sending funds into the strategy.
      */
-    function deposit(uint _amount) public {
+    function deposit(uint _amount) public nonReentrant {
+        strategy.beforeDeposit();
+
         uint256 _pool = balance();
-        uint256 _before = want().balanceOf(address(this));
         want().safeTransferFrom(msg.sender, address(this), _amount);
-        uint256 _after = want().balanceOf(address(this));
-        _amount = _after.sub(_before); // Additional check for deflationary tokens
+        earn();
+        uint256 _after = balance();
+        _amount = _after.sub(_pool); // Additional check for deflationary tokens
         uint256 shares = 0;
         if (totalSupply() == 0) {
             shares = _amount;
@@ -111,8 +114,6 @@ contract BeefyVaultV6 is ERC20, Ownable {
             shares = (_amount.mul(totalSupply())).div(_pool);
         }
         _mint(msg.sender, shares);
-
-        earn();
     }
 
     /**
@@ -160,7 +161,8 @@ contract BeefyVaultV6 is ERC20, Ownable {
      * @param _implementation The address of the candidate strategy.  
      */
     function proposeStrat(address _implementation) public onlyOwner {
-        stratCandidate = StratCandidate({ 
+        require(address(this) == IStrategy(_implementation).vault(), "Proposal not valid for this Vault");
+        stratCandidate = StratCandidate({
             implementation: _implementation,
             proposedTime: block.timestamp
          });
@@ -177,14 +179,14 @@ contract BeefyVaultV6 is ERC20, Ownable {
     function upgradeStrat() public onlyOwner {
         require(stratCandidate.implementation != address(0), "There is no candidate");
         require(stratCandidate.proposedTime.add(approvalDelay) < block.timestamp, "Delay has not passed");
-        
+
         emit UpgradeStrat(stratCandidate.implementation);
 
         strategy.retireStrat();
         strategy = IStrategy(stratCandidate.implementation);
         stratCandidate.implementation = address(0);
         stratCandidate.proposedTime = 5000000000;
-        
+
         earn();
     }
 
