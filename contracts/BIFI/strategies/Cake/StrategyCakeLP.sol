@@ -40,11 +40,11 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
     event StratHarvest(address indexed harvester);
 
     constructor(
-        address _want, 
-        uint256 _poolId, 
-        address _vault, 
-        address _unirouter, 
-        address _keeper, 
+        address _want,
+        uint256 _poolId,
+        address _vault,
+        address _unirouter,
+        address _keeper,
         address _strategist,
         address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
@@ -70,32 +70,32 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
 
     // puts the funds to work
     function deposit() public whenNotPaused {
-        uint256 pairBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
 
-        if (pairBal > 0) {
-            IMasterChef(masterchef).deposit(poolId, pairBal);
+        if (wantBal > 0) {
+            IMasterChef(masterchef).deposit(poolId, wantBal);
         }
     }
 
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 pairBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
 
-        if (pairBal < _amount) {
-            IMasterChef(masterchef).withdraw(poolId, _amount.sub(pairBal));
-            pairBal = IERC20(want).balanceOf(address(this));
+        if (wantBal < _amount) {
+            IMasterChef(masterchef).withdraw(poolId, _amount.sub(wantBal));
+            wantBal = IERC20(want).balanceOf(address(this));
         }
 
-        if (pairBal > _amount) {
-            pairBal = _amount;
+        if (wantBal > _amount) {
+            wantBal = _amount;
         }
 
         if (tx.origin == owner() || paused()) {
-            IERC20(want).safeTransfer(vault, pairBal);
+            IERC20(want).safeTransfer(vault, wantBal);
         } else {
-            uint256 withdrawalFee = pairBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
-            IERC20(want).safeTransfer(vault, pairBal.sub(withdrawalFee));
+            uint256 withdrawalFee = wantBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
+            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFee));
         }
     }
 
@@ -119,7 +119,7 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
 
         uint256 callFeeAmount = wbnbBal.mul(callFee).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
-        
+
         uint256 beefyFeeAmount = wbnbBal.mul(beefyFee).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
@@ -166,8 +166,8 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
 
         IMasterChef(masterchef).emergencyWithdraw(poolId);
 
-        uint256 pairBal = IERC20(want).balanceOf(address(this));
-        IERC20(want).transfer(vault, pairBal);
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        IERC20(want).transfer(vault, wantBal);
     }
 
     // pauses deposits and withdraws all funds from third party systems.
@@ -186,6 +186,8 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
         _unpause();
 
         _giveAllowances();
+
+        deposit();
     }
 
     function _giveAllowances() internal {
