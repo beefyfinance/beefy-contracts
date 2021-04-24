@@ -27,8 +27,8 @@ contract StratManager is Ownable, Pausable {
      * @param _vault address of parent vault.
      * @param _beefyFeeRecipient address where to send Beefy's fees.
      */
-    constructor(        
-        address _keeper, 
+    constructor(
+        address _keeper,
         address _strategist,
         address _unirouter,
         address _vault,
@@ -93,4 +93,10 @@ contract StratManager is Ownable, Pausable {
     function setBeefyFeeRecipient(address _beefyFeeRecipient) external onlyOwner {
         beefyFeeRecipient = _beefyFeeRecipient;
     }
+
+    /**
+     * @dev Function to synchronize balances before new user deposit.
+     * Can be overridden in the strategy.
+     */
+    function beforeDeposit() external virtual {}
 }
