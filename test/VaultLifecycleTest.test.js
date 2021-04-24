@@ -3,7 +3,7 @@ const { expect } = require("chai");
 const { zapNativeToToken, getVaultWant } = require("../utils/testHelpers");
 
 const config = {
-  vault: "0x1Ae7E76e2Eb74070774bbd9EAC75585452f24C23",
+  vault: "0x114c5f7f42fB75b7960aa3e4c327f53288360F58",
   vaultContract: "BeefyVaultV5",
   unirouterAddr: "0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F",
   nativeTokenAddr: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
@@ -23,6 +23,7 @@ describe("VaultLifecycleTest", () => {
 
     const want = await getVaultWant(vault);
 
+    // Get some tokens that the vault maximizes.
     await zapNativeToToken({
       amount: config.testAmount,
       want,
@@ -31,19 +32,20 @@ describe("VaultLifecycleTest", () => {
       signer,
     });
 
-    return { signer, other, vault, strategy, unirouter };
+    return { signer, other, want, vault, strategy, unirouter };
   };
-  it("User can deposit and withdraw.", async () => {
-    const { signer, other, vault, strategy, unirouter } = await setup();
+  it("User can deposit and withdraw from the vault.", async () => {
+    const { signer, want, vault } = await setup();
 
-    // await zap(amount, vault, router, signer);
+    const wantBal = await want.balanceOf(signer.address);
 
-    // deposit into vault
+    await want.approve(vault.address, wantBal);
+    await vault.depositAll();
+    await vault.withdrawAll();
 
-    // withdraw from vault
+    const wantBalAfter = await want.balanceOf(signer.address);
 
-    // assert that balances are correct
+    expect(wantBalAfter).to.be.lte(wantBal);
+    expect(wantBalAfter).to.be.gt(wantBal.mul(95).div(100));
   });
 });
-
-// zap function that goes from

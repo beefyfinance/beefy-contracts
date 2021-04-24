@@ -1,6 +1,6 @@
 const hardhat = require("hardhat");
 
-const registerSubsidy = require("../utils/registerSubsidy");
+const registerSubsidy = require("../../utils/registerSubsidy");
 
 const ethers = hardhat.ethers;
 
