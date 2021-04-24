@@ -87,15 +87,17 @@ describe("VaultLifecycleTest", () => {
     const balOfPoolAfterPanic = await strategy.balanceOfPool();
     const balOfWantAfterPanic = await strategy.balanceOfWant();
 
+    // Vault balances are correct after panic.
     expect(vaultBalAfterPanic).to.be.gt(vaultBal.mul(99).div(100));
     expect(balOfPoolAfterPanic).to.equal(0);
     expect(balOfPool).to.be.gt(balOfPoolAfterPanic);
     expect(balOfWantAfterPanic).to.be.gt(balOfWant);
 
+    // Users can't deposit.
     const tx = vault.depositAll();
-
     await expect(tx).to.be.revertedWith("Pausable: paused");
 
+    // User can always withdraw without much penalty.
     await vault.withdrawAll();
     const wantBalFinal = await want.balanceOf(signer.address);
     expect(wantBalFinal).to.be.lte(wantBalStart);
