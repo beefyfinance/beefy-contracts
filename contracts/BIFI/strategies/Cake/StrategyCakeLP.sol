@@ -113,7 +113,7 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
     // performance fees
     function chargeFees() internal {
         uint256 toWbnb = IERC20(cake).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), now);
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -132,16 +132,16 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
         uint256 cakeHalf = IERC20(cake).balanceOf(address(this)).div(2);
 
         if (lpToken0 != cake) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp0Route, address(this), now.add(600));
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp0Route, address(this), now);
         }
 
         if (lpToken1 != cake) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp1Route, address(this), now.add(600));
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp1Route, address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -193,7 +193,6 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(masterchef, uint256(-1));
         IERC20(cake).safeApprove(unirouter, uint256(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint256(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
@@ -205,7 +204,6 @@ contract StrategyCakeLP is StratManager, FeeManager, GasThrottler {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(masterchef, 0);
         IERC20(cake).safeApprove(unirouter, 0);
-        IERC20(wbnb).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
