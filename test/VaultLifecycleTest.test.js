@@ -1,11 +1,14 @@
 const { expect } = require("chai");
 
 const { zapNativeToToken, getVaultWant } = require("../utils/testHelpers");
+const { delay } = require("../utils/timeHelpers");
+
+const TIMEOUT = 10 * 60 * 1000;
 
 const config = {
-  vault: "0x114c5f7f42fB75b7960aa3e4c327f53288360F58",
-  vaultContract: "BeefyVaultV5",
-  unirouterAddr: "0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F",
+  vault: "0x3f8C3120f57b9552e33097B83dFDdAB1539bAd47",
+  vaultContract: "BeefyVaultV6",
+  unirouterAddr: "0x10ED43C718714eb63d5aA57B78B54704E256024E",
   nativeTokenAddr: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
   testAmount: ethers.utils.parseEther("0.1"),
 };
@@ -23,7 +26,7 @@ describe("VaultLifecycleTest", () => {
 
     const want = await getVaultWant(vault);
 
-    // Get some tokens that the vault maximizes.
+    // Get some tokens that the vault maximizes. (TODO: Buy for 'other' as well.)
     await zapNativeToToken({
       amount: config.testAmount,
       want,
@@ -37,15 +40,36 @@ describe("VaultLifecycleTest", () => {
   it("User can deposit and withdraw from the vault.", async () => {
     const { signer, want, vault } = await setup();
 
-    const wantBal = await want.balanceOf(signer.address);
+    const wantBalStart = await want.balanceOf(signer.address);
 
-    await want.approve(vault.address, wantBal);
+    await want.approve(vault.address, wantBalStart);
     await vault.depositAll();
     await vault.withdrawAll();
 
-    const wantBalAfter = await want.balanceOf(signer.address);
+    const wantBalFinal = await want.balanceOf(signer.address);
 
-    expect(wantBalAfter).to.be.lte(wantBal);
-    expect(wantBalAfter).to.be.gt(wantBal.mul(95).div(100));
-  });
+    expect(wantBalFinal).to.be.lte(wantBalStart);
+    expect(wantBalFinal).to.be.gt(wantBalStart.mul(95).div(100));
+  }).timeout(TIMEOUT);
+
+  it("Harvests work as expected.", async () => {
+    const { signer, want, vault, strategy } = await setup();
+
+    const wantBalStart = await want.balanceOf(signer.address);
+    await want.approve(vault.address, wantBalStart);
+    await vault.depositAll();
+
+    const vaultBal = await vault.balance();
+    await delay(5000);
+    await strategy.harvest({ gasPrice: 5000000 });
+    const vaultBalAfterHarvest = await vault.balance();
+
+    await vault.withdrawAll();
+    const wantBalFinal = await want.balanceOf(signer.address);
+
+    console.log(vaultBal.toString(), vaultBalAfterHarvest.toString());
+    expect(vaultBalAfterHarvest).to.be.gt(vaultBal);
+    expect(wantBalFinal).to.be.lte(wantBalStart);
+    expect(wantBalFinal).to.be.gt(wantBalStart.mul(95).div(100));
+  }).timeout(TIMEOUT);
 });
