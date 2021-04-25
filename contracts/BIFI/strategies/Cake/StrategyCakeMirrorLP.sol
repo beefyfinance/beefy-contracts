@@ -13,7 +13,7 @@ import "../../utils/GasThrottler.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyCakeBusdLP is StratManager, FeeManager, GasThrottler {
+contract StrategyCakeMirrorLP is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
