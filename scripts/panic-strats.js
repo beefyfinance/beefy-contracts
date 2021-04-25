@@ -5,29 +5,26 @@ const ethers = hardhat.ethers;
 const abi = ["function panic() public"];
 
 const contracts = [
-  "0xCA26A1f9d3e6Ec97a555d9444f782d61b64C1B0e",
-  "0x0a350c62f4b8C7dA93fBca469e53a182b5BBD044",
-  "0x3c2C339d05d4911894F08Dd975e89630D7ef4234",
-  "0x70C247ac8323B9ca340857d2893F4aa4F7E16D5f",
-  "0xBB0C9d495F555E754ACDb76Ed127a9C115132206",
-  "0x131fE92ff0288915883d6c122Cb76D68c5145D87",
-  "0xfa3ccb086bf371a2ff33db8521be47c5b4b9d10e",
-  "0x8c1244aCCD534025641CFF00D4ee5616FcbeE154",
-  "0xe865Ba185895634D094767688aC1c69751cb06aa",
-  "0x45640eE6e2BE2bA6752909f2e57C32C4997965d2",
-  "0x77ed2908e3cE2197882993DF9432E69079b146B6",
-  "0x76788df486C07750Ce915D88093872470e5e3E45",
+  "0x50E33d0CB8664F9C2867c679d3C955A6b2A0faD4",
+  "0x2D78a2Bbfa71c268beE36011F944901aF9b9d351",
+  "0xcF662a5dB70B57D3616b5404801687f5ff657FBc",
+  "0xd07308E588679C6F19682A83124F1F5022969EF2",
+  "0x71D322ef2ad9b6b312Cc04A51a03C5f0Da74CaA0",
+  "0x5D5d360c8529076800dfD9f57bCe514122Da35bB",
+  "0x99bF8be49DcAc945a5754BDc0f5440Dc592D302a",
 ];
 
 async function main() {
   for (const contract of contracts) {
     const strategy = await ethers.getContractAt(abi, contract);
     try {
-      const tx = await strategy.panic({ gasLimit: 3500000, gasPrice: 5000000000 });
-      const url = `https://bscscan.com/tx/${tx.hash}`;
-      console.log(`Successful panic at ${url}`);
+      let tx = await strategy.panic({ gasLimit: 3500000, gasPrice: 5000000000 });
+      tx = await tx.wait();
+      tx.status === 1
+        ? console.log(`Strat ${contract} panic() with tx: ${tx.transactionHash}`)
+        : console.log(`Could not panic ${contract}} with tx: ${tx.transactionHash}`);
     } catch (err) {
-      console.log(`Could not panic due to: ${err}`);
+      console.log(`Errr calling panic on ${contract} due to: ${err}`);
     }
   }
 }

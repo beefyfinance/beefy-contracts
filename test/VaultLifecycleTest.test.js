@@ -26,13 +26,19 @@ describe("VaultLifecycleTest", () => {
 
     const want = await getVaultWant(vault);
 
-    // Get some tokens that the vault maximizes. (TODO: Buy for 'other' as well.)
     await zapNativeToToken({
       amount: config.testAmount,
       want,
       nativeTokenAddr: config.nativeTokenAddr,
       unirouter,
-      signer,
+      recipient: signer.address,
+    });
+
+    const wantBal = await want.balanceOf(signer.address);
+    await want.transfer(other.address, wantBal.div(2));
+    await signer.sendTransaction({
+      to: other.address,
+      value: config.testAmount,
     });
 
     return { signer, other, want, vault, strategy, unirouter };
@@ -104,5 +110,26 @@ describe("VaultLifecycleTest", () => {
     expect(wantBalFinal).to.be.gt(wantBalStart.mul(95).div(100));
   }).timeout(TIMEOUT);
 
-  // New user doesn't lower price per share.
+  it("New user doesn't lower other users balances.", async () => {
+    const { signer, other, want, vault } = await setup();
+
+    const wantBalStart = await want.balanceOf(signer.address);
+    await want.approve(vault.address, wantBalStart);
+    await vault.depositAll();
+
+    const pricePerShare = await vault.getPricePerFullShare();
+    const wantBalOfOther = await want.balanceOf(other.address);
+    await want.connect(other).approve(vault.address, wantBalOfOther);
+    await vault.connect(other).depositAll();
+    const pricePerShareAfter = await vault.getPricePerFullShare();
+
+    expect(pricePerShareAfter).to.be.gte(pricePerShare);
+
+    console.log(pricePerShare.toString(), pricePerShareAfter.toString());
+
+    await vault.withdrawAll();
+    const wantBalFinal = await want.balanceOf(signer.address);
+    expect(wantBalFinal).to.be.lte(wantBalStart);
+    expect(wantBalFinal).to.be.gt(wantBalStart.mul(95).div(100));
+  }).timeout(TIMEOUT);
 });

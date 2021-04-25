@@ -3,7 +3,7 @@ const ethers = hardhat.ethers;
 
 // TODO: Handle custom LPs (Like Belt LPs)
 
-async function zapNativeToToken({ amount, want, nativeTokenAddr, unirouter, signer }) {
+async function zapNativeToToken({ amount, want, nativeTokenAddr, unirouter, recipient }) {
   let isLpToken, lpPair, token0, token1;
 
   // handle wbnb
@@ -30,38 +30,29 @@ async function zapNativeToToken({ amount, want, nativeTokenAddr, unirouter, sign
 
   if (isLpToken) {
     try {
-      await swapNativeForToken({ unirouter, token: token0, signer, nativeTokenAddr, amount: amount.div(2) });
-      await swapNativeForToken({ unirouter, token: token1, signer, nativeTokenAddr, amount: amount.div(2) });
+      await swapNativeForToken({ unirouter, token: token0, recipient, nativeTokenAddr, amount: amount.div(2) });
+      await swapNativeForToken({ unirouter, token: token1, recipient, nativeTokenAddr, amount: amount.div(2) });
 
-      const token0Bal = await token0.balanceOf(signer.address);
-      const token1Bal = await token1.balanceOf(signer.address);
+      const token0Bal = await token0.balanceOf(recipient);
+      const token1Bal = await token1.balanceOf(recipient);
 
       await token0.approve(unirouter.address, token0Bal);
       await token1.approve(unirouter.address, token1Bal);
 
-      await unirouter.addLiquidity(
-        token0.address,
-        token1.address,
-        token0Bal,
-        token1Bal,
-        1,
-        1,
-        signer.address,
-        5000000000
-      );
+      await unirouter.addLiquidity(token0.address, token1.address, token0Bal, token1Bal, 1, 1, recipient, 5000000000);
     } catch (e) {
       console.log("Could not add liquidity", e);
     }
   } else {
-    await swapNativeForToken({ unirouter, token: want, signer, nativeTokenAddr, amount });
+    await swapNativeForToken({ unirouter, token: want, recipient, nativeTokenAddr, amount });
   }
 }
 
-async function swapNativeForToken({ unirouter, amount, nativeTokenAddr, token, signer }) {
+async function swapNativeForToken({ unirouter, amount, nativeTokenAddr, token, recipient }) {
   if (token.address === nativeTokenAddr) return;
 
   try {
-    await unirouter.swapExactETHForTokens(0, [nativeTokenAddr, token.address], signer.address, 5000000000, {
+    await unirouter.swapExactETHForTokens(0, [nativeTokenAddr, token.address], recipient, 5000000000, {
       value: amount,
     });
   } catch (e) {

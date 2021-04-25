@@ -58,4 +58,6 @@ describe("StratUpgrade", () => {
 
     expect(balBeforePanic).to.equal(balAfterPanic);
   });
+
+  // Add multi-user test. (Deposit doesn't lower pricePerFullShare)
 });
