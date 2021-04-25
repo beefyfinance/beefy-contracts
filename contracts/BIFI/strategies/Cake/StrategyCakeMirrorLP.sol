@@ -19,6 +19,7 @@ contract StrategyCakeBusdLP is StratManager, FeeManager, GasThrottler {
 
     // Tokens used
     address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
+    address constant public busd = address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
     address constant public ust = address(0x23396cF899Ca06c4472205fC903bDB4de249D6fC);
     address constant public cake = address(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
     address public want;
@@ -54,15 +55,15 @@ contract StrategyCakeBusdLP is StratManager, FeeManager, GasThrottler {
         poolId = _poolId;
 
         if (lpToken0 == ust) {
-            cakeToLp0Route = [cake, wbnb, ust];
+            cakeToLp0Route = [cake, wbnb, busd, ust];
         } else if (lpToken0 != cake) {
-            cakeToLp0Route = [cake, wbnb, ust, lpToken0];
+            cakeToLp0Route = [cake, wbnb, busd, ust, lpToken0];
         }
 
         if (lpToken1 == ust) {
-            cakeToLp1Route = [cake, wbnb, ust];
+            cakeToLp1Route = [cake, wbnb, busd, ust];
         } else if (lpToken1 != cake) {
-            cakeToLp1Route = [cake, wbnb, ust, lpToken1];
+            cakeToLp1Route = [cake, wbnb, busd, ust, lpToken1];
         }
 
         _giveAllowances();
