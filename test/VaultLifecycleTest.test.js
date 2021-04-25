@@ -103,11 +103,14 @@ describe("VaultLifecycleTest", () => {
     const tx = vault.depositAll();
     await expect(tx).to.be.revertedWith("Pausable: paused");
 
-    // User can always withdraw without much penalty.
+    // User can withdraw while paused.
     await vault.withdrawAll();
     const wantBalFinal = await want.balanceOf(signer.address);
     expect(wantBalFinal).to.be.lte(wantBalStart);
     expect(wantBalFinal).to.be.gt(wantBalStart.mul(95).div(100));
+
+    // TO-DO: state reset properly with a beforeEach();
+    await strategy.unpause();
   }).timeout(TIMEOUT);
 
   it("New user doesn't lower other users balances.", async () => {
