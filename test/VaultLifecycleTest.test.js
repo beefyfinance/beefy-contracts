@@ -6,11 +6,13 @@ const { delay } = require("../utils/timeHelpers");
 const TIMEOUT = 10 * 60 * 1000;
 
 const config = {
-  vault: "0x3f8C3120f57b9552e33097B83dFDdAB1539bAd47",
+  vault: "0xb26642B6690E4c4c9A6dAd6115ac149c700C7dfE",
   vaultContract: "BeefyVaultV6",
   unirouterAddr: "0x10ED43C718714eb63d5aA57B78B54704E256024E",
   nativeTokenAddr: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
   testAmount: ethers.utils.parseEther("0.1"),
+  keeper: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
+  owner: "0x8f0fFc8C7FC3157697Bdbf94B328F7141d6B41de",
 };
 
 describe("VaultLifecycleTest", () => {
@@ -66,11 +68,14 @@ describe("VaultLifecycleTest", () => {
     await vault.depositAll();
 
     const vaultBal = await vault.balance();
+    const pricePerShare = await vault.getPricePerFullShare();
     await delay(5000);
     await strategy.harvest({ gasPrice: 5000000 });
     const vaultBalAfterHarvest = await vault.balance();
+    const pricePerShareAfterHarvest = await vault.getPricePerFullShare();
 
     expect(vaultBalAfterHarvest).to.be.gt(vaultBal);
+    expect(pricePerShareAfterHarvest).to.be.gt(pricePerShare);
 
     await vault.withdrawAll();
     const wantBalFinal = await want.balanceOf(signer.address);
@@ -134,5 +139,17 @@ describe("VaultLifecycleTest", () => {
     const wantBalFinal = await want.balanceOf(signer.address);
     expect(wantBalFinal).to.be.lte(wantBalStart);
     expect(wantBalFinal).to.be.gt(wantBalStart.mul(95).div(100));
+  }).timeout(TIMEOUT);
+
+  it("It has the correct owner and keeper.", async () => {
+    const { strategy, vault } = await setup();
+
+    const vaultOwner = await vault.owner();
+    const stratOwner = await strategy.owner();
+    const stratKeeper = await strategy.keeper();
+
+    expect(vaultOwner).to.equal(config.owner);
+    expect(stratOwner).to.equal(config.owner);
+    expect(stratKeeper).to.equal(config.keeper);
   }).timeout(TIMEOUT);
 });
