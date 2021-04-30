@@ -83,4 +83,11 @@ async function getVaultWant(vault) {
   return want;
 }
 
-module.exports = { zapNativeToToken, swapNativeForToken, getVaultWant, logTokenBalance };
+async function unpauseIfPaused(strat) {
+  const isPaused = await strat.paused();
+  if (isPaused) {
+    await strat.unpause();
+  }
+}
+
+module.exports = { zapNativeToToken, swapNativeForToken, getVaultWant, logTokenBalance, unpauseIfPaused };

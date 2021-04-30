@@ -13,8 +13,8 @@ describe("StratUpgrade", () => {
     const strategyAddr = await vault.strategy();
     const stratCandidate = await vault.stratCandidate();
 
-    const strategy = await ethers.getContractAt("IStrategy", strategyAddr);
-    const candidate = await ethers.getContractAt("IStrategy", stratCandidate.implementation);
+    const strategy = await ethers.getContractAt("IStrategyComplete", strategyAddr);
+    const candidate = await ethers.getContractAt("IStrategyComplete", stratCandidate.implementation);
 
     return { vault, strategy, candidate };
   };
