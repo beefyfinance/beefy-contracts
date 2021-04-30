@@ -4,7 +4,7 @@ pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IStrategy {
+interface IStrategyComplete {
     function vault() external view returns (address);
     function want() external view returns (IERC20);
     function beforeDeposit() external;

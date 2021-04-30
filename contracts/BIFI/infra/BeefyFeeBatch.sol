@@ -15,8 +15,8 @@ contract BeefyFeeBatch is Ownable, GasThrottler {
     using SafeMath for uint256;
 
     // Tokens used
-    address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
-    address constant public bifi = address(0xCa3F508B8e4Dd382eE878A314789373D80A5190A);
+    address public wNative ;
+    address public bifi;
 
     address public treasury;
     address public rewardPool;
@@ -27,14 +27,22 @@ contract BeefyFeeBatch is Ownable, GasThrottler {
     uint constant public REWARD_POOL_FEE = 860;
     uint constant public MAX_FEE = 1000;
 
-    address[] public wbnbToBifiRoute = [wbnb, bifi];
+    address[] public wNativeToBifiRoute = [wNative, bifi];
 
-    constructor(address _treasury, address _rewardPool, address _unirouter) public {
+    constructor(
+        address _treasury, 
+        address _rewardPool, 
+        address _unirouter, 
+        address _bifi, 
+        address _wNative 
+    ) public {
         treasury = _treasury;
         rewardPool = _rewardPool;
         unirouter = _unirouter;
+        bifi = _bifi;
+        wNative  = _wNative ;
 
-        IERC20(wbnb).safeApprove(unirouter, uint256(-1));
+        IERC20(wNative).safeApprove(unirouter, uint256(-1));
     }
 
     event NewRewardPool(address oldRewardPool, address newRewardPool);
@@ -48,14 +56,14 @@ contract BeefyFeeBatch is Ownable, GasThrottler {
 
     // Main function. Divides Beefy's profits.
     function harvest() public onlyEOA gasThrottle {
-        uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
+        uint256 wNativeBal = IERC20(wNative).balanceOf(address(this));
 
-        uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
-        IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now);
+        uint256 treasuryHalf = wNativeBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
+        IERC20(wNative).safeTransfer(treasury, treasuryHalf);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wNativeToBifiRoute, treasury, now);
         
-        uint256 rewardsFeeAmount = wbnbBal.mul(REWARD_POOL_FEE).div(MAX_FEE);
-        IERC20(wbnb).safeTransfer(rewardPool, rewardsFeeAmount);
+        uint256 rewardsFeeAmount = wNativeBal.mul(REWARD_POOL_FEE).div(MAX_FEE);
+        IERC20(wNative).safeTransfer(rewardPool, rewardsFeeAmount);
     }
 
     // Manage the contract
@@ -72,15 +80,15 @@ contract BeefyFeeBatch is Ownable, GasThrottler {
     function setUnirouter(address _unirouter) external onlyOwner {
         emit NewUnirouter(unirouter, _unirouter);
 
-        IERC20(wbnb).safeApprove(_unirouter, uint256(-1));
-        IERC20(wbnb).safeApprove(unirouter, 0);
+        IERC20(wNative).safeApprove(_unirouter, uint256(-1));
+        IERC20(wNative).safeApprove(unirouter, 0);
 
         unirouter = _unirouter;
     }
     
     // Rescue locked funds sent by mistake
     function inCaseTokensGetStuck(address _token) external onlyOwner {
-        require(_token != wbnb, "!safe");
+        require(_token != wNative, "!safe");
 
         uint256 amount = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransfer(msg.sender, amount);

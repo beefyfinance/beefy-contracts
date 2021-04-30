@@ -1,29 +1,29 @@
 const hardhat = require("hardhat");
 
-const registerSubsidy = require("../../utils/registerSubsidy");
-
 const ethers = hardhat.ethers;
 
 const config = {
-  treasury: "0x4A32De8c248533C28904b24B4cFCFE18E9F2ad01",
-  rewardPool: "0x453D4Ba9a2D594314DF88564248497F7D74d6b2C",
-  unirouter: "0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F",
+  treasury: "0xA3e3Af161943CfB3941B631676134bb048739727",
+  rewardPool: "0x86d38c6b6313c5A3021D68D1F57CF5e69197592A",
+  unirouter: "0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106",
+  bifi: "0xd6070ae98b8069de6B494332d1A1a81B6179D960",
+  wNative: "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
 };
 
 async function main() {
   await hardhat.run("compile");
 
-  const [deployer] = await ethers.getSigners();
-
   const BeefyFeeBatch = await ethers.getContractFactory("BeefyFeeBatch");
-  const batcher = await BeefyFeeBatch.deploy(config.treasury, config.rewardPool, config.unirouter, {
-    gasPrice: 7000000000,
-  });
+  const batcher = await BeefyFeeBatch.deploy(
+    config.treasury,
+    config.rewardPool,
+    config.unirouter,
+    config.bifi,
+    config.wNative
+  );
   await batcher.deployed();
 
   console.log("Deployed to:", batcher.address);
-
-  await registerSubsidy(batcher.address, deployer);
 }
 
 main()

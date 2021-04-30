@@ -3,8 +3,8 @@ const hardhat = require("hardhat");
 const ethers = hardhat.ethers;
 
 const config = {
-  staked: "0x765277eebeca2e31912c9946eae1021199b39c61",
-  rewards: "0x5545153CCFcA01fbd7Dd11C0b23ba694D9509A6F",
+  staked: "0xd6070ae98b8069de6B494332d1A1a81B6179D960",
+  rewards: "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
 };
 
 async function main() {
