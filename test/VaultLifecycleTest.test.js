@@ -6,7 +6,7 @@ const { delay } = require("../utils/timeHelpers");
 const TIMEOUT = 10 * 60 * 1000;
 
 const config = {
-  vault: "0xb26642B6690E4c4c9A6dAd6115ac149c700C7dfE",
+  vault: "0x519807e99E21200469bF888917C64B67e0E3018a",
   vaultContract: "BeefyVaultV6",
   unirouterAddr: "0x10ED43C718714eb63d5aA57B78B54704E256024E",
   nativeTokenAddr: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
@@ -22,11 +22,12 @@ describe("VaultLifecycleTest", () => {
     const vault = await ethers.getContractAt(config.vaultContract, config.vault);
 
     const strategyAddr = await vault.strategy();
+
     const strategy = await ethers.getContractAt("IStrategy", strategyAddr);
 
     const unirouter = await ethers.getContractAt("IUniswapRouterETH", config.unirouterAddr);
 
-    const want = await getVaultWant(vault);
+    const want = await getVaultWant(vault, config.nativeTokenAddr);
 
     await zapNativeToToken({
       amount: config.testAmount,
@@ -132,8 +133,6 @@ describe("VaultLifecycleTest", () => {
     const pricePerShareAfter = await vault.getPricePerFullShare();
 
     expect(pricePerShareAfter).to.be.gte(pricePerShare);
-
-    console.log(pricePerShare.toString(), pricePerShareAfter.toString());
 
     await vault.withdrawAll();
     const wantBalFinal = await want.balanceOf(signer.address);

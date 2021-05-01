@@ -65,7 +65,7 @@ async function logTokenBalance(token, wallet) {
   console.log(`Balance: ${ethers.utils.formatEther(balance.toString())}`);
 }
 
-async function getVaultWant(vault) {
+async function getVaultWant(vault, nativeTokenAddr) {
   let wantAddr;
 
   try {
@@ -74,7 +74,7 @@ async function getVaultWant(vault) {
     try {
       wantAddr = await vault.want();
     } catch (e) {
-      wantAddr = config.nativeTokenAddr;
+      wantAddr = nativeTokenAddr;
     }
   }
 

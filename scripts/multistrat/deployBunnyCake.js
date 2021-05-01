@@ -1,8 +1,7 @@
 const hardhat = require("hardhat");
 
-const registerSubsidy = require("../utils/registerSubsidy");
-const predictAddresses = require("../utils/predictAddresses");
-const getNetworkRpc = require("../utils/getNetworkRpc");
+const predictAddresses = require("../../utils/predictAddresses");
+const getNetworkRpc = require("../../utils/getNetworkRpc");
 
 const ethers = hardhat.ethers;
 
@@ -11,14 +10,16 @@ const config = {
   mooName: "Moo Bunny Cake",
   mooSymbol: "mooBunnyCake",
   delay: 21600,
-  keeper: "0x9295E05d5cd1cfA617875Ba1cF984D65830d1a4c",
+  unirouter: "0x10ED43C718714eb63d5aA57B78B54704E256024E",
+  keeper: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
   strategist: "0xB60d9512CC129f539313b7Bdbd13bBa1Fd2fE3C3",
+  beefyFeeRecipient: "0xEB41298BA4Ea3865c33bDE8f60eC414421050d53",
 };
 
 async function main() {
   await hardhat.run("compile");
 
-  const Vault = await ethers.getContractFactory("BeefyVaultV5");
+  const Vault = await ethers.getContractFactory("BeefyVaultV6");
   const Strategy = await ethers.getContractFactory("StrategyBunnyCake");
 
   const [deployer] = await ethers.getSigners();
@@ -28,23 +29,21 @@ async function main() {
 
   const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
 
-  const vault = await Vault.deploy(
-    config.want,
-    predictedAddresses.strategy,
-    config.mooName,
-    config.mooSymbol,
-    config.delay
-  );
+  const vault = await Vault.deploy(predictedAddresses.strategy, config.mooName, config.mooSymbol, config.delay);
   await vault.deployed();
 
-  const strategy = await Strategy.deploy(config.keeper, config.strategist, predictedAddresses.vault);
+  const strategy = await Strategy.deploy(
+    config.want,
+    config.keeper,
+    config.strategist,
+    config.unirouter,
+    config.beefyFeeRecipient,
+    predictedAddresses.vault
+  );
   await strategy.deployed();
 
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
-
-  // await registerSubsidy(vault.address, deployer);
-  // await registerSubsidy(strategy.address, deployer);
 }
 
 main()

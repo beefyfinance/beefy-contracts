@@ -20,6 +20,11 @@ contract StratManager is Ownable, Pausable {
     address public beefyFeeRecipient;
 
     /**
+     * @dev Event that is fired each time someone harvests the strat.
+     */
+    event StratHarvest(address indexed harvester);
+
+    /**
      * @dev Initializes the base strategy.
      * @param _keeper address to use as alternative owner.
      * @param _strategist address where strategist fees go.
