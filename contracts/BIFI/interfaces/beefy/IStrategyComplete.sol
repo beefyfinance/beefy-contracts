@@ -21,5 +21,6 @@ interface IStrategyComplete {
     function paused() external view returns (bool);
     function owner() external view returns (address);
     function keeper() external view returns (address);
+    function unirouter() external view returns (address);
 }
 

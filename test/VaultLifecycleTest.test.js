@@ -1,14 +1,13 @@
 const { expect } = require("chai");
 
-const { zapNativeToToken, getVaultWant } = require("../utils/testHelpers");
+const { zapNativeToToken, getVaultWant, unpauseIfPaused } = require("../utils/testHelpers");
 const { delay } = require("../utils/timeHelpers");
 
 const TIMEOUT = 10 * 60 * 1000;
 
 const config = {
-  vault: "0x519807e99E21200469bF888917C64B67e0E3018a",
+  vault: "0x233Ff11a230D9F278af02057E52ac4FA502daAD2",
   vaultContract: "BeefyVaultV6",
-  unirouterAddr: "0x10ED43C718714eb63d5aA57B78B54704E256024E",
   nativeTokenAddr: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
   testAmount: ethers.utils.parseEther("0.1"),
   keeper: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
@@ -22,10 +21,10 @@ describe("VaultLifecycleTest", () => {
     const vault = await ethers.getContractAt(config.vaultContract, config.vault);
 
     const strategyAddr = await vault.strategy();
+    const strategy = await ethers.getContractAt("IStrategyComplete", strategyAddr);
 
-    const strategy = await ethers.getContractAt("IStrategy", strategyAddr);
-
-    const unirouter = await ethers.getContractAt("IUniswapRouterETH", config.unirouterAddr);
+    const unirouterAddr = await strategy.unirouter();
+    const unirouter = await ethers.getContractAt("IUniswapRouterETH", unirouterAddr);
 
     const want = await getVaultWant(vault, config.nativeTokenAddr);
 
@@ -47,7 +46,8 @@ describe("VaultLifecycleTest", () => {
     return { signer, other, want, vault, strategy, unirouter };
   };
   it("User can deposit and withdraw from the vault.", async () => {
-    const { signer, want, vault } = await setup();
+    const { signer, want, strategy, vault } = await setup();
+    await unpauseIfPaused(strategy);
 
     const wantBalStart = await want.balanceOf(signer.address);
 
@@ -63,6 +63,7 @@ describe("VaultLifecycleTest", () => {
 
   it("Harvests work as expected.", async () => {
     const { signer, want, vault, strategy } = await setup();
+    await unpauseIfPaused(strategy);
 
     const wantBalStart = await want.balanceOf(signer.address);
     await want.approve(vault.address, wantBalStart);
@@ -70,7 +71,7 @@ describe("VaultLifecycleTest", () => {
 
     const vaultBal = await vault.balance();
     const pricePerShare = await vault.getPricePerFullShare();
-    await delay(5000);
+    await delay(5000); // Might be too little time to earn rewards sometimes.
     await strategy.harvest({ gasPrice: 5000000 });
     const vaultBalAfterHarvest = await vault.balance();
     const pricePerShareAfterHarvest = await vault.getPricePerFullShare();
@@ -86,6 +87,7 @@ describe("VaultLifecycleTest", () => {
 
   it("Manager can panic.", async () => {
     const { signer, want, vault, strategy } = await setup();
+    await unpauseIfPaused(strategy);
 
     const wantBalStart = await want.balanceOf(signer.address);
     await want.approve(vault.address, wantBalStart);
@@ -120,7 +122,8 @@ describe("VaultLifecycleTest", () => {
   }).timeout(TIMEOUT);
 
   it("New user doesn't lower other users balances.", async () => {
-    const { signer, other, want, vault } = await setup();
+    const { signer, other, want, strategy, vault } = await setup();
+    await unpauseIfPaused(strategy);
 
     const wantBalStart = await want.balanceOf(signer.address);
     await want.approve(vault.address, wantBalStart);

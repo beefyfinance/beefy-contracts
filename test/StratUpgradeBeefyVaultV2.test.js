@@ -9,7 +9,6 @@ const config = {
   vault: "0xf7069e41C57EcC5F122093811d8c75bdB5f7c14e",
   testAmount: ethers.utils.parseEther("0.1"),
   nativeTokenAddr: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
-  unirouterAddr: "0x10ED43C718714eb63d5aA57B78B54704E256024E",
 };
 
 describe("StratUpgrade of legacy BeefyVaultV2", () => {
@@ -24,7 +23,8 @@ describe("StratUpgrade of legacy BeefyVaultV2", () => {
     const strategy = await ethers.getContractAt("IStrategyComplete", strategyAddr);
     const candidate = await ethers.getContractAt("IStrategyComplete", stratCandidate.implementation);
 
-    const unirouter = await ethers.getContractAt("IUniswapRouterETH", config.unirouterAddr);
+    const unirouterAddr = await strategy.unirouter();
+    const unirouter = await ethers.getContractAt("IUniswapRouterETH", unirouterAddr);
 
     const want = await getVaultWant(vault);
     await zapNativeToToken({

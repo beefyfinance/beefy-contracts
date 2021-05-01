@@ -25,8 +25,8 @@ contract StrategyBunnyCake is StratManager, FeeManager, GasThrottler {
     address constant public bunnyVault = address(0xEDfcB78e73f7bA6aD2D829bf5D462a0924da28eD);
 
     // Routes
-    address[] public bunnyToWantRoute = [bunny, wbnb, want];
-    address[] public wantToWbnbRoute = [want, wbnb];
+    address[] public bunnyToWantRoute;
+    address[] public wantToWbnbRoute;
 
     constructor(
         address _want,
@@ -37,6 +37,9 @@ contract StrategyBunnyCake is StratManager, FeeManager, GasThrottler {
         address _vault
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient)  public {
         want = _want;
+
+        bunnyToWantRoute = [bunny, wbnb, want];
+        wantToWbnbRoute = [want, wbnb];
 
         _giveAllowances();
     }
