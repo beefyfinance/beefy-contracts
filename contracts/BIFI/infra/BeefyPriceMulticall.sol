@@ -20,7 +20,7 @@ contract BeefyPriceMulticall {
     }
 
     function getLpInfo(address[][] calldata pools) external view returns (uint[] memory) {
-        uint[] memory results = new uint[](pools.length * 6);
+        uint[] memory results = new uint[](pools.length * 3);
         uint idx = 0;
 
         for (uint i = 0; i < pools.length; i++) {
@@ -29,11 +29,8 @@ contract BeefyPriceMulticall {
             address t1 = pools[i][2];
 
             results[idx++] = getUint(lp, abi.encodeWithSignature("totalSupply()"));
-            results[idx++] = getUint(lp, abi.encodeWithSignature("decimals()"));
             results[idx++] = getUint(t0, abi.encodeWithSignature("balanceOf(address)", lp));
-            results[idx++] = getUint(t0, abi.encodeWithSignature("decimals()"));
             results[idx++] = getUint(t1, abi.encodeWithSignature("balanceOf(address)", lp));
-            results[idx++] = getUint(t1, abi.encodeWithSignature("decimals()"));
         }
 
         return results;
