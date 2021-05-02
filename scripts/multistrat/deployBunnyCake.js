@@ -7,8 +7,8 @@ const ethers = hardhat.ethers;
 
 const config = {
   want: "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
-  mooName: "Moo Bunny Cake",
-  mooSymbol: "mooBunnyCake",
+  mooName: "Moo Test",
+  mooSymbol: "mooTest",
   delay: 21600,
   unirouter: "0x10ED43C718714eb63d5aA57B78B54704E256024E",
   keeper: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",

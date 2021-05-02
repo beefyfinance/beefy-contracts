@@ -9,7 +9,7 @@ task("panic", "Panics a given strategy.")
     const strategy = await ethers.getContractAt(IStrategy.abi, taskArgs.strat);
 
     try {
-      const tx = await strategy.panic({ gasPrice: 10000000000, gasLimit: 3500000 });
+      const tx = await strategy.panic({ gasPrice: 5000000000, gasLimit: 3500000 });
       const url = `https://bscscan.com/tx/${tx.hash}`;
       console.log(`Successful panic with tx at ${url}`);
     } catch (err) {
@@ -24,7 +24,7 @@ task("unpause", "Unpauses a given strategy.")
     const strategy = await ethers.getContractAt(IStrategy.abi, taskArgs.strat);
 
     try {
-      const tx = await strategy.unpause({ gasPrice: 10000000000, gasLimit: 3500000 });
+      const tx = await strategy.unpause({ gasPrice: 5000000000, gasLimit: 3500000 });
       const url = `https://bscscan.com/tx/${tx.hash}`;
       console.log(`Successful unpaused with tx at ${url}`);
     } catch (err) {
@@ -39,7 +39,7 @@ task("harvest", "Harvests a given strategy.")
     const strategy = await ethers.getContractAt(IStrategy.abi, taskArgs.strat);
 
     try {
-      const tx = await strategy.harvest({ gasPrice: 10000000000, gasLimit: 3500000 });
+      const tx = await strategy.harvest({ gasPrice: 5000000000, gasLimit: 3500000 });
       const url = `https://bscscan.com/tx/${tx.hash}`;
       console.log(`Successful harvest with tx at ${url}`);
     } catch (err) {
