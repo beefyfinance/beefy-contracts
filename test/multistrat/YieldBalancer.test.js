@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 
-const { deployVault } = require("../utils/deployVault");
-const { nowInSeconds, delay } = require("../utils/timeHelpers");
+const { deployVault } = require("../../utils/deployVault");
+const { nowInSeconds, delay } = require("../../utils/timeHelpers");
 
 const TIMEOUT = 10 * 60 * 1000;
 const RPC = "http://127.0.0.1:8545";
