@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 
-const { zapNativeToToken, getVaultWant, unpauseIfPaused } = require("../utils/testHelpers");
-const { delay } = require("../utils/timeHelpers");
+const { zapNativeToToken, getVaultWant, unpauseIfPaused } = require("../../utils/testHelpers");
+const { delay } = require("../../utils/timeHelpers");
 
 const TIMEOUT = 10 * 60 * 1000;
 
