@@ -114,7 +114,7 @@ describe("VaultLifecycleTest", () => {
     expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
   }).timeout(TIMEOUT);
 
-  it("New user doesn't lower other users balances.", async () => {
+  it("New user deposit/withdrawals don't lower other users balances.", async () => {
     const { signer, other, want, strategy, vault } = await setup();
     await unpauseIfPaused(strategy);
 
