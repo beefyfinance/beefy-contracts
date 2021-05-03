@@ -96,27 +96,31 @@ contract BeefyLaunchpadPool is LPTokenWrapper, Ownable {
         }
     }
 
-    function notifyRewardAmount(uint256 reward)
+    function notifyRewardAmount()
         external
         onlyOwner
         updateReward(address(0))
     {
-        if (block.timestamp >= periodFinish) {
-            rewardRate = reward.div(duration);
-        } else {
-            uint256 remaining = periodFinish.sub(block.timestamp);
-            uint256 leftover = remaining.mul(rewardRate);
-            rewardRate = reward.add(leftover).div(duration);
+        uint256 reward = IERC20(rewardToken).balanceOf(address(this));
+        if(periodFinish == 0) {
+            if (block.timestamp >= periodFinish) {
+                rewardRate = reward.div(duration);
+            } else {
+                uint256 remaining = periodFinish.sub(block.timestamp);
+                uint256 leftover = remaining.mul(rewardRate);
+                rewardRate = reward.add(leftover).div(duration);
+            }
+            lastUpdateTime = block.timestamp;
+            periodFinish = block.timestamp.add(duration);
+            emit RewardAdded(reward);
         }
-        lastUpdateTime = block.timestamp;
-        periodFinish = block.timestamp.add(duration);
-        emit RewardAdded(reward);
     }
 
     function inCaseTokensGetStuck(address _token) external onlyOwner {
-        require(_token != address(stakedToken), "!staked");
-        require(_token != address(rewardToken), "!reward");
-
+        if(periodFinish != 0) {
+            require(_token != address(stakedToken), "!staked");
+            require(_token != address(rewardToken), "!reward");
+        }
         uint256 amount = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransfer(msg.sender, amount);
     }
