@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 
-const { deployVault } = require("../utils/deployVault");
+const { deployVault } = require("../../utils/deployVault");
 
 // TOKENS
 const WBNB = "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c";
@@ -29,14 +29,14 @@ function fmt(n, p = 4) {
 describe("Migrate SmartCake", () => {
   const setup = async () => {
     const [signer, other] = await ethers.getSigners();
-    
+
     const ERC20 = await artifacts.readArtifact("@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20");
     const ROUTER = await artifacts.readArtifact("IUniswapRouterETH");
 
     const contracts = {
       wbnb: await ethers.getContractAt(ERC20.abi, WBNB),
       cake: await ethers.getContractAt(ERC20.abi, CAKE),
-      router: await ethers.getContractAt(ROUTER.abi, UNIROUTER)
+      router: await ethers.getContractAt(ROUTER.abi, UNIROUTER),
     };
 
     return { signer, other, contracts };
@@ -52,13 +52,13 @@ describe("Migrate SmartCake", () => {
       delay: 60,
       stratArgs: [],
       signer: signer,
-      rpc: RPC
+      rpc: RPC,
     });
 
     return { vault, strategy };
-  }
+  };
 
-  const mockSimpleArch = async({ signer }) => {
+  const mockSimpleArch = async ({ signer }) => {
     const workers = {
       simple: await deployVault({
         vault: "BeefyVaultV3",
@@ -86,9 +86,9 @@ describe("Migrate SmartCake", () => {
     });
 
     return { vault, strategy, workers };
-  }
+  };
 
-  const mockNewArch = async({ signer }) => {
+  const mockNewArch = async ({ signer }) => {
     const workers = {
       simple: await deployVault({
         vault: "BeefyVaultV3",
@@ -134,13 +134,18 @@ describe("Migrate SmartCake", () => {
       mooName: "Yield Balancer",
       mooSymbol: "mooBalancer",
       delay: 5,
-      stratArgs: [CAKE, [workers.simple.vault.address, workers.syrupA.vault.address, workers.syrupB.vault.address], 60, 10],
+      stratArgs: [
+        CAKE,
+        [workers.simple.vault.address, workers.syrupA.vault.address, workers.syrupB.vault.address],
+        60,
+        10,
+      ],
       signer: signer,
       rpc: RPC,
     });
 
     return { vault, strategy, workers };
-  }
+  };
 
   describe("old arch", () => {
     it("should correctly setup the old arch", async () => {
@@ -169,13 +174,12 @@ describe("Migrate SmartCake", () => {
       await vault.withdrawAll();
       bal.after = await contracts.cake.balanceOf(signer.address);
 
-      console.log('balance:', fmt(bal.before), fmt(bal.deposit), fmt(bal.harvest), fmt(bal.after));
+      console.log("balance:", fmt(bal.before), fmt(bal.deposit), fmt(bal.harvest), fmt(bal.after));
 
       expect(fmt(bal.before, 0)).to.equal(fmt(bal.after, 0));
     }).timeout(TIMEOUT);
   });
 
-  
   describe("simple arch", () => {
     it("should correctly setup the simple arch", async () => {
       const { signer } = await setup();
@@ -205,7 +209,7 @@ describe("Migrate SmartCake", () => {
       await vault.withdrawAll();
       bal.after = await contracts.cake.balanceOf(signer.address);
 
-      console.log('balance:', fmt(bal.before), fmt(bal.deposit), fmt(bal.harvest), fmt(bal.after));
+      console.log("balance:", fmt(bal.before), fmt(bal.deposit), fmt(bal.harvest), fmt(bal.after));
 
       expect(fmt(bal.before, 0)).to.equal(fmt(bal.after, 0));
     }).timeout(TIMEOUT);
@@ -232,13 +236,13 @@ describe("Migrate SmartCake", () => {
       await vault.depositAll();
       bal.deposit = await contracts.cake.balanceOf(signer.address);
 
-      await workers['simple'].strategy.harvest();
+      await workers["simple"].strategy.harvest();
       bal.harvest = await contracts.cake.balanceOf(signer.address);
 
       await vault.withdrawAll();
       bal.after = await contracts.cake.balanceOf(signer.address);
 
-      console.log('balance:', fmt(bal.before), fmt(bal.deposit), fmt(bal.harvest), fmt(bal.after));
+      console.log("balance:", fmt(bal.before), fmt(bal.deposit), fmt(bal.harvest), fmt(bal.after));
 
       expect(fmt(bal.before, 0)).to.equal(fmt(bal.after, 0));
     }).timeout(TIMEOUT);
@@ -264,7 +268,7 @@ describe("Migrate SmartCake", () => {
       await vault.withdrawAll();
       bal.after = await contracts.cake.balanceOf(signer.address);
 
-      console.log('balance:', fmt(bal.before), fmt(bal.deposit), fmt(bal.harvest), fmt(bal.after));
+      console.log("balance:", fmt(bal.before), fmt(bal.deposit), fmt(bal.harvest), fmt(bal.after));
 
       expect(fmt(bal.before, 0)).to.equal(fmt(bal.after, 0));
     }).timeout(TIMEOUT);

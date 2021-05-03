@@ -9,7 +9,6 @@ import "../utils/LPTokenWrapper.sol";
 contract BeefyLaunchpool is LPTokenWrapper, Ownable {
     IERC20 public rewardToken;
     uint256 public duration;
-    uint256 public capPerAddr;
 
     uint256 public periodFinish = 0;
     uint256 public rewardRate = 0;
@@ -23,13 +22,12 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
 
-    constructor(address _stakedToken, address _rewardToken,  uint256 _duration, uint256 _capPerAddr)
+    constructor(address _stakedToken, address _rewardToken,  uint256 _duration)
         public
         LPTokenWrapper(_stakedToken)
     {
         rewardToken = IERC20(_rewardToken);
         duration = _duration;
-        capPerAddr = _capPerAddr;
     }
 
     modifier updateReward(address account) {
@@ -71,7 +69,6 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
     // stake visibility is public as overriding LPTokenWrapper's stake() function
     function stake(uint256 amount) public updateReward(msg.sender) {
         require(amount > 0, "Cannot stake 0");
-        require(balanceOf(msg.sender).add(amount) <= capPerAddr, "Cap reached");
         super.stake(amount);
         emit Staked(msg.sender, amount);
     }
@@ -101,26 +98,27 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
         onlyOwner
         updateReward(address(0))
     {
+        require(periodFinish == 0, "!notified");
+
         uint256 reward = IERC20(rewardToken).balanceOf(address(this));
-        if (periodFinish == 0) {
-            if (block.timestamp >= periodFinish) {
-                rewardRate = reward.div(duration);
-            } else {
-                uint256 remaining = periodFinish.sub(block.timestamp);
-                uint256 leftover = remaining.mul(rewardRate);
-                rewardRate = reward.add(leftover).div(duration);
-            }
-            lastUpdateTime = block.timestamp;
-            periodFinish = block.timestamp.add(duration);
-            emit RewardAdded(reward);
+            
+        if (block.timestamp >= periodFinish) {
+            rewardRate = reward.div(duration);
+        } else {
+            uint256 remaining = periodFinish.sub(block.timestamp);
+            uint256 leftover = remaining.mul(rewardRate);
+            rewardRate = reward.add(leftover).div(duration);
         }
+        lastUpdateTime = block.timestamp;
+        periodFinish = block.timestamp.add(duration);
+        emit RewardAdded(reward);
     }
 
     function inCaseTokensGetStuck(address _token) external onlyOwner {
         if (periodFinish != 0) {
             require(_token != address(stakedToken), "!staked");
-            require(_token != address(rewardToken), "!reward");
         }
+
         uint256 amount = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransfer(msg.sender, amount);
     }

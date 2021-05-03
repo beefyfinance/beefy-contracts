@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 
-const { delay } = require("../utils/timeHelpers");
+const { delay } = require("../../utils/timeHelpers");
 
 const config = {
   vault: "0x7f56672fCB5D1d1760511803A0a54c4d1e911dFD",
