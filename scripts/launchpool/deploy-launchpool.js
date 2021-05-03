@@ -1,7 +1,5 @@
 const hardhat = require("hardhat");
 
-const registerSubsidy = require("../../utils/registerSubsidy");
-
 const ethers = hardhat.ethers;
 
 const pool = {
@@ -14,7 +12,7 @@ const pool = {
 async function main() {
   await hardhat.run("compile");
 
-  const Launchpad = await ethers.getContractFactory("BeefyLaunchpadPool");
+  const Launchpad = await ethers.getContractFactory("BeefyLaunchpool");
 
   console.log("Deploying...");
 

@@ -6,7 +6,7 @@ import "@openzeppelin-2/contracts/ownership/Ownable.sol";
 
 import "../utils/LPTokenWrapper.sol";
 
-contract BeefyLaunchpadPool is LPTokenWrapper, Ownable {
+contract BeefyLaunchpool is LPTokenWrapper, Ownable {
     IERC20 public rewardToken;
     uint256 public duration;
     uint256 public capPerAddr;
@@ -102,7 +102,7 @@ contract BeefyLaunchpadPool is LPTokenWrapper, Ownable {
         updateReward(address(0))
     {
         uint256 reward = IERC20(rewardToken).balanceOf(address(this));
-        if(periodFinish == 0) {
+        if (periodFinish == 0) {
             if (block.timestamp >= periodFinish) {
                 rewardRate = reward.div(duration);
             } else {
@@ -117,7 +117,7 @@ contract BeefyLaunchpadPool is LPTokenWrapper, Ownable {
     }
 
     function inCaseTokensGetStuck(address _token) external onlyOwner {
-        if(periodFinish != 0) {
+        if (periodFinish != 0) {
             require(_token != address(stakedToken), "!staked");
             require(_token != address(rewardToken), "!reward");
         }
