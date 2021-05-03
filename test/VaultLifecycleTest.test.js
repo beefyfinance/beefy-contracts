@@ -6,12 +6,12 @@ const { delay } = require("../utils/timeHelpers");
 const TIMEOUT = 10 * 60 * 1000;
 
 const config = {
-  vault: "0x233Ff11a230D9F278af02057E52ac4FA502daAD2",
+  vault: "0x74907ad4E79b1Ce415caB26FEf526ae017598cEe",
   vaultContract: "BeefyVaultV6",
-  nativeTokenAddr: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+  nativeTokenAddr: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
   testAmount: ethers.utils.parseEther("0.1"),
   keeper: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
-  owner: "0x8f0fFc8C7FC3157697Bdbf94B328F7141d6B41de",
+  owner: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
 };
 
 describe("VaultLifecycleTest", () => {
@@ -58,7 +58,7 @@ describe("VaultLifecycleTest", () => {
     const wantBalFinal = await want.balanceOf(signer.address);
 
     expect(wantBalFinal).to.be.lte(wantBalStart);
-    expect(wantBalFinal).to.be.gt(wantBalStart.mul(95).div(100));
+    expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
   }).timeout(TIMEOUT);
 
   it("Harvests work as expected.", async () => {
@@ -71,18 +71,17 @@ describe("VaultLifecycleTest", () => {
 
     const vaultBal = await vault.balance();
     const pricePerShare = await vault.getPricePerFullShare();
-    await delay(5000); // Might be too little time to earn rewards sometimes.
+    await delay(5000);
     await strategy.harvest({ gasPrice: 5000000 });
     const vaultBalAfterHarvest = await vault.balance();
     const pricePerShareAfterHarvest = await vault.getPricePerFullShare();
 
-    expect(vaultBalAfterHarvest).to.be.gt(vaultBal);
-    expect(pricePerShareAfterHarvest).to.be.gt(pricePerShare);
-
     await vault.withdrawAll();
     const wantBalFinal = await want.balanceOf(signer.address);
-    expect(wantBalFinal).to.be.lte(wantBalStart);
-    expect(wantBalFinal).to.be.gt(wantBalStart.mul(95).div(100));
+
+    expect(vaultBalAfterHarvest).to.be.gt(vaultBal);
+    expect(pricePerShareAfterHarvest).to.be.gt(pricePerShare);
+    expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
   }).timeout(TIMEOUT);
 
   it("Manager can panic.", async () => {
@@ -101,29 +100,18 @@ describe("VaultLifecycleTest", () => {
     const balOfPoolAfterPanic = await strategy.balanceOfPool();
     const balOfWantAfterPanic = await strategy.balanceOfWant();
 
-    // Vault balances are correct after panic.
     expect(vaultBalAfterPanic).to.be.gt(vaultBal.mul(99).div(100));
-
-    /*
-      This expect can throw a false positive as sometimes rewards left behind are taken into account.
-      expect(balOfPoolAfterPanic).to.equal(0); 
-    */
-
-    expect(balOfPool).to.be.gt(balOfPoolAfterPanic);
-    expect(balOfWantAfterPanic).to.be.gt(balOfWant);
+    expect(balOfPool).to.be.gt(balOfWant);
+    expect(balOfWantAfterPanic).to.be.gt(balOfPoolAfterPanic);
 
     // Users can't deposit.
     const tx = vault.depositAll();
     await expect(tx).to.be.revertedWith("Pausable: paused");
 
-    // User can withdraw while paused.
+    // User can still withdraw
     await vault.withdrawAll();
     const wantBalFinal = await want.balanceOf(signer.address);
-    expect(wantBalFinal).to.be.lte(wantBalStart);
-    expect(wantBalFinal).to.be.gt(wantBalStart.mul(95).div(100));
-
-    // TO-DO: state reset properly with a beforeEach();
-    await strategy.unpause();
+    expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
   }).timeout(TIMEOUT);
 
   it("New user doesn't lower other users balances.", async () => {
@@ -138,14 +126,15 @@ describe("VaultLifecycleTest", () => {
     const wantBalOfOther = await want.balanceOf(other.address);
     await want.connect(other).approve(vault.address, wantBalOfOther);
     await vault.connect(other).depositAll();
-    const pricePerShareAfter = await vault.getPricePerFullShare();
-
-    expect(pricePerShareAfter).to.be.gte(pricePerShare);
+    const pricePerShareAfterOtherDeposit = await vault.getPricePerFullShare();
 
     await vault.withdrawAll();
     const wantBalFinal = await want.balanceOf(signer.address);
-    expect(wantBalFinal).to.be.lte(wantBalStart);
-    expect(wantBalFinal).to.be.gt(wantBalStart.mul(95).div(100));
+    const pricePerShareAfterWithdraw = await vault.getPricePerFullShare();
+
+    expect(pricePerShareAfterOtherDeposit).to.be.gte(pricePerShare);
+    expect(pricePerShareAfterWithdraw).to.be.gte(pricePerShareAfterOtherDeposit);
+    expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
   }).timeout(TIMEOUT);
 
   it("It has the correct owner and keeper.", async () => {
@@ -159,4 +148,19 @@ describe("VaultLifecycleTest", () => {
     expect(stratOwner).to.equal(config.owner);
     expect(stratKeeper).to.equal(config.keeper);
   }).timeout(TIMEOUT);
+
+  it("Vault and strat references are correct", async () => {
+    const { strategy, vault } = await setup();
+    const stratReference = await vault.strategy();
+    const vaultReference = await strategy.vault();
+
+    expect(stratReference).to.equal(strategy.address);
+    expect(vaultReference).to.equal(vault.address);
+  }).timeout(TIMEOUT);
+
+  it("Should be in 'unpaused' state to start.", async () => {
+    const { strategy } = await setup();
+
+    expect(await strategy.paused()).to.equal(false);
+  });
 });
