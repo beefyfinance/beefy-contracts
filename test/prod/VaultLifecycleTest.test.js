@@ -1,15 +1,21 @@
 const { expect } = require("chai");
 
-const { zapNativeToToken, getVaultWant, unpauseIfPaused } = require("../../utils/testHelpers");
+const {
+  zapNativeToToken,
+  getVaultWant,
+  unpauseIfPaused,
+  getUnirouterInterface,
+  getWrappedNativeAddr,
+} = require("../../utils/testHelpers");
 const { delay } = require("../../utils/timeHelpers");
 
 const TIMEOUT = 10 * 60 * 1000;
 
 const config = {
-  vault: "0x4462817b53E76b722c2D174D0148ddb81452f1dE",
+  vault: "0x994aB71F95A8de4dAaF6DE3D9862284693fB2bDf",
   vaultContract: "BeefyVaultV6",
-  nativeTokenAddr: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
-  testAmount: ethers.utils.parseEther("0.1"),
+  nativeTokenAddr: getWrappedNativeAddr("heco"),
+  testAmount: ethers.utils.parseEther("5"),
   keeper: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
   owner: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
 };
@@ -24,7 +30,8 @@ describe("VaultLifecycleTest", () => {
     const strategy = await ethers.getContractAt("IStrategyComplete", strategyAddr);
 
     const unirouterAddr = await strategy.unirouter();
-    const unirouter = await ethers.getContractAt("IUniswapRouterETH", unirouterAddr);
+    const unirouterInterface = getUnirouterInterface(unirouterAddr);
+    const unirouter = await ethers.getContractAt(unirouterInterface, unirouterAddr);
 
     const want = await getVaultWant(vault, config.nativeTokenAddr);
 
@@ -45,6 +52,7 @@ describe("VaultLifecycleTest", () => {
 
     return { signer, other, want, vault, strategy, unirouter };
   };
+
   it("User can deposit and withdraw from the vault.", async () => {
     const { signer, want, strategy, vault } = await setup();
     await unpauseIfPaused(strategy);
@@ -161,6 +169,8 @@ describe("VaultLifecycleTest", () => {
   // TO-DO: Check that unpause deposits again into the farm.
 
   // TO-DO: Check that there's either a withdrawal or deposit fee for 'other'.
+
+  // TO-DO: Check that we're not burning money with buggy routes.
 
   it("Should be in 'unpaused' state to start.", async () => {
     const { strategy } = await setup();
