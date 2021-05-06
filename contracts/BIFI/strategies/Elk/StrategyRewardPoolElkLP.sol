@@ -17,9 +17,8 @@ contract StrategyRewardPoolElkLP is StratManager, FeeManager {
     using SafeMath for uint256;
 
     // Tokens used
-    address constant public elk = address(0xE1C8f3d529BEa8E3fA1FAC5B416335a2f998EE1C);
     address constant public matic = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
-    address constant public output = address(0xE1C8f3d529BEa8E3fA1FAC5B416335a2f998EE1C);
+    address constant public output = address(0xE1C8f3d529BEa8E3fA1FAC5B416335a2f998EE1C); // elk
     address public want;
     address public lpToken0;
     address public lpToken1;
@@ -51,21 +50,8 @@ contract StrategyRewardPoolElkLP is StratManager, FeeManager {
         lpToken1 = IUniswapV2Pair(want).token1();
         rewardPool = _rewardPool;
 
-        if (lpToken0 == matic) {
-            outputToLp0Route = [output, matic];
-        } else if (lpToken0 == elk) {
-            outputToLp0Route = [output, elk];
-        } else if (lpToken0 != output) {
-            outputToLp0Route = [output, elk, lpToken0];
-        }
-
-        if (lpToken1 == matic) {
-            outputToLp1Route = [output, matic];
-        } else if (lpToken1 == elk) {
-            outputToLp1Route = [output, elk];
-        } else if (lpToken1 != output) {
-            outputToLp1Route = [output, elk, lpToken1];
-        }
+        outputToLp0Route = [output, lpToken0];
+        outputToLp1Route = [output, lpToken1];
 
         _giveAllowances();
     }
