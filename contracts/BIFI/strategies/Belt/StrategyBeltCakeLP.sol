@@ -93,8 +93,8 @@ contract StrategyBeltCakeLP is StratManager, FeeManager, GasThrottler {
         if (tx.origin == owner() || paused()) {
             IERC20(want).safeTransfer(vault, wantBal);
         } else {
-            uint256 withdrawalFee = wantBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
-            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFee));
+            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
+            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
         }
     }
 
