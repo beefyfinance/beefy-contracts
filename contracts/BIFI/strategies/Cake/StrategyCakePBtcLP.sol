@@ -7,34 +7,32 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
-import "../../interfaces/auto/IAutoFarmV2.sol";
-import "../../interfaces/belt/IBeltToken.sol";
+import "../../interfaces/common/IUniswapV2Pair.sol";
+import "../../interfaces/pancake/IMasterChef.sol";
 import "../../utils/GasThrottler.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
+contract StrategyCakePBtcLP is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
     address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
-    address constant public Auto = address(0xa184088a740c695E156F91f5cC086a06bb78b827);
+    address constant public pbtc = address(0xeD28A457A5A76596ac48d87C0f577020F6Ea1c4C);
+    address constant public cake = address(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
     address public want;
-    address public wantToken;
+    address public lpToken0;
+    address public lpToken1;
 
     // Third party contracts
-    address constant public autofarm = address(0x0895196562C7868C5Be92459FaE7f877ED450452);
+    address constant public masterchef = address(0x73feaa1eE314F8c655E354234017bE2193C9E24E);
     uint256 public poolId;
 
     // Routes
-    address[] public AutoToWbnbRoute = [Auto, wbnb];
-    address[] public AutoToWantTokenRoute;
-
-    /**
-     * @dev If rewards are locked in AutoFarm, retire() will use emergencyWithdraw.
-     */
-    bool public rewardsLocked = false;
+    address[] public cakeToWbnbRoute = [cake, wbnb];
+    address[] public cakeToLp0Route;
+    address[] public cakeToLp1Route;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -51,13 +49,20 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
         address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
-        wantToken = IBeltToken(want).token();
+        lpToken0 = IUniswapV2Pair(want).token0();
+        lpToken1 = IUniswapV2Pair(want).token1();
         poolId = _poolId;
 
-        if (wantToken == wbnb) {
-            AutoToWantTokenRoute = [Auto, wbnb];
-        } else {
-            AutoToWantTokenRoute = [Auto, wbnb, wantToken];
+        if (lpToken0 == pbtc) {
+            cakeToLp0Route = [cake, wbnb, pbtc];
+        } else if (lpToken0 != cake) {
+            cakeToLp0Route = [cake, wbnb, pbtc, lpToken0];
+        }
+
+        if (lpToken1 == pbtc) {
+            cakeToLp1Route = [cake, wbnb, pbtc];
+        } else if (lpToken1 != cake) {
+            cakeToLp1Route = [cake, wbnb, pbtc, lpToken1];
         }
 
         _giveAllowances();
@@ -68,7 +73,7 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IAutoFarmV2(autofarm).deposit(poolId, wantBal);
+            IMasterChef(masterchef).deposit(poolId, wantBal);
         }
     }
 
@@ -78,7 +83,7 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IAutoFarmV2(autofarm).withdraw(poolId, _amount.sub(wantBal));
+            IMasterChef(masterchef).withdraw(poolId, _amount.sub(wantBal));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -96,7 +101,7 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
 
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA gasThrottle {
-        IAutoFarmV2(autofarm).deposit(poolId, 0);
+        IMasterChef(masterchef).deposit(poolId, 0);
         chargeFees();
         addLiquidity();
         deposit();
@@ -106,8 +111,8 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
 
     // performance fees
     function chargeFees() internal {
-        uint256 toWbnb = IERC20(Auto).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, AutoToWbnbRoute, address(this), now);
+        uint256 toWbnb = IERC20(cake).balanceOf(address(this)).mul(45).div(1000);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), now);
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -123,11 +128,19 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 autoBal = IERC20(Auto).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(autoBal, 0, AutoToWantTokenRoute, address(this), now);
+        uint256 cakeHalf = IERC20(cake).balanceOf(address(this)).div(2);
 
-        uint256 wantTokenBal = IERC20(wantToken).balanceOf(address(this));
-        IBeltToken(want).deposit(wantTokenBal, 0);
+        if (lpToken0 != cake) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp0Route, address(this), now);
+        }
+
+        if (lpToken1 != cake) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp1Route, address(this), now);
+        }
+
+        uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
+        uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
+        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -142,32 +155,15 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        return IAutoFarmV2(autofarm).stakedWantTokens(poolId, address(this));
+        (uint256 _amount, ) = IMasterChef(masterchef).userInfo(poolId, address(this));
+        return _amount;
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
-        if (rewardsLocked) {
-            _retireStratEmergency();
-        } else {
-            _retireStrat();
-        }
-    }
 
-    function setRewardsLocked(bool _rewardsLocked) external onlyOwner {
-        rewardsLocked = _rewardsLocked;
-    }
-
-    function _retireStrat() internal {
-        IAutoFarmV2(autofarm).withdraw(poolId, uint(-1));
-
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
-        IERC20(want).transfer(vault, wantBal);
-    }
-
-    function _retireStratEmergency() internal {
-        IAutoFarmV2(autofarm).emergencyWithdraw(poolId);
+        IMasterChef(masterchef).emergencyWithdraw(poolId);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -176,13 +172,7 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IAutoFarmV2(autofarm).withdraw(poolId, uint(-1));
-    }
-
-    // pauses deposits and withdraws all funds from third party systems.
-    function panicEmergency() public onlyManager {
-        pause();
-        IAutoFarmV2(autofarm).emergencyWithdraw(poolId);
+        IMasterChef(masterchef).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {
@@ -200,14 +190,20 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(autofarm, uint(-1));
-        IERC20(Auto).safeApprove(unirouter, uint(-1));
-        IERC20(wantToken).safeApprove(want, uint(-1));
+        IERC20(want).safeApprove(masterchef, uint256(-1));
+        IERC20(cake).safeApprove(unirouter, uint256(-1));
+
+        IERC20(lpToken0).safeApprove(unirouter, 0);
+        IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
+
+        IERC20(lpToken1).safeApprove(unirouter, 0);
+        IERC20(lpToken1).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(autofarm, 0);
-        IERC20(Auto).safeApprove(unirouter, 0);
-        IERC20(wantToken).safeApprove(want, 0);
+        IERC20(want).safeApprove(masterchef, 0);
+        IERC20(cake).safeApprove(unirouter, 0);
+        IERC20(lpToken0).safeApprove(unirouter, 0);
+        IERC20(lpToken1).safeApprove(unirouter, 0);
     }
 }
