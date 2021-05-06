@@ -101,6 +101,8 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
         require(periodFinish == 0, "!notified");
 
         uint256 reward = IERC20(rewardToken).balanceOf(address(this));
+
+        require(reward != 0, "no rewards");
             
         if (block.timestamp >= periodFinish) {
             rewardRate = reward.div(duration);

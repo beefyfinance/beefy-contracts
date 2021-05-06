@@ -3,10 +3,9 @@ const hardhat = require("hardhat");
 const ethers = hardhat.ethers;
 
 const pool = {
-  stakedToken: "0x4d1A2b3119895d887b87509693338b86730bCE06",
-  rewardsToken: "0xA25Dab5B75aC0E0738E58E49734295baD43d73F1",
-  days: 5,
-  capPerAddr: "10000000000000000000000000000000000",
+  stakedToken: "0xf2064C230b285AA6Cf45c6267DA86a8E3505D0AA",
+  rewardsToken: "0x95111f630ac215eb74599ed42c67e2c2790d69e2",
+  days: 7,
 };
 
 async function main() {
@@ -18,7 +17,7 @@ async function main() {
 
   const durationInSec = 3600 * 24 * pool.days;
 
-  const launchpad = await Launchpad.deploy(pool.stakedToken, pool.rewardsToken, durationInSec, pool.capPerAddr);
+  const launchpad = await Launchpad.deploy(pool.stakedToken, pool.rewardsToken, durationInSec);
   await launchpad.deployed();
 
   console.log("Launchpad pool deployed to:", launchpad.address);

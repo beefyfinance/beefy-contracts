@@ -4,7 +4,7 @@ const {
   zapNativeToToken,
   getVaultWant,
   unpauseIfPaused,
-  getUnirouterInterface,
+  getUnirouterData,
   getWrappedNativeAddr,
 } = require("../../utils/testHelpers");
 const { delay } = require("../../utils/timeHelpers");
@@ -12,9 +12,9 @@ const { delay } = require("../../utils/timeHelpers");
 const TIMEOUT = 10 * 60 * 1000;
 
 const config = {
-  vault: "0x994aB71F95A8de4dAaF6DE3D9862284693fB2bDf",
+  vault: "0x850917f4EcC8d3B5bA040e190b08B380602a934e",
   vaultContract: "BeefyVaultV6",
-  nativeTokenAddr: getWrappedNativeAddr("heco"),
+  nativeTokenAddr: getWrappedNativeAddr("polygon"),
   testAmount: ethers.utils.parseEther("5"),
   keeper: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
   owner: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
@@ -30,8 +30,8 @@ describe("VaultLifecycleTest", () => {
     const strategy = await ethers.getContractAt("IStrategyComplete", strategyAddr);
 
     const unirouterAddr = await strategy.unirouter();
-    const unirouterInterface = getUnirouterInterface(unirouterAddr);
-    const unirouter = await ethers.getContractAt(unirouterInterface, unirouterAddr);
+    const unirouterData = getUnirouterData(unirouterAddr);
+    const unirouter = await ethers.getContractAt(unirouterData.interface, unirouterAddr);
 
     const want = await getVaultWant(vault, config.nativeTokenAddr);
 
@@ -40,6 +40,7 @@ describe("VaultLifecycleTest", () => {
       want,
       nativeTokenAddr: config.nativeTokenAddr,
       unirouter,
+      swapSignature: unirouterData.swapSignature,
       recipient: signer.address,
     });
 
