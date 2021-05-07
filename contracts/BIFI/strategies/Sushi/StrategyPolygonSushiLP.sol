@@ -6,10 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/common/IUniswapRouterETH.sol";
-import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/pancake/IMasterChef.sol";
-import "../../utils/GasThrottler.sol";
+import "../../interfaces/sushi/IUniswapV2Router02.sol";
+import "../../interfaces/sushi/IUniswapV2Pair.sol";
+import "../../interfaces/sushi/IMiniChefV2.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
@@ -117,7 +116,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
     // performance fees
     function chargeFees() internal {
         uint256 toMatic = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toMatic, 0, outputToMaticRoute, address(this), now);
+        IUniswapV2Router02(unirouter).swapExactTokensForTokens(toMatic, 0, outputToMaticRoute, address(this), now);
 
         uint256 maticBal = IERC20(matic).balanceOf(address(this));
 
@@ -135,21 +134,21 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
     function addLiquidity() internal {
         // v2 harvester rewards
         uint256 maticToOutput = IERC20(matic).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(maticToOutput, 0, maticToOutputRoute, address(this), now);
+        IUniswapV2Router02(unirouter).swapExactTokensForTokens(maticToOutput, 0, maticToOutputRoute, address(this), now);
         
         uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
 
         if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), now);
+            IUniswapV2Router02(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), now);
         }
 
         if (lpToken1 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), now);
+            IUniswapV2Router02(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
+        IUniswapV2Router02(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
     }
 
     // calculate the total underlaying 'want' held by the strat.
