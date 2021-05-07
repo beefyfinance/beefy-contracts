@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
 interface IMiniChefV2 {
     struct UserInfo {
@@ -13,11 +14,11 @@ interface IMiniChefV2 {
         uint64 allocPoint;
     }
 
-    function poolLength() external view returns (uint256)
-    function updatePool(uint256 pid) external returns (IMiniChefV2.PoolInfo memory)
-    function deposit(uint256 pid, uint256 amount, address to) external
-    function withdraw(uint256 pid, uint256 amount, address to) external
-    function harvest(uint256 pid, address to) external
-    function withdrawAndHarvest(uint256 pid, uint256 amount, address to) external
-    function emergencyWithdraw(uint256 pid, address to) external
+    function poolLength() external view returns (uint256);
+    function updatePool(uint256 pid) external returns (IMiniChefV2.PoolInfo memory);
+    function deposit(uint256 pid, uint256 amount, address to) external;
+    function withdraw(uint256 pid, uint256 amount, address to) external;
+    function harvest(uint256 pid, address to) external;
+    function withdrawAndHarvest(uint256 pid, uint256 amount, address to) external;
+    function emergencyWithdraw(uint256 pid, address to) external;
 } 
