@@ -52,7 +52,7 @@ module.exports = {
   networks: {
     hardhat: {},
     bsc: {
-      url: "https://bsc-dataseed.nariox.org/",
+      url: "https://bsc-dataseed1.ninicoin.io/",
       chainId: 56,
       accounts: [process.env.DEPLOYER_PK],
     },
@@ -64,6 +64,11 @@ module.exports = {
     avax: {
       url: "https://api.avax.network/ext/bc/C/rpc",
       chainId: 43114,
+      accounts: [process.env.DEPLOYER_PK],
+    },
+    matic: {
+      url: "https://rpc-mainnet.maticvigil.com/",
+      chainId: 137,
       accounts: [process.env.DEPLOYER_PK],
     },
     localhost: {
