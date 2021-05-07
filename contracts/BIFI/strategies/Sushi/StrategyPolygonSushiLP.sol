@@ -202,6 +202,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(minichef, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
+        // needed for v2 harvester
         IERC20(matic).safeApprove(unirouter, uint256(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
