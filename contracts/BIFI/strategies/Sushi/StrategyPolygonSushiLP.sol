@@ -77,7 +77,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IMiniChefV2(minichef).deposit(poolId, wantBal);
+            IMiniChefV2(minichef).deposit(poolId, wantBal, address(this));
         }
     }
 
@@ -87,7 +87,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMiniChefV2(minichef).withdraw(poolId, _amount.sub(wantBal));
+            IMiniChefV2(minichef).withdraw(poolId, _amount.sub(wantBal), address(this));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -105,7 +105,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA {
-        IMiniChefV2(minichef).deposit(poolId, 0);
+        IMiniChefV2(minichef).deposit(poolId, 0, address(this));
         chargeFees();
         addLiquidity();
         deposit();
@@ -171,7 +171,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMiniChefV2(minichef).emergencyWithdraw(poolId);
+        IMiniChefV2(minichef).emergencyWithdraw(poolId, address(this));
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -180,7 +180,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMiniChefV2(minichef).emergencyWithdraw(poolId);
+        IMiniChefV2(minichef).emergencyWithdraw(poolId, address(this));
     }
 
     function pause() public onlyManager {
