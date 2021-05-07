@@ -134,7 +134,9 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
     function addLiquidity() internal {
         // v2 harvester rewards
         uint256 maticToOutput = IERC20(matic).balanceOf(address(this));
-        IUniswapV2Router02(unirouter).swapExactTokensForTokens(maticToOutput, 0, maticToOutputRoute, address(this), now);
+        if (maticToOutput > 0) {
+            IUniswapV2Router02(unirouter).swapExactTokensForTokens(maticToOutput, 0, maticToOutputRoute, address(this), now);
+        }
         
         uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
 
