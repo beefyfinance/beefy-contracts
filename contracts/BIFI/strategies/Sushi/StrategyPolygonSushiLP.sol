@@ -77,7 +77,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IMasterChef(minichef).deposit(poolId, wantBal);
+            IMiniChefV2(minichef).deposit(poolId, wantBal);
         }
     }
 
@@ -87,7 +87,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterChef(minichef).withdraw(poolId, _amount.sub(wantBal));
+            IMiniChefV2(minichef).withdraw(poolId, _amount.sub(wantBal));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -105,7 +105,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA {
-        IMasterChef(minichef).deposit(poolId, 0);
+        IMiniChefV2(minichef).deposit(poolId, 0);
         chargeFees();
         addLiquidity();
         deposit();
@@ -163,7 +163,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMasterChef(minichef).userInfo(poolId, address(this));	
+        (uint256 _amount, ) = IMiniChefV2(minichef).userInfo(poolId, address(this));	
         return _amount;
     }
 
@@ -171,7 +171,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChef(minichef).emergencyWithdraw(poolId);
+        IMiniChefV2(minichef).emergencyWithdraw(poolId);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -180,7 +180,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMasterChef(minichef).emergencyWithdraw(poolId);
+        IMiniChefV2(minichef).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {
