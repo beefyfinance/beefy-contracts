@@ -4,7 +4,7 @@ require("@nomiclabs/hardhat-ethers");
 
 task("panic", "Panics a given strategy.")
   .addParam("strat", "The strategy to panic.")
-  .setAction(async (taskArgs) => {
+  .setAction(async taskArgs => {
     const IStrategy = await hre.artifacts.readArtifact("IStrategy");
     const strategy = await ethers.getContractAt(IStrategy.abi, taskArgs.strat);
 
@@ -19,7 +19,7 @@ task("panic", "Panics a given strategy.")
 
 task("unpause", "Unpauses a given strategy.")
   .addParam("strat", "The strategy to unpause.")
-  .setAction(async (taskArgs) => {
+  .setAction(async taskArgs => {
     const IStrategy = await hre.artifacts.readArtifact("IStrategy");
     const strategy = await ethers.getContractAt(IStrategy.abi, taskArgs.strat);
 
@@ -34,7 +34,7 @@ task("unpause", "Unpauses a given strategy.")
 
 task("harvest", "Harvests a given strategy.")
   .addParam("strat", "The strategy to harvest.")
-  .setAction(async (taskArgs) => {
+  .setAction(async taskArgs => {
     const IStrategy = await hre.artifacts.readArtifact("IStrategy");
     const strategy = await ethers.getContractAt(IStrategy.abi, taskArgs.strat);
 
@@ -64,6 +64,11 @@ module.exports = {
     avax: {
       url: "https://api.avax.network/ext/bc/C/rpc",
       chainId: 43114,
+      accounts: [process.env.DEPLOYER_PK],
+    },
+    polygon: {
+      url: "https://rpc-mainnet.maticvigil.com/",
+      chainId: 137,
       accounts: [process.env.DEPLOYER_PK],
     },
     localhost: {

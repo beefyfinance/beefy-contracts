@@ -3,8 +3,8 @@ const hardhat = require("hardhat");
 const ethers = hardhat.ethers;
 
 const config = {
-  staked: "0xd6070ae98b8069de6B494332d1A1a81B6179D960",
-  rewards: "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
+  staked: "0xFbdd194376de19a88118e84E279b977f165d01b8",
+  rewards: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
 };
 
 async function main() {
@@ -19,7 +19,7 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch((error) => {
+  .catch(error => {
     console.error(error);
     process.exit(1);
   });

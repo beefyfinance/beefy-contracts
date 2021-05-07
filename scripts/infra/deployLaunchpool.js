@@ -3,9 +3,9 @@ const hardhat = require("hardhat");
 const ethers = hardhat.ethers;
 
 const pool = {
-  stakedToken: "0xf2064C230b285AA6Cf45c6267DA86a8E3505D0AA",
-  rewardsToken: "0x95111f630ac215eb74599ed42c67e2c2790d69e2",
-  days: 7,
+  stakedToken: "0xD411121C948Cff739857513E1ADF25ED448623f8",
+  rewardsToken: "0x8d112fcdf377a2c4cb41b60aae32199f939a866c",
+  days: 6,
 };
 
 async function main() {
@@ -25,7 +25,7 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch((error) => {
+  .catch(error => {
     console.error(error);
     process.exit(1);
   });

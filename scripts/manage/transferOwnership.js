@@ -3,11 +3,9 @@ const hardhat = require("hardhat");
 const ethers = hardhat.ethers;
 
 const abi = ["function transferOwnership(address newOwner) public"];
-const newOwner = "0x8f0fFc8C7FC3157697Bdbf94B328F7141d6B41de";
+const newOwner = "0x362704FC0e43Ad29963331AC986645ff6b0e8552";
 
-const contracts = [
-  // "0x3c2C339d05d4911894F08Dd975e89630D7ef4234",
-];
+const contracts = ["0x1BA1B43227325E8Dc0FA1378d7C41fa7F49e32e0"];
 
 async function main() {
   for (const address of contracts) {
@@ -20,7 +18,7 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch((error) => {
+  .catch(error => {
     console.error(error);
     process.exit(1);
   });

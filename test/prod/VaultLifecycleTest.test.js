@@ -12,7 +12,7 @@ const { delay } = require("../../utils/timeHelpers");
 const TIMEOUT = 10 * 60 * 1000;
 
 const config = {
-  vault: "0x850917f4EcC8d3B5bA040e190b08B380602a934e",
+  vault: "0x2210a6aB8667ED24842fea0Ab617821783CA8E95",
   vaultContract: "BeefyVaultV6",
   nativeTokenAddr: getWrappedNativeAddr("polygon"),
   testAmount: ethers.utils.parseEther("5"),
@@ -80,7 +80,7 @@ describe("VaultLifecycleTest", () => {
 
     const vaultBal = await vault.balance();
     const pricePerShare = await vault.getPricePerFullShare();
-    await delay(5000);
+    await delay(100000);
     await strategy.harvest({ gasPrice: 5000000 });
     const vaultBalAfterHarvest = await vault.balance();
     const pricePerShareAfterHarvest = await vault.getPricePerFullShare();
