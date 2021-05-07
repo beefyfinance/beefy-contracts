@@ -215,6 +215,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(minichef, 0);
         IERC20(output).safeApprove(unirouter, 0);
+        IERC20(matic).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
