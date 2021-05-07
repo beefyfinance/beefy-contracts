@@ -115,6 +115,12 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees() internal {
+        // v2 harvester rewards are in both sushi and matic, convert matic to sushi
+        uint256 maticToOutput = IERC20(matic).balanceOf(address(this));
+        if (maticToOutput > 0) {
+            IUniswapV2Router02(unirouter).swapExactTokensForTokens(maticToOutput, 0, maticToOutputRoute, address(this), now);
+        }
+        
         uint256 toMatic = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapV2Router02(unirouter).swapExactTokensForTokens(toMatic, 0, outputToMaticRoute, address(this), now);
 
@@ -132,12 +138,6 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        // v2 harvester rewards
-        uint256 maticToOutput = IERC20(matic).balanceOf(address(this));
-        if (maticToOutput > 0) {
-            IUniswapV2Router02(unirouter).swapExactTokensForTokens(maticToOutput, 0, maticToOutputRoute, address(this), now);
-        }
-        
         uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
 
         if (lpToken0 != output) {
@@ -202,6 +202,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(minichef, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(matic).safeApprove(unirouter, uint256(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
