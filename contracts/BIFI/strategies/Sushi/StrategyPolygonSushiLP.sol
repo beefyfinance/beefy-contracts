@@ -58,7 +58,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
         } else if (lpToken0 == eth) {
             outputToLp0Route = [output, eth];
         } else if (lpToken0 != output) {
-            outputToLp0Route = [output, matic, eth, lpToken0];
+            outputToLp0Route = [output, eth, lpToken0];
         }
 
         if (lpToken1 == matic) {
@@ -66,7 +66,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
         } else if (lpToken1 == eth) {
             outputToLp1Route = [output, eth];
         } else if (lpToken1 != output) {
-            outputToLp1Route = [output, matic, eth, lpToken1];
+            outputToLp1Route = [output, eth, lpToken1];
         }
 
         _giveAllowances();
