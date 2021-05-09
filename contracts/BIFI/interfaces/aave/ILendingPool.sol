@@ -11,4 +11,13 @@ interface ILendingPool {
     function repay(address asset, uint256 amount, uint256 rateMode, address onBehalfOf) external returns (uint256);
 
     function withdraw(address asset, uint256 amount, address to) external returns (uint256);
+
+    function getUserAccountData(address user) external view returns (
+        uint256 totalCollateralETH,
+        uint256 totalDebtETH,
+        uint256 availableBorrowsETH,
+        uint256 currentLiquidationThreshold,
+        uint256 ltv,
+        uint256 healthFactor
+    );
 }

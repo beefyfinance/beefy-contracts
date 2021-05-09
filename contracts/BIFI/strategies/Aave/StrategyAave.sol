@@ -42,12 +42,14 @@ contract StrategyAave is StratManager, FeeManager {
      * {borrowDepth}         - How many levels of leverage do we take.
      * {minLeverage}         - The minimum amount of collateral required to leverage.
      * {BORROW_DEPTH_MAX}    - A limit on how many steps we can leverage.
+     * {INTEREST_RATE_MODE}  - The type of borrow debt. Stable: 1, Variable: 2.
      */
     uint256 public borrowRate;
     uint256 public borrowRateMax;
     uint256 public borrowDepth;
     uint256 public minLeverage;
     uint256 constant public BORROW_DEPTH_MAX = 10;
+    uint256 constant public INTEREST_RATE_MODE = 2;
 
     /**
      * @dev Helps to differentiate borrowed funds that shouldn't be used in functions like 'deposit()'
@@ -109,7 +111,7 @@ contract StrategyAave is StratManager, FeeManager {
         for (uint i = 0; i < borrowDepth; i++) {
             ILendingPool(lendingPool).deposit(want, _amount, address(this), 0);
             _amount = _amount.mul(borrowRate).div(100);
-            ILendingPool(lendingPool).borrow(want, _amount, 2, 0, address(this));
+            ILendingPool(lendingPool).borrow(want, _amount, INTEREST_RATE_MODE, 0, address(this));
         }
 
         reserves = reserves.add(_amount);
@@ -126,7 +128,7 @@ contract StrategyAave is StratManager, FeeManager {
         (uint256 supplyBal, uint256 borrowBal) = userReserves();
 
         while (wantBal < borrowBal) {
-            ILendingPool(lendingPool).repay(want, wantBal, 2, address(this));
+            ILendingPool(lendingPool).repay(want, wantBal, INTEREST_RATE_MODE, address(this));
 
             (supplyBal, borrowBal) = userReserves();
             uint256 targetSupply = borrowBal.mul(100).div(borrowRate);
@@ -135,7 +137,7 @@ contract StrategyAave is StratManager, FeeManager {
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
-        ILendingPool(lendingPool).repay(want, uint256(-1), 2, address(this));
+        ILendingPool(lendingPool).repay(want, uint256(-1), INTEREST_RATE_MODE, address(this));
         ILendingPool(lendingPool).withdraw(want, type(uint).max, address(this));
 
         reserves = 0;
@@ -151,7 +153,7 @@ contract StrategyAave is StratManager, FeeManager {
         require(_borrowRate <= borrowRateMax, "!safe");
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
-        ILendingPool(lendingPool).repay(want, wantBal, 2, address(this));
+        ILendingPool(lendingPool).repay(want, wantBal, INTEREST_RATE_MODE, address(this));
 
         (uint256 supplyBal, uint256 borrowBal) = userReserves();
         uint256 targetSupply = borrowBal.mul(100).div(_borrowRate);
@@ -259,6 +261,18 @@ contract StrategyAave is StratManager, FeeManager {
     function userReserves() public view returns (uint256, uint256) {
         (uint256 supplyBal,,uint256 borrowBal,,,,,,) = IDataProvider(dataProvider).getUserReserveData(want, address(this));
         return (supplyBal, borrowBal);
+    }
+
+    // returns the user account data across all the reserves
+    function userAccountData() public view returns (
+        uint256 totalCollateralETH,
+        uint256 totalDebtETH,
+        uint256 availableBorrowsETH,
+        uint256 currentLiquidationThreshold,
+        uint256 ltv,
+        uint256 healthFactor
+    ) {
+        return ILendingPool(lendingPool).getUserAccountData(address(this));
     }
 
     // calculate the total underlaying 'want' held by the strat.
