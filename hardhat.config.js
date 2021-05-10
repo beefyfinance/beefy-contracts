@@ -71,6 +71,11 @@ module.exports = {
       chainId: 137,
       accounts: [process.env.DEPLOYER_PK],
     },
+    fantom: {
+      url: "https://rpcapi.fantom.network",
+      chainId: 250,
+      accounts: [process.env.DEPLOYER_PK],
+    },
     localhost: {
       url: "http://127.0.0.1:8545",
       timeout: 300000,
