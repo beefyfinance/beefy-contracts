@@ -6,7 +6,7 @@ const predictAddresses = async (config) => {
   let { creator, rpc } = config;
 
   creator = creator || "0x565EB5e5B21F97AE9200D121e77d2760FFf106cb";
-  rpc = rpc || "https://bsc-dataseed1.ninicoin.io/";
+  rpc = rpc || "https://bsc-dataseed.binance.org/";
 
   const web3 = new Web3(rpc);
 

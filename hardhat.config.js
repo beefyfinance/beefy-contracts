@@ -52,7 +52,7 @@ module.exports = {
   networks: {
     hardhat: {},
     bsc: {
-      url: "https://bsc-dataseed1.ninicoin.io/",
+      url: "https://bsc-dataseed.binance.org/",
       chainId: 56,
       accounts: [process.env.DEPLOYER_PK],
     },
