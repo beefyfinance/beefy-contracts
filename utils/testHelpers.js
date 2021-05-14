@@ -7,7 +7,10 @@ const zapNativeToToken = async ({ amount, want, nativeTokenAddr, unirouter, swap
   let isLpToken, lpPair, token0, token1;
 
   try {
-    lpPair = await ethers.getContractAt("IUniswapV2Pair", want.address);
+    lpPair = await ethers.getContractAt(
+      "contracts/BIFI/interfaces/common/IUniswapV2Pair.sol:IUniswapV2Pair",
+      want.address
+    );
 
     const token0Addr = await lpPair.token0();
     token0 = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", token0Addr);
@@ -132,6 +135,8 @@ const getWrappedNativeAddr = networkId => {
       return "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270";
     case "heco":
       return "0x5545153CCFcA01fbd7Dd11C0b23ba694D9509A6F";
+    case "fantom":
+      return "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83";
     default:
       throw new Error("Unknown network.");
   }

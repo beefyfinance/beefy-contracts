@@ -12,9 +12,9 @@ const { delay } = require("../../utils/timeHelpers");
 const TIMEOUT = 10 * 60 * 1000;
 
 const config = {
-  vault: "0xC5b2a6aB801E74F098aCC8Bb62B786b47319c4D9",
+  vault: "0xCBAB6076b4B0c482e7127a201b79a13D117E2B53",
   vaultContract: "BeefyVaultV6",
-  nativeTokenAddr: getWrappedNativeAddr("polygon"),
+  nativeTokenAddr: getWrappedNativeAddr("fantom"),
   testAmount: ethers.utils.parseEther("5"),
   keeper: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
   owner: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
