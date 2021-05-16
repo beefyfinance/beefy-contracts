@@ -20,6 +20,7 @@ contract StrategyGarudaLP is StratManager, FeeManager, GasThrottler {
     // Tokens used
     address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
     address constant public busd = address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
+    address constant public usdt = address(0x55d398326f99059fF775485246999027B3197955);
     address constant public output = address(0x854086dC841e1bfae50Cb615bF41f55BF432a90b);
     address public want;
     address public lpToken0;
@@ -56,18 +57,14 @@ contract StrategyGarudaLP is StratManager, FeeManager, GasThrottler {
         lpToken1 = IUniswapV2Pair(want).token1();
         poolId = _poolId;
 
-        if (lpToken0 == wbnb) {
-            outputToLp0Route = [output, wbnb];
-        } else if (lpToken0 == busd) {
-            outputToLp0Route = [output, busd];
+        if (lpToken0 == wbnb || lpToken0 == busd || lpToken0 == usdt) {
+            outputToLp0Route = [output, lpToken0];
         } else if (lpToken0 != output) {
             outputToLp0Route = [output, wbnb, lpToken0];
         }
 
-        if (lpToken1 == wbnb) {
-            outputToLp1Route = [output, wbnb];
-        } else if (lpToken1 == busd) {
-            outputToLp1Route = [output, busd];
+        if (lpToken1 == wbnb || lpToken1 == busd || lpToken1 == usdt) {
+            outputToLp1Route = [output, lpToken1];
         } else if (lpToken1 != output) {
             outputToLp1Route = [output, wbnb, lpToken1];
         }
