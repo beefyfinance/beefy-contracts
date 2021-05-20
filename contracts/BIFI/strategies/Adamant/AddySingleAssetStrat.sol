@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/adamant/IMultiFeeDistribution.sol";
+import "../../interfaces/common/IMultiFeeDistribution.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 

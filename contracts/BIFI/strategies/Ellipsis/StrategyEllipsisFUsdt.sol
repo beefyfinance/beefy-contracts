@@ -10,9 +10,9 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
+import "../../interfaces/common/IMultiFeeDistribution.sol";
 import "../../interfaces/ellipsis/IFUsdtLP.sol";
 import "../../interfaces/ellipsis/ILpStaker.sol";
-import "../../interfaces/ellipsis/IMultiFeeDistribution.sol";
 import "../../interfaces/ellipsis/IRewardToken.sol";
 import "../../utils/GasThrottler.sol";
 
