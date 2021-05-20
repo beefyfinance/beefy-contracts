@@ -72,7 +72,7 @@ module.exports = {
       accounts: [process.env.DEPLOYER_PK],
     },
     fantom: {
-      url: "https://rpcapi.fantom.network",
+      url: "https://rpc.ftm.tools",
       chainId: 250,
       accounts: [process.env.DEPLOYER_PK],
     },
