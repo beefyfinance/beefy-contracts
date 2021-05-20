@@ -20,16 +20,13 @@ contract AddySingleAssetStrat is StratManager, FeeManager {
     address constant public eth = address(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619);
     address constant public matic = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
     address constant public quick = address(0x831753DD7087CaC61aB5644b308642cc1c33Dc13);
-    address constant public want = address(0xc3FdbadC7c795EF1D6Ba111e06fF8F16A20Ea539); // addy
+    address public want;
 
     // Third party contracts
-    address constant public rewardPool = address(0x920f22E1e5da04504b765F8110ab96A20E6408Bd);
-    address constant public quickUnirouter = address(0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff);
-    address constant public beefyKeeper = address(0xd529b1894491a0a26B18939274ae8ede93E81dbA);
-    address constant public beefyTreasury = address(0x09EF0e7b555599A9F810789FfF68Db8DBF4c51a0);
+    address public rewardPool;
 
     // Routes
-    address[] public quickToAddyRoute = [quick, eth, want];
+    address[] public quickToAddyRoute;
     address[] public quickToMaticRoute = [quick, matic];
 
     /**
@@ -38,9 +35,19 @@ contract AddySingleAssetStrat is StratManager, FeeManager {
     event StratHarvest(address indexed harvester);
 
     constructor(
+        address _want,
+        address _rewardPool,
         address _vault,
-        address _strategist
-    ) StratManager(beefyKeeper, _strategist, quickUnirouter, _vault, beefyTreasury) public {
+        address _unirouter,
+        address _keeper,
+        address _strategist,
+        address _beefyFeeRecipient
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+        want = _want;
+        rewardPool = _rewardPool;
+
+        quickToAddyRoute = [quick, eth, want];
+
         _giveAllowances();
     }
 
