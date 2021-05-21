@@ -7,14 +7,14 @@ const getNetworkRpc = require("../utils/getNetworkRpc");
 const ethers = hardhat.ethers;
 
 const config = {
-  want: "0x7EFaEf62fDdCCa950418312c6C91Aef321375A00",
-  mooName: "Moo CakeV2 USDT-BUSD",
-  mooSymbol: "mooCakeV2USDT-BUSD",
+  want: "0x8E04b3972b5C25766c681dFD30a8A1cBf6dcc8c1",
+  mooName: "Moo CakeV2 RFOX-BNB",
+  mooSymbol: "mooCakeV2RFOX-BNB",
   delay: 21600,
   strategyName: "StrategyCakeLP",
-  poolId: 258,
-  unirouter: "0x2AD2C5314028897AEcfCF37FD923c079BeEb2C56", // Pancakeswap Router
-  strategist: "0x4e3227c0b032161Dd6D780E191A590D917998Dc7", // some address
+  poolId: 385,
+  unirouter: "0x10ED43C718714eb63d5aA57B78B54704E256024E", // Pancakeswap Router V2
+  strategist: "0xAEDf3c2Ca4d3D1A9Dd2A6159B3D37e7ca7c3970f", // Wivern
   keeper: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
   beefyFeeRecipient: "0xEB41298BA4Ea3865c33bDE8f60eC414421050d53",
 };
