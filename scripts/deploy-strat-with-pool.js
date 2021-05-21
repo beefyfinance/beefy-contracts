@@ -14,7 +14,7 @@ const config = {
   strategyName: "StrategyCakeLP",
   poolId: 385,
   unirouter: "0x10ED43C718714eb63d5aA57B78B54704E256024E", // Pancakeswap Router V2
-  strategist: "0xAEDf3c2Ca4d3D1A9Dd2A6159B3D37e7ca7c3970f", // Wivern
+  strategist: "0xEB41298BA4Ea3865c33bDE8f60eC414421050d53", // your address for rewards
   keeper: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
   beefyFeeRecipient: "0xEB41298BA4Ea3865c33bDE8f60eC414421050d53",
 };
@@ -43,7 +43,7 @@ async function main() {
   const strategy = await Strategy.deploy(
     config.want,
     config.poolId,
-    predictedAddresses.vault,
+    vault.address,
     config.unirouter,
     config.keeper,
     config.strategist,
