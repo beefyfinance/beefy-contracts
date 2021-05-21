@@ -13,20 +13,20 @@ import "../../utils/GasThrottler.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategySatisLP is StratManager, FeeManager, GasThrottler {
+contract StrategyDumplingLP is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
     address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
     address constant public busd = address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
-    address constant public output = address(0x8fda94079913CB921D065Ed9c004Afb43e1f900e);
+    address constant public output = address(0x13F6751ba11337BC67aBBdAd638a56194ee133B8);
     address public want;
     address public lpToken0;
     address public lpToken1;
 
     // Third party contracts
-    address constant public masterchef = address(0x2EaB54f9f57057B0C213579c104e6f1834e38B26);
+    address constant public masterchef = address(0xe2e643B051ABCFBE735b99eE00b2dbFd3a7BD798);
     uint256 public poolId;
 
     // Routes
@@ -56,18 +56,14 @@ contract StrategySatisLP is StratManager, FeeManager, GasThrottler {
         lpToken1 = IUniswapV2Pair(want).token1();
         poolId = _poolId;
 
-        if (lpToken0 == wbnb) {
-            outputToLp0Route = [output, wbnb];
-        } else if (lpToken0 == busd) {
-            outputToLp0Route = [output, busd];
+        if (lpToken0 == wbnb || lpToken0 == busd) {
+            outputToLp0Route = [output, lpToken0];
         } else if (lpToken0 != output) {
             outputToLp0Route = [output, wbnb, lpToken0];
         }
 
-        if (lpToken1 == wbnb) {
-            outputToLp1Route = [output, wbnb];
-        } else if (lpToken1 == busd) {
-            outputToLp1Route = [output, busd];
+        if (lpToken1 == wbnb || lpToken1 == busd) {
+            outputToLp1Route = [output, lpToken1];
         } else if (lpToken1 != output) {
             outputToLp1Route = [output, wbnb, lpToken1];
         }
@@ -109,11 +105,14 @@ contract StrategySatisLP is StratManager, FeeManager, GasThrottler {
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA gasThrottle {
         IMasterChefReferrer(masterchef).deposit(poolId, 0, address(0));
-        chargeFees();
-        addLiquidity();
-        deposit();
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        if (outputBal > 0) {
+            chargeFees();
+            addLiquidity();
+            deposit();
 
-        emit StratHarvest(msg.sender);
+            emit StratHarvest(msg.sender);
+        }
     }
 
     // performance fees
