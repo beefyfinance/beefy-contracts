@@ -17,17 +17,16 @@ contract StrategyEllipsisSingleAsset is StratManager, FeeManager {
     using SafeMath for uint256;
 
     // Tokens used
-    address constant public eth = address(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619);
-    address constant public matic = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
-    address constant public quick = address(0x831753DD7087CaC61aB5644b308642cc1c33Dc13);
-    address public want;
+    address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
+    address constant public output = address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56); // busd
+    address public want; // eps
 
     // Third party contracts
     address public rewardPool;
 
     // Routes
-    address[] public quickToAddyRoute;
-    address[] public quickToMaticRoute = [quick, matic];
+    address[] public outputToWantRoute;
+    address[] public outputToWbnbRoute = [output, wbnb]; 
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -46,7 +45,7 @@ contract StrategyEllipsisSingleAsset is StratManager, FeeManager {
         want = _want;
         rewardPool = _rewardPool;
 
-        quickToAddyRoute = [quick, eth, want];
+        outputToWantRoute = [output, wbnb, want]; 
 
         _giveAllowances();
     }
@@ -94,25 +93,25 @@ contract StrategyEllipsisSingleAsset is StratManager, FeeManager {
 
     // performance fees
     function chargeFees() internal {
-        uint256 toMatic = IERC20(quick).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toMatic, 0, quickToMaticRoute, address(this), now);
+        uint256 toBnb = IERC20(output).balanceOf(address(this)).mul(45).div(1000); 
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toBnb, 0, outputToWbnbRoute, address(this), now);
 
-        uint256 maticBal = IERC20(matic).balanceOf(address(this));
+        uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
-        uint256 callFeeAmount = maticBal.mul(callFee).div(MAX_FEE);
-        IERC20(matic).safeTransfer(msg.sender, callFeeAmount);
+        uint256 callFeeAmount = wbnbBal.mul(callFee).div(MAX_FEE);
+        IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
 
-        uint256 beefyFeeAmount = maticBal.mul(beefyFee).div(MAX_FEE);
-        IERC20(matic).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
+        uint256 beefyFeeAmount = wbnbBal.mul(beefyFee).div(MAX_FEE);
+        IERC20(wbnb).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = maticBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(matic).safeTransfer(strategist, strategistFee);
+        uint256 strategistFee = wbnbBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(wbnb).safeTransfer(strategist, strategistFee);
     }
 
     // swap rewards to {want}
     function swapRewards() internal {
-        uint256 quickBalance = IERC20(quick).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(quickBalance, 0, quickToAddyRoute, address(this), now);
+        uint256 outputBalance = IERC20(output).balanceOf(address(this)); 
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBalance, 0, outputToWantRoute, address(this), now);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -162,11 +161,11 @@ contract StrategyEllipsisSingleAsset is StratManager, FeeManager {
 
     function _giveAllowances() internal {
         IERC20(want).safeApprove(rewardPool, uint256(-1));
-        IERC20(quick).safeApprove(unirouter, uint256(-1));
+        IERC20(output).safeApprove(unirouter, uint256(-1)); 
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(rewardPool, 0);
-        IERC20(quick).safeApprove(unirouter, 0);
+        IERC20(output).safeApprove(unirouter, 0); 
     }
 }
