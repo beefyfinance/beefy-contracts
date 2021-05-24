@@ -67,8 +67,15 @@ contract StrategyPolyzapLP is StratManager, FeeManager {
         _giveAllowances();
     }
 
-    // puts the funds to work
+    // deposits only if nothing is deposited yet
     function deposit() public whenNotPaused {
+        if (balanceOfPool() == 0) {
+            _deposit();
+        }
+    }
+
+    // puts the funds to work
+    function _deposit() internal whenNotPaused {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
@@ -105,7 +112,7 @@ contract StrategyPolyzapLP is StratManager, FeeManager {
         if (outputBal > 0) {
             chargeFees();
             addLiquidity();
-            deposit();
+            _deposit();
 
             emit StratHarvest(msg.sender);
         }
@@ -188,7 +195,7 @@ contract StrategyPolyzapLP is StratManager, FeeManager {
 
         _giveAllowances();
 
-        deposit();
+        _deposit();
     }
 
     function _giveAllowances() internal {
