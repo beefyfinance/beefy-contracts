@@ -12,18 +12,18 @@ import "../../interfaces/common/IRewardPool.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-
-contract StrategyRewardPoolPolygonQuickLP is StratManager, FeeManager {
+contract StrategyMultiRewardsPolygonLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
     address constant public eth = address(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619);
     address constant public matic = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
-    address constant public output = address(0x831753DD7087CaC61aB5644b308642cc1c33Dc13);
+    address constant public output = address(0x9C78EE466D6Cb57A4d01Fd887D2b5dFb2D46288f);
     address public want;
     address public lpToken0;
     address public lpToken1;
+    address public secondOutput;
 
     // Third party contracts
     address public rewardPool;
@@ -32,6 +32,7 @@ contract StrategyRewardPoolPolygonQuickLP is StratManager, FeeManager {
     address[] public outputToMaticRoute = [output, matic];
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
+    address[] public secondOutputToOutputRoute;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -41,6 +42,7 @@ contract StrategyRewardPoolPolygonQuickLP is StratManager, FeeManager {
     constructor(
         address _want,
         address _rewardPool,
+        address _secondOutput,
         address _vault,
         address _unirouter,
         address _keeper,
@@ -51,13 +53,16 @@ contract StrategyRewardPoolPolygonQuickLP is StratManager, FeeManager {
         lpToken0 = IUniswapV2Pair(want).token0();
         lpToken1 = IUniswapV2Pair(want).token1();
         rewardPool = _rewardPool;
-
+        secondOutput = _secondOutput;
+        
+        secondOutputToOutputRoute = [secondOutput, output];
+        
         if (lpToken0 == matic) {
             outputToLp0Route = [output, matic];
         } else if (lpToken0 == eth) {
             outputToLp0Route = [output, eth];
         } else if (lpToken0 != output) {
-            outputToLp0Route = [output, lpToken0];
+            outputToLp0Route = [output, eth, lpToken0];
         }
 
         if (lpToken1 == matic) {
@@ -65,7 +70,7 @@ contract StrategyRewardPoolPolygonQuickLP is StratManager, FeeManager {
         } else if (lpToken1 == eth) {
             outputToLp1Route = [output, eth];
         } else if (lpToken1 != output) {
-            outputToLp1Route = [output, lpToken1];
+            outputToLp1Route = [output, eth, lpToken1];
         }
 
         _giveAllowances();
@@ -97,7 +102,7 @@ contract StrategyRewardPoolPolygonQuickLP is StratManager, FeeManager {
         if (tx.origin == owner() || paused()) {
             IERC20(want).safeTransfer(vault, wantBal);
         } else {
-            uint256 withdrawalFee = wantBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
+            uint256 withdrawalFee = wantBal.mul(WITHDRAWAL_FEE_CAP).div(WITHDRAWAL_MAX);
             IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFee));
         }
     }
@@ -114,6 +119,9 @@ contract StrategyRewardPoolPolygonQuickLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees() internal {
+        uint256 toOutput = IERC20(secondOutput).balanceOf(address(this));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, secondOutputToOutputRoute, address(this), now);
+        
         uint256 toMatic = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toMatic, 0, outputToMaticRoute, address(this), now);
 
@@ -194,6 +202,7 @@ contract StrategyRewardPoolPolygonQuickLP is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(rewardPool, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(secondOutput).safeApprove(unirouter, uint256(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
@@ -205,6 +214,7 @@ contract StrategyRewardPoolPolygonQuickLP is StratManager, FeeManager {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(rewardPool, 0);
         IERC20(output).safeApprove(unirouter, 0);
+        IERC20(secondOutput).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
