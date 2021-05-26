@@ -54,15 +54,15 @@ contract StrategyCakeBusdLP is StratManager, FeeManager, GasThrottler {
         poolId = _poolId;
 
         if (lpToken0 == busd) {
-            cakeToLp0Route = [cake, wbnb, busd];
+            cakeToLp0Route = [cake, busd];
         } else if (lpToken0 != cake) {
-            cakeToLp0Route = [cake, wbnb, busd, lpToken0];
+            cakeToLp0Route = [cake, busd, lpToken0];
         }
 
         if (lpToken1 == busd) {
-            cakeToLp1Route = [cake, wbnb, busd];
+            cakeToLp1Route = [cake, busd];
         } else if (lpToken1 != cake) {
-            cakeToLp1Route = [cake, wbnb, busd, lpToken1];
+            cakeToLp1Route = [cake, busd, lpToken1];
         }
 
         _giveAllowances();
