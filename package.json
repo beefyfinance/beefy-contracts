@@ -22,7 +22,7 @@
     "all": "yarn clean && yarn compile && yarn net",
     "test": "hardhat test --network localhost",
     "deploy-strat:bsc": "hardhat run --network bsc scripts/deploy-strat-with-pool.js",
-    "deploy-strat:polygon": "hardhat run --network polygon scripts/deploy-strat-with-pool.js",
+    "deploy-strat:polygon": "hardhat run --network polygon scripts/deploy-common-strat-with-pool.js",
     "deploy-pool:bsc": "hardhat run --network bsc scripts/deploy-launchpad-pool.js",
     "notify:bsc": "hardhat run --network bsc scripts/notify-launchpools.js"
   },

@@ -5,7 +5,7 @@ const predictAddresses = require("../utils/predictAddresses");
 const getNetworkRpc = require("../utils/getNetworkRpc");
 
 const { addressBook } = require("blockchain-addressbook")
-const { WMATIC, QUICK, ETH } = addressBook.polygon.tokens;
+const { QUICK: { address: QUICK }, WMATIC: { address: WMATIC }, ETH: { address: ETH } } = addressBook.polygon.tokens;
 const { quickswap, beefyfinance } = addressBook.polygon.platforms;
 
 const ethers = hardhat.ethers;
