@@ -48,8 +48,8 @@ contract StrategyMultiFeeDistribution is StratManager, FeeManager {
         rewardPool = _rewardPool;
 
         outputToNativeRoute = _outputToNativeRoute;
-        native = outputToNativeRoute[0];
-        output = outputToNativeRoute[outputToNativeRoute.length - 1];
+        output = outputToNativeRoute[0];
+        native = outputToNativeRoute[outputToNativeRoute.length - 1];
 
         outputToWantRoute = _outputToWantRoute;
         want = outputToWantRoute[outputToWantRoute.length - 1];
