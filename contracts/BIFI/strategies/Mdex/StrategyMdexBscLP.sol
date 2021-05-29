@@ -249,7 +249,7 @@ contract StrategyMdexBscLP is Ownable, Pausable, GasThrottler {
         IUniswapRouterETH(mdxrouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
     }
 
-    function claimSwapRewards() public onlyOwner {
+    function claimSwapRewards() public {
         ISwapMining(swapmining).takerWithdraw();
     }
 
