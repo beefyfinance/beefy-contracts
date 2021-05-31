@@ -26,7 +26,7 @@ contract StrategyIronPolygonLP is StratManager, FeeManager {
     address public lpToken1;
 
     // Third party contracts
-    address constant public masterchef = address(0x65430393358e55A658BcdE6FF69AB28cF1CbB77a);
+    address constant public masterchef = address(0xb444d596273C66Ac269C33c30Fbb245F4ba8A79d);
     uint256 public poolId;
 
     // Routes

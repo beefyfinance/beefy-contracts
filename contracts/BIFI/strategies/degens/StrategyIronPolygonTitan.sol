@@ -18,14 +18,17 @@ contract StrategyIronPolygonTitan is StratManager, FeeManager {
 
     // Tokens used
     address constant public wmatic = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
-    address constant public want = address(0xaAa5B9e6c589642f98a1cDA99B9D024B8407285A);
+    address constant public want = address(0xaAa5B9e6c589642f98a1cDA99B9D024B8407285A); // titan
+    address constant public iron = address(0xD86b5923F3AD7b585eD81B448170ae026c65ae9a);
+    address constant public output = address(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174); // usdc
 
     // Third party contracts
-    address constant public masterchef = address(0x08b5249F1fee6e4fCf8A7113943ed6796737386E);
+    address constant public masterchef = address(0xa37DD1f62661EB18c338f18Cf797cff8b5102d8e);
     uint256 constant public poolId = 0;
 
     // Routes
-    address[] public wantToWmaticRoute = [want, wmatic];
+    address[] public outputToWmaticRoute = [output, iron, want, wmatic];
+    address[] public outputToWantRoute = [output, iron, want];
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -73,26 +76,20 @@ contract StrategyIronPolygonTitan is StratManager, FeeManager {
         }
     }
 
-    function beforeDeposit() external override {
-        harvest();
-    }
-
     // compounds earnings and charges performance fee
-    function harvest() public whenNotPaused {
-        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
+    function harvest() external whenNotPaused onlyEOA {
         IMasterChef(masterchef).deposit(poolId, 0);
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
-        if (wantBal > 0) {
-            chargeFees();
-            deposit();
-            emit StratHarvest(msg.sender);
-        }
+        chargeFees();
+        swapRewards();
+        deposit();
+
+        emit StratHarvest(msg.sender);
     }
 
     // performance fees
     function chargeFees() internal {
-        uint256 toWmatic = IERC20(want).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWmatic, 0, wantToWmaticRoute, address(this), now);
+        uint256 toWmatic = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWmatic, 0, outputToWmaticRoute, address(this), now);
 
         uint256 wmaticBal = IERC20(wmatic).balanceOf(address(this));
 
@@ -104,6 +101,12 @@ contract StrategyIronPolygonTitan is StratManager, FeeManager {
 
         uint256 strategistFee = wmaticBal.mul(STRATEGIST_FEE).div(MAX_FEE);
         IERC20(wmatic).safeTransfer(strategist, strategistFee);
+    }
+
+    // swap rewards to {want}
+    function swapRewards() internal {
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), now);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -154,11 +157,11 @@ contract StrategyIronPolygonTitan is StratManager, FeeManager {
 
     function _giveAllowances() internal {
         IERC20(want).safeApprove(masterchef, uint256(-1));
-        IERC20(want).safeApprove(unirouter, uint256(-1));
+        IERC20(output).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(masterchef, 0);
-        IERC20(want).safeApprove(unirouter, 0);
+        IERC20(output).safeApprove(unirouter, 0);
     }
 }
