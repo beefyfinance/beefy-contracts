@@ -47,6 +47,10 @@ task("harvest", "Harvests a given strategy.")
     }
   });
 
+let deployerAccount;
+if (process.env.DEPLOYER_PK)
+  deployerAccount = [process.env.DEPLOYER_PK];
+
 module.exports = {
   defaultNetwork: "localhost",
   networks: {
@@ -54,27 +58,27 @@ module.exports = {
     bsc: {
       url: "https://bsc-dataseed.binance.org/",
       chainId: 56,
-      accounts: [process.env.DEPLOYER_PK],
+      accounts: deployerAccount,
     },
     heco: {
       url: "https://http-mainnet.hecochain.com",
       chainId: 128,
-      accounts: [process.env.DEPLOYER_PK],
+      accounts: deployerAccount,
     },
     avax: {
       url: "https://api.avax.network/ext/bc/C/rpc",
       chainId: 43114,
-      accounts: [process.env.DEPLOYER_PK],
+      accounts: deployerAccount,
     },
     polygon: {
       url: "https://rpc-mainnet.maticvigil.com/",
       chainId: 137,
-      accounts: [process.env.DEPLOYER_PK],
+      accounts: deployerAccount,
     },
     fantom: {
       url: "https://rpc.ftm.tools",
       chainId: 250,
-      accounts: [process.env.DEPLOYER_PK],
+      accounts: deployerAccount,
     },
     localhost: {
       url: "http://127.0.0.1:8545",
@@ -84,7 +88,7 @@ module.exports = {
     testnet: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
       chainId: 97,
-      accounts: [process.env.DEPLOYER_PK],
+      accounts: deployerAccount,
     },
   },
   solidity: {
