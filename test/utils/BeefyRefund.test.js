@@ -1,21 +1,27 @@
 const { expect } = require("chai");
+const hardhat = require("hardhat");
+const ethers = hardhat.ethers;
+const deployments = hardhat.deployments;
 
 describe("BeefyRefund", () => {
   const pricePerFullShare = ethers.BigNumber.from("1500000000000000000");
   const burnAddr = "0x000000000000000000000000000000000000dEaD";
 
-  const setup = async () => {
-    const [signer, other] = await ethers.getSigners();
-
+  const setup = deployments.createFixture(async () => {
+    const namedAccounts   = await hardhat.getNamedAccounts();
+    const unnamedAccounts = await hardhat.getUnnamedAccounts();
+    const signer = await ethers.getSigner(namedAccounts['deployer']);
+    const other  = await ethers.getSigner(unnamedAccounts[0]);
+  
     const Token = await ethers.getContractFactory("TestToken");
     const token = await Token.deploy("10000", "Test Token", "TEST");
     const mootoken = await Token.deploy("10000", "Test Moo Token", "mooTEST");
-
+  
     const BeefyRefund = await ethers.getContractFactory("BeefyRefund");
     const beefyRefund = await BeefyRefund.deploy(token.address, mootoken.address, pricePerFullShare);
-
+  
     return { signer, other, token, mootoken, beefyRefund };
-  };
+  });
 
   it("Initializes the contract correctly", async () => {
     const { token, mootoken, beefyRefund } = await setup();

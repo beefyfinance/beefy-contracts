@@ -1,10 +1,16 @@
 const { expect } = require("chai");
+const hardhat = require("hardhat");
+const ethers = hardhat.ethers;
+const deployments = hardhat.deployments;
 
 describe("BeefyTreasury", () => {
   const { provider } = ethers;
 
-  const setup = async () => {
-    const [signer, other] = await ethers.getSigners();
+  const setup = deployments.createFixture(async () => {
+    const namedAccounts   = await hardhat.getNamedAccounts();
+    const unnamedAccounts = await hardhat.getUnnamedAccounts();
+    const signer = await ethers.getSigner(namedAccounts['deployer']);
+    const other  = await ethers.getSigner(unnamedAccounts[0]);
 
     const Token = await ethers.getContractFactory("TestToken");
     const token = await Token.deploy("10000", "Test Token", "TEST");
@@ -13,7 +19,7 @@ describe("BeefyTreasury", () => {
     const treasury = await Treasury.deploy();
 
     return { signer, other, token, treasury };
-  };
+  });
 
   it("receives BNB correctly", async () => {
     const { signer, treasury } = await setup();

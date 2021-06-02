@@ -1,11 +1,17 @@
 const { expect } = require("chai");
+const hardhat = require("hardhat");
+const ethers = hardhat.ethers;
+const deployments = hardhat.deployments;
 
 const DURATION = 864000;
 const TIMEOUT = 10 * 60 * 1000;
 
 describe("BeefyLaunchpool", async () => {
-  const setup = async () => {
-    const [signer, other] = await ethers.getSigners();
+  const setup = deployments.createFixture(async () => {
+    const namedAccounts   = await hardhat.getNamedAccounts();
+    const unnamedAccounts = await hardhat.getUnnamedAccounts();
+    const signer = await ethers.getSigner(namedAccounts['deployer']);
+    const other  = await ethers.getSigner(unnamedAccounts[0]);
 
     const Token = await ethers.getContractFactory("TestToken");
     const stakedToken = await Token.deploy("10000", "Staked Token", "STAKED");
@@ -16,7 +22,7 @@ describe("BeefyLaunchpool", async () => {
     const pool = await Pool.deploy(stakedToken.address, rewardToken.address, DURATION);
 
     return { signer, other, pool, stakedToken, rewardToken, otherToken };
-  };
+  });
 
   it("initializes correctly", async () => {
     const { pool, stakedToken, rewardToken } = await setup();
