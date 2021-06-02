@@ -6,6 +6,16 @@ const fs = require("fs");
 const DEPLOYER_PK_FILE = ".config/DEPLOYER_PK";
 const OTHER_PK_FILE    = ".config/OTHER_PK";
 
+task("node", "Starts a JSON-RPC server on top of Hardhat Network")
+  .setAction(async (taskArgs, hre, runSuper) => {
+    if (taskArgs.fork in hre.config.networks) {
+      let rpc = hre.config.networks[taskArgs.fork].url;
+      console.log(`Forking ${taskArgs.fork} from RPC: ${rpc}`);
+      taskArgs.fork = rpc;
+    }
+    await runSuper(taskArgs);
+  });
+
 task("panic", "Panics a given strategy.")
   .addParam("strat", "The strategy to panic.")
   .setAction(async taskArgs => {
