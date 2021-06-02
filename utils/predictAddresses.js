@@ -1,6 +1,22 @@
 const rlp = require("rlp");
 const keccak = require("keccak");
 const Web3 = require("web3");
+const ethers = require("ethers");
+
+async function* contractAddressGenerator(signer, startingNonce) {
+  let address = await signer.getAddress();
+  let currentNonce = startingNonce ?? await signer.getTransactionCount();
+
+  while (true) {
+    let currentNonceHex = `0x${parseInt(currentNonce).toString(16)}`;
+    let currentInputArr = [address, currentNonceHex];
+    let currentRlpEncoded = rlp.encode(currentInputArr);
+    let currentContractAddressLong = keccak("keccak256").update(currentRlpEncoded).digest("hex");
+    let currentContractAddress = `0x${currentContractAddressLong.substring(24)}`;
+    yield ethers.utils.getAddress(currentContractAddress);
+    currentNonce += 1;
+  }
+}
 
 const predictAddresses = async (config) => {
   let { creator, rpc } = config;
@@ -32,4 +48,7 @@ const predictAddresses = async (config) => {
   };
 };
 
-module.exports = predictAddresses;
+module.exports = {
+  predictAddresses: predictAddresses,
+  contractAddressGenerator: contractAddressGenerator
+};

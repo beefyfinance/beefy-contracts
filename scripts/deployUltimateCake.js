@@ -1,7 +1,7 @@
 const hardhat = require("hardhat");
 
 const registerSubsidy = require("../utils/registerSubsidy");
-const predictAddresses = require("../utils/predictAddresses");
+const predictAddresses = require("../utils/predictAddresses").predictAddresses;
 const getNetworkRpc = require("../utils/getNetworkRpc");
 const { deployVault } = require("../../utils/deployVault");
 

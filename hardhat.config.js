@@ -1,6 +1,8 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-web3");
+require('hardhat-deploy');
 require("@nomiclabs/hardhat-ethers");
+
 const fs = require("fs");
 
 const DEPLOYER_PK_FILE = ".config/DEPLOYER_PK";
@@ -132,9 +134,11 @@ else {
 }
 
 module.exports = {
-  defaultNetwork: "localhost",
+  defaultNetwork: "hardhat",
   networks: {
-    hardhat: {},
+    hardhat: {
+      loggingEnabled:true
+    },
     bsc: {
       url: "https://bsc-dataseed.binance.org/",
       chainId: 56,
