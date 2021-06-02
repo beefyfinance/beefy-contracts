@@ -3,34 +3,34 @@ const hardhat = require("hardhat");
 const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const getNetworkRpc = require("../utils/getNetworkRpc");
+
 const { addressBook } = require("blockchain-addressbook")
-const { DAI: { address: DAI }, USDC: { address: USDC }, ETH: { address: ETH }, WMATIC: { address: WMATIC }, SUSHI: { address: SUSHI } } = addressBook.polygon.tokens;
-const { sushi, beefyfinance } = addressBook.polygon.platforms;
+const { USDC: { address: USDC }, USDT: { address: USDT }, QUICK: { address: QUICK }, WMATIC: { address: WMATIC }, ETH: { address: ETH } } = addressBook.polygon.tokens;
+const { quickswap, beefyfinance } = addressBook.polygon.platforms;
 
 const ethers = hardhat.ethers;
 
 const vaultParams = {
-  mooName: "Moo Sushi USDC-DAI",
-  mooSymbol: "mooSushiUSDC-DAI",
+  mooName: "Moo Quick USDC-USDT",
+  mooSymbol: "mooquickUSDC-USDT",
   delay: 21600,
 }
 
 const strategyParams = {
-  want: "0xcd578f016888b57f1b1e3f887f392f0159e26747",
-  poolId: 11,
-  chef: sushi.minichef,
-  unirouter: sushi.router,
+  want: "0x2cf7252e74036d1da831d11089d326296e64a728",
+  rewardPool: "0x251d9837a13F38F3Fe629ce2304fa00710176222",
+  unirouter: quickswap.router,
   strategist: "0x4e3227c0b032161Dd6D780E191A590D917998Dc7", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [ SUSHI, WMATIC ],
-  outputToLp0Route: [ SUSHI, ETH, USDC ],
-  outputToLp1Route: [ SUSHI, ETH, DAI ]
+  outputToNativeRoute: [ QUICK, WMATIC ],
+  outputToLp0Route: [ QUICK, ETH, USDC ],
+  outputToLp1Route: [ QUICK, ETH, USDT ]
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonChefLP"
+  strategy: "StrategyCommonRewardPoolLP"
 }
 
 async function main() {
@@ -56,8 +56,7 @@ async function main() {
 
   const strategy = await Strategy.deploy(
     strategyParams.want,
-    strategyParams.poolId,
-    strategyParams.chef,
+    strategyParams.rewardPool,
     vault.address,
     strategyParams.unirouter,
     strategyParams.keeper,
