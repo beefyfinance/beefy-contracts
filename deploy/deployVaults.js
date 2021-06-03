@@ -73,6 +73,4 @@ module.exports = async ({
             strategyParams.outputToLp1Route],
         log: true
     });
-//    console.log(`Strategy deployed to: ${strategy.address}`);
-    console.log();
 };
