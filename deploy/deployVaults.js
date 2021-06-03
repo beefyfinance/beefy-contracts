@@ -39,20 +39,25 @@ module.exports = async ({
 
     let contractAddress = await contractAddressGenerator(deployer);
 
-    strategyParams.vault = (await contractAddress.next()).value;
-    vaultParams.strategy = (await contractAddress.next()).value;
+    let vaultName = `${vaultParams.mooName} Vault`;
+    let stratName = `${vaultParams.mooName} Strategy`
+
+    let deployedVault = await deployments.getOrNull(vaultName);
+    let deployedStrat = await deployments.getOrNull(stratName);
+
+    strategyParams.vault = deployedVault ? deployedVault.address : (await contractAddress.next()).value;
+    vaultParams.strategy = deployedStrat ? deployedStrat.address : (await contractAddress.next()).value;
 
     //console.log(vaultParams);
-    const vaultDeployResult = await deploy(`${vaultParams.mooName} Vault`, {
+    const vaultDeployResult = await deploy(vaultName, {
         from: deployer.address,
         contract: contractNames.vault,
         args: [vaultParams.strategy, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay],
-        log: true,
-        skipIfAlreadyDeployed: true
+        log: true
     });
 
     //console.log(strategyParams);
-    const strategy = await deploy(`${vaultParams.mooName} Strategy`, {
+    const strategy = await deploy(stratName, {
         from: deployer.address,
         contract: contractNames.strategy,
         args: [
@@ -66,8 +71,7 @@ module.exports = async ({
             strategyParams.outputToNativeRoute,
             strategyParams.outputToLp0Route,
             strategyParams.outputToLp1Route],
-        log: true,
-        skipIfAlreadyDeployed: true
+        log: true
     });
 //    console.log(`Strategy deployed to: ${strategy.address}`);
     console.log();
