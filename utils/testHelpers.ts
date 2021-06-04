@@ -1,41 +1,46 @@
-const hardhat = require("hardhat");
+import { Contract } from "@ethersproject/contracts";
+import hardhat from "hardhat";
+import { BigNumber, Signer } from "ethers";
 const ethers = hardhat.ethers;
 
 // TODO: Handle custom LPs (Like Belt LPs)
+type SwapArgs = { amount: BigNumber, want: Contract, nativeTokenAddr: string, unirouter: Contract, swapSignature: string, signer: Signer };
 
-const zapNativeToToken = async ({ amount, want, nativeTokenAddr, unirouter, swapSignature, recipient }) => {
-  let isLpToken, lpPair, token0, token1;
+const zapNativeToToken = async ({ amount, want, nativeTokenAddr, unirouter, swapSignature, signer }: SwapArgs) => {
+  let lpPair: Contract;
+  let token0: Contract | null = null;
+  let token1: Contract | null = null;
+
+  let recipient = await signer.getAddress();
 
   try {
     lpPair = await ethers.getContractAt(
       "contracts/BIFI/interfaces/common/IUniswapV2Pair.sol:IUniswapV2Pair",
-      want.address
+      want.address,
+      signer
     );
 
     const token0Addr = await lpPair.token0();
-    token0 = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", token0Addr);
+    token0 = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", token0Addr, signer);
 
     const token1Addr = await lpPair.token1();
-    token1 = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", token1Addr);
-    isLpToken = true;
-  } catch (e) {
-    isLpToken = false;
-  }
+    token1 = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", token1Addr, signer);
+  } catch (e) {}
 
-  if (isLpToken) {
+  if (token0 && token1) {
     try {
       await swapNativeForToken({
         unirouter,
-        token: token0,
-        recipient,
+        want: token0,
+        signer,
         nativeTokenAddr,
         amount: amount.div(2),
         swapSignature,
       });
       await swapNativeForToken({
         unirouter,
-        token: token1,
-        recipient,
+        want: token1,
+        signer,
         nativeTokenAddr,
         amount: amount.div(2),
         swapSignature,
@@ -47,22 +52,24 @@ const zapNativeToToken = async ({ amount, want, nativeTokenAddr, unirouter, swap
       await token0.approve(unirouter.address, token0Bal);
       await token1.approve(unirouter.address, token1Bal);
 
-      await unirouter.addLiquidity(token0.address, token1.address, token0Bal, token1Bal, 1, 1, recipient, 5000000000);
+      await unirouter.addLiquidity(token0.address, token1.address, token0Bal, token1Bal, 0, 0, recipient, 5000000000);
     } catch (e) {
       console.log("Could not add LP liquidity.", e);
     }
   } else {
     try {
-      await swapNativeForToken({ unirouter, token: want, recipient, nativeTokenAddr, amount, swapSignature });
+      await swapNativeForToken({ unirouter, want, signer, nativeTokenAddr, amount, swapSignature });
     } catch (e) {
       console.log("Could not swap for want.", e);
     }
   }
 };
 
-const swapNativeForToken = async ({ unirouter, amount, nativeTokenAddr, token, recipient, swapSignature }) => {
+const swapNativeForToken = async ({ unirouter, amount, nativeTokenAddr, want:token, signer, swapSignature }:SwapArgs) => {
+  let recipient = await signer.getAddress();
+
   if (token.address === nativeTokenAddr) {
-    await wrapNative(amount, nativeTokenAddr);
+    await wrapNative(amount, nativeTokenAddr, signer);
     return;
   }
 
@@ -75,12 +82,12 @@ const swapNativeForToken = async ({ unirouter, amount, nativeTokenAddr, token, r
   }
 };
 
-const logTokenBalance = async (token, wallet) => {
+const logTokenBalance = async (token:Contract, wallet:string) => {
   const balance = await token.balanceOf(wallet);
   console.log(`Balance: ${ethers.utils.formatEther(balance.toString())}`);
 };
 
-const getVaultWant = async vault => {
+const getVaultWant = async (vault:Contract, defaultTokenAddress:string) => {
   let wantAddr;
 
   try {
@@ -89,23 +96,23 @@ const getVaultWant = async vault => {
     try {
       wantAddr = await vault.want();
     } catch (e) {
-      wantAddr = config.nativeTokenAddr;
+      wantAddr = defaultTokenAddress;
     }
   }
 
-  const want = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", wantAddr);
+  const want = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", wantAddr, vault.signer);
 
   return want;
 };
 
-const unpauseIfPaused = async strat => {
+const unpauseIfPaused = async (strat:Contract) => {
   const isPaused = await strat.paused();
   if (isPaused) {
     await strat.unpause();
   }
 };
 
-const getUnirouterData = address => {
+const getUnirouterData = (address:string) => {
   switch (address) {
     case "0xA52aBE4676dbfd04Df42eF7755F01A3c41f28D27":
       return {
@@ -125,7 +132,7 @@ const getUnirouterData = address => {
   }
 };
 
-const getWrappedNativeAddr = networkId => {
+const getWrappedNativeAddr = (networkId:string) => {
   switch (networkId) {
     case "bsc":
       return "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c";
@@ -142,12 +149,12 @@ const getWrappedNativeAddr = networkId => {
   }
 };
 
-const wrapNative = async (amount, wNativeAddr) => {
-  const wNative = await ethers.getContractAt("IWrappedNative", wNativeAddr);
+const wrapNative = async (amount:BigNumber, wNativeAddr:string, recipient:Signer) => {
+  const wNative = await ethers.getContractAt("IWrappedNative", wNativeAddr, recipient);
   await wNative.deposit({ value: amount });
 };
 
-module.exports = {
+export {
   zapNativeToToken,
   swapNativeForToken,
   getVaultWant,

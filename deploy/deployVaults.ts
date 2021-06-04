@@ -8,7 +8,7 @@ import {DeployFunction} from 'hardhat-deploy/types';
 import "../utils/registerSubsidy";
 import { contractAddressGenerator } from "../utils/predictAddresses";
 
-const { addressBook } = require("blockchain-addressbook")
+import { addressBook } from "blockchain-addressbook";
 const { USDC: {address: USDC}, QUICK: { address: QUICK }, WMATIC: { address: WMATIC }, ETH: { address: ETH } } = addressBook.polygon.tokens;
 const { quickswap, beefyfinance } = addressBook.polygon.platforms;
 
@@ -82,10 +82,10 @@ const deployVault: DeployFunction = async function(hre: HardhatRuntimeEnvironmen
 
     if ('dev' in hre.network.tags) {
         if (vaultDeployResult.newlyDeployed) {
-            execute(vaultName, {from: deployer.address}, 'transferOwnership', beefyfinance.keeper);
+            execute(vaultName, {from: deployer.address}, 'transferOwnership', beefyfinance.cowllector);
         }
         if (strategyDeployResult.newlyDeployed) {
-            execute(stratName, {from: deployer.address}, 'transferOwnership', beefyfinance.keeper);
+            execute(stratName, {from: deployer.address}, 'transferOwnership', beefyfinance.cowllector);
         }
     }
 };

@@ -2,7 +2,7 @@ import { Contract } from "@ethersproject/contracts";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect, use } from "chai";
 import hre from "hardhat";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { HardhatRuntimeEnvironment, RequestArguments } from "hardhat/types";
 
 const ethers = hre.ethers;
 const deployments = hre.deployments;
@@ -26,7 +26,7 @@ const deployment = {
 };
 
 const nativeTokenAddr = getWrappedNativeAddr(network);
-const testAmount = ethers.utils.parseEther("5");
+const testAmount = ethers.utils.parseEther("10");
 
 const fixture = deployments.createFixture(async ({ deployments, network }, options) => {
   await network.provider.request({
@@ -37,7 +37,7 @@ const fixture = deployments.createFixture(async ({ deployments, network }, optio
       }
     }]
   });
-  await deployments.fixture();
+  return await deployments.run(undefined, { resetMemory: false, deletePreviousDeployments: false, writeDeploymentsToFiles: false });
 });
 
 async function getUnirouter(strategy: Contract) {
@@ -50,7 +50,7 @@ async function getUnirouter(strategy: Contract) {
   };
 }
 
-async function createLP(want: Contract, strategy: Contract, recipient: SignerWithAddress) {
+async function createLP(want: Contract, strategy: Contract) {
   const unirouter = await getUnirouter(strategy);
   await zapNativeToToken({
     amount: testAmount,
@@ -58,14 +58,14 @@ async function createLP(want: Contract, strategy: Contract, recipient: SignerWit
     nativeTokenAddr: nativeTokenAddr,
     unirouter: unirouter.contract,
     swapSignature: unirouter.data.swapSignature,
-    recipient: recipient.address,
+    signer: strategy.signer,
   });
 }
 
 async function getContracts(signer: SignerWithAddress) {
   const vault = await ethers.getContract(deployment.vault, signer);
   const strategy = await ethers.getContract(deployment.strategy, signer);
-  const want = await getVaultWant(vault);
+  const want = await getVaultWant(vault, nativeTokenAddr);
   return {
     signer,
     vault,
@@ -75,7 +75,7 @@ async function getContracts(signer: SignerWithAddress) {
 }
 
 async function getNamedSigner(name: string) {
-  const signer = await ethers.getNamedSigner('user');
+  const signer = await ethers.getNamedSigner(name);
   return getContracts(signer);
 }
 
@@ -94,7 +94,7 @@ describe("VaultLifecycleTest", function () {
   it("User can deposit and withdraw from the vault.", async () => {
     const { signer: user, vault, strategy, want } = await getNamedSigner('user');
 
-    await createLP(want, strategy, user);
+    await createLP(want, strategy);
 
     const wantBalStart = await want.balanceOf(user.address);
 
@@ -111,13 +111,16 @@ describe("VaultLifecycleTest", function () {
   it("Harvests work as expected.", async () => {
     const { signer: user, vault, strategy, want } = await getNamedSigner('user');
 
+    await createLP(want, strategy);
     const wantBalStart = await want.balanceOf(user.address);
     await want.approve(vault.address, wantBalStart);
     await vault.depositAll();
 
     const vaultBal = await vault.balance();
     const pricePerShare = await vault.getPricePerFullShare();
-    await delay(5000);
+
+    hre.network.provider.request({ method: "evm_increaseTime", params: [24*60*60] });
+
     await strategy.harvest({ gasPrice: 5000000 });
     const vaultBalAfterHarvest = await vault.balance();
     const pricePerShareAfterHarvest = await vault.getPricePerFullShare();
@@ -134,7 +137,7 @@ describe("VaultLifecycleTest", function () {
     const user = await getNamedSigner('user');
     const manager = await getNamedSigner('owner');
 
-    await createLP(user.want, user.strategy, user.signer);
+    await createLP(user.want, user.strategy);
     const wantBalStart = await user.want.balanceOf(user.signer.address);
     await user.want.approve(user.vault.address, wantBalStart);
     await user.vault.depositAll();
@@ -164,8 +167,8 @@ describe("VaultLifecycleTest", function () {
   it("New user deposit/withdrawals don't lower other users balances.", async () => {
     const [user1, user2] = await getUnnamedSigners(2);
 
-    createLP(user1.want, user1.strategy, user1.signer);
-    createLP(user2.want, user2.strategy, user2.signer);
+    await createLP(user1.want, user1.strategy);
+    await createLP(user2.want, user2.strategy);
 
     const wantBalStart = await user1.want.balanceOf(user1.signer.address);
     await user1.want.approve(user1.vault.address, wantBalStart);
@@ -177,7 +180,7 @@ describe("VaultLifecycleTest", function () {
     await user2.vault.depositAll();
     const pricePerShareAfterOtherDeposit = await user2.vault.getPricePerFullShare();
 
-    await user2.vault.withdrawAll();
+    await user1.vault.withdrawAll();
     const wantBalFinal = await user1.want.balanceOf(user1.signer.address);
     const pricePerShareAfterWithdraw = await user1.vault.getPricePerFullShare();
 
