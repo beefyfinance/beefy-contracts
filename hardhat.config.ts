@@ -1,17 +1,21 @@
-require("@nomiclabs/hardhat-waffle");
-require("@nomiclabs/hardhat-web3");
-require('hardhat-deploy');
-require("@nomiclabs/hardhat-ethers");
+import fs from "fs";
 
-const fs = require("fs");
+import { task, HardhatUserConfig } from "hardhat/config";
+import { HttpNetworkConfig } from 'hardhat/types';
+
+import 'hardhat-deploy';
+import "@nomiclabs/hardhat-waffle";
+import "@nomiclabs/hardhat-web3";
+import "@nomiclabs/hardhat-ethers";
 
 const DEPLOYER_PK_FILE = ".config/DEPLOYER_PK";
-const OTHER_PK_FILE    = ".config/OTHER_PK";
+const OTHER_PK_FILE = ".config/OTHER_PK";
 
 task("node", "Starts a JSON-RPC server on top of Hardhat Network")
   .setAction(async (taskArgs, hre, runSuper) => {
-    if (taskArgs.fork in hre.config.networks) {
-      let rpc = hre.config.networks[taskArgs.fork].url;
+    let network = hre.config.networks[taskArgs.fork] as HttpNetworkConfig;
+    if (network) {
+      let rpc = network.url;
       console.log(`Forking ${taskArgs.fork} from RPC: ${rpc}`);
       taskArgs.fork = rpc;
     }
@@ -20,9 +24,9 @@ task("node", "Starts a JSON-RPC server on top of Hardhat Network")
 
 task("panic", "Panics a given strategy.")
   .addParam("strat", "The strategy to panic.")
-  .setAction(async taskArgs => {
+  .setAction(async (taskArgs, hre) => {
     const IStrategy = await hre.artifacts.readArtifact("IStrategy");
-    const strategy = await ethers.getContractAt(IStrategy.abi, taskArgs.strat);
+    const strategy = await hre.ethers.getContractAt(IStrategy.abi, taskArgs.strat);
 
     try {
       const tx = await strategy.panic({ gasPrice: 10000000000, gasLimit: 3500000 });
@@ -35,9 +39,9 @@ task("panic", "Panics a given strategy.")
 
 task("unpause", "Unpauses a given strategy.")
   .addParam("strat", "The strategy to unpause.")
-  .setAction(async taskArgs => {
+  .setAction(async (taskArgs, hre) => {
     const IStrategy = await hre.artifacts.readArtifact("IStrategy");
-    const strategy = await ethers.getContractAt(IStrategy.abi, taskArgs.strat);
+    const strategy = await hre.ethers.getContractAt(IStrategy.abi, taskArgs.strat);
 
     try {
       const tx = await strategy.unpause({ gasPrice: 10000000000, gasLimit: 3500000 });
@@ -50,9 +54,9 @@ task("unpause", "Unpauses a given strategy.")
 
 task("harvest", "Harvests a given strategy.")
   .addParam("strat", "The strategy to harvest.")
-  .setAction(async taskArgs => {
+  .setAction(async (taskArgs, hre) => {
     const IStrategy = await hre.artifacts.readArtifact("IStrategy");
-    const strategy = await ethers.getContractAt(IStrategy.abi, taskArgs.strat);
+    const strategy = await hre.ethers.getContractAt(IStrategy.abi, taskArgs.strat);
 
     try {
       const tx = await strategy.harvest({ gasPrice: 10000000000, gasLimit: 3500000 });
@@ -64,18 +68,18 @@ task("harvest", "Harvests a given strategy.")
   });
 
 task("generate_accounts", "Creates new deployer and test accounts")
-  .setAction(async _ => {
+  .setAction(async (taskArgs, hre) => {
     let account;
     let file;
 
     try {
       fs.mkdirSync(".config");
     }
-    catch (e) {}
+    catch (e) { }
 
     try {
       file = fs.openSync(DEPLOYER_PK_FILE, 'wx+', 0o600);
-      account = ethers.Wallet.createRandom();
+      account = hre.ethers.Wallet.createRandom();
       fs.writeFileSync(file, account.privateKey);
       console.log(`Deployer account: ${account.address}`);
     }
@@ -96,8 +100,8 @@ task("generate_accounts", "Creates new deployer and test accounts")
 
     try {
       file = fs.openSync(OTHER_PK_FILE, 'wx+', 0o600);
-      account = ethers.Wallet.createRandom().privateKey;
-      fs.writeFileSync(file, account);
+      account = hre.ethers.Wallet.createRandom();
+      fs.writeFileSync(file, account.privateKey);
       console.log(`Other account  : ${account.address}`);
     }
     catch (e) {
@@ -133,11 +137,12 @@ else {
   }
 }
 
-module.exports = {
+const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
-      loggingEnabled:true
+      loggingEnabled: true,
+      tags: ['dev']
     },
     bsc: {
       url: "https://bsc-dataseed.binance.org/",
@@ -168,12 +173,29 @@ module.exports = {
       url: "http://127.0.0.1:8545",
       timeout: 300000,
       accounts: "remote",
+      tags: ['dev']
     },
     testnet: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
       chainId: 97,
       accounts: deployerAccount,
     },
+  },
+  namedAccounts: {
+    deployer: {
+      default: 0
+    },
+    user: {
+      default: 1
+    },
+    keeper: {
+      default: '0xd529b1894491a0a26B18939274ae8ede93E81dbA'
+    },
+    owner: {
+      default: '0xd529b1894491a0a26B18939274ae8ede93E81dbA',
+      hardhat: 0,
+      localhost: 0
+    }
   },
   solidity: {
     compilers: [
@@ -208,6 +230,6 @@ module.exports = {
   },
   paths: {
     sources: "./contracts/BIFI",
-  },
-  timeout: 30,
+  }
 };
+export default config;
