@@ -19,4 +19,4 @@ jobs:
         node-version: 14.x
     - run: npm install -g yarn
     - run: yarn
-    - run: npx hardhat node --fork polygon
+    - run: npx hardhat test test/ci/*
