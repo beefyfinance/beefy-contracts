@@ -28,16 +28,17 @@ interface IWETH is IERC20 {
     function withdraw(uint256 wad) external;
 }
 
-interface IBeefyVaultV6 is IERC20 {
+interface IBeefyVault is IERC20 {
     function deposit(uint256 amount) external;
     function withdraw(uint256 shares) external;
-    function want() external pure returns (address);
+    function want() external pure returns (address); // Beefy Vault V6
+    function token() external pure returns (address); // Beefy Vault V5
 }
 
 contract BeefyZapUniswapV2 {
     using LowGasSafeMath for uint256;
     using SafeERC20 for IERC20;
-    using SafeERC20 for IBeefyVaultV6;
+    using SafeERC20 for IBeefyVault;
 
     IUniswapV2Router02 public immutable router;
     address public immutable WETH;
@@ -70,7 +71,7 @@ contract BeefyZapUniswapV2 {
     }
 
     function beefOut (address beefyVault, uint256 withdrawAmount) external {
-        (IBeefyVaultV6 vault, IUniswapV2Pair pair) = _getVaultPair(beefyVault);
+        (IBeefyVault vault, IUniswapV2Pair pair) = _getVaultPair(beefyVault);
 
         IERC20(beefyVault).safeTransferFrom(msg.sender, address(this), withdrawAmount);
         vault.withdraw(withdrawAmount);
@@ -89,7 +90,7 @@ contract BeefyZapUniswapV2 {
     }
 
     function beefOutAndSwap(address beefyVault, uint256 withdrawAmount, address desiredToken, uint256 desiredTokenOutMin) external {
-        (IBeefyVaultV6 vault, IUniswapV2Pair pair) = _getVaultPair(beefyVault);
+        (IBeefyVault vault, IUniswapV2Pair pair) = _getVaultPair(beefyVault);
         address token0 = pair.token0();
         address token1 = pair.token1();
         require(token0 == desiredToken || token1 == desiredToken, 'Beefy: desired token not present in liquidity pair');
@@ -117,14 +118,20 @@ contract BeefyZapUniswapV2 {
         require(amount1 >= minimumAmount, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
     }
 
-    function _getVaultPair (address beefyVault) private view returns (IBeefyVaultV6 vault, IUniswapV2Pair pair) {
-        vault = IBeefyVaultV6(beefyVault);
-        pair = IUniswapV2Pair(vault.want());
+    function _getVaultPair (address beefyVault) private view returns (IBeefyVault vault, IUniswapV2Pair pair) {
+        vault = IBeefyVault(beefyVault);
+
+        try vault.want() returns (address pairAddress) {
+            pair = IUniswapV2Pair(pairAddress); // Vault V6
+        } catch {
+            pair = IUniswapV2Pair(vault.token()); // Vault V5
+        }
+
         require(pair.factory() == router.factory(), 'Beefy: Incompatible liquidity pair factory');
     }
 
     function _swapAndStake(address beefyVault, uint256 tokenAmountOutMin, address tokenIn) private {
-        (IBeefyVaultV6 vault, IUniswapV2Pair pair) = _getVaultPair(beefyVault);
+        (IBeefyVault vault, IUniswapV2Pair pair) = _getVaultPair(beefyVault);
 
         (uint256 reserveA, uint256 reserveB,) = pair.getReserves();
         require(reserveA > minimumAmount && reserveB > minimumAmount, 'Beefy: Liquidity pair reserves too low');
