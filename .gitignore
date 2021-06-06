@@ -5,6 +5,7 @@
 
 # testing
 /coverage
+/deployments/localhost
 
 # production
 /build

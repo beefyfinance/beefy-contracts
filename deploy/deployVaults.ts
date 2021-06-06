@@ -6,9 +6,11 @@ import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 
 import "../utils/registerSubsidy";
+import "../utils/hardhatRPC";
 import { contractAddressGenerator } from "../utils/predictAddresses";
 
 import { addressBook } from "blockchain-addressbook";
+import rpc from "../utils/hardhatRPC";
 const { USDC: {address: USDC}, QUICK: { address: QUICK }, WMATIC: { address: WMATIC }, ETH: { address: ETH } } = addressBook.polygon.tokens;
 const { quickswap, beefyfinance } = addressBook.polygon.platforms;
 
@@ -38,7 +40,7 @@ const contractNames = {
 }
 
 const deployVault: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
-    const { deploy, execute } = hre.deployments;
+    const { deploy, execute, read } = hre.deployments;
     const deployer = await hre.ethers.getNamedSigner('deployer');
 
     console.log(`Deployer: ${deployer.address}\n`);
@@ -80,12 +82,30 @@ const deployVault: DeployFunction = async function(hre: HardhatRuntimeEnvironmen
         log: true
     });
 
+    if (deployedVault) {
+        let curStrat = await read(deployedVault.address, 'strategy');
+        if (curStrat != strategyDeployResult.address) {
+            let stratCandidate = await read(deployedVault.address, 'stratCandidate');
+            if (stratCandidate.implementation != strategyDeployResult.address) {
+                await execute(deployedVault.address, {from: deployer.address}, 'proposeStrat', strategyDeployResult.address);
+            }
+            if ('dev' in hre.network.tags) {
+                let delay = await read(deployedVault.address, 'approvalDelay');
+                let block = await rpc.getBlockByNumber(hre.network.provider, rpc.BlockTag.Latest, false);
+                let upgradeTime = stratCandidate.proposedTime + delay + 1;
+                if (block.header.timestamp.toNumber() < upgradeTime)
+                    await rpc.setNextBlockTimestamp(hre.network.provider, upgradeTime);
+                    await execute(deployedVault.address, {from: deployer.address}, 'upgradeStrat');
+            }
+        }
+    }
+
     if ('dev' in hre.network.tags) {
         if (vaultDeployResult.newlyDeployed) {
-            execute(vaultName, {from: deployer.address}, 'transferOwnership', beefyfinance.cowllector);
+            await execute(vaultName, {from: deployer.address}, 'transferOwnership', beefyfinance.cowllector);
         }
         if (strategyDeployResult.newlyDeployed) {
-            execute(stratName, {from: deployer.address}, 'transferOwnership', beefyfinance.cowllector);
+            await execute(stratName, {from: deployer.address}, 'transferOwnership', beefyfinance.cowllector);
         }
     }
 };

@@ -3,6 +3,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect, use } from "chai";
 import hre from "hardhat";
 import { HardhatRuntimeEnvironment, RequestArguments } from "hardhat/types";
+import hardhatRPC from "../../utils/hardhatRPC";
 
 const ethers = hre.ethers;
 const deployments = hre.deployments;
@@ -119,7 +120,7 @@ describe("VaultLifecycleTest", function () {
     const vaultBal = await vault.balance();
     const pricePerShare = await vault.getPricePerFullShare();
 
-    hre.network.provider.request({ method: "evm_increaseTime", params: [24*60*60] });
+    await hardhatRPC.increaseTime(hre.network.provider, 24*60*60);
 
     await strategy.harvest({ gasPrice: 5000000 });
     const vaultBalAfterHarvest = await vault.balance();
