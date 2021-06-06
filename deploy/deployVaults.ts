@@ -1,4 +1,4 @@
-import "hardhat";
+import hre from "hardhat";
 import "hardhat-deploy";
 import "@nomiclabs/hardhat-ethers";
 
@@ -16,22 +16,22 @@ const { quickswap, beefyfinance } = addressBook.polygon.platforms;
 
 let vaultParams = {
     strategy: null as string | null,
-    mooName: "Moo Quick USDC-ETH",
-    mooSymbol: "mooQuickUSDC-ETH",
+    mooName: "Moo Quick FFF-QUICK",
+    mooSymbol: "mooQuickFFF-QUICK",
     delay: 21600,
 }
 
 let strategyParams = {
-    want: "0x853Ee4b2A13f8a742d64C8F088bE7bA2131f670d",
-    rewardPool: "0x4A73218eF2e820987c59F838906A82455F42D98b",
+    want: "0x2648ec89875d944e38f55925Df77D9Cfe0B01Edd",
+    rewardPool: "0xB4A7e2FCf1FdC1481cbF24eE76e083d3c17F0859",
     vault: null as string | null,
     unirouter: quickswap.router,
     strategist: "0x530115e78F7BC2fE235666651f9113DB9cecE5A2", // some address
     keeper: beefyfinance.keeper,
     beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
     outputToNativeRoute: [QUICK, WMATIC],
-    outputToLp0Route: [QUICK, USDC],
-    outputToLp1Route: [QUICK, ETH]
+    outputToLp0Route: [],
+    outputToLp1Route: [QUICK, "0x9aCeB6f749396d1930aBc9e263eFc449E5e82c13"]
 };
 
 const contractNames = {
@@ -102,10 +102,10 @@ const deployVault: DeployFunction = async function(hre: HardhatRuntimeEnvironmen
 
     if ('dev' in hre.network.tags) {
         if (vaultDeployResult.newlyDeployed) {
-            await execute(vaultName, {from: deployer.address}, 'transferOwnership', beefyfinance.cowllector);
+            await execute(vaultName, {from: deployer.address}, 'transferOwnership', beefyfinance.keeper);
         }
         if (strategyDeployResult.newlyDeployed) {
-            await execute(stratName, {from: deployer.address}, 'transferOwnership', beefyfinance.cowllector);
+            await execute(stratName, {from: deployer.address}, 'transferOwnership', beefyfinance.keeper);
         }
     }
 };

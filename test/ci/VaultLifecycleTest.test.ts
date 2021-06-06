@@ -5,6 +5,13 @@ import hre from "hardhat";
 import { HardhatRuntimeEnvironment, RequestArguments } from "hardhat/types";
 import hardhatRPC from "../../utils/hardhatRPC";
 
+import { addressBook } from "blockchain-addressbook";
+const {
+  QUICK: { address: QUICK },
+  WMATIC: { address: WMATIC }
+} = addressBook.polygon.tokens;
+const FFF = "0x9aCeB6f749396d1930aBc9e263eFc449E5e82c13";
+
 const ethers = hre.ethers;
 const deployments = hre.deployments;
 
@@ -22,8 +29,10 @@ const TIMEOUT = 10 * 60 * 1000;
 const network = "polygon";
 
 const deployment = {
-  vault: "Moo Quick USDC-ETH Vault",
-  strategy: "Moo Quick USDC-ETH Strategy"
+  vault: "Moo Quick FFF-QUICK Vault",
+  strategy: "Moo Quick FFF-QUICK Strategy",
+  nativeToLp0: [WMATIC, QUICK],
+  nativeToLp1: [WMATIC, QUICK, FFF]
 };
 
 const nativeTokenAddr = getWrappedNativeAddr(network);
@@ -60,6 +69,8 @@ async function createLP(want: Contract, strategy: Contract) {
     unirouter: unirouter.contract,
     swapSignature: unirouter.data.swapSignature,
     signer: strategy.signer,
+    tokenToLp0: deployment.nativeToLp0,
+    tokenToLp1: deployment.nativeToLp1,
   });
 }
 

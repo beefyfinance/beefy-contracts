@@ -4,9 +4,21 @@ import { BigNumber, Signer } from "ethers";
 const ethers = hardhat.ethers;
 
 // TODO: Handle custom LPs (Like Belt LPs)
-type SwapArgs = { amount: BigNumber, want: Contract, nativeTokenAddr: string, unirouter: Contract, swapSignature: string, signer: Signer };
+type SwapArgs = {
+  amount: BigNumber,
+  want: Contract,
+  nativeTokenAddr: string,
+  unirouter: Contract,
+  swapSignature: string,
+  signer: Signer
+};
 
-const zapNativeToToken = async ({ amount, want, nativeTokenAddr, unirouter, swapSignature, signer }: SwapArgs) => {
+type LpRoutes = {
+  tokenToLp0?: string[],
+  tokenToLp1?: string[]
+}
+
+const zapNativeToToken = async ({ amount, want, nativeTokenAddr, unirouter, swapSignature, signer, tokenToLp0, tokenToLp1 }: SwapArgs & LpRoutes) => {
   let lpPair: Contract;
   let token0: Contract | null = null;
   let token1: Contract | null = null;
@@ -36,6 +48,7 @@ const zapNativeToToken = async ({ amount, want, nativeTokenAddr, unirouter, swap
         nativeTokenAddr,
         amount: amount.div(2),
         swapSignature,
+        route: tokenToLp0,
       });
       await swapNativeForToken({
         unirouter,
@@ -44,6 +57,7 @@ const zapNativeToToken = async ({ amount, want, nativeTokenAddr, unirouter, swap
         nativeTokenAddr,
         amount: amount.div(2),
         swapSignature,
+        route: tokenToLp1,
       });
 
       const token0Bal = await token0.balanceOf(recipient);
@@ -65,7 +79,7 @@ const zapNativeToToken = async ({ amount, want, nativeTokenAddr, unirouter, swap
   }
 };
 
-const swapNativeForToken = async ({ unirouter, amount, nativeTokenAddr, want:token, signer, swapSignature }:SwapArgs) => {
+const swapNativeForToken = async ({ unirouter, amount, nativeTokenAddr, want:token, signer, swapSignature, route }:SwapArgs & {route?:string[]}) => {
   let recipient = await signer.getAddress();
 
   if (token.address === nativeTokenAddr) {
@@ -74,7 +88,8 @@ const swapNativeForToken = async ({ unirouter, amount, nativeTokenAddr, want:tok
   }
 
   try {
-    await unirouter[swapSignature](0, [nativeTokenAddr, token.address], recipient, 5000000000, {
+    let swapRoute = route ?? [nativeTokenAddr, token.address];
+    await unirouter[swapSignature](0, swapRoute, recipient, 5000000000, {
       value: amount,
     });
   } catch (e) {
