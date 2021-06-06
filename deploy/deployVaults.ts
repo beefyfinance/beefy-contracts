@@ -82,20 +82,20 @@ const deployVault: DeployFunction = async function(hre: HardhatRuntimeEnvironmen
         log: true
     });
 
-    if (deployedVault) {
-        let curStrat = await read(deployedVault.address, 'strategy');
+    if (!vaultDeployResult.newlyDeployed) {
+        let curStrat = await read(vaultName, 'strategy');
         if (curStrat != strategyDeployResult.address) {
-            let stratCandidate = await read(deployedVault.address, 'stratCandidate');
+            let stratCandidate = await read(vaultName, 'stratCandidate');
             if (stratCandidate.implementation != strategyDeployResult.address) {
-                await execute(deployedVault.address, {from: deployer.address}, 'proposeStrat', strategyDeployResult.address);
+                await execute(vaultName, {from: deployer.address}, 'proposeStrat', strategyDeployResult.address);
             }
             if ('dev' in hre.network.tags) {
-                let delay = await read(deployedVault.address, 'approvalDelay');
+                let delay = await read(vaultName, 'approvalDelay');
                 let block = await rpc.getBlockByNumber(hre.network.provider, rpc.BlockTag.Latest, false);
                 let upgradeTime = stratCandidate.proposedTime + delay + 1;
                 if (block.header.timestamp.toNumber() < upgradeTime)
                     await rpc.setNextBlockTimestamp(hre.network.provider, upgradeTime);
-                    await execute(deployedVault.address, {from: deployer.address}, 'upgradeStrat');
+                    await execute(vaultName, {from: deployer.address}, 'upgradeStrat');
             }
         }
     }
