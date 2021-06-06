@@ -8,6 +8,8 @@ import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
 
+import { addressBook } from "blockchain-addressbook";
+
 const DEPLOYER_PK_FILE = ".config/DEPLOYER_PK";
 const OTHER_PK_FILE = ".config/OTHER_PK";
 
@@ -189,12 +191,20 @@ const config: HardhatUserConfig = {
       default: 1
     },
     keeper: {
-      default: '0xd529b1894491a0a26B18939274ae8ede93E81dbA'
+      default: 0,
+      bsc: addressBook.bsc.platforms.beefyfinance.keeper,
+      polygon: addressBook.polygon.platforms.beefyfinance.keeper,
+      fantom: addressBook.fantom.platforms.beefyfinance.keeper,
+      avax: addressBook.avax.platforms.beefyfinance.keeper,
+      heco: addressBook.heco.platforms.beefyfinance.keeper
     },
     owner: {
-      default: '0xd529b1894491a0a26B18939274ae8ede93E81dbA',
-      hardhat: 0,
-      localhost: 0
+      default: 0,
+      bsc: addressBook.bsc.platforms.beefyfinance.vaultOwner,
+      polygon: addressBook.polygon.platforms.beefyfinance.vaultOwner,
+      fantom: addressBook.fantom.platforms.beefyfinance.vaultOwner,
+      avax: addressBook.avax.platforms.beefyfinance.vaultOwner,
+      heco: addressBook.heco.platforms.beefyfinance.vaultOwner
     }
   },
   solidity: {
