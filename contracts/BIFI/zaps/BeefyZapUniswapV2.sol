@@ -45,6 +45,10 @@ contract BeefyZapUniswapV2 {
     uint256 public constant minimumAmount = 1000;
 
     constructor(address _router, address _WETH) {
+        // Safety checks to ensure WETH token address
+        IWETH(_WETH).deposit{value: 0}();
+        IWETH(_WETH).withdraw(0);
+
         router = IUniswapV2Router02(_router);
         WETH = _WETH;
     }
@@ -190,7 +194,6 @@ contract BeefyZapUniswapV2 {
     }
 
     function estimateSwap(address beefyVault, address tokenIn, uint256 fullInvestmentIn) public view returns(uint256 swapAmountIn, uint256 swapAmountOut, address swapTokenOut) {
-        checkWETH();
         (, IUniswapV2Pair pair) = _getVaultPair(beefyVault);
 
         bool isInputA = pair.token0() == tokenIn;
@@ -202,11 +205,6 @@ contract BeefyZapUniswapV2 {
         swapAmountIn = _getSwapAmount(fullInvestmentIn, reserveA, reserveB);
         swapAmountOut = router.getAmountOut(swapAmountIn, reserveA, reserveB);
         swapTokenOut = isInputA ? pair.token1() : pair.token0();
-    }
-
-    function checkWETH() public view returns (bool isValid) {
-        isValid = WETH == router.WETH();
-        require(isValid, 'Beefy: WETH address not matching Router.WETH()');
     }
 
     function _approveTokenIfNeeded(address token, address spender) private {
