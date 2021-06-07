@@ -1,6 +1,7 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-web3");
 require("@nomiclabs/hardhat-ethers");
+require("@nomiclabs/hardhat-etherscan");
 
 task("panic", "Panics a given strategy.")
   .addParam("strat", "The strategy to panic.")
@@ -90,6 +91,11 @@ module.exports = {
       chainId: 97,
       accounts: deployerAccount,
     },
+  },
+  etherscan: {
+    // Your API key for Etherscan
+    // Obtain one at https://etherscan.io/
+    apiKey: "youretherscanapikey"
   },
   solidity: {
     compilers: [

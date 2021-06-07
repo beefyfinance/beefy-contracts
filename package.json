@@ -3,10 +3,11 @@
   "version": "0.5.0",
   "private": true,
   "dependencies": {
+    "@nomiclabs/hardhat-etherscan": "^2.1.2",
     "@openzeppelin-2/contracts": "npm:@openzeppelin/contracts@2.5.1",
     "@openzeppelin/contracts": "^3.2.0",
     "bignumber.js": "^9.0.1",
-    "blockchain-addressbook": "^0.1.17",
+    "blockchain-addressbook": "^0.1.30",
     "ganache-cli": "^6.12.2",
     "keccak": "^3.0.1",
     "rlp": "^2.2.6"
