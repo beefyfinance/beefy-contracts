@@ -101,7 +101,7 @@ contract StrategyGoldenbullChefLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA {
-        if (IMasterChef(chef).canHarvest() == true) {
+        if (IMasterChef(chef).canHarvest(poolId, address(this)) == true) {
             IMasterChef(chef).deposit(poolId, 0);
             chargeFees();
             addLiquidity();
