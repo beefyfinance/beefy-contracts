@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IMasterChef.sol";
+import "../../interfaces/goldenbull/IMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
@@ -68,12 +68,12 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         _giveAllowances();
     }
 
-    // puts the funds to work
-    function deposit() public whenNotPaused {
+    // puts the funds to work. In this contract, due to harvest lockup, this is use only used to bootstrap the strat
+    function deposit() public whenNotPaused onlyManager{
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IMasterChef(chef).deposit(poolId, wantBal);
+            IMasterChef(chef).deposit(poolId, wantBal, strategist);
         }
     }
 
@@ -101,10 +101,10 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA {
-        IMasterChef(chef).deposit(poolId, 0);
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        IMasterChef(chef).deposit(poolId, wantBal, strategist);
         chargeFees();
         addLiquidity();
-        deposit();
 
         emit StratHarvest(msg.sender);
     }
