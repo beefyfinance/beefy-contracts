@@ -6,14 +6,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 interface IRouter {
-    function swapExactTokensForTokensSupportingFeeOnTransferTokens(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external;
-
     function swapExactTokensForETHSupportingFeeOnTransferTokens(
         uint amountIn,
         uint amountOutMin,
@@ -29,8 +21,10 @@ contract LaunchpoolReferral is Ownable {
     address payable constant public multisig = payable(address(0x37EA21Cb5e080C27a47CAf767f24a8BF7Fcc7d4d));
 
     address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
-    address constant public busd = address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
     address public router = address(0x10ED43C718714eb63d5aA57B78B54704E256024E);
+
+    address public pantherRouter = address(0x24f7C33ae5f77e2A9ECeed7EA858B4ca2fa1B7eC);
+    address public panther = address(0x1f546aD641B56b86fD9dCEAc473d1C7a357276B7);
 
     mapping(address => bool) public admins;
 
@@ -51,26 +45,22 @@ contract LaunchpoolReferral is Ownable {
         router = _router;
     }
 
-    function swapToBNB(address _token) external onlyAdmin {
-        uint256 tokenBal = IERC20(_token).balanceOf(address(this));
-        IERC20(_token).safeIncreaseAllowance(router, tokenBal);
+    function swap(address[] memory _route, address _router) public onlyAdmin {
+        address token = _route[0];
+        uint256 tokenBal = IERC20(token).balanceOf(address(this));
+        IERC20(token).safeIncreaseAllowance(_router, tokenBal);
+        IRouter(_router).swapExactTokensForETHSupportingFeeOnTransferTokens(tokenBal, 0, _route, multisig, now);
+    }
 
+    function swapToBNB(address _token, address _router) public onlyAdmin {
         address[] memory wbnbRoute = new address[](2);
         wbnbRoute[0] = _token;
         wbnbRoute[1] = wbnb;
-
-        IRouter(router).swapExactTokensForETHSupportingFeeOnTransferTokens(tokenBal, 0, wbnbRoute, multisig, now);
+        swap(wbnbRoute, _router);
     }
 
-    function swapToBUSD(address _token) external onlyAdmin {
-        uint256 tokenBal = IERC20(_token).balanceOf(address(this));
-        IERC20(_token).safeIncreaseAllowance(router, tokenBal);
-
-        address[] memory busdRoute = new address[](2);
-        busdRoute[0] = _token;
-        busdRoute[1] = busd;
-
-        IRouter(router).swapExactTokensForTokensSupportingFeeOnTransferTokens(tokenBal, 0, busdRoute, multisig, now);
+    function swapToBNB(address _token) external onlyAdmin {
+        swapToBNB(_token, router);
     }
 
     function withdrawToken(address _token, uint256 _amount) external onlyAdmin {
@@ -79,6 +69,10 @@ contract LaunchpoolReferral is Ownable {
 
     function withdrawNative(uint256 _amount) external onlyAdmin {
         multisig.transfer(_amount);
+    }
+
+    function pantherToBNB() external onlyAdmin {
+        swapToBNB(panther, pantherRouter);
     }
 
     receive() external payable {}
