@@ -12,7 +12,7 @@ import "../../interfaces/goldenbull/IMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyCommonChefLP is StratManager, FeeManager {
+contract StrategyGoldenbullChefLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -103,8 +103,12 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     function harvest() external whenNotPaused onlyEOA {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IMasterChef(chef).deposit(poolId, wantBal, strategist);
-        chargeFees();
-        addLiquidity();
+        
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        if (outputBal > 0) {
+            chargeFees();
+            addLiquidity();
+        }
 
         emit StratHarvest(msg.sender);
     }
@@ -185,8 +189,6 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         _unpause();
 
         _giveAllowances();
-
-        deposit();
     }
 
     function _giveAllowances() internal {
