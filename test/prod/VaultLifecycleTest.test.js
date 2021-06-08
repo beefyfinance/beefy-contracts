@@ -12,12 +12,12 @@ const { delay } = require("../../utils/timeHelpers");
 const TIMEOUT = 10 * 60 * 1000;
 
 const config = {
-  vault: "0x9be8485ff97257Aea98A3a9FcfFfD9799F76DeeE",
+  vault: "0x11AE409Debb169097F984E6BFf2e4c2b6e2F2CAB",
   vaultContract: "BeefyVaultV6",
   nativeTokenAddr: getWrappedNativeAddr("heco"),
-  testAmount: ethers.utils.parseEther("2"),
-  keeper: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
-  owner: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
+  testAmount: ethers.utils.parseEther("5"),
+  keeper: "0x10aee6B5594942433e7Fc2783598c979B030eF3D",
+  owner: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b",
 };
 
 describe("VaultLifecycleTest", () => {

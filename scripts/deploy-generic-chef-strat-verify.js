@@ -4,28 +4,28 @@ const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const getNetworkRpc = require("../utils/getNetworkRpc");
 const { addressBook } = require("blockchain-addressbook")
-const { DAI: { address: DAI }, USDC: { address: USDC }, ETH: { address: ETH }, WMATIC: { address: WMATIC }, SUSHI: { address: SUSHI } } = addressBook.polygon.tokens;
-const { sushi, beefyfinance } = addressBook.polygon.platforms;
+const { LHB: {address: LHB}, WHT: {address: WHT}  } = addressBook.heco.tokens;
+const { beefyfinance } = addressBook.heco.platforms;
 
 const ethers = hardhat.ethers;
 
 const vaultParams = {
-  mooName: "Moo Sushi USDC-DAI",
-  mooSymbol: "mooSushiUSDC-DAI",
+  mooName: "Moo Lendhub LHB-WHT",
+  mooSymbol: "mooLendhubLHB-WHT",
   delay: 21600,
 }
 
 const strategyParams = {
-  want: "0xcd578f016888b57f1b1e3f887f392f0159e26747",
-  poolId: 11,
-  chef: sushi.minichef,
-  unirouter: sushi.router,
-  strategist: "0x4e3227c0b032161Dd6D780E191A590D917998Dc7", // some address
+  want: "0x8c31344A6cdadEA60715d06b55790F21d967d8D2",
+  poolId: 0,
+  chef: "0x00A5BF6ab1166bce027D9d4b0E829f92781ab1A7",
+  unirouter: "0xED7d5F38C79115ca12fe6C0041abb22F0A06C300",
+  strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [ SUSHI, WMATIC ],
-  outputToLp0Route: [ SUSHI, ETH, USDC ],
-  outputToLp1Route: [ SUSHI, ETH, DAI ]
+  outputToNativeRoute: [ LHB, WHT ],
+  outputToLp0Route: [ LHB, WHT ],
+  outputToLp1Route: [  ]
 };
 
 const contractNames = {
@@ -49,7 +49,7 @@ async function main() {
 
   console.log("Deploying:", vaultParams.mooName);
 
-  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
+  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc: "https://http-mainnet.hecochain.com" });
 
   const vault = await Vault.deploy(predictedAddresses.strategy, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay);
   await vault.deployed();
@@ -68,6 +68,30 @@ async function main() {
     strategyParams.outputToLp1Route
   );
   await strategy.deployed();
+
+  await hardhat.run("verify:verify", {
+    address: vault.address,
+    constructorArguments: [
+      strategy.address, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay
+    ],
+  })
+
+  await hardhat.run("verify:verify", {
+    address: strategy.address,
+    constructorArguments: [
+    strategyParams.want,
+    strategyParams.poolId,
+    strategyParams.chef,
+    vault.address,
+    strategyParams.unirouter,
+    strategyParams.keeper,
+    strategyParams.strategist,
+    strategyParams.beefyFeeRecipient,
+    strategyParams.outputToNativeRoute,
+    strategyParams.outputToLp0Route,
+    strategyParams.outputToLp1Route
+    ],
+  })
 
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);

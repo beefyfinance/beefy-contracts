@@ -1,6 +1,7 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-web3");
 require("@nomiclabs/hardhat-ethers");
+require("@nomiclabs/hardhat-etherscan");
 
 task("panic", "Panics a given strategy.")
   .addParam("strat", "The strategy to panic.")
@@ -47,6 +48,10 @@ task("harvest", "Harvests a given strategy.")
     }
   });
 
+let deployerAccount;
+if (process.env.DEPLOYER_PK)
+  deployerAccount = [process.env.DEPLOYER_PK];
+
 module.exports = {
   defaultNetwork: "localhost",
   networks: {
@@ -54,27 +59,47 @@ module.exports = {
     bsc: {
       url: "https://bsc-dataseed.binance.org/",
       chainId: 56,
+<<<<<<< HEAD
       accounts: [process.env.DEPLOYER_PK, process.env.KEEPER_PK, process.env.REWARDER_PK],
+=======
+      accounts: deployerAccount,
+>>>>>>> 88797ca141d54dd31430422ddffa53713e975391
     },
     heco: {
       url: "https://http-mainnet.hecochain.com",
       chainId: 128,
+<<<<<<< HEAD
       accounts: [process.env.DEPLOYER_PK, process.env.KEEPER_PK, process.env.REWARDER_PK],
+=======
+      accounts: deployerAccount,
+>>>>>>> 88797ca141d54dd31430422ddffa53713e975391
     },
     avax: {
       url: "https://api.avax.network/ext/bc/C/rpc",
       chainId: 43114,
+<<<<<<< HEAD
       accounts: [process.env.DEPLOYER_PK, process.env.KEEPER_PK, process.env.REWARDER_PK],
+=======
+      accounts: deployerAccount,
+>>>>>>> 88797ca141d54dd31430422ddffa53713e975391
     },
     polygon: {
       url: "https://rpc-mainnet.maticvigil.com/",
       chainId: 137,
+<<<<<<< HEAD
       accounts: [process.env.DEPLOYER_PK, process.env.KEEPER_PK, process.env.REWARDER_PK],
+=======
+      accounts: deployerAccount,
+>>>>>>> 88797ca141d54dd31430422ddffa53713e975391
     },
     fantom: {
       url: "https://rpc.ftm.tools",
       chainId: 250,
+<<<<<<< HEAD
       accounts: [process.env.DEPLOYER_PK, process.env.KEEPER_PK, process.env.REWARDER_PK],
+=======
+      accounts: deployerAccount,
+>>>>>>> 88797ca141d54dd31430422ddffa53713e975391
     },
     localhost: {
       url: "http://127.0.0.1:8545",
@@ -84,8 +109,13 @@ module.exports = {
     testnet: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
       chainId: 97,
-      accounts: [process.env.DEPLOYER_PK],
+      accounts: deployerAccount,
     },
+  },
+  etherscan: {
+    // Your API key for Etherscan
+    // Obtain one at https://etherscan.io/
+    apiKey: "youretherscanapikey"
   },
   solidity: {
     compilers: [
