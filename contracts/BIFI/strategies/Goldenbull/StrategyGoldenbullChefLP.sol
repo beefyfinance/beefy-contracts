@@ -69,7 +69,7 @@ contract StrategyGoldenbullChefLP is StratManager, FeeManager {
     }
 
     // puts the funds to work. In this contract, due to harvest lockup, this is use only used to bootstrap the strat
-    function deposit() public whenNotPaused onlyManager{
+    function deposit() public whenNotPaused onlyManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
@@ -101,16 +101,14 @@ contract StrategyGoldenbullChefLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
-        IMasterChef(chef).deposit(poolId, wantBal, strategist);
-        
-        uint256 outputBal = IERC20(output).balanceOf(address(this));
-        if (outputBal > 0) {
+        if (IMasterChef(chef).canHarvest() == true) {
+            IMasterChef(chef).deposit(poolId, 0);
             chargeFees();
             addLiquidity();
-        }
+            deposit();
 
-        emit StratHarvest(msg.sender);
+            emit StratHarvest(msg.sender);
+        }
     }
 
     // performance fees
@@ -189,6 +187,8 @@ contract StrategyGoldenbullChefLP is StratManager, FeeManager {
         _unpause();
 
         _giveAllowances();
+
+        deposit();
     }
 
     function _giveAllowances() internal {
