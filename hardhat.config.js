@@ -54,27 +54,27 @@ module.exports = {
     bsc: {
       url: "https://bsc-dataseed.binance.org/",
       chainId: 56,
-      accounts: [process.env.DEPLOYER_PK],
+      accounts: [process.env.DEPLOYER_PK, process.env.KEEPER_PK, process.env.REWARDER_PK],
     },
     heco: {
       url: "https://http-mainnet.hecochain.com",
       chainId: 128,
-      accounts: [process.env.DEPLOYER_PK],
+      accounts: [process.env.DEPLOYER_PK, process.env.KEEPER_PK, process.env.REWARDER_PK],
     },
     avax: {
       url: "https://api.avax.network/ext/bc/C/rpc",
       chainId: 43114,
-      accounts: [process.env.DEPLOYER_PK],
+      accounts: [process.env.DEPLOYER_PK, process.env.KEEPER_PK, process.env.REWARDER_PK],
     },
     polygon: {
       url: "https://rpc-mainnet.maticvigil.com/",
       chainId: 137,
-      accounts: [process.env.DEPLOYER_PK],
+      accounts: [process.env.DEPLOYER_PK, process.env.KEEPER_PK, process.env.REWARDER_PK],
     },
     fantom: {
       url: "https://rpc.ftm.tools",
       chainId: 250,
-      accounts: [process.env.DEPLOYER_PK],
+      accounts: [process.env.DEPLOYER_PK, process.env.KEEPER_PK, process.env.REWARDER_PK],
     },
     localhost: {
       url: "http://127.0.0.1:8545",

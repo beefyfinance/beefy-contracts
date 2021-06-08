@@ -3,9 +3,9 @@ const hardhat = require("hardhat");
 const ethers = hardhat.ethers;
 
 const pool = {
-  stakedToken: "0xD411121C948Cff739857513E1ADF25ED448623f8",
-  rewardsToken: "0x8d112fcdf377a2c4cb41b60aae32199f939a866c",
-  days: 6,
+  stakedToken: "0x77276a7c9Ff3a6cbD334524d6F1f6219D039ac0E",
+  rewardsToken: "0xfEcf784F48125ccb7d8855cdda7C5ED6b5024Cb3",
+  days: 7,
 };
 
 async function main() {

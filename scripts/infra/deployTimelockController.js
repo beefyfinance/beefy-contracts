@@ -3,9 +3,9 @@ const hardhat = require("hardhat");
 const ethers = hardhat.ethers;
 
 const config = {
-  minDelay: 21600,
-  proposers: ["0x4e3227c0b032161Dd6D780E191A590D917998Dc7"],
-  executors: ["0x4e3227c0b032161Dd6D780E191A590D917998Dc7", "0xd529b1894491a0a26B18939274ae8ede93E81dbA"],
+  minDelay: 86400,
+  proposers: ["0x4E2a43a0Bf6480ee8359b7eAE244A9fBe9862Cdf"],
+  executors: ["0x4E2a43a0Bf6480ee8359b7eAE244A9fBe9862Cdf", "0x10aee6B5594942433e7Fc2783598c979B030eF3D"],
 };
 
 async function main() {
@@ -13,15 +13,15 @@ async function main() {
 
   const TimelockController = await ethers.getContractFactory("TimelockController");
 
-  const controller = await TimelockController.deploy(config.delay, config.proposers, config.executors);
+  const controller = await TimelockController.deploy(config.minDelay, config.proposers, config.executors);
   await controller.deployed();
 
-  console.log(`Deployed to: ${controller.address);
+  console.log(`Deployed to: ${controller.address}`);
 }
 
 main()
   .then(() => process.exit(0))
-  .catch((error) => {
+  .catch(error => {
     console.error(error);
     process.exit(1);
   });

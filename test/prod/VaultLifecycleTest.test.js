@@ -12,10 +12,10 @@ const { delay } = require("../../utils/timeHelpers");
 const TIMEOUT = 10 * 60 * 1000;
 
 const config = {
-  vault: "0xCBAB6076b4B0c482e7127a201b79a13D117E2B53",
+  vault: "0x9be8485ff97257Aea98A3a9FcfFfD9799F76DeeE",
   vaultContract: "BeefyVaultV6",
-  nativeTokenAddr: getWrappedNativeAddr("fantom"),
-  testAmount: ethers.utils.parseEther("5"),
+  nativeTokenAddr: getWrappedNativeAddr("heco"),
+  testAmount: ethers.utils.parseEther("2"),
   keeper: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
   owner: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
 };
@@ -27,6 +27,7 @@ describe("VaultLifecycleTest", () => {
     const vault = await ethers.getContractAt(config.vaultContract, config.vault);
 
     const strategyAddr = await vault.strategy();
+    console.log(strategyAddr, "is it here");
     const strategy = await ethers.getContractAt("IStrategyComplete", strategyAddr);
 
     const unirouterAddr = await strategy.unirouter();

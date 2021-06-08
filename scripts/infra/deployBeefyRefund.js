@@ -11,13 +11,8 @@ const config = {
 async function main() {
   await hardhat.run("compile");
 
-
   const BeefyRefund = await ethers.getContractFactory("BeefyRefund");
-  const refund = await BeefyRefund.deploy(
-    config.token,
-    config.mootoken,
-    config.pricePerFullShare,
-  );
+  const refund = await BeefyRefund.deploy(config.token, config.mootoken, config.pricePerFullShare);
   await refund.deployed();
 
   console.log("Deployed to:", refund.address);
@@ -25,7 +20,7 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch((error) => {
+  .catch(error => {
     console.error(error);
     process.exit(1);
   });
