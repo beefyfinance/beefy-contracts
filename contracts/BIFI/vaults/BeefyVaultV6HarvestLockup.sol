@@ -121,9 +121,9 @@ contract BeefyVaultV6HarvestLockup is ERC20, Ownable, ReentrancyGuard {
      * by the vault's deposit() function.
      */
     function earn() public {
+        require(!strategy.paused(), "Strategy is paused");
         uint _bal = available();
         want().safeTransfer(address(strategy), _bal);
-        strategy.deposit();
     }
 
     /**
