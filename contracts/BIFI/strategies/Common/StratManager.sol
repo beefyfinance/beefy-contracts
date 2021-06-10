@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
@@ -33,7 +33,7 @@ contract StratManager is Ownable, Pausable {
         address _unirouter,
         address _vault,
         address _beefyFeeRecipient
-    ) public {
+    ) {
         keeper = _keeper;
         strategist = _strategist;
         unirouter = _unirouter;

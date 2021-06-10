@@ -1,6 +1,6 @@
 // // SPDX-License-Identifier: MIT
 
-// pragma solidity ^0.6.12;
+// pragma solidity ^0.7.6;
 
 // import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 // import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -35,7 +35,7 @@
 //     address[] public wbnbToBifiRoute = [wbnb, bifi];
 
 //     constructor(
-//         address _keeper, 
+//         address _keeper,
 //         address _strategist,
 //         address _unirouter,
 //         address _vault
@@ -64,11 +64,11 @@
 //         }
 
 //         if (cakeBal > _amount) {
-//             cakeBal = _amount;    
+//             cakeBal = _amount;
 //         }
-        
+
 //         // No withdrawal fee because bunny charges 0.5% already.
-//         IERC20(cake).safeTransfer(vault, cakeBal); 
+//         IERC20(cake).safeTransfer(vault, cakeBal);
 //     }
 
 //     function harvest() external whenNotPaused onlyEOA gasThrottle {
@@ -80,20 +80,20 @@
 //     // Performance fees
 //     function _chargeFees() internal {
 //         uint256 toCake = IERC20(bunny).balanceOf(address(this));
-//         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toCake, 0, bunnyToCakeRoute, address(this), now.add(600));
+//         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toCake, 0, bunnyToCakeRoute, address(this), block.timestamp.add(600));
 
 //         uint256 toWbnb = balanceOfCake().mul(45).div(1000);
-//         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), now.add(600));
-    
+//         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), block.timestamp.add(600));
+
 //         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
-        
+
 //         uint256 callFeeAmount = wbnbBal.mul(callFee).div(MAX_FEE);
 //         IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
-        
+
 //         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
 //         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-//         IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
-        
+//         IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
+
 //         uint256 rewardsFeeAmount = wbnbBal.mul(rewardsFee).div(MAX_FEE);
 //         IERC20(wbnb).safeTransfer(rewardPool, rewardsFeeAmount);
 
@@ -120,7 +120,7 @@
 //     function retireStrat() external {
 //         require(msg.sender == vault, "!vault");
 
-//         IBunnyVault(bunnyVault).withdrawUnderlying(uint(-1));
+//         IBunnyVault(bunnyVault).withdrawUnderlying(type(uint).max);
 
 //         uint256 cakeBal = balanceOfCake();
 //         IERC20(cake).transfer(vault, cakeBal);
@@ -128,7 +128,7 @@
 
 //     // Pauses deposits and withdraws all funds from third party systems.
 //     function panic() external onlyManager {
-//         IBunnyVault(bunnyVault).withdrawUnderlying(uint(-1));
+//         IBunnyVault(bunnyVault).withdrawUnderlying(type(uint).max);
 //         pause();
 //     }
 
@@ -144,10 +144,10 @@
 //     }
 
 //     function _giveAllowances() internal {
-//         IERC20(bunny).safeApprove(unirouter, uint(-1));
-//         IERC20(wbnb).safeApprove(unirouter, uint(-1));
-//         IERC20(cake).safeApprove(unirouter, uint(-1));
-//         IERC20(cake).safeApprove(bunnyVault, uint(-1));
+//         IERC20(bunny).safeApprove(unirouter, type(uint).max);
+//         IERC20(wbnb).safeApprove(unirouter, type(uint).max);
+//         IERC20(cake).safeApprove(unirouter, type(uint).max);
+//         IERC20(cake).safeApprove(bunnyVault, type(uint).max);
 //     }
 
 //     function _removeAllowances() internal {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -91,13 +91,13 @@ contract StrategySnowball3Pool is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _vault, address _strategist) public {
+    constructor(address _vault, address _strategist) {
         vault = _vault;
         strategist = _strategist;
 
-        IERC20(want).safeApprove(icequeen, uint(-1));
-        IERC20(snob).safeApprove(pngrouter, uint(-1));
-        IERC20(usdt).safeApprove(poolLp, uint(-1));
+        IERC20(want).safeApprove(icequeen, type(uint).max);
+        IERC20(snob).safeApprove(pngrouter, type(uint).max);
+        IERC20(usdt).safeApprove(poolLp, type(uint).max);
     }
 
     /**
@@ -159,14 +159,14 @@ contract StrategySnowball3Pool is Ownable, Pausable {
     }
 
     /**
-     * @dev Takes out 4.5% as system fees from the rewards. 
+     * @dev Takes out 4.5% as system fees from the rewards.
      * 0.25% -> Call Fee
      * 3.75% -> Treasury fee
      * 0.5% -> Strategist fee
      */
     function chargeFees() internal {
         uint256 toWavax = IERC20(snob).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(pngrouter).swapExactTokensForTokens(toWavax, 0, snobToWavaxRoute, address(this), now.add(600));
+        IUniswapRouter(pngrouter).swapExactTokensForTokens(toWavax, 0, snobToWavaxRoute, address(this), block.timestamp.add(600));
 
         uint256 wavaxBal = IERC20(wavax).balanceOf(address(this));
 
@@ -186,12 +186,12 @@ contract StrategySnowball3Pool is Ownable, Pausable {
      */
     function addLiquidity() internal {
         uint256 snobBal = IERC20(snob).balanceOf(address(this));
-        IUniswapRouter(pngrouter).swapExactTokensForTokens(snobBal, 0, snobToUsdtRoute, address(this), now.add(600));
+        IUniswapRouter(pngrouter).swapExactTokensForTokens(snobBal, 0, snobToUsdtRoute, address(this), block.timestamp.add(600));
 
         uint256 usdtBal = IERC20(usdt).balanceOf(address(this));
         uint256[] memory amounts = new uint256[](3);
         amounts[0] = usdtBal;
-        ISnobLP(poolLp).addLiquidity(amounts, 0, now.add(600));
+        ISnobLP(poolLp).addLiquidity(amounts, 0, block.timestamp.add(600));
     }
 
     /**
@@ -218,7 +218,7 @@ contract StrategySnowball3Pool is Ownable, Pausable {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
      * vault, ready to be migrated to the new strat.
      */
     function retireStrat() external {
@@ -255,9 +255,9 @@ contract StrategySnowball3Pool is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(want).safeApprove(icequeen, uint(-1));
-        IERC20(snob).safeApprove(pngrouter, uint(-1));
-        IERC20(usdt).safeApprove(poolLp, uint(-1));
+        IERC20(want).safeApprove(icequeen, type(uint).max);
+        IERC20(snob).safeApprove(pngrouter, type(uint).max);
+        IERC20(usdt).safeApprove(poolLp, type(uint).max);
     }
 
     /**

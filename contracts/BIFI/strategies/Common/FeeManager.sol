@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 import "./StratManager.sol";
 
@@ -19,7 +19,7 @@ abstract contract FeeManager is StratManager {
 
     function setCallFee(uint256 _fee) external onlyManager {
         require(_fee <= MAX_CALL_FEE, "!cap");
-        
+
         callFee = _fee;
         beefyFee = MAX_FEE - STRATEGIST_FEE - callFee;
     }

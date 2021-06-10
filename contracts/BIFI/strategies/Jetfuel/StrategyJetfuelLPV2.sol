@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -15,7 +15,7 @@ import "../../interfaces/jetfuel/IMasterFuel.sol";
 
 /**
  * @dev Implementation of a strategy to get yields from farming LP Pools in the JetFuel platform.
- * 
+ *
  * This strat is currently compatible with all LP pools.
  */
 contract StrategyJetfuelLPV2 is Ownable, Pausable {
@@ -102,7 +102,7 @@ contract StrategyJetfuelLPV2 is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _lpPair, uint8 _poolId, address _vault, address _unirouter, address _strategist) public {
+    constructor(address _lpPair, uint8 _poolId, address _vault, address _unirouter, address _strategist) {
         lpPair = _lpPair;
         lpToken0 = IUniswapV2Pair(lpPair).token0();
         lpToken1 = IUniswapV2Pair(lpPair).token1();
@@ -123,15 +123,15 @@ contract StrategyJetfuelLPV2 is Ownable, Pausable {
             fuelToLp1Route = [fuel, wbnb, lpToken1];
         }
 
-        IERC20(lpPair).safeApprove(masterFuel, uint(-1));
-        IERC20(fuel).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(lpPair).safeApprove(masterFuel, type(uint).max);
+        IERC20(fuel).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
     }
 
     /**
@@ -157,15 +157,15 @@ contract StrategyJetfuelLPV2 is Ownable, Pausable {
 
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
 
-        if (pairBal < _amount) {   
+        if (pairBal < _amount) {
             IMasterFuel(masterFuel).withdraw(poolId, _amount.sub(pairBal));
             pairBal = IERC20(lpPair).balanceOf(address(this));
         }
 
         if (pairBal > _amount) {
-            pairBal = _amount;    
+            pairBal = _amount;
         }
-        
+
         uint256 withdrawalFee = pairBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
         IERC20(lpPair).safeTransfer(vault, pairBal.sub(withdrawalFee));
     }
@@ -189,15 +189,15 @@ contract StrategyJetfuelLPV2 is Ownable, Pausable {
     }
 
     /**
-     * @dev Takes out 6% as system fees from the rewards. 
+     * @dev Takes out 6% as system fees from the rewards.
      * 0.5% -> Call Fee
      * 1.5% -> Treasury fee
      * 4.0% -> BIFI Holders
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(fuel).balanceOf(address(this)).mul(6).div(100);
-        IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toWbnb, 0, fuelToWbnbRoute, address(this), now.add(600));
-        
+        IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toWbnb, 0, fuelToWbnbRoute, address(this), block.timestamp.add(600));
+
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
         uint256 callFee = wbnbBal.mul(CALL_FEE).div(MAX_FEE);
@@ -205,7 +205,7 @@ contract StrategyJetfuelLPV2 is Ownable, Pausable {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -217,20 +217,20 @@ contract StrategyJetfuelLPV2 is Ownable, Pausable {
     /**
      * @dev Swaps {fuel} for {lpToken0}, {lpToken1} & {wbnb} using the configure unirouter.
      */
-    function addLiquidity() internal { 
+    function addLiquidity() internal {
         uint256 fuelHalf = IERC20(fuel).balanceOf(address(this)).div(2);
 
         if (lpToken0 != fuel) {
-            IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(fuelHalf, 0, fuelToLp0Route, address(this), now.add(600));
+            IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(fuelHalf, 0, fuelToLp0Route, address(this), block.timestamp.add(600));
         }
 
         if (lpToken1 != fuel) {
-            IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(fuelHalf, 0, fuelToLp1Route, address(this), now.add(600));
+            IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(fuelHalf, 0, fuelToLp1Route, address(this), block.timestamp.add(600));
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
+        IUniswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp.add(600));
     }
 
     /**
@@ -257,9 +257,9 @@ contract StrategyJetfuelLPV2 is Ownable, Pausable {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
      * vault, ready to be migrated to the new strat.
-     */ 
+     */
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
@@ -296,14 +296,14 @@ contract StrategyJetfuelLPV2 is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(lpPair).safeApprove(masterFuel, uint(-1));
-        IERC20(fuel).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(lpPair).safeApprove(masterFuel, type(uint).max);
+        IERC20(fuel).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
     }
 }

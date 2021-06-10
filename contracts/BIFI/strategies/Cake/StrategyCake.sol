@@ -1,6 +1,6 @@
 // // SPDX-License-Identifier: MIT
 
-// pragma solidity ^0.6.12;
+// pragma solidity ^0.7.6;
 
 // import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 // import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -39,11 +39,11 @@
 //      * @param _vault Address of parent vault
 //      */
 //     constructor(
-//         address _keeper, 
+//         address _keeper,
 //         address _strategist,
 //         address _unirouter,
-//         address _vault 
-//     ) StratManager(_keeper, _strategist, _unirouter, _vault) public {
+//         address _vault
+//     ) StratManager(_keeper, _strategist, _unirouter, _vault) {
 //         vault = _vault;
 
 //         _giveAllowances();
@@ -72,14 +72,14 @@
 //         }
 
 //         if (cakeBal > _amount) {
-//             cakeBal = _amount;    
+//             cakeBal = _amount;
 //         }
-        
+
 //         if (tx.origin == owner() || paused()) {
-//             IERC20(cake).safeTransfer(vault, cakeBal); 
+//             IERC20(cake).safeTransfer(vault, cakeBal);
 //         } else {
 //             uint256 withdrawalFee = cakeBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
-//             IERC20(cake).safeTransfer(vault, cakeBal.sub(withdrawalFee)); 
+//             IERC20(cake).safeTransfer(vault, cakeBal.sub(withdrawalFee));
 //         }
 //     }
 
@@ -92,17 +92,17 @@
 //     // Performance fees
 //     function _chargeFees() internal {
 //         uint256 toWbnb = balanceOfCake().mul(45).div(1000);
-//         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), now.add(600));
-    
+//         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), block.timestamp.add(600));
+
 //         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
-        
+
 //         uint256 callFeeAmount = wbnbBal.mul(callFee).div(MAX_FEE);
 //         IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
-        
+
 //         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
 //         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-//         IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
-        
+//         IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
+
 //         uint256 rewardsFeeAmount = wbnbBal.mul(rewardsFee).div(MAX_FEE);
 //         IERC20(wbnb).safeTransfer(rewardPool, rewardsFeeAmount);
 
@@ -154,9 +154,9 @@
 //     }
 
 //     function _giveAllowances() internal {
-//         IERC20(cake).safeApprove(unirouter, uint(-1));
-//         IERC20(wbnb).safeApprove(unirouter, uint(-1));
-//         IERC20(cake).safeApprove(masterchef, uint(-1));
+//         IERC20(cake).safeApprove(unirouter, type(uint).max);
+//         IERC20(wbnb).safeApprove(unirouter, type(uint).max);
+//         IERC20(cake).safeApprove(masterchef, type(uint).max);
 //     }
 
 //     function _removeAllowances() internal {

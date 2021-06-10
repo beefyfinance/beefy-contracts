@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -52,7 +52,7 @@ contract StrategyAave is StratManager, FeeManager {
 
     /**
      * @dev Helps to differentiate borrowed funds that shouldn't be used in functions like 'deposit()'
-     * as they're required to deleverage correctly.  
+     * as they're required to deleverage correctly.
      */
     uint256 public reserves = 0;
 
@@ -73,7 +73,7 @@ contract StrategyAave is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
         want = _want;
         (aToken,,varDebtToken) = IDataProvider(dataProvider).getReserveTokensAddresses(want);
 
@@ -136,7 +136,7 @@ contract StrategyAave is StratManager, FeeManager {
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
-        ILendingPool(lendingPool).repay(want, uint256(-1), INTEREST_RATE_MODE, address(this));
+        ILendingPool(lendingPool).repay(want, type(uint256).max, INTEREST_RATE_MODE, address(this));
         ILendingPool(lendingPool).withdraw(want, type(uint).max, address(this));
 
         reserves = 0;
@@ -179,7 +179,7 @@ contract StrategyAave is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         _leverage(wantBal);
 
-        StratRebalance(_borrowRate, _borrowDepth);
+        emit StratRebalance(_borrowRate, _borrowDepth);
     }
 
     // compounds earnings and charges performance fee
@@ -213,7 +213,7 @@ contract StrategyAave is StratManager, FeeManager {
     // swap rewards to {want}
     function swapRewards() internal {
         uint256 wmaticBal = IERC20(wmatic).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(wmaticBal, 0, wmaticToWantRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(wmaticBal, 0, wmaticToWantRoute, address(this), block.timestamp);
     }
 
     /**
@@ -321,12 +321,12 @@ contract StrategyAave is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(lendingPool, uint256(-1));
-        IERC20(wmatic).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(lendingPool, type(uint256).max);
+        IERC20(wmatic).safeApprove(unirouter, type(uint256).max);
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(lendingPool, 0);
         IERC20(wmatic).safeApprove(unirouter, 0);
     }
-} 
+}

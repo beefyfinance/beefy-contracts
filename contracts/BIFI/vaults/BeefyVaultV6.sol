@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -49,7 +49,7 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         string memory _name,
         string memory _symbol,
         uint256 _approvalDelay
-    ) public ERC20(
+    ) ERC20(
         _name,
         _symbol
     ) {
@@ -156,9 +156,9 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         want().safeTransfer(msg.sender, r);
     }
 
-    /** 
+    /**
      * @dev Sets the candidate for the new strat to use with this vault.
-     * @param _implementation The address of the candidate strategy.  
+     * @param _implementation The address of the candidate strategy.
      */
     function proposeStrat(address _implementation) public onlyOwner {
         require(address(this) == IStrategy(_implementation).vault(), "Proposal not valid for this Vault");
@@ -170,10 +170,10 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         emit NewStratCandidate(_implementation);
     }
 
-    /** 
-     * @dev It switches the active strat for the strat candidate. After upgrading, the 
-     * candidate implementation is set to the 0x00 address, and proposedTime to a time 
-     * happening in +100 years for safety. 
+    /**
+     * @dev It switches the active strat for the strat candidate. After upgrading, the
+     * candidate implementation is set to the 0x00 address, and proposedTime to a time
+     * happening in +100 years for safety.
      */
 
     function upgradeStrat() public onlyOwner {

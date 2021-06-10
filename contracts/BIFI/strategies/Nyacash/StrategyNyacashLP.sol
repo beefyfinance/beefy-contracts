@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -110,7 +110,7 @@ contract StrategyNyacashLP is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _lpPair, address _lpTokenSharePool, address _vault, address _strategist) public {
+    constructor(address _lpPair, address _lpTokenSharePool, address _vault, address _strategist) {
         lpPair = _lpPair;
         lpToken0 = IUniswapV2Pair(lpPair).token0();
         lpToken1 = IUniswapV2Pair(lpPair).token1();
@@ -130,16 +130,16 @@ contract StrategyNyacashLP is Ownable, Pausable {
             nyasToLp1Route = [nyas, usdt, lpToken1];
         }
 
-        IERC20(lpPair).safeApprove(lpTokenSharePool, uint(-1));
-        IERC20(nyas).safeApprove(nyanswopRouter, uint(-1));
-        IERC20(usdt).safeApprove(nyanswopRouter, uint(-1));
-        IERC20(wbnb).safeApprove(pancakeswapRouter, uint(-1));
+        IERC20(lpPair).safeApprove(lpTokenSharePool, type(uint).max);
+        IERC20(nyas).safeApprove(nyanswopRouter, type(uint).max);
+        IERC20(usdt).safeApprove(nyanswopRouter, type(uint).max);
+        IERC20(wbnb).safeApprove(pancakeswapRouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(nyanswopRouter, 0);
-        IERC20(lpToken0).safeApprove(nyanswopRouter, uint(-1));
+        IERC20(lpToken0).safeApprove(nyanswopRouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(nyanswopRouter, 0);
-        IERC20(lpToken1).safeApprove(nyanswopRouter, uint(-1));
+        IERC20(lpToken1).safeApprove(nyanswopRouter, type(uint).max);
     }
 
     /**
@@ -206,7 +206,7 @@ contract StrategyNyacashLP is Ownable, Pausable {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(nyas).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(nyanswopRouter).swapExactTokensForTokens(toWbnb, 0, nyasToWbnbRoute, address(this), now.add(600));
+        IUniswapRouter(nyanswopRouter).swapExactTokensForTokens(toWbnb, 0, nyasToWbnbRoute, address(this), block.timestamp.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -215,7 +215,7 @@ contract StrategyNyacashLP is Ownable, Pausable {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouter(pancakeswapRouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
+        IUniswapRouter(pancakeswapRouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -231,16 +231,16 @@ contract StrategyNyacashLP is Ownable, Pausable {
         uint256 nyasHalf = IERC20(nyas).balanceOf(address(this)).div(2);
 
         if (lpToken0 != nyas) {
-            IUniswapRouter(nyanswopRouter).swapExactTokensForTokens(nyasHalf, 0, nyasToLp0Route, address(this), now.add(600));
+            IUniswapRouter(nyanswopRouter).swapExactTokensForTokens(nyasHalf, 0, nyasToLp0Route, address(this), block.timestamp.add(600));
         }
 
         if (lpToken1 != nyas) {
-            IUniswapRouter(nyanswopRouter).swapExactTokensForTokens(nyasHalf, 0, nyasToLp1Route, address(this), now.add(600));
+            IUniswapRouter(nyanswopRouter).swapExactTokensForTokens(nyasHalf, 0, nyasToLp1Route, address(this), block.timestamp.add(600));
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouter(nyanswopRouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
+        IUniswapRouter(nyanswopRouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp.add(600));
     }
 
     /**
@@ -306,15 +306,15 @@ contract StrategyNyacashLP is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(lpPair).safeApprove(lpTokenSharePool, uint(-1));
-        IERC20(nyas).safeApprove(nyanswopRouter, uint(-1));
-        IERC20(usdt).safeApprove(nyanswopRouter, uint(-1));
-        IERC20(wbnb).safeApprove(pancakeswapRouter, uint(-1));
+        IERC20(lpPair).safeApprove(lpTokenSharePool, type(uint).max);
+        IERC20(nyas).safeApprove(nyanswopRouter, type(uint).max);
+        IERC20(usdt).safeApprove(nyanswopRouter, type(uint).max);
+        IERC20(wbnb).safeApprove(pancakeswapRouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(nyanswopRouter, 0);
-        IERC20(lpToken0).safeApprove(nyanswopRouter, uint(-1));
+        IERC20(lpToken0).safeApprove(nyanswopRouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(nyanswopRouter, 0);
-        IERC20(lpToken1).safeApprove(nyanswopRouter, uint(-1));
+        IERC20(lpToken1).safeApprove(nyanswopRouter, type(uint).max);
     }
 }

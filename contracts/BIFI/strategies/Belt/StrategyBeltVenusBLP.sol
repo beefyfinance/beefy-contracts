@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -99,15 +99,15 @@ contract StrategyBeltVenusBLP is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(uint8 _poolId, address _vault, address _strategist) public {
+    constructor(uint8 _poolId, address _vault, address _strategist) {
         poolId = _poolId;
         vault = _vault;
         strategist = _strategist;
 
-        IERC20(want).safeApprove(masterbelt, uint(-1));
-        IERC20(belt).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
-        IERC20(busd).safeApprove(beltLP, uint(-1));
+        IERC20(want).safeApprove(masterbelt, type(uint).max);
+        IERC20(belt).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
+        IERC20(busd).safeApprove(beltLP, type(uint).max);
     }
 
     /**
@@ -175,7 +175,7 @@ contract StrategyBeltVenusBLP is Ownable, Pausable {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(belt).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, beltToWbnbRoute, address(this), now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, beltToWbnbRoute, address(this), block.timestamp.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -184,7 +184,7 @@ contract StrategyBeltVenusBLP is Ownable, Pausable {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -198,7 +198,7 @@ contract StrategyBeltVenusBLP is Ownable, Pausable {
      */
     function swapRewards() internal {
         uint256 beltBal = IERC20(belt).balanceOf(address(this));
-        IUniswapRouter(unirouter).swapExactTokensForTokens(beltBal, 0, beltToBusdRoute, address(this), now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(beltBal, 0, beltToBusdRoute, address(this), block.timestamp.add(600));
 
         uint256 busdBal = IERC20(busd).balanceOf(address(this));
         uint256[4] memory uamounts = [0, 0, 0, busdBal];
@@ -266,10 +266,10 @@ contract StrategyBeltVenusBLP is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(want).safeApprove(masterbelt, uint(-1));
-        IERC20(belt).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
-        IERC20(busd).safeApprove(beltLP, uint(-1));
+        IERC20(want).safeApprove(masterbelt, type(uint).max);
+        IERC20(belt).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
+        IERC20(busd).safeApprove(beltLP, type(uint).max);
     }
 
     /**

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -42,7 +42,7 @@ contract AddySingleAssetStrat is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
         want = _want;
         rewardPool = _rewardPool;
 
@@ -95,7 +95,7 @@ contract AddySingleAssetStrat is StratManager, FeeManager {
     // performance fees
     function chargeFees() internal {
         uint256 toMatic = IERC20(quick).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toMatic, 0, quickToMaticRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toMatic, 0, quickToMaticRoute, address(this), block.timestamp);
 
         uint256 maticBal = IERC20(matic).balanceOf(address(this));
 
@@ -112,7 +112,7 @@ contract AddySingleAssetStrat is StratManager, FeeManager {
     // swap rewards to {want}
     function swapRewards() internal {
         uint256 quickBalance = IERC20(quick).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(quickBalance, 0, quickToAddyRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(quickBalance, 0, quickToAddyRoute, address(this), block.timestamp);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -161,8 +161,8 @@ contract AddySingleAssetStrat is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(rewardPool, uint256(-1));
-        IERC20(quick).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(rewardPool, type(uint256).max);
+        IERC20(quick).safeApprove(unirouter, type(uint256).max);
     }
 
     function _removeAllowances() internal {

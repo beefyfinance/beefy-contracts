@@ -1,6 +1,6 @@
 // // SPDX-License-Identifier: MIT
 
-// pragma solidity ^0.6.12;
+// pragma solidity ^0.7.6;
 
 // import "@openzeppelin/contracts/access/Ownable.sol";
 // import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -33,7 +33,7 @@
 //     /**
 //      * @param _vault Address of parent vault
 //      */
-//     constructor(address _lpPair, address _newLpPair, address _seededVault, address _vault) public {
+//     constructor(address _lpPair, address _newLpPair, address _seededVault, address _vault) {
 //         lpPair = _lpPair;
 //         lpToken0 = IUniswapV2Pair(lpPair).token0();
 //         lpToken1 = IUniswapV2Pair(lpPair).token1();
@@ -41,9 +41,9 @@
 //         seededVault = _seededVault;
 //         vault = _vault;
 
-//         IERC20(lpPair).safeApprove(oldUnirouter, uint(-1));
-//         IERC20(lpToken0).safeApprove(newUnirouter, uint(-1));
-//         IERC20(lpToken1).safeApprove(newUnirouter, uint(-1));
+//         IERC20(lpPair).safeApprove(oldUnirouter, type(uint).max);
+//         IERC20(lpToken0).safeApprove(newUnirouter, type(uint).max);
+//         IERC20(lpToken1).safeApprove(newUnirouter, type(uint).max);
 //     }
 
 //     // required to accept funds from old strat
@@ -52,12 +52,12 @@
 //     function seed() external onlyOwner {
 //         // 1. Remove liquidity from old pair.
 //         uint lpPairBal = IERC20(lpPair).balanceOf(address(this));
-//         IUniswapRouterETH(oldUnirouter).removeLiquidity(lpToken0, lpToken1, lpPairBal, 1, 1, address(this), now);
-        
+//         IUniswapRouterETH(oldUnirouter).removeLiquidity(lpToken0, lpToken1, lpPairBal, 1, 1, address(this), block.timestamp);
+
 //         // 2. Add liquidity to new pair.
 //         uint lp0Bal = IERC20(lpToken0).balanceOf(address(this));
 //         uint lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-//         IUniswapRouterETH(newUnirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
+//         IUniswapRouterETH(newUnirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp);
 
 //         // 3. Send new lp funds to new vault.
 //         address newStrat = ISeededVault(seededVault).strategy();
