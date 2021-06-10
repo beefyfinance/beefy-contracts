@@ -102,10 +102,10 @@ const deployVault: DeployFunction = async function(hre: HardhatRuntimeEnvironmen
 
     if ('dev' in hre.network.tags) {
         if (vaultDeployResult.newlyDeployed) {
-            await execute(vaultName, {from: deployer.address}, 'transferOwnership', beefyfinance.keeper);
+            await execute(vaultName, {from: deployer.address}, 'transferOwnership', beefyfinance.vaultOwner);
         }
         if (strategyDeployResult.newlyDeployed) {
-            await execute(stratName, {from: deployer.address}, 'transferOwnership', beefyfinance.keeper);
+            await execute(stratName, {from: deployer.address}, 'transferOwnership', beefyfinance.vaultOwner);
         }
     }
 };

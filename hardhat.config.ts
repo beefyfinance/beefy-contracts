@@ -17,9 +17,16 @@ task("node", "Starts a JSON-RPC server on top of Hardhat Network")
   .setAction(async (taskArgs, hre, runSuper) => {
     let network = hre.config.networks[taskArgs.fork] as HttpNetworkConfig;
     if (network) {
+      taskArgs.forkDeployments = taskArgs.fork;
+      taskArgs.noReset = true;
+      taskArgs.write = false;
       let rpc = network.url;
       console.log(`Forking ${taskArgs.fork} from RPC: ${rpc}`);
       taskArgs.fork = rpc;
+      if (network.chainId) {
+        hre.config.networks.hardhat.chainId = network.chainId;
+        hre.config.networks.localhost.chainId = network.chainId;
+      }
     }
     await runSuper(taskArgs);
   });
