@@ -24,6 +24,7 @@
     "all": "yarn clean && yarn compile && yarn net",
     "test": "hardhat test --network localhost",
     "deploy-strat:bsc": "hardhat run --network bsc scripts/deploy-strat-with-pool.js",
+    "deploy-strat:bsc:pancake": "hardhat run --network bsc scripts/pancake-deploy-strat-with-pool.js",
     "deploy-strat:lendhub": "hardhat run --network heco scripts/deploy-strat-lendhub.js",
     "deploy-strat:polygon": "hardhat run --network polygon scripts/deploy-strat-with-pool.js",
     "deploy-pool:bsc": "hardhat run --network bsc scripts/deploy-launchpad-pool.js",
