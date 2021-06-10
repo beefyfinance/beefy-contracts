@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/dopple/IDoppleLP.sol";
@@ -49,7 +50,7 @@ contract StrategyDoppleStableLP is StratManager, FeeManager, GasThrottler {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
         want = _want;
         poolId = _poolId;
         swapSize = _swapSize;
@@ -104,7 +105,7 @@ contract StrategyDoppleStableLP is StratManager, FeeManager, GasThrottler {
     // performance fees
     function chargeFees() internal {
         uint256 toWbnb = IERC20(dop).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, dopToWbnbRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, dopToWbnbRoute, address(this), block.timestamp);
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -121,12 +122,12 @@ contract StrategyDoppleStableLP is StratManager, FeeManager, GasThrottler {
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
         uint256 dopBal = IERC20(dop).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(dopBal, 0, dopToBusdRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(dopBal, 0, dopToBusdRoute, address(this), block.timestamp);
 
         uint256 busdBal = IERC20(busd).balanceOf(address(this));
         uint256[] memory amounts = new uint256[](swapSize);
         amounts[busdIndex] = busdBal;
-        IDoppleSwap(swapToken).addLiquidity(amounts, 0, now);
+        IDoppleSwap(swapToken).addLiquidity(amounts, 0, block.timestamp);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -176,9 +177,9 @@ contract StrategyDoppleStableLP is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(masterchef, uint(-1));
-        IERC20(dop).safeApprove(unirouter, uint(-1));
-        IERC20(busd).safeApprove(swapToken, uint(-1));
+        IERC20(want).safeApprove(masterchef, type(uint).max);
+        IERC20(dop).safeApprove(unirouter, type(uint).max);
+        IERC20(busd).safeApprove(swapToken, type(uint).max);
     }
 
     function _removeAllowances() internal {

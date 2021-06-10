@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -45,7 +46,7 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
         address _beefyFeeRecipient,
         address[] memory _outputToNativeRoute,
         address[] memory _outputToWantRoute
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
         want = _want;
         poolId = _poolId;
         chef = _chef;
@@ -53,7 +54,7 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
-        
+
         outputToWantRoute = _outputToWantRoute;
 
         _giveAllowances();
@@ -85,7 +86,7 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
         if (tx.origin == owner() || paused()) {
             IERC20(want).safeTransfer(vault, wantBal);
         } else {
-            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);	
+            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
             IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
         }
     }
@@ -103,7 +104,7 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
     // performance fees
     function chargeFees() internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
@@ -120,7 +121,7 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
     // swap rewards to {want}
     function swapRewards() internal {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), block.timestamp);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -135,7 +136,7 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMasterChef(chef).userInfo(poolId, address(this));	
+        (uint256 _amount, ) = IMasterChef(chef).userInfo(poolId, address(this));
         return _amount;
     }
 
@@ -170,8 +171,8 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(chef, type(uint256).max);
+        IERC20(output).safeApprove(unirouter, type(uint256).max);
     }
 
     function _removeAllowances() internal {

@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -17,8 +18,8 @@ import "../../utils/GasThrottler.sol";
  * @dev Implementation of a strategy to get yields from farming with sALPACA.
  *
  * This strategy simply deposits whatever funds it receives from the vault into the selected FairLaunch pool.
- * ALPACA rewards from providing liquidity are farmed every few hours, sold and used to buy more sALPACA. 
- * 
+ * ALPACA rewards from providing liquidity are farmed every few hours, sold and used to buy more sALPACA.
+ *
  */
 contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
     using SafeERC20 for IERC20;
@@ -52,7 +53,7 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
      * {treasury} - Address of the BeefyFinance treasury
      * {vault} - Address of the vault that controls the strategy's funds.
      * {strategist} - Address of the strategy author/deployer where strategist fee will go.
-     * {keeper} - Address used as an extra strat manager. 
+     * {keeper} - Address used as an extra strat manager.
      */
     address constant public rewards  = address(0x453D4Ba9a2D594314DF88564248497F7D74d6b2C);
     address constant public treasury = address(0x4A32De8c248533C28904b24B4cFCFE18E9F2ad01);
@@ -66,7 +67,7 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
      *
      * {TREASURY_FEE} - 0.5% goes to the treasury.
      * {STRATEGIST_FEE} - 0.5% goes to the strategist.
-     * {MAX_CALL_FEE} - Max value that the {callFee} can be configured to. 
+     * {MAX_CALL_FEE} - Max value that the {callFee} can be configured to.
      * {MAX_FEE} - Aux const used to safely calc the correct amounts.
      *
      * {WITHDRAWAL_FEE} - Fee taxed when a user withdraws funds. 10 === 0.1% fee.
@@ -107,14 +108,14 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
      * @param _strategist address that will receive the {STRATEGIST_FEE}
      * @param _keeper address that will help manage the strat
      */
-    constructor(address _vault, address _strategist, address _keeper) public {
+    constructor(address _vault, address _strategist, address _keeper) {
         vault = _vault;
         strategist = _strategist;
         keeper = _keeper;
 
-        IERC20(sAlpaca).safeApprove(fairLaunch, uint(-1));
-        IERC20(alpaca).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(sAlpaca).safeApprove(fairLaunch, type(uint).max);
+        IERC20(alpaca).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
     }
 
     /**
@@ -190,7 +191,7 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
     }
 
     /**
-     * @dev Takes out 4.5% as system fees from the rewards. 
+     * @dev Takes out 4.5% as system fees from the rewards.
      * 0.5% -> Call Fee
      * 0.5% -> Treasury fee
      * 0.5% -> Strategist fee
@@ -198,7 +199,7 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(alpaca).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, alpacaToWbnbRoute, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, alpacaToWbnbRoute, address(this), block.timestamp.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -207,7 +208,7 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
 
         uint256 rewardsFeeAmount = wbnbBal.mul(rewardsFee).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFeeAmount);
@@ -221,7 +222,7 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
      */
     function swapRewards() internal {
         uint256 alpacaBal = IERC20(alpaca).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(alpacaBal, 0, alpacaToSalpacaRoute, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(alpacaBal, 0, alpacaToSalpacaRoute, address(this), block.timestamp.add(600));
     }
 
     /**
@@ -248,7 +249,7 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
      * vault, ready to be migrated to the new strat.
      */
     function retireStrat() external {
@@ -291,9 +292,9 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
 
         _unpause();
 
-        IERC20(sAlpaca).safeApprove(fairLaunch, uint(-1));
-        IERC20(alpaca).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(sAlpaca).safeApprove(fairLaunch, type(uint).max);
+        IERC20(alpaca).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
     }
 
     /**
@@ -311,18 +312,18 @@ contract StrategyStronkAlpaca is Ownable, Pausable, GasThrottler {
      */
     function setKeeper(address _keeper) external {
         require(msg.sender == owner() || msg.sender == keeper, "!authorized");
-        
+
         keeper = _keeper;
     }
 
     /**
      * @dev Updates the harvest {callFee}. Capped by {MAX_CALL_FEE}.
-     * @param _fee new fee to give harvesters. 
+     * @param _fee new fee to give harvesters.
      */
     function setCallFee(uint256 _fee) external {
         require(msg.sender == owner() || msg.sender == keeper, "!authorized");
         require(_fee <= MAX_CALL_FEE, "!cap");
-        
+
         callFee = _fee;
         rewardsFee = MAX_FEE - TREASURY_FEE - STRATEGIST_FEE - callFee;
     }

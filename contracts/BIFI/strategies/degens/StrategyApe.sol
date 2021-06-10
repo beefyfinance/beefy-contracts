@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/pancake/IMasterChef.sol";
@@ -92,13 +93,13 @@ contract StrategyApe is Ownable, Pausable {
      * @param _vault Address to initialize {vault}
      * @param _strategist Address to initialize {strategist}
      */
-    constructor(address _vault, address _strategist) public {
+    constructor(address _vault, address _strategist) {
         vault = _vault;
         strategist = _strategist;
 
-        IERC20(want).safeApprove(masterchef, uint(-1));
-        IERC20(want).safeApprove(aperouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(want).safeApprove(masterchef, type(uint).max);
+        IERC20(want).safeApprove(aperouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
     }
 
     /**
@@ -155,7 +156,7 @@ contract StrategyApe is Ownable, Pausable {
     }
 
     /**
-     * @dev Takes out 6% as system fees from the rewards. 
+     * @dev Takes out 6% as system fees from the rewards.
      * 0.5% -> Call Fee
      * 1.0% -> Treasury fee
      * 0.5% -> Strategist fee
@@ -163,17 +164,17 @@ contract StrategyApe is Ownable, Pausable {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(want).balanceOf(address(this)).mul(6).div(100);
-        IUniswapRouter(aperouter).swapExactTokensForTokens(toWbnb, 0, wantToWbnbRoute, address(this), now.add(600));
-    
+        IUniswapRouter(aperouter).swapExactTokensForTokens(toWbnb, 0, wantToWbnbRoute, address(this), block.timestamp.add(600));
+
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
-        
+
         uint256 callFee = wbnbBal.mul(CALL_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(msg.sender, callFee);
-        
+
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
-        
+        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
+
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
 
@@ -242,9 +243,9 @@ contract StrategyApe is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(want).safeApprove(masterchef, uint(-1));
-        IERC20(want).safeApprove(aperouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(want).safeApprove(masterchef, type(uint).max);
+        IERC20(want).safeApprove(aperouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
     }
 
     /**

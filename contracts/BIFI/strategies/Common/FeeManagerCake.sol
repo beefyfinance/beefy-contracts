@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "./StratManagerCake.sol";
 
@@ -18,7 +19,7 @@ abstract contract FeeManagerCake is StratManagerCake {
 
     function setCallFee(uint256 _fee) external onlyManager {
         require(_fee <= MAX_CALL_FEE, "!cap");
-        
+
         callFee = _fee;
         beefyFee = MAX_FEE - callFee;
     }

@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -90,7 +91,7 @@ contract StrategyPangolinLP is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _lpPair, address _rewardPool, address _vault, address _strategist) public {
+    constructor(address _lpPair, address _rewardPool, address _vault, address _strategist) {
         lpPair = _lpPair;
         lpToken0 = IUniswapV2Pair(lpPair).token0();
         lpToken1 = IUniswapV2Pair(lpPair).token1();
@@ -110,15 +111,15 @@ contract StrategyPangolinLP is Ownable, Pausable {
             pngToLp1Route = [png, wavax, lpToken1];
         }
 
-        IERC20(lpPair).safeApprove(rewardPool, uint(-1));
-        IERC20(png).safeApprove(pngrouter, uint(-1));
-        IERC20(wavax).safeApprove(pngrouter, uint(-1));
+        IERC20(lpPair).safeApprove(rewardPool, type(uint).max);
+        IERC20(png).safeApprove(pngrouter, type(uint).max);
+        IERC20(wavax).safeApprove(pngrouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(pngrouter, 0);
-        IERC20(lpToken0).safeApprove(pngrouter, uint(-1));
+        IERC20(lpToken0).safeApprove(pngrouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(pngrouter, 0);
-        IERC20(lpToken1).safeApprove(pngrouter, uint(-1));
+        IERC20(lpToken1).safeApprove(pngrouter, type(uint).max);
     }
 
     /**
@@ -155,7 +156,7 @@ contract StrategyPangolinLP is Ownable, Pausable {
 
         uint256 withdrawalFee = pairBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
         IERC20(lpPair).safeTransfer(vault, pairBal.sub(withdrawalFee));
-    
+
     }
 
     /**
@@ -177,7 +178,7 @@ contract StrategyPangolinLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Takes out 4.5% as system fees from the rewards. 
+     * @dev Takes out 4.5% as system fees from the rewards.
      * 0.5% -> Call Fee
      * 0.5% -> Treasury fee
      * 0.5% -> Strategist fee
@@ -185,7 +186,7 @@ contract StrategyPangolinLP is Ownable, Pausable {
      */
     function chargeFees() internal {
         uint256 toWavax = IERC20(png).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(pngrouter).swapExactTokensForTokens(toWavax, 0, pngToWavaxRoute, address(this), now.add(600));
+        IUniswapRouter(pngrouter).swapExactTokensForTokens(toWavax, 0, pngToWavaxRoute, address(this), block.timestamp.add(600));
 
         uint256 wavaxBal = IERC20(wavax).balanceOf(address(this));
 
@@ -199,7 +200,7 @@ contract StrategyPangolinLP is Ownable, Pausable {
         IERC20(wavax).safeTransfer(strategist, strategistFee);
 
     }
-    
+
     /**
      * @dev Swaps {png} for {lpToken0}, {lpToken1} & {wavax} using Pangolin.
      */
@@ -207,16 +208,16 @@ contract StrategyPangolinLP is Ownable, Pausable {
         uint256 pngHalf = IERC20(png).balanceOf(address(this)).div(2);
 
         if (lpToken0 != png) {
-            IUniswapRouter(pngrouter).swapExactTokensForTokens(pngHalf, 0, pngToLp0Route, address(this), now.add(600));
+            IUniswapRouter(pngrouter).swapExactTokensForTokens(pngHalf, 0, pngToLp0Route, address(this), block.timestamp.add(600));
         }
 
         if (lpToken1 != png) {
-            IUniswapRouter(pngrouter).swapExactTokensForTokens(pngHalf, 0, pngToLp1Route, address(this), now.add(600));
+            IUniswapRouter(pngrouter).swapExactTokensForTokens(pngHalf, 0, pngToLp1Route, address(this), block.timestamp.add(600));
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouter(pngrouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
+        IUniswapRouter(pngrouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp.add(600));
     }
 
     /**
@@ -242,7 +243,7 @@ contract StrategyPangolinLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
      * vault, ready to be migrated to the new strat.
      */
     function retireStrat() external {
@@ -281,15 +282,15 @@ contract StrategyPangolinLP is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(lpPair).safeApprove(rewardPool, uint(-1));
-        IERC20(png).safeApprove(pngrouter, uint(-1));
-        IERC20(wavax).safeApprove(pngrouter, uint(-1));
+        IERC20(lpPair).safeApprove(rewardPool, type(uint).max);
+        IERC20(png).safeApprove(pngrouter, type(uint).max);
+        IERC20(wavax).safeApprove(pngrouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(pngrouter, 0);
-        IERC20(lpToken0).safeApprove(pngrouter, uint(-1));
+        IERC20(lpToken0).safeApprove(pngrouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(pngrouter, 0);
-        IERC20(lpToken1).safeApprove(pngrouter, uint(-1));
+        IERC20(lpToken1).safeApprove(pngrouter, type(uint).max);
     }
 
     /**

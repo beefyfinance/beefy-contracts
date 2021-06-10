@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IRewardPool.sol";
@@ -93,13 +94,13 @@ contract StrategyBillionHps is Ownable, Pausable, GasThrottler {
      * @param _vault Address to initialize {vault}
      * @param _strategist Address to initialize {strategist}
      */
-    constructor(address _vault, address _strategist) public {
+    constructor(address _vault, address _strategist) {
         vault = _vault;
         strategist = _strategist;
 
-        IERC20(hps).safeApprove(rewardPool, uint256(-1));
-        IERC20(hps).safeApprove(julrouter, uint256(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint256(-1));
+        IERC20(hps).safeApprove(rewardPool, type(uint256).max);
+        IERC20(hps).safeApprove(julrouter, type(uint256).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint256).max);
     }
 
     /**
@@ -157,7 +158,7 @@ contract StrategyBillionHps is Ownable, Pausable, GasThrottler {
     }
 
     /**
-     * @dev Takes out 4.5% as system fees from the rewards. 
+     * @dev Takes out 4.5% as system fees from the rewards.
      * 3.0% -> BIFI Holders
      * 0.5% -> Treasury fee
      * 0.5% -> Strategist Fee
@@ -165,17 +166,17 @@ contract StrategyBillionHps is Ownable, Pausable, GasThrottler {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(hps).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(julrouter).swapExactTokensForTokens(toWbnb, 0, hpsToWbnbRoute, address(this), now.add(600));
-    
+        IUniswapRouter(julrouter).swapExactTokensForTokens(toWbnb, 0, hpsToWbnbRoute, address(this), block.timestamp.add(600));
+
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
-        
+
         uint256 callFee = wbnbBal.mul(CALL_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(msg.sender, callFee);
-        
+
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
-        
+        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
+
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
 
@@ -206,7 +207,7 @@ contract StrategyBillionHps is Ownable, Pausable, GasThrottler {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
      * vault, ready to be migrated to the new strat.
      */
     function retireStrat() external {
@@ -243,9 +244,9 @@ contract StrategyBillionHps is Ownable, Pausable, GasThrottler {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(hps).safeApprove(rewardPool, uint256(-1));
-        IERC20(hps).safeApprove(julrouter, uint256(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint256(-1));
+        IERC20(hps).safeApprove(rewardPool, type(uint256).max);
+        IERC20(hps).safeApprove(julrouter, type(uint256).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint256).max);
 
         deposit();
     }

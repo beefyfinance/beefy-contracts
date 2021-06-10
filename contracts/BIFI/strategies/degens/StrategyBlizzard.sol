@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/pancake/IMasterChef.sol";
@@ -93,14 +94,14 @@ contract StrategyBlizzard is Ownable, Pausable, GasThrottler {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(uint8 _poolId, address _vault, address _strategist) public {
+    constructor(uint8 _poolId, address _vault, address _strategist) {
         poolId = _poolId;
         vault = _vault;
         strategist = _strategist;
 
-        IERC20(want).safeApprove(masterchef, uint(-1));
-        IERC20(want).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(want).safeApprove(masterchef, type(uint).max);
+        IERC20(want).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
     }
 
     /**
@@ -180,7 +181,7 @@ contract StrategyBlizzard is Ownable, Pausable, GasThrottler {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(want).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, wantToWbnbRoute, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, wantToWbnbRoute, address(this), block.timestamp.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -189,7 +190,7 @@ contract StrategyBlizzard is Ownable, Pausable, GasThrottler {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
 
         uint256 rewardsFeeAmount = wbnbBal.mul(rewardsFee).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFeeAmount);
@@ -265,9 +266,9 @@ contract StrategyBlizzard is Ownable, Pausable, GasThrottler {
 
         _unpause();
 
-        IERC20(want).safeApprove(masterchef, uint(-1));
-        IERC20(want).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(want).safeApprove(masterchef, type(uint).max);
+        IERC20(want).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
     }
 
     /**

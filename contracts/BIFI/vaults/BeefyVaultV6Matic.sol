@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "../interfaces/beefy/IStrategy.sol";
 import "../interfaces/common/IWMATIC.sol";
@@ -52,7 +53,7 @@ contract BeefyVaultV6Matic is ERC20, Ownable, ReentrancyGuard {
         string memory _name,
         string memory _symbol,
         uint256 _approvalDelay
-    ) public ERC20(
+    ) ERC20(
         _name,
         _symbol
     ) {
@@ -204,12 +205,12 @@ contract BeefyVaultV6Matic is ERC20, Ownable, ReentrancyGuard {
         }
 
         wmatic.withdraw(r);
-        msg.sender.transfer(r);
+        payable(msg.sender).transfer(r);
     }
 
-    /** 
+    /**
      * @dev Sets the candidate for the new strat to use with this vault.
-     * @param _implementation The address of the candidate strategy.  
+     * @param _implementation The address of the candidate strategy.
      */
     function proposeStrat(address _implementation) public onlyOwner {
         require(address(this) == IStrategy(_implementation).vault(), "Proposal not valid for this Vault");
@@ -221,10 +222,10 @@ contract BeefyVaultV6Matic is ERC20, Ownable, ReentrancyGuard {
         emit NewStratCandidate(_implementation);
     }
 
-    /** 
-     * @dev It switches the active strat for the strat candidate. After upgrading, the 
-     * candidate implementation is set to the 0x00 address, and proposedTime to a time 
-     * happening in +100 years for safety. 
+    /**
+     * @dev It switches the active strat for the strat candidate. After upgrading, the
+     * candidate implementation is set to the 0x00 address, and proposedTime to a time
+     * happening in +100 years for safety.
      */
 
     function upgradeStrat() public onlyOwner {

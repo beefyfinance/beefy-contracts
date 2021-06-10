@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/auto/IAutoFarmV2.sol";
@@ -97,7 +98,7 @@ contract StrategyAutoVenus is Ownable, Pausable, GasThrottler {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _want, uint8 _poolId, address _vault, address _strategist) public {
+    constructor(address _want, uint8 _poolId, address _vault, address _strategist) {
         want = _want;
         poolId = _poolId;
         vault = _vault;
@@ -112,9 +113,9 @@ contract StrategyAutoVenus is Ownable, Pausable, GasThrottler {
             autoToWantRoute = [Auto, wbnb, want];
         }
 
-        IERC20(want).safeApprove(autofarm, uint(-1));
-        IERC20(Auto).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(want).safeApprove(autofarm, type(uint).max);
+        IERC20(Auto).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
     }
 
     /**
@@ -178,7 +179,7 @@ contract StrategyAutoVenus is Ownable, Pausable, GasThrottler {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(Auto).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, autoToWbnbRoute, address(this), now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, autoToWbnbRoute, address(this), block.timestamp.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -187,7 +188,7 @@ contract StrategyAutoVenus is Ownable, Pausable, GasThrottler {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -201,7 +202,7 @@ contract StrategyAutoVenus is Ownable, Pausable, GasThrottler {
      */
     function swapRewards() internal {
         uint256 autoBal = IERC20(Auto).balanceOf(address(this));
-        IUniswapRouter(unirouter).swapExactTokensForTokens(autoBal, 0, autoToWantRoute, address(this), now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(autoBal, 0, autoToWantRoute, address(this), block.timestamp.add(600));
     }
 
     /**
@@ -252,7 +253,7 @@ contract StrategyAutoVenus is Ownable, Pausable, GasThrottler {
     }
 
     function _retireStrat() internal {
-        IAutoFarmV2(autofarm).withdraw(poolId, uint(-1));
+        IAutoFarmV2(autofarm).withdraw(poolId, type(uint).max);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -270,7 +271,7 @@ contract StrategyAutoVenus is Ownable, Pausable, GasThrottler {
      */
     function panic() public onlyOwner {
         pause();
-        IAutoFarmV2(autofarm).withdraw(poolId, uint(-1));
+        IAutoFarmV2(autofarm).withdraw(poolId, type(uint).max);
     }
 
     /**
@@ -298,9 +299,9 @@ contract StrategyAutoVenus is Ownable, Pausable, GasThrottler {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(want).safeApprove(autofarm, uint(-1));
-        IERC20(Auto).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(want).safeApprove(autofarm, type(uint).max);
+        IERC20(Auto).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
     }
 
     /**

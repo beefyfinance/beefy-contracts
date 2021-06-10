@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "./StrategyCommonRewardPoolLP.sol";
 
@@ -28,7 +29,7 @@ contract StrategyCommonRewardPoolLPPolygon is StrategyCommonRewardPoolLP {
         _outputToNativeRoute,
         _outputToLp0Route,
         _outputToLp1Route
-    ) public {
+    ) {
         _setCallFee(_callFee);
     }
 

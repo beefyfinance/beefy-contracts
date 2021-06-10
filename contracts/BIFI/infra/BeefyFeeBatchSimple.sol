@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract BeefyFeeBatchSimple is Ownable {
     using SafeERC20 for IERC20;
@@ -21,10 +22,10 @@ contract BeefyFeeBatchSimple is Ownable {
     uint constant public MAX_FEE = 1000;
 
     constructor(
-        address _treasury, 
-        address _rewardPool, 
-        address _wNative 
-    ) public {
+        address _treasury,
+        address _rewardPool,
+        address _wNative
+    ) {
         treasury = _treasury;
         rewardPool = _rewardPool;
         wNative  = _wNative ;
@@ -36,11 +37,11 @@ contract BeefyFeeBatchSimple is Ownable {
 
         uint256 treasuryAmount = wNativeBal.mul(TREASURY_FEE).div(MAX_FEE);
         IERC20(wNative).safeTransfer(treasury, treasuryAmount);
-        
+
         uint256 rewardPoolAmount = wNativeBal.mul(REWARD_POOL_FEE).div(MAX_FEE);
         IERC20(wNative).safeTransfer(rewardPool, rewardPoolAmount);
     }
-    
+
     // Rescue locked funds sent by mistake
     function inCaseTokensGetStuck(address _token) external onlyOwner {
         require(_token != wNative, "!safe");

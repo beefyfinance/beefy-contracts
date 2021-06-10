@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -104,7 +105,7 @@ contract StrategyEllipsisCakeLP is Ownable, Pausable, GasThrottler {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _lpPair, uint8 _poolId, address _vault, address _strategist) public {
+    constructor(address _lpPair, uint8 _poolId, address _vault, address _strategist) {
         lpPair = _lpPair;
         lpToken0 = IUniswapV2Pair(lpPair).token0();
         lpToken1 = IUniswapV2Pair(lpPair).token1();
@@ -124,15 +125,15 @@ contract StrategyEllipsisCakeLP is Ownable, Pausable, GasThrottler {
             epsToLp1Route = [eps, wbnb, lpToken1];
         }
 
-        IERC20(lpPair).safeApprove(stakingPool, uint(-1));
-        IERC20(eps).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(lpPair).safeApprove(stakingPool, type(uint).max);
+        IERC20(eps).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
     }
 
     /**
@@ -207,7 +208,7 @@ contract StrategyEllipsisCakeLP is Ownable, Pausable, GasThrottler {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(eps).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, epsToWbnbRoute, address(this), now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, epsToWbnbRoute, address(this), block.timestamp.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -216,7 +217,7 @@ contract StrategyEllipsisCakeLP is Ownable, Pausable, GasThrottler {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -232,16 +233,16 @@ contract StrategyEllipsisCakeLP is Ownable, Pausable, GasThrottler {
         uint256 epsHalf = IERC20(eps).balanceOf(address(this)).div(2);
 
         if (lpToken0 != eps) {
-            IUniswapRouter(unirouter).swapExactTokensForTokens(epsHalf, 0, epsToLp0Route, address(this), now.add(600));
+            IUniswapRouter(unirouter).swapExactTokensForTokens(epsHalf, 0, epsToLp0Route, address(this), block.timestamp.add(600));
         }
 
         if (lpToken1 != eps) {
-            IUniswapRouter(unirouter).swapExactTokensForTokens(epsHalf, 0, epsToLp1Route, address(this), now.add(600));
+            IUniswapRouter(unirouter).swapExactTokensForTokens(epsHalf, 0, epsToLp1Route, address(this), block.timestamp.add(600));
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
+        IUniswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp.add(600));
     }
 
     /**
@@ -307,15 +308,15 @@ contract StrategyEllipsisCakeLP is Ownable, Pausable, GasThrottler {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(lpPair).safeApprove(stakingPool, uint(-1));
-        IERC20(eps).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(lpPair).safeApprove(stakingPool, type(uint).max);
+        IERC20(eps).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
     }
 
     /**

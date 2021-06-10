@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -19,9 +20,9 @@ import "../../interfaces/pancake/IMasterChef.sol";
  * It is fast, cheap, and allows anyone to participate. PancakeSwap is aiming to be the #1 liquidity provider on BSC.
  *
  * This strategy simply deposits whatever funds it receives from the vault into the selected MasterChef pool.
- * CAKE rewards from providing liquidity are farmed every few minutes, sold and split 50/50. 
+ * CAKE rewards from providing liquidity are farmed every few minutes, sold and split 50/50.
  * The corresponding pair of assets are bought and more liquidity is added to the MasterChef pool.
- * 
+ *
  * This strat is an adaptation that only works with the CAKE community pools. This assets have pool liquidity through BNB
  * so we route directly through CAKE.
  */
@@ -109,7 +110,7 @@ contract StrategyCakeCommunityLP is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _lpPair, uint8 _poolId, address _vault, address _strategist) public {
+    constructor(address _lpPair, uint8 _poolId, address _vault, address _strategist) {
         lpPair = _lpPair;
         lpToken0 = IUniswapV2Pair(lpPair).token0();
         lpToken1 = IUniswapV2Pair(lpPair).token1();
@@ -123,17 +124,17 @@ contract StrategyCakeCommunityLP is Ownable, Pausable {
 
         if (lpToken1 != cake) {
             cakeToLp1Route = [cake, lpToken1];
-        } 
+        }
 
-        IERC20(lpPair).safeApprove(masterchef, uint(-1));
-        IERC20(cake).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(lpPair).safeApprove(masterchef, type(uint).max);
+        IERC20(cake).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
     }
 
     /**
@@ -191,7 +192,7 @@ contract StrategyCakeCommunityLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Takes out 4.5% as system fees from the rewards. 
+     * @dev Takes out 4.5% as system fees from the rewards.
      * 0.5% -> Call Fee
      * 0.5% -> Treasury fee
      * 0.5% -> Strategist fee
@@ -199,7 +200,7 @@ contract StrategyCakeCommunityLP is Ownable, Pausable {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(cake).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), block.timestamp.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -208,7 +209,7 @@ contract StrategyCakeCommunityLP is Ownable, Pausable {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -224,16 +225,16 @@ contract StrategyCakeCommunityLP is Ownable, Pausable {
         uint256 cakeHalf = IERC20(cake).balanceOf(address(this)).div(2);
 
         if (lpToken0 != cake) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp0Route, address(this), now.add(600));
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp0Route, address(this), block.timestamp.add(600));
         }
 
         if (lpToken1 != cake) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp1Route, address(this), now.add(600));
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(cakeHalf, 0, cakeToLp1Route, address(this), block.timestamp.add(600));
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp.add(600));
     }
 
     /**
@@ -260,7 +261,7 @@ contract StrategyCakeCommunityLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
      * vault, ready to be migrated to the new strat.
      */
     function retireStrat() external {
@@ -299,15 +300,15 @@ contract StrategyCakeCommunityLP is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(lpPair).safeApprove(masterchef, uint(-1));
-        IERC20(cake).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(lpPair).safeApprove(masterchef, type(uint).max);
+        IERC20(cake).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
     }
 
     /**

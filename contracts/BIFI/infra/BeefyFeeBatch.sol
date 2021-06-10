@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "../interfaces/common/IUniswapRouterETH.sol";
 
@@ -29,12 +30,12 @@ contract BeefyFeeBatch is Ownable {
     address[] public wNativeToBifiRoute;
 
     constructor(
-        address _treasury, 
-        address _rewardPool, 
-        address _unirouter, 
-        address _bifi, 
-        address _wNative 
-    ) public {
+        address _treasury,
+        address _rewardPool,
+        address _unirouter,
+        address _bifi,
+        address _wNative
+    ) {
         treasury = _treasury;
         rewardPool = _rewardPool;
         unirouter = _unirouter;
@@ -43,7 +44,7 @@ contract BeefyFeeBatch is Ownable {
 
         wNativeToBifiRoute = [wNative, bifi];
 
-        IERC20(wNative).safeApprove(unirouter, uint256(-1));
+        IERC20(wNative).safeApprove(unirouter, type(uint256).max);
     }
 
     event NewRewardPool(address oldRewardPool, address newRewardPool);
@@ -62,8 +63,8 @@ contract BeefyFeeBatch is Ownable {
 
         uint256 treasuryHalf = wNativeBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wNative).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wNativeToBifiRoute, treasury, now);
-        
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wNativeToBifiRoute, treasury, block.timestamp);
+
         uint256 rewardsFeeAmount = wNativeBal.mul(REWARD_POOL_FEE).div(MAX_FEE);
         IERC20(wNative).safeTransfer(rewardPool, rewardsFeeAmount);
     }
@@ -82,7 +83,7 @@ contract BeefyFeeBatch is Ownable {
     function setUnirouter(address _unirouter) external onlyOwner {
         emit NewUnirouter(unirouter, _unirouter);
 
-        IERC20(wNative).safeApprove(_unirouter, uint256(-1));
+        IERC20(wNative).safeApprove(_unirouter, type(uint256).max);
         IERC20(wNative).safeApprove(unirouter, 0);
 
         unirouter = _unirouter;
@@ -95,7 +96,7 @@ contract BeefyFeeBatch is Ownable {
         emit NewBifiRoute(wNativeToBifiRoute, _route);
         wNativeToBifiRoute = _route;
     }
-    
+
     // Rescue locked funds sent by mistake
     function inCaseTokensGetStuck(address _token) external onlyOwner {
         require(_token != wNative, "!safe");
