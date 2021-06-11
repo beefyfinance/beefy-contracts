@@ -7,6 +7,7 @@ import 'hardhat-deploy';
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
+import "@nomiclabs/hardhat-waffle";
 
 import { addressBook } from "blockchain-addressbook";
 
