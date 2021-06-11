@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -100,7 +100,7 @@ contract StrategyJulSwapLP is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _lpPair, address _rewardPool, address _vault, address _strategist) public {
+    constructor(address _lpPair, address _rewardPool, address _vault, address _strategist) {
         lpPair = _lpPair;
         lpToken0 = IUniswapV2Pair(lpPair).token0();
         lpToken1 = IUniswapV2Pair(lpPair).token1();
@@ -120,15 +120,15 @@ contract StrategyJulSwapLP is Ownable, Pausable {
             juldToLp1Route = [juld, wbnb, lpToken1];
         }
 
-        IERC20(lpPair).safeApprove(rewardPool, uint(-1));
-        IERC20(juld).safeApprove(julrouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(lpPair).safeApprove(rewardPool, type(uint).max);
+        IERC20(juld).safeApprove(julrouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(julrouter, 0);
-        IERC20(lpToken0).safeApprove(julrouter, uint(-1));
+        IERC20(lpToken0).safeApprove(julrouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(julrouter, 0);
-        IERC20(lpToken1).safeApprove(julrouter, uint(-1));
+        IERC20(lpToken1).safeApprove(julrouter, type(uint).max);
     }
 
     /**
@@ -194,7 +194,7 @@ contract StrategyJulSwapLP is Ownable, Pausable {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(juld).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(julrouter).swapExactTokensForTokens(toWbnb, 0, juldToWbnbRoute, address(this), now.add(600));
+        IUniswapRouter(julrouter).swapExactTokensForTokens(toWbnb, 0, juldToWbnbRoute, address(this), block.timestamp.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -203,7 +203,7 @@ contract StrategyJulSwapLP is Ownable, Pausable {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -219,16 +219,16 @@ contract StrategyJulSwapLP is Ownable, Pausable {
         uint256 juldHalf = IERC20(juld).balanceOf(address(this)).div(2);
 
         if (lpToken0 != juld) {
-            IUniswapRouter(julrouter).swapExactTokensForTokens(juldHalf, 0, juldToLp0Route, address(this), now.add(600));
+            IUniswapRouter(julrouter).swapExactTokensForTokens(juldHalf, 0, juldToLp0Route, address(this), block.timestamp.add(600));
         }
 
         if (lpToken1 != juld) {
-            IUniswapRouter(julrouter).swapExactTokensForTokens(juldHalf, 0, juldToLp1Route, address(this), now.add(600));
+            IUniswapRouter(julrouter).swapExactTokensForTokens(juldHalf, 0, juldToLp1Route, address(this), block.timestamp.add(600));
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouter(julrouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
+        IUniswapRouter(julrouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp.add(600));
     }
 
     /**
@@ -293,15 +293,15 @@ contract StrategyJulSwapLP is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(lpPair).safeApprove(rewardPool, uint(-1));
-        IERC20(juld).safeApprove(julrouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(lpPair).safeApprove(rewardPool, type(uint).max);
+        IERC20(juld).safeApprove(julrouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(julrouter, 0);
-        IERC20(lpToken0).safeApprove(julrouter, uint(-1));
+        IERC20(lpToken0).safeApprove(julrouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(julrouter, 0);
-        IERC20(lpToken1).safeApprove(julrouter, uint(-1));
+        IERC20(lpToken1).safeApprove(julrouter, type(uint).max);
     }
 
     /**

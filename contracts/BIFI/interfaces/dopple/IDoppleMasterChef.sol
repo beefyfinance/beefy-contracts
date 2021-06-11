@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.6;
 
 interface IDoppleMasterChef {
     function userInfo(uint256 _pid, address _user) external view returns (uint256, uint256, uint256, address);

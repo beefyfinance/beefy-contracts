@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -105,7 +105,7 @@ contract StrategyMechs is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the HyperPool and Vault that it will use.
      */
-    constructor(address _hyperPool, address _vault) public {
+    constructor(address _hyperPool, address _vault) {
         hyperPool = _hyperPool;
         vault = _vault;
         output = IHyperPool(hyperPool).rewardToken();
@@ -113,8 +113,8 @@ contract StrategyMechs is Ownable, Pausable {
         outputToAlloyRoute = [output, wbnb, alloy];
         outputToWbnbRoute = [output, wbnb];
 
-        IERC20(output).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(output).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
     }
 
     /**
@@ -162,9 +162,9 @@ contract StrategyMechs is Ownable, Pausable {
         }
 
         if (alloyBal > _amount) {
-            alloyBal = _amount;    
+            alloyBal = _amount;
         }
-        
+
         if (tx.origin == owner() || paused()) {
             IERC20(alloy).safeTransfer(vault, alloyBal);
         } else {
@@ -192,26 +192,26 @@ contract StrategyMechs is Ownable, Pausable {
     }
 
     /**
-     * @dev Takes out 4.5% as system fees from the rewards. 
+     * @dev Takes out 4.5% as system fees from the rewards.
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(alloy).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, outputToWbnbRoute, address(this), now.add(600));
-    
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, outputToWbnbRoute, address(this), block.timestamp.add(600));
+
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
         uint256 callFee = wbnbBal.mul(CALL_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(msg.sender, callFee);
-        
+
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
-        
+        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
+
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
-        
+
         uint256 hyperFee = wbnbBal.mul(HYPER_FEE).div(MAX_FEE);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(hyperFee, 0, wbnbToHyprRoute, hyperdao, now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(hyperFee, 0, wbnbToHyprRoute, hyperdao, block.timestamp.add(600));
     }
 
     /**
@@ -219,7 +219,7 @@ contract StrategyMechs is Ownable, Pausable {
      */
     function swapRewards() internal {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        IUniswapRouter(unirouter).swapExactTokensForTokens(outputBal, 0, outputToAlloyRoute, address(this), now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(outputBal, 0, outputToAlloyRoute, address(this), block.timestamp.add(600));
     }
 
     /**
@@ -246,14 +246,14 @@ contract StrategyMechs is Ownable, Pausable {
     }
 
     /**
-     * @dev Function that gets called as part of strat migration. It sends all the available funds back to the 
+     * @dev Function that gets called as part of strat migration. It sends all the available funds back to the
      * vault, ready to be migrated to the new strat.
-     */ 
+     */
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
         IHyperPool(hyperPool).emergencyWithdraw();
-        
+
         uint256 mechsBal = IERC20(mechs).balanceOf(address(this));
         IHyperCity(hyperCity).leaveStaking(mechsBal);
 
@@ -269,7 +269,7 @@ contract StrategyMechs is Ownable, Pausable {
         pause();
 
         IHyperPool(hyperPool).emergencyWithdraw();
-        
+
         uint256 mechsBal = IERC20(mechs).balanceOf(address(this));
         IHyperCity(hyperCity).leaveStaking(mechsBal);
     }
@@ -290,7 +290,7 @@ contract StrategyMechs is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(output).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(output).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
     }
 }

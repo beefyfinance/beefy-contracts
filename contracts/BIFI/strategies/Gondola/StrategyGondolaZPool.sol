@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -46,7 +46,7 @@ contract StrategyGondolaZPool is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
         want = _want;
         poolId = _poolId;
 
@@ -106,7 +106,7 @@ contract StrategyGondolaZPool is StratManager, FeeManager {
     // performance fees
     function chargeFees() internal {
         uint256 toWavax = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWavax, 0, outputToWavaxRoute, address(this), now);
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWavax, 0, outputToWavaxRoute, address(this), block.timestamp);
 
         uint256 wavaxBal = IERC20(wavax).balanceOf(address(this));
 
@@ -123,12 +123,12 @@ contract StrategyGondolaZPool is StratManager, FeeManager {
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        IUniswapRouter(unirouter).swapExactTokensForTokens(outputBal, 0, outputToDepositRoute, address(this), now);
+        IUniswapRouter(unirouter).swapExactTokensForTokens(outputBal, 0, outputToDepositRoute, address(this), block.timestamp);
 
         uint256 depositBal = IERC20(depositToken).balanceOf(address(this));
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = depositBal;
-        IGondolaSwap(swapToken).addLiquidity(amounts, 0, now);
+        IGondolaSwap(swapToken).addLiquidity(amounts, 0, block.timestamp);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -178,9 +178,9 @@ contract StrategyGondolaZPool is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(masterchef, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
-        IERC20(depositToken).safeApprove(swapToken, uint256(-1));
+        IERC20(want).safeApprove(masterchef, type(uint256).max);
+        IERC20(output).safeApprove(unirouter, type(uint256).max);
+        IERC20(depositToken).safeApprove(swapToken, type(uint256).max);
     }
 
     function _removeAllowances() internal {

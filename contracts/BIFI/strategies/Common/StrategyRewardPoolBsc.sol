@@ -1,6 +1,6 @@
 // // SPDX-License-Identifier: MIT
 
-// pragma solidity ^0.6.12;
+// pragma solidity ^0.7.6;
 
 // import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 // import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -48,10 +48,10 @@
 //         address _output,
 //         address _targetRewardPool,
 //         address _vault,
-//         address _unirouter, 
-//         address _keeper, 
+//         address _unirouter,
+//         address _keeper,
 //         address _strategist
-//     ) StratManager(_keeper, _strategist, _unirouter, _vault) public {
+//     ) StratManager(_keeper, _strategist, _unirouter, _vault) {
 //         want = _want;
 //         output = _output;
 //         targetRewardPool = _targetRewardPool;
@@ -59,13 +59,13 @@
 //         if (output != wbnb) {
 //             outputToWbnbRoute = [output, wbnb];
 //         }
-        
+
 //         if (output != want) {
 //             if (output != wbnb) {
 //                 outputToWantRoute = [output, wbnb, want];
 //             } else {
 //                 outputToWantRoute = [wbnb, want];
-//             }   
+//             }
 //         }
 
 //         _giveAllowances();
@@ -91,14 +91,14 @@
 //         }
 
 //         if (wantBal > _amount) {
-//             wantBal = _amount;    
+//             wantBal = _amount;
 //         }
-        
+
 //         if (tx.origin == owner() || paused()) {
-//             IERC20(want).safeTransfer(vault, wantBal); 
+//             IERC20(want).safeTransfer(vault, wantBal);
 //         } else {
 //             uint256 withdrawalFee = wantBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
-//             IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFee)); 
+//             IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFee));
 //         }
 //     }
 
@@ -116,19 +116,19 @@
 
 //         if (output != wbnb) {
 //             uint256 toWbnb = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-//             IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, outputToWbnbRoute, address(this), now);
+//             IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, outputToWbnbRoute, address(this), block.timestamp);
 //             wbnbBal = IERC20(wbnb).balanceOf(address(this));
 //         } else {
 //             wbnbBal = IERC20(wbnb).balanceOf(address(this)).mul(45).div(1000);
 //         }
-        
+
 //         uint256 callFeeAmount = wbnbBal.mul(callFee).div(MAX_FEE);
 //         IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
-        
+
 //         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
 //         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-//         IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now);
-        
+//         IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp);
+
 //         uint256 rewardsFeeAmount = wbnbBal.mul(rewardsFee).div(MAX_FEE);
 //         IERC20(wbnb).safeTransfer(beefyRewardPool, rewardsFeeAmount);
 
@@ -140,7 +140,7 @@
 //     function _swapRewards() internal {
 //         if (output != want) {
 //             uint256 toWant = IERC20(output).balanceOf(address(this));
-//             IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWant, 0, outputToWantRoute, address(this), now);
+//             IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWant, 0, outputToWantRoute, address(this), block.timestamp);
 //         }
 //     }
 
@@ -187,13 +187,13 @@
 //     }
 
 //     function _giveAllowances() internal {
-//         IERC20(output).safeApprove(unirouter, uint256(-1));
+//         IERC20(output).safeApprove(unirouter, type(uint256).max);
 
 //         if (output != wbnb) {
-//             IERC20(wbnb).safeApprove(unirouter, uint256(-1));
+//             IERC20(wbnb).safeApprove(unirouter, type(uint256).max);
 //         }
 
-//         IERC20(want).safeApprove(targetRewardPool, uint256(-1));
+//         IERC20(want).safeApprove(targetRewardPool, type(uint256).max);
 //     }
 
 //     function _removeAllowances() internal {

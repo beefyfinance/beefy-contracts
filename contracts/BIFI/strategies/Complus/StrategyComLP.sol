@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -93,7 +93,7 @@ contract StrategyComLP is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _lpPair, uint8 _poolId, address _vault, address _strategist) public {
+    constructor(address _lpPair, uint8 _poolId, address _vault, address _strategist) {
         lpPair = _lpPair;
         lpToken0 = IUniswapV2Pair(lpPair).token0();
         lpToken1 = IUniswapV2Pair(lpPair).token1();
@@ -113,14 +113,14 @@ contract StrategyComLP is Ownable, Pausable {
             comToLp1Route = [com, wavax, lpToken1];
         }
 
-        IERC20(lpPair).safeApprove(masterchef, uint(-1));
-        IERC20(com).safeApprove(unirouter, uint(-1));
+        IERC20(lpPair).safeApprove(masterchef, type(uint).max);
+        IERC20(com).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
     }
 
     /**
@@ -157,7 +157,7 @@ contract StrategyComLP is Ownable, Pausable {
 
         uint256 withdrawalFee = pairBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
         IERC20(lpPair).safeTransfer(vault, pairBal.sub(withdrawalFee));
-    
+
     }
 
     /**
@@ -179,14 +179,14 @@ contract StrategyComLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Takes out 4.5% as system fees from the rewards. 
+     * @dev Takes out 4.5% as system fees from the rewards.
      * 0.25% -> Call Fee
      * 3.75% -> Treasury fee
      * 0.5% -> Strategist fee
      */
     function chargeFees() internal {
         uint256 toWavax = IERC20(com).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWavax, 0, comToWavaxRoute, address(this), now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWavax, 0, comToWavaxRoute, address(this), block.timestamp.add(600));
 
         uint256 wavaxBal = IERC20(wavax).balanceOf(address(this));
 
@@ -199,7 +199,7 @@ contract StrategyComLP is Ownable, Pausable {
         uint256 strategistFee = wavaxBal.mul(STRATEGIST_FEE).div(MAX_FEE);
         IERC20(wavax).safeTransfer(strategist, strategistFee);
     }
-    
+
     /**
      * @dev Swaps {com} for {lpToken0}, {lpToken1} & {wavax} using Complus.
      */
@@ -207,16 +207,16 @@ contract StrategyComLP is Ownable, Pausable {
         uint256 comHalf = IERC20(com).balanceOf(address(this)).div(2);
 
         if (lpToken0 != com) {
-            IUniswapRouter(unirouter).swapExactTokensForTokens(comHalf, 0, comToLp0Route, address(this), now.add(600));
+            IUniswapRouter(unirouter).swapExactTokensForTokens(comHalf, 0, comToLp0Route, address(this), block.timestamp.add(600));
         }
 
         if (lpToken1 != com) {
-            IUniswapRouter(unirouter).swapExactTokensForTokens(comHalf, 0, comToLp1Route, address(this), now.add(600));
+            IUniswapRouter(unirouter).swapExactTokensForTokens(comHalf, 0, comToLp1Route, address(this), block.timestamp.add(600));
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
+        IUniswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp.add(600));
     }
 
     /**
@@ -243,7 +243,7 @@ contract StrategyComLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
      * vault, ready to be migrated to the new strat.
      */
     function retireStrat() external {
@@ -281,14 +281,14 @@ contract StrategyComLP is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(lpPair).safeApprove(masterchef, uint(-1));
-        IERC20(com).safeApprove(unirouter, uint(-1));
+        IERC20(lpPair).safeApprove(masterchef, type(uint).max);
+        IERC20(com).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
     }
 
     /**

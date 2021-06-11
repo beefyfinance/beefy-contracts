@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -30,19 +30,19 @@ contract BeefyFeeBatch is Ownable, GasThrottler {
     address[] public wNativeToBifiRoute = [wNative, bifi];
 
     constructor(
-        address _treasury, 
-        address _rewardPool, 
-        address _unirouter, 
-        address _bifi, 
-        address _wNative 
-    ) public {
+        address _treasury,
+        address _rewardPool,
+        address _unirouter,
+        address _bifi,
+        address _wNative
+    ) {
         treasury = _treasury;
         rewardPool = _rewardPool;
         unirouter = _unirouter;
         bifi = _bifi;
         wNative  = _wNative ;
 
-        IERC20(wNative).safeApprove(unirouter, uint256(-1));
+        IERC20(wNative).safeApprove(unirouter, type(uint256).max);
     }
 
     event NewRewardPool(address oldRewardPool, address newRewardPool);
@@ -60,8 +60,8 @@ contract BeefyFeeBatch is Ownable, GasThrottler {
 
         uint256 treasuryHalf = wNativeBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wNative).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wNativeToBifiRoute, treasury, now);
-        
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wNativeToBifiRoute, treasury, block.timestamp);
+
         uint256 rewardsFeeAmount = wNativeBal.mul(REWARD_POOL_FEE).div(MAX_FEE);
         IERC20(wNative).safeTransfer(rewardPool, rewardsFeeAmount);
     }
@@ -80,12 +80,12 @@ contract BeefyFeeBatch is Ownable, GasThrottler {
     function setUnirouter(address _unirouter) external onlyOwner {
         emit NewUnirouter(unirouter, _unirouter);
 
-        IERC20(wNative).safeApprove(_unirouter, uint256(-1));
+        IERC20(wNative).safeApprove(_unirouter, type(uint256).max);
         IERC20(wNative).safeApprove(unirouter, 0);
 
         unirouter = _unirouter;
     }
-    
+
     // Rescue locked funds sent by mistake
     function inCaseTokensGetStuck(address _token) external onlyOwner {
         require(_token != wNative, "!safe");

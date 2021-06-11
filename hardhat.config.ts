@@ -4,7 +4,6 @@ import { task, HardhatUserConfig } from "hardhat/config";
 import { HttpNetworkConfig } from 'hardhat/types';
 
 import 'hardhat-deploy';
-import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
@@ -223,16 +222,7 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: "0.8.4",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
-      },
-      {
-        version: "0.6.12",
+        version: "0.7.6",
         settings: {
           optimizer: {
             enabled: true,

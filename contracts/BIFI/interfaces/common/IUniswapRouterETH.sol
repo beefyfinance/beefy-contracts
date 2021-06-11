@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.6;
 
 interface IUniswapRouterETH {
     function addLiquidity(
@@ -43,10 +43,10 @@ interface IUniswapRouterETH {
     ) external returns (uint amountToken, uint amountETH);
 
     function swapExactTokensForTokens(
-        uint amountIn, 
-        uint amountOutMin, 
-        address[] calldata path, 
-        address to, 
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
         uint deadline
     ) external returns (uint[] memory amounts);
 
@@ -54,7 +54,7 @@ interface IUniswapRouterETH {
         external
         payable
         returns (uint[] memory amounts);
-    
+
     function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
         external
         returns (uint[] memory amounts);

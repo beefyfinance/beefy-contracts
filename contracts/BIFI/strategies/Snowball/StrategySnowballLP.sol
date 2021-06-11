@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -38,7 +38,7 @@ contract StrategySnowballLP is Ownable, Pausable {
      * @dev Third Party Contracts:
      * {pngrouter} - Pangolin router
      * {poolId} - PoolId for MasterChef contract
-     * {icequeen} - snob MasterChef contract IceQueen 
+     * {icequeen} - snob MasterChef contract IceQueen
      */
     address constant public pngrouter = address(0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106);
     address constant public icequeen = address(0xB12531a2d758c7a8BF09f44FC88E646E1BF9D375);
@@ -92,7 +92,7 @@ contract StrategySnowballLP is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _lpPair, uint8 _poolId, address _vault, address _strategist) public {
+    constructor(address _lpPair, uint8 _poolId, address _vault, address _strategist) {
         lpPair = _lpPair;
         lpToken0 = IUniswapV2Pair(lpPair).token0();
         lpToken1 = IUniswapV2Pair(lpPair).token1();
@@ -112,15 +112,15 @@ contract StrategySnowballLP is Ownable, Pausable {
             snobToLp1Route = [snob, wavax, lpToken1];
         }
 
-        IERC20(lpPair).safeApprove(icequeen, uint(-1));
-        IERC20(snob).safeApprove(pngrouter, uint(-1));
-        IERC20(wavax).safeApprove(pngrouter, uint(-1));
+        IERC20(lpPair).safeApprove(icequeen, type(uint).max);
+        IERC20(snob).safeApprove(pngrouter, type(uint).max);
+        IERC20(wavax).safeApprove(pngrouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(pngrouter, 0);
-        IERC20(lpToken0).safeApprove(pngrouter, uint(-1));
+        IERC20(lpToken0).safeApprove(pngrouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(pngrouter, 0);
-        IERC20(lpToken1).safeApprove(pngrouter, uint(-1));
+        IERC20(lpToken1).safeApprove(pngrouter, type(uint).max);
     }
 
     /**
@@ -157,7 +157,7 @@ contract StrategySnowballLP is Ownable, Pausable {
 
         uint256 withdrawalFee = pairBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
         IERC20(lpPair).safeTransfer(vault, pairBal.sub(withdrawalFee));
-    
+
     }
 
     /**
@@ -179,7 +179,7 @@ contract StrategySnowballLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Takes out 4.5% as system fees from the rewards. 
+     * @dev Takes out 4.5% as system fees from the rewards.
      * 0.5% -> Call Fee
      * 0.5% -> Treasury fee
      * 0.5% -> Strategist fee
@@ -187,7 +187,7 @@ contract StrategySnowballLP is Ownable, Pausable {
      */
     function chargeFees() internal {
         uint256 toWavax = IERC20(snob).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(pngrouter).swapExactTokensForTokens(toWavax, 0, snobToWavaxRoute, address(this), now.add(600));
+        IUniswapRouter(pngrouter).swapExactTokensForTokens(toWavax, 0, snobToWavaxRoute, address(this), block.timestamp.add(600));
 
         uint256 wavaxBal = IERC20(wavax).balanceOf(address(this));
 
@@ -201,7 +201,7 @@ contract StrategySnowballLP is Ownable, Pausable {
         IERC20(wavax).safeTransfer(strategist, strategistFee);
 
     }
-    
+
     /**
      * @dev Swaps {png} for {lpToken0}, {lpToken1} & {wavax} using Pangolin.
      */
@@ -209,16 +209,16 @@ contract StrategySnowballLP is Ownable, Pausable {
         uint256 snobHalf = IERC20(snob).balanceOf(address(this)).div(2);
 
         if (lpToken0 != snob) {
-            IUniswapRouter(pngrouter).swapExactTokensForTokens(snobHalf, 0, snobToLp0Route, address(this), now.add(600));
+            IUniswapRouter(pngrouter).swapExactTokensForTokens(snobHalf, 0, snobToLp0Route, address(this), block.timestamp.add(600));
         }
 
         if (lpToken1 != snob) {
-            IUniswapRouter(pngrouter).swapExactTokensForTokens(snobHalf, 0, snobToLp1Route, address(this), now.add(600));
+            IUniswapRouter(pngrouter).swapExactTokensForTokens(snobHalf, 0, snobToLp1Route, address(this), block.timestamp.add(600));
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouter(pngrouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
+        IUniswapRouter(pngrouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp.add(600));
     }
 
     /**
@@ -245,7 +245,7 @@ contract StrategySnowballLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
      * vault, ready to be migrated to the new strat.
      */
     function retireStrat() external {
@@ -284,15 +284,15 @@ contract StrategySnowballLP is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(lpPair).safeApprove(icequeen, uint(-1));
-        IERC20(snob).safeApprove(pngrouter, uint(-1));
-        IERC20(wavax).safeApprove(pngrouter, uint(-1));
+        IERC20(lpPair).safeApprove(icequeen, type(uint).max);
+        IERC20(snob).safeApprove(pngrouter, type(uint).max);
+        IERC20(wavax).safeApprove(pngrouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(pngrouter, 0);
-        IERC20(lpToken0).safeApprove(pngrouter, uint(-1));
+        IERC20(lpToken0).safeApprove(pngrouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(pngrouter, 0);
-        IERC20(lpToken1).safeApprove(pngrouter, uint(-1));
+        IERC20(lpToken1).safeApprove(pngrouter, type(uint).max);
     }
 
     /**

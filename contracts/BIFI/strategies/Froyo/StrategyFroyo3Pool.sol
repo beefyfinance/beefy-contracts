@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -45,7 +45,7 @@ contract StrategyFroyo3Pool is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
         _giveAllowances();
     }
 
@@ -97,7 +97,7 @@ contract StrategyFroyo3Pool is StratManager, FeeManager {
     // performance fees
     function chargeFees() internal {
         uint256 toWftm = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWftm, 0, outputToWftmRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWftm, 0, outputToWftmRoute, address(this), block.timestamp);
 
         uint256 wftmBal = IERC20(wftm).balanceOf(address(this));
 
@@ -114,7 +114,7 @@ contract StrategyFroyo3Pool is StratManager, FeeManager {
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToDaiRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToDaiRoute, address(this), block.timestamp);
 
         uint256 daiBal = IERC20(dai).balanceOf(address(this));
         uint256[3] memory amounts = [0, daiBal, 0];
@@ -168,9 +168,9 @@ contract StrategyFroyo3Pool is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(stakingPool, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
-        IERC20(dai).safeApprove(poolLp, uint256(-1));
+        IERC20(want).safeApprove(stakingPool, type(uint256).max);
+        IERC20(output).safeApprove(unirouter, type(uint256).max);
+        IERC20(dai).safeApprove(poolLp, type(uint256).max);
     }
 
     function _removeAllowances() internal {
