@@ -7,6 +7,7 @@ import 'hardhat-deploy';
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
+import "@nomiclabs/hardhat-etherscan";
 
 import { addressBook } from "blockchain-addressbook";
 
@@ -213,6 +214,11 @@ const config: HardhatUserConfig = {
       avax: addressBook.avax.platforms.beefyfinance.vaultOwner,
       heco: addressBook.heco.platforms.beefyfinance.vaultOwner
     }
+  },
+  etherscan: {
+    // Your API key for Etherscan
+    // Obtain one at https://etherscan.io/
+    apiKey: "youretherscanapikey"
   },
   solidity: {
     compilers: [
