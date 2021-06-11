@@ -187,8 +187,6 @@ describe("VaultLifecycleTest", () => {
   it("Displays routing correctly", async () => {
     const { tokenAddressMap } = addressBook[chainName]
     const { strategy } = await setup();
-    // const outputToLp0Route = await strategy.outputToLp0Route();
-    // const outputToLp1Route = await strategy.outputToLp1Route();
 
     // outputToLp0Route
     console.log("outputToLp0Route:")
