@@ -1,5 +1,5 @@
 import { Contract } from "@ethersproject/contracts";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signers";
 import { expect, use } from "chai";
 import hre from "hardhat";
 import { HardhatRuntimeEnvironment, RequestArguments } from "hardhat/types";
@@ -8,9 +8,10 @@ import hardhatRPC from "../../utils/hardhatRPC";
 import { addressBook } from "blockchain-addressbook";
 const {
   QUICK: { address: QUICK },
-  WMATIC: { address: WMATIC }
+  WMATIC: { address: WMATIC },
+  USDC: {address: USDC},
+  miMATIC: {address: miMATIC},
 } = addressBook.polygon.tokens;
-const FFF = "0x9aCeB6f749396d1930aBc9e263eFc449E5e82c13";
 
 const ethers = hre.ethers;
 const deployments = hre.deployments;
@@ -22,17 +23,16 @@ import {
   getUnirouterData,
   getWrappedNativeAddr,
 } from "../../utils/testHelpers";
-import { delay } from "../../utils/timeHelpers";
 
 const TIMEOUT = 10 * 60 * 1000;
 
 const network = "polygon";
 
 const deployment = {
-  vault: "Moo Quick FFF-QUICK Vault",
-  strategy: "Moo Quick FFF-QUICK Strategy",
-  nativeToLp0: [WMATIC, QUICK],
-  nativeToLp1: [WMATIC, QUICK, FFF]
+  vault: "Moo Quick miMATIC-USDC Vault",
+  strategy: "Moo Quick miMATIC-USDC Strategy",
+  nativeToLp0: [WMATIC, USDC],
+  nativeToLp1: [WMATIC, USDC, miMATIC],
 };
 
 const nativeTokenAddr = getWrappedNativeAddr(network);
