@@ -11,10 +11,15 @@ const { delay } = require("../../utils/timeHelpers");
 
 const TIMEOUT = 10 * 60 * 1000;
 
+const chainName = "polygon"
+
+const { addressBook } = require("blockchain-addressbook")
+
 const config = {
-  vault: "0x11AE409Debb169097F984E6BFf2e4c2b6e2F2CAB",
+  vault: "0xB56447D201fe6A8888D5C34056821bD383f28f85",
   vaultContract: "BeefyVaultV6",
-  nativeTokenAddr: getWrappedNativeAddr("heco"),
+  strategyContract: "StrategyCommonRewardPoolLP",
+  nativeTokenAddr: getWrappedNativeAddr(chainName),
   testAmount: ethers.utils.parseEther("5"),
   keeper: "0x10aee6B5594942433e7Fc2783598c979B030eF3D",
   owner: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b",
@@ -27,8 +32,7 @@ describe("VaultLifecycleTest", () => {
     const vault = await ethers.getContractAt(config.vaultContract, config.vault);
 
     const strategyAddr = await vault.strategy();
-    console.log(strategyAddr, "is it here");
-    const strategy = await ethers.getContractAt("IStrategyComplete", strategyAddr);
+    const strategy = await ethers.getContractAt(config.strategyContract, strategyAddr);
 
     const unirouterAddr = await strategy.unirouter();
     const unirouterData = getUnirouterData(unirouterAddr);
@@ -178,5 +182,48 @@ describe("VaultLifecycleTest", () => {
     const { strategy } = await setup();
 
     expect(await strategy.paused()).to.equal(false);
+  }).timeout(TIMEOUT);
+
+  it("Displays routing correctly", async () => {
+    const { tokenAddressMap } = addressBook[chainName]
+    const { strategy } = await setup();
+
+    // outputToLp0Route
+    console.log("outputToLp0Route:")
+    for (let i=0; i<10; ++i) {
+      try {
+        const tokenAddress = await strategy.outputToLp0Route(i);
+        if (tokenAddress in tokenAddressMap) {
+          console.log(tokenAddressMap[tokenAddress])
+        } else {
+          console.log(tokenAddress)
+        }
+      } catch {
+        // reached end
+        if (i == 0) {
+          console.log("No routing, output must be lp0")
+        }
+        break;
+      }
+    }
+
+    // outputToLp1Route
+    console.log("outputToLp1Route:")
+    for (let i=0; i<10; ++i) {
+      try {
+        const tokenAddress = await strategy.outputToLp1Route(i);
+        if (tokenAddress in tokenAddressMap) {
+          console.log(tokenAddressMap[tokenAddress].symbol)
+        } else {
+          console.log(tokenAddress)
+        }
+      } catch {
+        // reached end
+        if (i == 0) {
+          console.log("No routing, output must be lp1")
+        }
+        break;
+      }
+    }
   }).timeout(TIMEOUT);
 });
