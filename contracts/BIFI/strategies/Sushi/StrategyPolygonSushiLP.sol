@@ -47,6 +47,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient,
+        uint callFee,
         address[] memory _outputToNativeRoute,
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
@@ -54,6 +55,8 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
         want = _want;
         poolId = _poolId;
         chef = _chef;
+
+        FeeManager.setCallFee(callFee);
 
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
