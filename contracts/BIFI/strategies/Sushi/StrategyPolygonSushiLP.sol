@@ -50,7 +50,7 @@ contract StrategyPolygonSushiLP is FeeManager {
         address[] memory _outputToNativeRoute,
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
-    ) FeeManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient, _callFee) public {
+    ) FeeManagerPolygon (_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient, _callFee) public {
         want = _want;
         poolId = _poolId;
         chef = _chef;

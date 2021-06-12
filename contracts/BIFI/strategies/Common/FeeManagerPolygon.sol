@@ -4,7 +4,7 @@ pragma solidity ^0.6.12;
 
 import "./StratManager.sol";
 
-contract FeeManager is StratManager {
+contract FeeManagerPolygon is StratManager {
     uint constant public STRATEGIST_FEE = 112;
     uint constant public MAX_FEE = 1000;
     uint constant public MAX_CALL_FEE = 111;
