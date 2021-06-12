@@ -11,7 +11,7 @@ import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/sushi/IMiniChefV2.sol";
 import "../Common/FeeManagerPolygon.sol";
 
-contract StrategyPolygonSushiLP is FeeManager {
+contract StrategyPolygonSushiLP is FeeManagerPolygon {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
