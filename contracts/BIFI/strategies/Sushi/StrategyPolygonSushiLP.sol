@@ -9,10 +9,9 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/sushi/IMiniChefV2.sol";
-import "../Common/StratManager.sol";
-import "../Common/FeeManager.sol";
+import "../Common/FeeManagerPolygon.sol";
 
-contract StrategyPolygonSushiLP is StratManager, FeeManager {
+contract StrategyPolygonSushiLP is FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -47,16 +46,14 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient,
-        uint callFee,
+        uint _callFee,
         address[] memory _outputToNativeRoute,
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) FeeManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient, _callFee) public {
         want = _want;
         poolId = _poolId;
         chef = _chef;
-
-        FeeManager.setCallFee(callFee);
 
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
