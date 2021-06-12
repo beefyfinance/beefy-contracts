@@ -55,20 +55,15 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
         poolId = _poolId;
         chef = _chef;
 
-        require(_outputToNativeRoute.length >= 2);
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
         
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
-        require(_outputToLp0Route[0] == output);
-        require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0);
         outputToLp0Route = _outputToLp0Route;
 
         lpToken1 = IUniswapV2Pair(want).token1();
-        require(_outputToLp1Route[0] == output);
-        require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1);
         outputToLp1Route = _outputToLp1Route;
 
         nativeToOutputRoute = new address[](_outputToNativeRoute.length);
@@ -128,7 +123,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
         if (toOutput > 0) {
             IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, nativeToOutputRoute, address(this), now);
         }
-        
+
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
@@ -173,7 +168,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMiniChefV2(chef).userInfo(poolId, address(this));	
+        (uint256 _amount, ) = IMiniChefV2(chef).userInfo(poolId, address(this));
         return _amount;
     }
 
