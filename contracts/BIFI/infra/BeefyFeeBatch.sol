@@ -49,6 +49,7 @@ contract BeefyFeeBatch is Ownable {
     event NewRewardPool(address oldRewardPool, address newRewardPool);
     event NewTreasury(address oldTreasury, address newTreasury);
     event NewUnirouter(address oldUnirouter, address newUnirouter);
+    event NewBifiRoute(address[] oldRoute, address[] newRoute);
 
     modifier onlyEOA() {
         require(msg.sender == tx.origin, "!EOA");
@@ -85,6 +86,14 @@ contract BeefyFeeBatch is Ownable {
         IERC20(wNative).safeApprove(unirouter, 0);
 
         unirouter = _unirouter;
+    }
+
+    function setNativeToBifiRoute(address[] memory _route) external onlyOwner {
+        require(_route[0] == wNative);
+        require(_route[_route.length - 1] == bifi);
+
+        emit NewBifiRoute(wNativeToBifiRoute, _route);
+        wNativeToBifiRoute = _route;
     }
     
     // Rescue locked funds sent by mistake
