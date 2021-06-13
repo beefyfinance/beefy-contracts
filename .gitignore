@@ -2,6 +2,7 @@
 /node_modules
 /.pnp
 .pnp.js
+.yarn
 
 # testing
 /coverage
@@ -31,3 +32,6 @@ bin/flatten.sh
 # Solidity
 /cache
 /artifacts
+
+# Typechain
+/typechain

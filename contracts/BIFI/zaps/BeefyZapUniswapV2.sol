@@ -15,8 +15,8 @@
 
 pragma solidity >=0.7.6;
 
-import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
-import '@openzeppelin/contracts/math/SafeMath.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@uniswap/lib/contracts/libraries/Babylonian.sol';
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 import '@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol';
@@ -208,7 +208,7 @@ contract BeefyZapUniswapV2 {
 
     function _approveTokenIfNeeded(address token, address spender) private {
         if (IERC20(token).allowance(address(this), spender) == 0) {
-            IERC20(token).safeApprove(spender, uint256(~0));
+            IERC20(token).safeApprove(spender, type(uint256).max);
         }
     }
 

@@ -4,6 +4,7 @@ import { task, HardhatUserConfig } from "hardhat/config";
 import { HttpNetworkConfig } from 'hardhat/types';
 
 import 'hardhat-deploy';
+import "@typechain/hardhat";
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";

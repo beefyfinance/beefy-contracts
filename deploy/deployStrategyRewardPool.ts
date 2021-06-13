@@ -9,14 +9,14 @@ import "../utils/registerSubsidy";
 import "../utils/hardhatRPC";
 import { contractAddressGenerator } from "../utils/predictAddresses";
 
-import vaults from "../vaults.json";
-import { addressBook } from "blockchain-addressbook";
-import rpc from "../utils/hardhatRPC";
+import vaults from "../deployData/LpRewardPool";
+import { addressBook, ChainId } from "blockchain-addressbook";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signers";
-const { miMATIC: { address: miMATIC }, USDC: { address: USDC }, QUICK: { address: QUICK }, WMATIC: { address: WMATIC }, ETH: { address: ETH } } = addressBook.polygon.tokens;
-const { quickswap, beefyfinance } = addressBook.polygon.platforms;
 
-function getVaultDeployOptions(deployer: SignerWithAddress, contract: String, args:any) {
+const VAULT_CONTRACT = "BeefyVaultV6";
+const STRAT_CONTRACT = "StrategyCommonRewardPoolLP";
+
+function getVaultDeployOptions(deployer: SignerWithAddress, contract: string, args:any) {
     return {
         from: deployer.address,
         contract: contract,
@@ -26,7 +26,7 @@ function getVaultDeployOptions(deployer: SignerWithAddress, contract: String, ar
     } as DeployOptions;
 }
 
-function getStratDeployOptions(deployer: SignerWithAddress, contract: String, args:any) {
+function getStratDeployOptions(deployer: SignerWithAddress, contract: string, args:any) {
     return {
         from: deployer.address,
         contract: contract,
@@ -55,10 +55,14 @@ const deployAllVaults: DeployFunction = async function (hre: HardhatRuntimeEnvir
 
     for (let vault in vaults) {
         let config = vaults[vault];
+        if (config.chainId != hre.network.config.chainId) continue;
+
+        let beefyfinance = addressBook[ChainId[config.chainId]].platforms.beefyfinance;
+
         let contractAddress = await contractAddressGenerator(deployer);
 
-        let mooName = `Moo ${config.platform} ${config.lp0.name}-${config.lp1.name}`;
-        let mooSymbol = `moo${config.platform}${config.lp0.name}-${config.lp1.name}`;
+        let mooName = `Moo ${config.platform} ${config.lp0.symbol}-${config.lp1.symbol}`;
+        let mooSymbol = `moo${config.platform}${config.lp0.symbol}-${config.lp1.symbol}`;
         let vaultName = `${mooName} Vault`;
         let stratName = `${mooName} Strategy`
 
@@ -90,47 +94,20 @@ const deployAllVaults: DeployFunction = async function (hre: HardhatRuntimeEnvir
             strategyParams.vault = deployedStrat.address;
         }
 
-        let vaultDeployOptions = getVaultDeployOptions(deployer, config.vaultContract, vaultParams);
-        let stratDeployOptions = getStratDeployOptions(deployer, config.strategyContract, strategyParams);
+        let vaultDeployOptions = getVaultDeployOptions(deployer, VAULT_CONTRACT, vaultParams);
+        let stratDeployOptions = getStratDeployOptions(deployer, STRAT_CONTRACT, strategyParams);
 
         if ((await fetchIfDifferent(vaultName, vaultDeployOptions)).differences
             || (await fetchIfDifferent(stratName, stratDeployOptions)).differences
         ) {
             vaultParams.strategy = (await contractAddress.next()).value as string;
             strategyParams.vault = (await contractAddress.next()).value as string;
-            vaultDeployOptions = getVaultDeployOptions(deployer, config.vaultContract, vaultParams);
-            stratDeployOptions = getStratDeployOptions(deployer, config.strategyContract, strategyParams);
+            vaultDeployOptions = getVaultDeployOptions(deployer, VAULT_CONTRACT, vaultParams);
+            stratDeployOptions = getStratDeployOptions(deployer, STRAT_CONTRACT, strategyParams);
         }
 
         const vaultDeployResult = await deploy(vaultName, vaultDeployOptions);
         const stratDeployResult = await deploy(stratName, stratDeployOptions);
-
-        // if (!vaultDeployResult.newlyDeployed) {
-        //     let curStrat = await read(vaultName, 'strategy');
-        //     if (curStrat != stratDeployResult.address) {
-        //         let stratCandidate = await read(vaultName, 'stratCandidate');
-        //         if (stratCandidate.implementation != stratDeployResult.address) {
-        //             await execute(vaultName, { from: deployer.address }, 'proposeStrat', stratDeployResult.address);
-        //         }
-        //         if ('dev' in hre.network.tags) {
-        //             let delay = await read(vaultName, 'approvalDelay');
-        //             let block = await rpc.getBlockByNumber(hre.network.provider, rpc.BlockTag.Latest, false);
-        //             let upgradeTime = stratCandidate.proposedTime + delay + 1;
-        //             if (block.header.timestamp.toNumber() < upgradeTime)
-        //                 await rpc.setNextBlockTimestamp(hre.network.provider, upgradeTime);
-        //             await execute(vaultName, { from: deployer.address }, 'upgradeStrat');
-        //         }
-        //     }
-        // }
-
-        // if ('dev' in hre.network.tags) {
-        //     if (vaultDeployResult.newlyDeployed) {
-        //         await execute(vaultName, { from: deployer.address }, 'transferOwnership', beefyfinance.vaultOwner);
-        //     }
-        //     if (stratDeployResult.newlyDeployed) {
-        //         await execute(stratName, { from: deployer.address }, 'transferOwnership', beefyfinance.vaultOwner);
-        //     }
-        // }
     }
 };
 export default deployAllVaults;

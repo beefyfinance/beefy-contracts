@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 
 interface IThugswapBEP20 {
     event Approval(address indexed owner, address indexed spender, uint value);

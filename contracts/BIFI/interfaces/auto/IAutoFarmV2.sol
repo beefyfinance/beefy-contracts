@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 
 interface IAutoFarmV2 {
     function poolInfo(uint256 _pid) external view returns (address, uint256, uint256, uint256, address);

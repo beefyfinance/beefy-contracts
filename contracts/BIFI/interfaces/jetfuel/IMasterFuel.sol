@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 
 interface IMasterFuel {
     function deposit(uint256 _pid, uint256 _amount) external;
