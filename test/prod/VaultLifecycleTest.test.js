@@ -11,18 +11,20 @@ const { delay } = require("../../utils/timeHelpers");
 
 const TIMEOUT = 10 * 60 * 1000;
 
-const chainName = "polygon"
-
 const { addressBook } = require("blockchain-addressbook")
 
+const chainName = "polygon"
+const chainData = addressBook[chainName]
+
 const config = {
-  vault: "0xB56447D201fe6A8888D5C34056821bD383f28f85",
+  vault: "0xdD32ca42a5bab4073D319BC26bb4e951e767Ba6E",
   vaultContract: "BeefyVaultV6",
   strategyContract: "StrategyCommonRewardPoolLP",
   nativeTokenAddr: getWrappedNativeAddr(chainName),
-  testAmount: ethers.utils.parseEther("5"),
-  keeper: "0x10aee6B5594942433e7Fc2783598c979B030eF3D",
-  owner: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b",
+  testAmount: ethers.utils.parseEther("1"),
+  keeper: chainData.platforms.beefyfinance.keeper,
+  strategyOwner: chainData.platforms.beefyfinance.strategyOwner,
+  vaultOwner: chainData.platforms.beefyfinance.vaultOwner,
 };
 
 describe("VaultLifecycleTest", () => {
@@ -158,8 +160,8 @@ describe("VaultLifecycleTest", () => {
     const stratOwner = await strategy.owner();
     const stratKeeper = await strategy.keeper();
 
-    expect(vaultOwner).to.equal(config.owner);
-    expect(stratOwner).to.equal(config.owner);
+    expect(vaultOwner).to.equal(config.vaultOwner);
+    expect(stratOwner).to.equal(config.strategyOwner);
     expect(stratKeeper).to.equal(config.keeper);
   }).timeout(TIMEOUT);
 
@@ -168,8 +170,8 @@ describe("VaultLifecycleTest", () => {
     const stratReference = await vault.strategy();
     const vaultReference = await strategy.vault();
 
-    expect(stratReference).to.equal(strategy.address);
-    expect(vaultReference).to.equal(vault.address);
+    expect(stratReference).to.equal(ethers.utils.getAddress(strategy.address));
+    expect(vaultReference).to.equal(ethers.utils.getAddress(vault.address));
   }).timeout(TIMEOUT);
 
   // TO-DO: Check that unpause deposits again into the farm.
