@@ -18,17 +18,10 @@ import { BeefyVaultV6__factory, StrategyCommonChefSingle__factory } from "../typ
 const VAULT_CONTRACT = "BeefyVaultV6";
 const STRAT_CONTRACT = "StrategyCommonChefSingle";
 
-function getVaultDeployOptions(deployer: SignerWithAddress, contract: string, args:Parameters<BeefyVaultV6__factory["deploy"]>) {
-    return {
-        from: deployer.address,
-        contract: contract,
-        args: args,
-        skipIfAlreadyDeployed: true,
-        log: true
-    } as DeployOptions;
-}
+type VaultConstructorParams = Parameters<BeefyVaultV6__factory["deploy"]>;
+type StratConstructorParams = Parameters<StrategyCommonChefSingle__factory["deploy"]>;
 
-function getStratDeployOptions(deployer: SignerWithAddress, contract: string, args:Parameters<StrategyCommonChefSingle__factory["deploy"]>) {
+function getDeployOptions<P extends any[]>(deployer: SignerWithAddress, contract: string, args:P) {
     return {
         from: deployer.address,
         contract: contract,
@@ -60,14 +53,14 @@ const deployAllVaults: DeployFunction = async function (hre: HardhatRuntimeEnvir
             let vaultName = `${mooName} Vault`;
             let stratName = `${mooName} Strategy`
 
-            let vaultParams:Parameters<BeefyVaultV6__factory["deploy"]> = [
+            let vaultParams:VaultConstructorParams = [
                 '0xStrategy',
                 mooName,
                 mooSymbol,
                 21600,
             ]
 
-            let strategyParams:Parameters<StrategyCommonChefSingle__factory["deploy"]> = [
+            let strategyParams:StratConstructorParams = [
                 config.want.address,
                 config.poolId,
                 config.chef,
@@ -87,11 +80,11 @@ const deployAllVaults: DeployFunction = async function (hre: HardhatRuntimeEnvir
             let stratDeployOptions:DeployOptions | null = null;
 
             if (deployedVault && deployedStrat) {
-                vaultParams[0] = deployedVault.address;
-                strategyParams[4] = deployedStrat.address;
+                vaultParams[0] = deployedStrat.address;
+                strategyParams[4] = deployedVault.address;
 
-                vaultDeployOptions = getVaultDeployOptions(deployer, VAULT_CONTRACT, vaultParams);
-                stratDeployOptions = getStratDeployOptions(deployer, STRAT_CONTRACT, strategyParams);
+                vaultDeployOptions = getDeployOptions<VaultConstructorParams>(deployer, VAULT_CONTRACT, vaultParams);
+                stratDeployOptions = getDeployOptions<StratConstructorParams>(deployer, STRAT_CONTRACT, strategyParams);
 
                 if ((await fetchIfDifferent(vaultName, vaultDeployOptions)).differences
                     || (await fetchIfDifferent(stratName, stratDeployOptions)).differences
@@ -102,10 +95,10 @@ const deployAllVaults: DeployFunction = async function (hre: HardhatRuntimeEnvir
             }
 
             if (!deployedVault || !deployedStrat) {
-                vaultParams[0] = (await contractAddress.next()).value as string;
                 strategyParams[3] = (await contractAddress.next()).value as string;
-                vaultDeployOptions = getVaultDeployOptions(deployer, VAULT_CONTRACT, vaultParams);
-                stratDeployOptions = getStratDeployOptions(deployer, STRAT_CONTRACT, strategyParams);
+                vaultParams[0] = (await contractAddress.next()).value as string;
+                vaultDeployOptions = getDeployOptions<VaultConstructorParams>(deployer, VAULT_CONTRACT, vaultParams);
+                stratDeployOptions = getDeployOptions<StratConstructorParams>(deployer, STRAT_CONTRACT, strategyParams);
             }
 
             if (vaultDeployOptions === null) throw "Impossible";
