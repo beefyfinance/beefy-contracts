@@ -29,8 +29,8 @@ const TIMEOUT = 10 * 60 * 1000;
 const network = "polygon";
 
 const deployment = {
-  vault: "Moo Quick miMATIC-USDC Vault",
-  strategy: "Moo Quick miMATIC-USDC Strategy",
+  vault: "Moo Quick USDC-miMATIC Vault",
+  strategy: "Moo Quick USDC-miMATIC Strategy",
   nativeToLp0: [WMATIC, USDC],
   nativeToLp1: [WMATIC, USDC, miMATIC],
 };
