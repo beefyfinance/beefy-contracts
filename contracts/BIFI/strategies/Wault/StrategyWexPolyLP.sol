@@ -66,6 +66,7 @@ contract StrategyWexPolyLP is StratManager, FeeManager {
         outputToLp1Route = _outputToLp1Route;
 
         _giveAllowances();
+        callFee = 11;
     }
 
     // puts the funds to work
