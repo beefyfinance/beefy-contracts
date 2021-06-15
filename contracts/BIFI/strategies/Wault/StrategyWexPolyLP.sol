@@ -66,6 +66,7 @@ contract StrategyWexPolyLP is StratManager, FeeManager {
         outputToLp1Route = _outputToLp1Route;
 
         _giveAllowances();
+        setCallFee(11);
     }
 
     // puts the funds to work
@@ -157,6 +158,18 @@ contract StrategyWexPolyLP is StratManager, FeeManager {
     function balanceOfPool() public view returns (uint256) {
         (uint256 _amount, ) = IWaultMasterChef(chef).userInfo(poolId, address(this));	
         return _amount;
+    }
+
+    function outputToNative() external view returns(address[] memory) {
+        return outputToNativeRoute;
+    }
+
+    function outputToLp0() external view returns(address[] memory) {
+        return outputToLp0Route;
+    }
+
+    function outputToLp1() external view returns(address[] memory) {
+        return outputToLp1Route;
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
