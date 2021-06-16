@@ -8,15 +8,15 @@ const ethers = hardhat.ethers;
 
 const config = {
     strategyName: "StrategyLendhub",
-    mooName: "Moo Lendhub ETH",
-    mooSymbol: "mooLendhubETH",
+    mooName: "Moo Lendhub DOT",
+    mooSymbol: "mooLendhubDOT",
     delay: 21600,
-    iToken: "0x505Bdd86108E7d9d662234F6a5F8A4CBAeCE81AB",
-    borrowRate: 78,
-    borrowRateMax: 80,
+    iToken: "0x6371531A3493466788179AEECe337d38117fa1ac",
+    borrowRate: 68,
+    borrowRateMax: 70,
     borrowDepth: 4,
     minLeverage: 1000000000000,
-    markets: ["0x505Bdd86108E7d9d662234F6a5F8A4CBAeCE81AB"],
+    markets: ["0x6371531A3493466788179AEECe337d38117fa1ac"],
     unirouter: "0xED7d5F38C79115ca12fe6C0041abb22F0A06C300",
     keeper: "0x10aee6B5594942433e7Fc2783598c979B030eF3D",
     strategist:"0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b",
@@ -62,8 +62,29 @@ async function main() {
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
 
-  await registerSubsidy(vault.address, deployer);
-  await registerSubsidy(strategy.address, deployer);
+  await hardhat.run("verify:verify", {
+    address: vault.address,
+    constructorArguments: [
+      strategy.address, config.mooName, config.mooSymbol, config.delay
+    ],
+  })
+  
+  await hardhat.run("verify:verify", {
+    address: strategy.address,
+    constructorArguments: [
+      config.iToken,
+      config.borrowRate,
+      config.borrowRateMax,
+      config.borrowDepth,
+      config.minLeverage,
+      config.markets,
+      vault.address,
+      config.unirouter,
+      config.keeper,
+      config.strategist,
+      config.beefyFeeRecipient
+    ],
+  })
 }
 
 main()

@@ -4,28 +4,28 @@ const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const getNetworkRpc = require("../utils/getNetworkRpc");
 const { addressBook } = require("blockchain-addressbook")
-const { LHB: {address: LHB}, WHT: {address: WHT}  } = addressBook.heco.tokens;
+const { LHB: {address: LHB}, WHT: {address: WHT}, USDT: {address: USDT}  } = addressBook.heco.tokens;
 const { beefyfinance } = addressBook.heco.platforms;
 
 const ethers = hardhat.ethers;
 
 const vaultParams = {
-  mooName: "Moo Lendhub LHB-WHT",
-  mooSymbol: "mooLendhubLHB-WHT",
+  mooName: "Moo Lendhub LHB-USDT",
+  mooSymbol: "mooLendhubLHB-USDT",
   delay: 21600,
 }
 
 const strategyParams = {
-  want: "0x8c31344A6cdadEA60715d06b55790F21d967d8D2",
-  poolId: 0,
+  want: "0x023f375a51Af8645D7446ba5942BAeDc53B0582D",
+  poolId: 1,
   chef: "0x00A5BF6ab1166bce027D9d4b0E829f92781ab1A7",
   unirouter: "0xED7d5F38C79115ca12fe6C0041abb22F0A06C300",
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   outputToNativeRoute: [ LHB, WHT ],
-  outputToLp0Route: [ LHB, WHT ],
-  outputToLp1Route: [  ]
+  outputToLp0Route: [  ],
+  outputToLp1Route: [ LHB, USDT ]
 };
 
 const contractNames = {
@@ -68,6 +68,9 @@ async function main() {
     strategyParams.outputToLp1Route
   );
   await strategy.deployed();
+  
+  console.log("Vault deployed to:", vault.address);
+  console.log("Strategy deployed to:", strategy.address);
 
   await hardhat.run("verify:verify", {
     address: vault.address,
@@ -92,9 +95,6 @@ async function main() {
     strategyParams.outputToLp1Route
     ],
   })
-
-  console.log("Vault deployed to:", vault.address);
-  console.log("Strategy deployed to:", strategy.address);
 
   if (hardhat.network.name === "bsc") {
     await registerSubsidy(vault.address, deployer);

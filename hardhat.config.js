@@ -95,7 +95,7 @@ module.exports = {
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: "youretherscanapikey"
+    apiKey: ""
   },
   solidity: {
     compilers: [

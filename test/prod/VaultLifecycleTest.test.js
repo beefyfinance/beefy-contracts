@@ -12,12 +12,13 @@ const { delay } = require("../../utils/timeHelpers");
 const TIMEOUT = 10 * 60 * 1000;
 
 const config = {
-  vault: "0x11AE409Debb169097F984E6BFf2e4c2b6e2F2CAB",
+  vault: "0x71f20694f66432f08A0D0B71a07A7CBDeA40971E",
   vaultContract: "BeefyVaultV6",
-  nativeTokenAddr: getWrappedNativeAddr("heco"),
+  nativeTokenAddr: getWrappedNativeAddr("bsc"),
   testAmount: ethers.utils.parseEther("5"),
   keeper: "0x10aee6B5594942433e7Fc2783598c979B030eF3D",
-  owner: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b",
+  vaultOwner: "0x8f0fFc8C7FC3157697Bdbf94B328F7141d6B41de",
+  strategyOwner: "0x8f0fFc8C7FC3157697Bdbf94B328F7141d6B41de",
 };
 
 describe("VaultLifecycleTest", () => {
@@ -153,8 +154,8 @@ describe("VaultLifecycleTest", () => {
     const stratOwner = await strategy.owner();
     const stratKeeper = await strategy.keeper();
 
-    expect(vaultOwner).to.equal(config.owner);
-    expect(stratOwner).to.equal(config.owner);
+    expect(vaultOwner).to.equal(config.vaultOwner);
+    expect(stratOwner).to.equal(config.strategyOwner);
     expect(stratKeeper).to.equal(config.keeper);
   }).timeout(TIMEOUT);
 
