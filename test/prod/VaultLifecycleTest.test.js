@@ -11,14 +11,20 @@ const { delay } = require("../../utils/timeHelpers");
 
 const TIMEOUT = 10 * 60 * 1000;
 
+const { addressBook } = require("blockchain-addressbook")
+
+const chainName = "polygon"
+const chainData = addressBook[chainName]
+
 const config = {
-  vault: "0x71f20694f66432f08A0D0B71a07A7CBDeA40971E",
+  vault: "0xdD32ca42a5bab4073D319BC26bb4e951e767Ba6E",
   vaultContract: "BeefyVaultV6",
-  nativeTokenAddr: getWrappedNativeAddr("bsc"),
-  testAmount: ethers.utils.parseEther("5"),
-  keeper: "0x10aee6B5594942433e7Fc2783598c979B030eF3D",
-  vaultOwner: "0x8f0fFc8C7FC3157697Bdbf94B328F7141d6B41de",
-  strategyOwner: "0x8f0fFc8C7FC3157697Bdbf94B328F7141d6B41de",
+  strategyContract: "StrategyCommonRewardPoolLP",
+  nativeTokenAddr: getWrappedNativeAddr(chainName),
+  testAmount: ethers.utils.parseEther("1"),
+  keeper: chainData.platforms.beefyfinance.keeper,
+  strategyOwner: chainData.platforms.beefyfinance.strategyOwner,
+  vaultOwner: chainData.platforms.beefyfinance.vaultOwner,
 };
 
 describe("VaultLifecycleTest", () => {
@@ -28,7 +34,7 @@ describe("VaultLifecycleTest", () => {
     const vault = await ethers.getContractAt(config.vaultContract, config.vault);
 
     const strategyAddr = await vault.strategy();
-    const strategy = await ethers.getContractAt("IStrategyComplete", strategyAddr);
+    const strategy = await ethers.getContractAt(config.strategyContract, strategyAddr);
 
     const unirouterAddr = await strategy.unirouter();
     const unirouterData = getUnirouterData(unirouterAddr);
@@ -164,8 +170,8 @@ describe("VaultLifecycleTest", () => {
     const stratReference = await vault.strategy();
     const vaultReference = await strategy.vault();
 
-    expect(stratReference).to.equal(strategy.address);
-    expect(vaultReference).to.equal(vault.address);
+    expect(stratReference).to.equal(ethers.utils.getAddress(strategy.address));
+    expect(vaultReference).to.equal(ethers.utils.getAddress(vault.address));
   }).timeout(TIMEOUT);
 
   // TO-DO: Check that unpause deposits again into the farm.
@@ -178,5 +184,48 @@ describe("VaultLifecycleTest", () => {
     const { strategy } = await setup();
 
     expect(await strategy.paused()).to.equal(false);
+  }).timeout(TIMEOUT);
+
+  it("Displays routing correctly", async () => {
+    const { tokenAddressMap } = addressBook[chainName]
+    const { strategy } = await setup();
+
+    // outputToLp0Route
+    console.log("outputToLp0Route:")
+    for (let i=0; i<10; ++i) {
+      try {
+        const tokenAddress = await strategy.outputToLp0Route(i);
+        if (tokenAddress in tokenAddressMap) {
+          console.log(tokenAddressMap[tokenAddress])
+        } else {
+          console.log(tokenAddress)
+        }
+      } catch {
+        // reached end
+        if (i == 0) {
+          console.log("No routing, output must be lp0")
+        }
+        break;
+      }
+    }
+
+    // outputToLp1Route
+    console.log("outputToLp1Route:")
+    for (let i=0; i<10; ++i) {
+      try {
+        const tokenAddress = await strategy.outputToLp1Route(i);
+        if (tokenAddress in tokenAddressMap) {
+          console.log(tokenAddressMap[tokenAddress].symbol)
+        } else {
+          console.log(tokenAddress)
+        }
+      } catch {
+        // reached end
+        if (i == 0) {
+          console.log("No routing, output must be lp1")
+        }
+        break;
+      }
+    }
   }).timeout(TIMEOUT);
 });

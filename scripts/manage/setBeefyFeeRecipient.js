@@ -3,9 +3,9 @@ const hardhat = require("hardhat");
 const ethers = hardhat.ethers;
 
 const abi = ["function setBeefyFeeRecipient(address _beefyFeeRecipient) public"];
-const newRecipient = "0x86d38c6b6313c5A3021D68D1F57CF5e69197592A";
+const newRecipient = "0x425Ee7d8dc6Ee14878D8F2D2b44d896858F4A818";
 
-const contracts = ["0xbE5370a50d11D10475089222497A4172bdC600a4", "0x3B289DcCd55B46596FbBAFfEd6469a85d69426Dc"];
+const contracts = ["0xbE5370a50d11D10475089222497A4172bdC600a4"];
 
 async function main() {
   for (const address of contracts) {

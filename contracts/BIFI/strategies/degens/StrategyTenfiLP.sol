@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -8,24 +7,25 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IMasterChef.sol";
+import "../../interfaces/auto/IAutoFarmV2.sol";
 import "../../utils/GasThrottler.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyMemeFarmLP is StratManager, FeeManager, GasThrottler {
+contract StrategyTenfiLP is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
     address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
-    address constant public output = address(0x206340f3361404910F45cA0893980EF3f9b418ea);
+    address constant public busd = address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
+    address constant public output = address(0xd15C444F1199Ae72795eba15E8C1db44E47abF62);
     address public want;
     address public lpToken0;
     address public lpToken1;
 
     // Third party contracts
-    address constant public masterchef = address(0xa0A4Ab8c15c5b7C9f0d73a23786B5B51BA2d5399);
+    address constant public masterchef = address(0x264A1b3F6db28De4D3dD4eD23Ab31A468B0C1A96);
     uint256 public poolId;
 
     // Routes
@@ -52,14 +52,14 @@ contract StrategyMemeFarmLP is StratManager, FeeManager, GasThrottler {
         lpToken1 = IUniswapV2Pair(want).token1();
         poolId = _poolId;
 
-        if (lpToken0 == wbnb) {
-            outputToLp0Route = [output, wbnb];
+        if (lpToken0 == wbnb || lpToken0 == busd) {
+            outputToLp0Route = [output, lpToken0];
         } else if (lpToken0 != output) {
             outputToLp0Route = [output, wbnb, lpToken0];
         }
 
-        if (lpToken1 == wbnb) {
-            outputToLp1Route = [output, wbnb];
+        if (lpToken1 == wbnb || lpToken1 == busd) {
+            outputToLp1Route = [output, lpToken1];
         } else if (lpToken1 != output) {
             outputToLp1Route = [output, wbnb, lpToken1];
         }
@@ -72,7 +72,7 @@ contract StrategyMemeFarmLP is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IMasterChef(masterchef).deposit(poolId, wantBal);
+            IAutoFarmV2(masterchef).deposit(poolId, wantBal);
         }
     }
 
@@ -82,7 +82,7 @@ contract StrategyMemeFarmLP is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterChef(masterchef).withdraw(poolId, _amount.sub(wantBal));
+            IAutoFarmV2(masterchef).withdraw(poolId, _amount.sub(wantBal));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -100,7 +100,7 @@ contract StrategyMemeFarmLP is StratManager, FeeManager, GasThrottler {
 
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA gasThrottle {
-        IMasterChef(masterchef).deposit(poolId, 0);
+        IAutoFarmV2(masterchef).deposit(poolId, 0);
         chargeFees();
         addLiquidity();
         deposit();
@@ -154,15 +154,14 @@ contract StrategyMemeFarmLP is StratManager, FeeManager, GasThrottler {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMasterChef(masterchef).userInfo(poolId, address(this));
-        return _amount;
+        return IAutoFarmV2(masterchef).stakedWantTokens(poolId, address(this));
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChef(masterchef).emergencyWithdraw(poolId);
+        IAutoFarmV2(masterchef).emergencyWithdraw(poolId);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -171,7 +170,7 @@ contract StrategyMemeFarmLP is StratManager, FeeManager, GasThrottler {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMasterChef(masterchef).emergencyWithdraw(poolId);
+        IAutoFarmV2(masterchef).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {

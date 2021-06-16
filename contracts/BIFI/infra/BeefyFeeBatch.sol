@@ -8,9 +8,8 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../interfaces/common/IUniswapRouterETH.sol";
-import "../utils/GasThrottler.sol";
 
-contract BeefyFeeBatch is Ownable, GasThrottler {
+contract BeefyFeeBatch is Ownable {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -27,7 +26,7 @@ contract BeefyFeeBatch is Ownable, GasThrottler {
     uint constant public REWARD_POOL_FEE = 860;
     uint constant public MAX_FEE = 1000;
 
-    address[] public wNativeToBifiRoute = [wNative, bifi];
+    address[] public wNativeToBifiRoute;
 
     constructor(
         address _treasury, 
@@ -42,12 +41,15 @@ contract BeefyFeeBatch is Ownable, GasThrottler {
         bifi = _bifi;
         wNative  = _wNative ;
 
+        wNativeToBifiRoute = [wNative, bifi];
+
         IERC20(wNative).safeApprove(unirouter, uint256(-1));
     }
 
     event NewRewardPool(address oldRewardPool, address newRewardPool);
     event NewTreasury(address oldTreasury, address newTreasury);
     event NewUnirouter(address oldUnirouter, address newUnirouter);
+    event NewBifiRoute(address[] oldRoute, address[] newRoute);
 
     modifier onlyEOA() {
         require(msg.sender == tx.origin, "!EOA");
@@ -55,7 +57,7 @@ contract BeefyFeeBatch is Ownable, GasThrottler {
     }
 
     // Main function. Divides Beefy's profits.
-    function harvest() public onlyEOA gasThrottle {
+    function harvest() public onlyEOA {
         uint256 wNativeBal = IERC20(wNative).balanceOf(address(this));
 
         uint256 treasuryHalf = wNativeBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
@@ -84,6 +86,14 @@ contract BeefyFeeBatch is Ownable, GasThrottler {
         IERC20(wNative).safeApprove(unirouter, 0);
 
         unirouter = _unirouter;
+    }
+
+    function setNativeToBifiRoute(address[] memory _route) external onlyOwner {
+        require(_route[0] == wNative);
+        require(_route[_route.length - 1] == bifi);
+
+        emit NewBifiRoute(wNativeToBifiRoute, _route);
+        wNativeToBifiRoute = _route;
     }
     
     // Rescue locked funds sent by mistake

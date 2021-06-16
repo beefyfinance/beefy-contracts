@@ -3,11 +3,11 @@ const hardhat = require("hardhat");
 const ethers = hardhat.ethers;
 
 const config = {
-  treasury: "0xA3e3Af161943CfB3941B631676134bb048739727",
-  rewardPool: "0x86d38c6b6313c5A3021D68D1F57CF5e69197592A",
-  unirouter: "0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106",
-  bifi: "0xd6070ae98b8069de6B494332d1A1a81B6179D960",
-  wNative: "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
+  treasury: "0xe6CcE165Aa3e52B2cC55F17b1dBC6A8fe5D66610",
+  rewardPool: "0x7fB900C14c9889A559C777D016a885995cE759Ee",
+  unirouter: "0xF491e7B69E4244ad4002BC14e878a34207E38c29",
+  bifi: "0xd6070ae98b8069de6b494332d1a1a81b6179d960",
+  wNative: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",
 };
 
 async function main() {
@@ -28,7 +28,7 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch((error) => {
+  .catch(error => {
     console.error(error);
     process.exit(1);
   });

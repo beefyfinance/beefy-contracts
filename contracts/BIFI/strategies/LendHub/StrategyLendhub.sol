@@ -109,7 +109,7 @@ contract StrategyLendhub is StratManager, FeeManager {
         if (_amount < minLeverage) { return; }
 
         for (uint i = 0; i < borrowDepth; i++) {
-            IVToken(iToken).mint( _amount);
+            IVToken(iToken).mint(_amount);
             _amount = _amount.mul(borrowRate).div(100);
             IVToken(iToken).borrow(_amount);
         }

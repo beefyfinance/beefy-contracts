@@ -49,8 +49,7 @@ task("harvest", "Harvests a given strategy.")
   });
 
 let deployerAccount;
-if (process.env.DEPLOYER_PK)
-  deployerAccount = [process.env.DEPLOYER_PK];
+if (process.env.DEPLOYER_PK) deployerAccount = [process.env.DEPLOYER_PK];
 
 module.exports = {
   defaultNetwork: "localhost",
@@ -95,7 +94,7 @@ module.exports = {
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: ""
+    apiKey: "youretherscanapikey",
   },
   solidity: {
     compilers: [
