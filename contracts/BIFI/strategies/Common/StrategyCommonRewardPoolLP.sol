@@ -91,8 +91,8 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
         if (tx.origin == owner() || paused()) {
             IERC20(want).safeTransfer(vault, wantBal);
         } else {
-            uint256 withdrawalFee = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFee));
+            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
+            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
         }
     }
 
