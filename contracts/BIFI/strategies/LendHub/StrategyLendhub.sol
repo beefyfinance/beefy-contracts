@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -109,7 +110,7 @@ contract StrategyLendhub is StratManager, FeeManager {
         if (_amount < minLeverage) { return; }
 
         for (uint i = 0; i < borrowDepth; i++) {
-            IVToken(iToken).mint( _amount);
+            IVToken(iToken).mint(_amount);
             _amount = _amount.mul(borrowRate).div(100);
             IVToken(iToken).borrow(_amount);
         }

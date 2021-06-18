@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -91,8 +92,8 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
         if (tx.origin == owner() || paused()) {
             IERC20(want).safeTransfer(vault, wantBal);
         } else {
-            uint256 withdrawalFee = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFee));
+            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
+            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
         }
     }
 

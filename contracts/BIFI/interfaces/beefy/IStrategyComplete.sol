@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -21,6 +22,9 @@ interface IStrategyComplete {
     function paused() external view returns (bool);
     function owner() external view returns (address);
     function keeper() external view returns (address);
+    function setKeeper(address) external;
     function unirouter() external view returns (address);
+    function beefyFeeRecipient() external view returns (address);
+    function setBeefyFeeRecipient(address) external;
 }
 

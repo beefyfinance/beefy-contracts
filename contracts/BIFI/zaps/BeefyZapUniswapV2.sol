@@ -13,10 +13,10 @@
 // @author Wivern for Beefy.Finance
 // @notice This contract adds liquidity to Uniswap V2 compatible liquidity pair pools and stake.
 
-pragma solidity >=0.7.6;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@uniswap/lib/contracts/libraries/Babylonian.sol';
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 import '@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol';
@@ -186,10 +186,10 @@ contract BeefyZapUniswapV2 {
     }
 
     function _getSwapAmount(uint256 investmentA, uint256 reserveA, uint256 reserveB) private view returns (uint256 swapAmount) {
-        uint256 halfInvestment = SafeMath.div(investmentA, 2);
+        uint256 halfInvestment = investmentA / 2;
         uint256 nominator = router.getAmountOut(halfInvestment, reserveA, reserveB);
         uint256 denominator = router.quote(halfInvestment, reserveA.add(halfInvestment), reserveB.sub(nominator));
-        swapAmount = investmentA.sub(Babylonian.sqrt(SafeMath.div(halfInvestment.mul(halfInvestment).mul(nominator), denominator)));
+        swapAmount = investmentA.sub(Babylonian.sqrt(halfInvestment * halfInvestment * nominator / denominator));
     }
 
     function estimateSwap(address beefyVault, address tokenIn, uint256 fullInvestmentIn) public view returns(uint256 swapAmountIn, uint256 swapAmountOut, address swapTokenOut) {

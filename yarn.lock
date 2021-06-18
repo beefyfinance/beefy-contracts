@@ -548,7 +548,7 @@
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-2.5.1.tgz#c76e3fc57aa224da3718ec351812a4251289db31"
   integrity sha512-qIy6tLx8rtybEsIOAlrM4J/85s2q2nPkDqj/Rx46VakBZ0LwtFhXIVub96LXHczQX0vaqmAueDqNPXtbSXSaYQ==
 
-"@openzeppelin/contracts@^4.0.0":
+"@openzeppelin/contracts@^4.1.0":
   version "4.1.0"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.1.0.tgz#baec89a7f5f73e3d8ea582a78f1980134b605375"
   integrity sha512-TihZitscnaHNcZgXGj9zDLDyCqjziytB4tMCwXq0XimfWkAjBYyk5/pOsDbbwcavhlc79HhpTEpQcrMnPVa1mw==
@@ -1854,7 +1854,7 @@ blakejs@^1.1.0:
   resolved "https://registry.yarnpkg.com/blakejs/-/blakejs-1.1.0.tgz#69df92ef953aa88ca51a32df6ab1c54a155fc7a5"
   integrity sha1-ad+S75U6qIylGjLfarHFShVfx6U=
 
-blockchain-addressbook@^0.1.37:
+blockchain-addressbook@^0.1.39:
   version "0.1.55"
   resolved "https://registry.yarnpkg.com/blockchain-addressbook/-/blockchain-addressbook-0.1.55.tgz#4f65693e746d1f0280961c544721bce9679441b7"
   integrity sha512-URKy4G1zGzIIeTpyNRLR7qMPgBciQakzCJEJcZzGj/o/58a1eG8PTFKkSNeOhntxXrkixYCDb1LHU8Req4bofQ==
@@ -3379,7 +3379,7 @@ ethereumjs-wallet@0.6.5:
     utf8 "^3.0.0"
     uuid "^3.3.2"
 
-ethers@^5.0.0, ethers@^5.0.1, ethers@^5.0.2, ethers@^5.3.0:
+ethers@^5.0.0, ethers@^5.0.1, ethers@^5.0.2, ethers@^5.0.31:
   version "5.3.1"
   resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.3.1.tgz#1f018f0aeb651576cd84fd987a45f0b99646d761"
   integrity sha512-xCKmC0gsZ9gks89ZfK3B1y6LlPdvX5fxDtu9SytnpdDJR1M7pmJI+4H0AxQPMgUYr7GtQdmECLR0gWdJQ+lZYw==
@@ -5615,7 +5615,7 @@ mocha@^7.1.2:
     yargs-parser "13.1.2"
     yargs-unparser "1.6.0"
 
-mocha@^8.4.0:
+mocha@^8.2.1:
   version "8.4.0"
   resolved "https://registry.yarnpkg.com/mocha/-/mocha-8.4.0.tgz#677be88bf15980a3cae03a73e10a0fc3997f0cff"
   integrity sha512-hJaO0mwDXmZS4ghXsvPVriOhsxQ7ofcpQdm8dE+jISUOKopitvnXFQmpRR7jd2K6VBG6E26gU3IAbXXGIbu4sQ==
