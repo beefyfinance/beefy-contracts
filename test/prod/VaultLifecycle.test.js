@@ -11,10 +11,10 @@ const { delay } = require("../../utils/timeHelpers");
 
 const TIMEOUT = 10 * 60 * 1000;
 
-const { addressBook } = require("blockchain-addressbook")
+const { addressBook } = require("blockchain-addressbook");
 
-const chainName = "polygon"
-const chainData = addressBook[chainName]
+const chainName = "polygon";
+const chainData = addressBook[chainName];
 
 const config = {
   vault: "0xdD32ca42a5bab4073D319BC26bb4e951e767Ba6E",
@@ -187,42 +187,42 @@ describe("VaultLifecycleTest", () => {
   }).timeout(TIMEOUT);
 
   it("Displays routing correctly", async () => {
-    const { tokenAddressMap } = addressBook[chainName]
+    const { tokenAddressMap } = addressBook[chainName];
     const { strategy } = await setup();
 
     // outputToLp0Route
-    console.log("outputToLp0Route:")
-    for (let i=0; i<10; ++i) {
+    console.log("outputToLp0Route:");
+    for (let i = 0; i < 10; ++i) {
       try {
         const tokenAddress = await strategy.outputToLp0Route(i);
         if (tokenAddress in tokenAddressMap) {
-          console.log(tokenAddressMap[tokenAddress])
+          console.log(tokenAddressMap[tokenAddress]);
         } else {
-          console.log(tokenAddress)
+          console.log(tokenAddress);
         }
       } catch {
         // reached end
         if (i == 0) {
-          console.log("No routing, output must be lp0")
+          console.log("No routing, output must be lp0");
         }
         break;
       }
     }
 
     // outputToLp1Route
-    console.log("outputToLp1Route:")
-    for (let i=0; i<10; ++i) {
+    console.log("outputToLp1Route:");
+    for (let i = 0; i < 10; ++i) {
       try {
         const tokenAddress = await strategy.outputToLp1Route(i);
         if (tokenAddress in tokenAddressMap) {
-          console.log(tokenAddressMap[tokenAddress].symbol)
+          console.log(tokenAddressMap[tokenAddress].symbol);
         } else {
-          console.log(tokenAddress)
+          console.log(tokenAddress);
         }
       } catch {
         // reached end
         if (i == 0) {
-          console.log("No routing, output must be lp1")
+          console.log("No routing, output must be lp1");
         }
         break;
       }
