@@ -98,10 +98,10 @@ const getVaultWant = async vault => {
   return want;
 };
 
-const unpauseIfPaused = async strat => {
+const unpauseIfPaused = async (strat, keeper) => {
   const isPaused = await strat.paused();
   if (isPaused) {
-    await strat.unpause();
+    await strat.connect(keeper).unpause();
   }
 };
 
