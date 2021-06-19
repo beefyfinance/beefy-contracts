@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -41,7 +42,7 @@ contract StrategyIronPolygonTitan is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
         _giveAllowances();
     }
 
@@ -89,7 +90,7 @@ contract StrategyIronPolygonTitan is StratManager, FeeManager {
     // performance fees
     function chargeFees() internal {
         uint256 toWmatic = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWmatic, 0, outputToWmaticRoute, address(this), now);
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWmatic, 0, outputToWmaticRoute, address(this), block.timestamp);
 
         uint256 wmaticBal = IERC20(wmatic).balanceOf(address(this));
 
@@ -106,7 +107,7 @@ contract StrategyIronPolygonTitan is StratManager, FeeManager {
     // swap rewards to {want}
     function swapRewards() internal {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        IUniswapRouter(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), now);
+        IUniswapRouter(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), block.timestamp);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -156,8 +157,8 @@ contract StrategyIronPolygonTitan is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(masterchef, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(masterchef, type(uint256).max);
+        IERC20(output).safeApprove(unirouter, type(uint256).max);
     }
 
     function _removeAllowances() internal {

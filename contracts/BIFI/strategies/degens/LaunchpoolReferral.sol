@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IRouter {
     function swapExactTokensForETHSupportingFeeOnTransferTokens(
@@ -49,7 +50,7 @@ contract LaunchpoolReferral is Ownable {
         address token = _route[0];
         uint256 tokenBal = IERC20(token).balanceOf(address(this));
         IERC20(token).safeIncreaseAllowance(_router, tokenBal);
-        IRouter(_router).swapExactTokensForETHSupportingFeeOnTransferTokens(tokenBal, 0, _route, multisig, now);
+        IRouter(_router).swapExactTokensForETHSupportingFeeOnTransferTokens(tokenBal, 0, _route, multisig, block.timestamp);
     }
 
     function swapToBNB(address _token, address _router) public onlyAdmin {

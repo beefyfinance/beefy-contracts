@@ -13,7 +13,8 @@
 // @author Wivern for Beefy.Finance
 // @notice This contract adds liquidity to Uniswap V2 compatible liquidity pair pools and stake.
 
-pragma solidity >=0.7.6;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@uniswap/lib/contracts/libraries/Babylonian.sol';

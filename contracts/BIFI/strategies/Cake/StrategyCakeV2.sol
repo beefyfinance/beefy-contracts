@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -36,7 +37,7 @@ contract StrategyCakeV2 is StratManagerCake, FeeManagerCake {
         address _unirouter,
         address _keeper,
         address _beefyFeeRecipient
-    ) StratManagerCake(_keeper, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratManagerCake(_keeper, _unirouter, _vault, _beefyFeeRecipient) {
         _giveAllowances();
     }
 
@@ -90,7 +91,7 @@ contract StrategyCakeV2 is StratManagerCake, FeeManagerCake {
     // performance fees
     function chargeFees() internal {
         uint256 toWrapped = IERC20(want).balanceOf(address(this)).mul(10).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWrapped, 0, wantToWrappedRoute, address(this), now);
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWrapped, 0, wantToWrappedRoute, address(this), block.timestamp);
 
         uint256 wrappedBal = IERC20(wrapped).balanceOf(address(this));
 
@@ -148,8 +149,8 @@ contract StrategyCakeV2 is StratManagerCake, FeeManagerCake {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(masterchef, uint256(-1));
-        IERC20(want).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(masterchef, type(uint256).max);
+        IERC20(want).safeApprove(unirouter, type(uint256).max);
     }
 
     function _removeAllowances() internal {

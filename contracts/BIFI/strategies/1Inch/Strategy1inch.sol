@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../../interfaces/1inch/IGovMothership.sol";
 import "../../interfaces/1inch/IMooniswap.sol";
@@ -96,13 +97,13 @@ contract Strategy1Inch is Ownable, Pausable, GasThrottler {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _vault, address _strategist) public {
+    constructor(address _vault, address _strategist) {
         vault = _vault;
         strategist = _strategist;
 
-        IERC20(inch).safeApprove(govMothership, uint(-1));
-        IERC20(inch).safeApprove(lpPair, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(inch).safeApprove(govMothership, type(uint).max);
+        IERC20(inch).safeApprove(lpPair, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
     }
 
     /**
@@ -180,7 +181,7 @@ contract Strategy1Inch is Ownable, Pausable, GasThrottler {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -249,9 +250,9 @@ contract Strategy1Inch is Ownable, Pausable, GasThrottler {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(inch).safeApprove(govMothership, uint(-1));
-        IERC20(inch).safeApprove(lpPair, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(inch).safeApprove(govMothership, type(uint).max);
+        IERC20(inch).safeApprove(lpPair, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
     }
 
     /**

@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -105,7 +106,7 @@ contract StrategyCafeDexLP is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _lpPair, uint8 _poolId, address _vault, address _strategist) public {
+    constructor(address _lpPair, uint8 _poolId, address _vault, address _strategist) {
         lpPair = _lpPair;
         lpToken0 = IUniswapV2Pair(lpPair).token0();
         lpToken1 = IUniswapV2Pair(lpPair).token1();
@@ -129,15 +130,15 @@ contract StrategyCafeDexLP is Ownable, Pausable {
             brewToLp1Route = [brew, wbnb, lpToken1];
         }
 
-        IERC20(lpPair).safeApprove(masterchef, uint(-1));
-        IERC20(brew).safeApprove(caferouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(lpPair).safeApprove(masterchef, type(uint).max);
+        IERC20(brew).safeApprove(caferouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(caferouter, 0);
-        IERC20(lpToken0).safeApprove(caferouter, uint(-1));
+        IERC20(lpToken0).safeApprove(caferouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(caferouter, 0);
-        IERC20(lpToken1).safeApprove(caferouter, uint(-1));
+        IERC20(lpToken1).safeApprove(caferouter, type(uint).max);
     }
 
     /**
@@ -195,7 +196,7 @@ contract StrategyCafeDexLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Takes out 4.5% as system fees from the rewards. 
+     * @dev Takes out 4.5% as system fees from the rewards.
      * 0.5% -> Call Fee
      * 0.5% -> Treasury fee
      * 0.5% -> Strategist fee
@@ -203,7 +204,7 @@ contract StrategyCafeDexLP is Ownable, Pausable {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(brew).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(caferouter).swapExactTokensForTokens(toWbnb, 0, brewToWbnbRoute, address(this), now.add(600));
+        IUniswapRouterETH(caferouter).swapExactTokensForTokens(toWbnb, 0, brewToWbnbRoute, address(this), block.timestamp.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -212,7 +213,7 @@ contract StrategyCafeDexLP is Ownable, Pausable {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -228,16 +229,16 @@ contract StrategyCafeDexLP is Ownable, Pausable {
         uint256 brewHalf = IERC20(brew).balanceOf(address(this)).div(2);
 
         if (lpToken0 != brew) {
-            IUniswapRouterETH(caferouter).swapExactTokensForTokens(brewHalf, 0, brewToLp0Route, address(this), now.add(600));
+            IUniswapRouterETH(caferouter).swapExactTokensForTokens(brewHalf, 0, brewToLp0Route, address(this), block.timestamp.add(600));
         }
 
         if (lpToken1 != brew) {
-            IUniswapRouterETH(caferouter).swapExactTokensForTokens(brewHalf, 0, brewToLp1Route, address(this), now.add(600));
+            IUniswapRouterETH(caferouter).swapExactTokensForTokens(brewHalf, 0, brewToLp1Route, address(this), block.timestamp.add(600));
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterETH(caferouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
+        IUniswapRouterETH(caferouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp.add(600));
     }
 
     /**
@@ -264,7 +265,7 @@ contract StrategyCafeDexLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
      * vault, ready to be migrated to the new strat.
      */
     function retireStrat() external {
@@ -303,15 +304,15 @@ contract StrategyCafeDexLP is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(lpPair).safeApprove(masterchef, uint(-1));
-        IERC20(brew).safeApprove(caferouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(lpPair).safeApprove(masterchef, type(uint).max);
+        IERC20(brew).safeApprove(caferouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(caferouter, 0);
-        IERC20(lpToken0).safeApprove(caferouter, uint(-1));
+        IERC20(lpToken0).safeApprove(caferouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(caferouter, 0);
-        IERC20(lpToken1).safeApprove(caferouter, uint(-1));
+        IERC20(lpToken1).safeApprove(caferouter, type(uint).max);
     }
 
     /**

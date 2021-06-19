@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/venus/IUnitroller.sol";
@@ -26,7 +27,7 @@ contract StrategyVenusBNB is Ownable, Pausable {
 
     /**
      * @dev Tokens Used:
-     * {wbnb}  - Token that the strategy maximizes. 
+     * {wbnb}  - Token that the strategy maximizes.
      * {bifi}  - BeefyFinance token, used to send funds to the treasury.
      * {venus} - Token earned through farming.
      * {vbnb}  - Venus BNB. We interact with it to mint/redem/borrow/repay BNB.
@@ -85,7 +86,7 @@ contract StrategyVenusBNB is Ownable, Pausable {
     /**
      * @dev Variables that can be changed to config profitability and risk:
      * {borrowRate}          - What % of our collateral do we borrow per leverage level.
-     * {borrowDepth}         - How many levels of leverage do we take. 
+     * {borrowDepth}         - How many levels of leverage do we take.
      * {BORROW_RATE_MAX}     - A limit on how much we can push borrow risk.
      * {BORROW_DEPTH_MAX}    - A limit on how many steps we can leverage.
      * {MIN_LEVERAGE_AMOUNT} - The minimum amount of collateral required to leverage.
@@ -96,10 +97,10 @@ contract StrategyVenusBNB is Ownable, Pausable {
     uint256 constant public BORROW_DEPTH_MAX = 10;
     uint256 constant public MIN_LEVERAGE_AMOUNT = 1e12;
 
-    /** 
+    /**
      * @dev We keep and update a cache of the strat's bnb deposited in venus. Contract
      * functions that use this value always update it first. We use it to keep the UI helper
-     * functions as view only.  
+     * functions as view only.
      */
     uint256 public depositedBalance;
 
@@ -115,20 +116,20 @@ contract StrategyVenusBNB is Ownable, Pausable {
      * @param _borrowRate Initial borrow rate used.
      * @param _borrowDepth Initial borow depth used.
      */
-    constructor(address _vault, uint256 _borrowRate, uint256 _borrowDepth, address[] memory _markets) public {
+    constructor(address _vault, uint256 _borrowRate, uint256 _borrowDepth, address[] memory _markets) {
         vault = _vault;
         borrowRate = _borrowRate;
         borrowDepth = _borrowDepth;
 
-        IERC20(venus).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(venus).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
 
         IUnitroller(unitroller).enterMarkets(_markets);
     }
 
     /**
      * @dev Function that puts the funds to work.
-     * It gets called whenever someone deposits in the strategy's vault. It does {borrowDepth} 
+     * It gets called whenever someone deposits in the strategy's vault. It does {borrowDepth}
      * levels of compound lending. It also updates the helper {depositedBalance} variable.
      */
     function deposit() public whenNotPaused {
@@ -154,11 +155,11 @@ contract StrategyVenusBNB is Ownable, Pausable {
             _amount = _amount.mul(borrowRate).div(100);
             IVBNB(vbnb).borrow(_amount);
         }
-    } 
+    }
 
     /**
-     * @dev Incrementally alternates between paying part of the debt and withdrawing part of the supplied 
-     * collateral. Continues to do this until it repays the entire debt and withdraws all the supplied bnb 
+     * @dev Incrementally alternates between paying part of the debt and withdrawing part of the supplied
+     * collateral. Continues to do this until it repays the entire debt and withdraws all the supplied bnb
      * from the system
      */
     function _deleverage() internal {
@@ -183,14 +184,14 @@ contract StrategyVenusBNB is Ownable, Pausable {
     }
 
     /**
-     * @dev Extra safety measure that allows us to manually unwind one level. In case we somehow get into 
-     * as state where the cost of unwinding freezes the system. We can manually unwind a few levels 
-     * with this function and then 'rebalance()' with new {borrowRate} and {borrowConfig} values. 
+     * @dev Extra safety measure that allows us to manually unwind one level. In case we somehow get into
+     * as state where the cost of unwinding freezes the system. We can manually unwind a few levels
+     * with this function and then 'rebalance()' with new {borrowRate} and {borrowConfig} values.
      * @param _borrowRate configurable borrow rate in case it's required to unwind successfully
      */
     function deleverageOnce(uint _borrowRate) external onlyOwner {
         require(_borrowRate <= BORROW_RATE_MAX, "!safe");
-        
+
         uint256 bnbBal = address(this).balance;
         IVBNB(vbnb).repayBorrow{value: bnbBal}();
 
@@ -217,7 +218,7 @@ contract StrategyVenusBNB is Ownable, Pausable {
         borrowDepth = _borrowDepth;
         _leverage(address(this).balance);
 
-        StratRebalance(_borrowRate, _borrowDepth);
+        emit StratRebalance(_borrowRate, _borrowDepth);
     }
 
     /**
@@ -239,14 +240,14 @@ contract StrategyVenusBNB is Ownable, Pausable {
     }
 
     /**
-     * @dev Takes out 4.5% as system fees from the rewards. 
+     * @dev Takes out 4.5% as system fees from the rewards.
      * 1% -> Call Fee
      * 0.5% -> Treasury fee
      * 3% -> BIFI Holders
      */
     function _chargeFees() internal {
         uint256 toWbnb = IERC20(venus).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, venusToWbnbRoute, address(this), now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, venusToWbnbRoute, address(this), block.timestamp.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -255,7 +256,7 @@ contract StrategyVenusBNB is Ownable, Pausable {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -266,12 +267,12 @@ contract StrategyVenusBNB is Ownable, Pausable {
      */
     function _swapRewards() internal {
         uint256 venusBal = IERC20(venus).balanceOf(address(this));
-        IUniswapRouter(unirouter).swapExactTokensForTokens(venusBal, 0, venusToWbnbRoute, address(this), now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(venusBal, 0, venusToWbnbRoute, address(this), block.timestamp.add(600));
     }
 
     /**
      * @dev Withdraws funds and sends them back to the vault. It deleverages from venus first,
-     * and then deposits again after the withdraw to make sure it mantains the desired ratio. 
+     * and then deposits again after the withdraw to make sure it mantains the desired ratio.
      * @param _amount How much {wbnb} to withdraw.
      */
     function withdraw(uint256 _amount) external {
@@ -286,7 +287,7 @@ contract StrategyVenusBNB is Ownable, Pausable {
         }
 
         if (wbnbBal > _amount) {
-            wbnbBal = _amount;    
+            wbnbBal = _amount;
         }
 
         uint256 withdrawalFee = wbnbBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
@@ -295,14 +296,14 @@ contract StrategyVenusBNB is Ownable, Pausable {
         if (!paused()) {
             _leverage(address(this).balance);
         }
-        
+
         updateBalance();
     }
 
     /**
-     * @dev It helps mantain a cached version of the bnb deposited in venus. 
-     * We use it to be able to keep the vault's 'balance()' function and 
-     * 'getPricePerFullShare()' with view visibility. 
+     * @dev It helps mantain a cached version of the bnb deposited in venus.
+     * We use it to be able to keep the vault's 'balance()' function and
+     * 'getPricePerFullShare()' with view visibility.
      */
     function updateBalance() public {
         uint256 supplyBal = IVBNB(vbnb).balanceOfUnderlying(address(this));
@@ -313,7 +314,7 @@ contract StrategyVenusBNB is Ownable, Pausable {
     /**
      * @dev Function that has to be called as part of strat migration. It pauses the strat and
      *  sends all the available funds back to the vault, ready to be migrated to the new strat.
-     */ 
+     */
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
@@ -354,8 +355,8 @@ contract StrategyVenusBNB is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(venus).safeApprove(unirouter, uint(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(venus).safeApprove(unirouter, type(uint).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
 
         deposit();
     }
@@ -382,4 +383,4 @@ contract StrategyVenusBNB is Ownable, Pausable {
     }
 
     receive () external payable {}
-} 
+}

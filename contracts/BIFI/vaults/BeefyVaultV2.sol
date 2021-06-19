@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -26,7 +27,7 @@ contract BeefyVaultV2 is ERC20, Ownable {
     }
 
     // The last proposed strategy to switch to.
-    StratCandidate public stratCandidate; 
+    StratCandidate public stratCandidate;
     // The strategy currently in use by the vault.
     address public strategy;
     // The token the vault accepts and looks to maximize.
@@ -36,7 +37,7 @@ contract BeefyVaultV2 is ERC20, Ownable {
 
     event NewStratCandidate(address implementation);
     event UpgradeStrat(address implementation);
-    
+
     /**
      * @dev Sets the value of {token} to the token that the vault will
      * hold as underlying value. It initializes the vault's own 'moo' token.
@@ -49,12 +50,12 @@ contract BeefyVaultV2 is ERC20, Ownable {
      * @param _approvalDelay the delay before a new strat can be approved.
      */
     constructor (
-        address _token, 
-        address _strategy, 
-        string memory _name, 
-        string memory _symbol, 
+        address _token,
+        address _strategy,
+        string memory _name,
+        string memory _symbol,
         uint256 _approvalDelay
-    ) public ERC20(
+    ) ERC20(
         string(abi.encodePacked(_name)),
         string(abi.encodePacked(_symbol))
     ) {
@@ -158,12 +159,12 @@ contract BeefyVaultV2 is ERC20, Ownable {
         token.safeTransfer(msg.sender, r);
     }
 
-    /** 
+    /**
      * @dev Sets the candidate for the new strat to use with this vault.
-     * @param _implementation The address of the candidate strategy.  
+     * @param _implementation The address of the candidate strategy.
      */
     function proposeStrat(address _implementation) public onlyOwner {
-        stratCandidate = StratCandidate({ 
+        stratCandidate = StratCandidate({
             implementation: _implementation,
             proposedTime: block.timestamp
          });
@@ -171,23 +172,23 @@ contract BeefyVaultV2 is ERC20, Ownable {
         emit NewStratCandidate(_implementation);
     }
 
-    /** 
+    /**
      * @dev It switches the active strat for the strat candidate. You have to call 'retireStrat'
-     * in the strategy contract before. This pauses the old strat and makes sure that all the old 
-     * strategy funds are sent back to this vault before switching strats. When upgrading, the 
-     * candidate implementation is set to the 0x00 address, and proposedTime to a time happening in +100 years for safety. 
+     * in the strategy contract before. This pauses the old strat and makes sure that all the old
+     * strategy funds are sent back to this vault before switching strats. When upgrading, the
+     * candidate implementation is set to the 0x00 address, and proposedTime to a time happening in +100 years for safety.
      */
 
     function upgradeStrat() public onlyOwner {
         require(stratCandidate.implementation != address(0), "There is no candidate");
         require(stratCandidate.proposedTime.add(approvalDelay) < block.timestamp, "Delay has not passed");
-        
+
         emit UpgradeStrat(stratCandidate.implementation);
 
         strategy = stratCandidate.implementation;
         stratCandidate.implementation = address(0);
         stratCandidate.proposedTime = 5000000000;
-        
+
         earn();
     }
 }

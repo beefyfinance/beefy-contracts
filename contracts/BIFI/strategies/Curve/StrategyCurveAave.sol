@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/curve/IRewardsGauge.sol";
@@ -39,7 +40,7 @@ contract StrategyCurveAave is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
         _giveAllowances();
     }
 
@@ -101,7 +102,7 @@ contract StrategyCurveAave is StratManager, FeeManager {
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
         uint256 wmaticBal = IERC20(wmatic).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(wmaticBal, 0, wmaticToUsdcRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(wmaticBal, 0, wmaticToUsdcRoute, address(this), block.timestamp);
 
         uint256 usdcBal = IERC20(usdc).balanceOf(address(this));
         uint256[3] memory amounts = [0, usdcBal, 0];
@@ -154,9 +155,9 @@ contract StrategyCurveAave is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(rewards, uint(-1));
-        IERC20(wmatic).safeApprove(unirouter, uint(-1));
-        IERC20(usdc).safeApprove(swapToken, uint(-1));
+        IERC20(want).safeApprove(rewards, type(uint).max);
+        IERC20(wmatic).safeApprove(unirouter, type(uint).max);
+        IERC20(usdc).safeApprove(swapToken, type(uint).max);
     }
 
     function _removeAllowances() internal {

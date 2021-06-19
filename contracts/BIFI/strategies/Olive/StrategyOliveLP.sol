@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -93,7 +94,7 @@ contract StrategyOliveLP is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _lpPair, uint8 _poolId, address _vault, address _strategist) public {
+    constructor(address _lpPair, uint8 _poolId, address _vault, address _strategist) {
         lpPair = _lpPair;
         lpToken0 = IUniswapV2Pair(lpPair).token0();
         lpToken1 = IUniswapV2Pair(lpPair).token1();
@@ -117,14 +118,14 @@ contract StrategyOliveLP is Ownable, Pausable {
             outputToLp1Route = [output, wavax, lpToken1];
         }
 
-        IERC20(lpPair).safeApprove(masterchef, uint(-1));
-        IERC20(output).safeApprove(unirouter, uint(-1));
+        IERC20(lpPair).safeApprove(masterchef, type(uint).max);
+        IERC20(output).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
     }
 
     /**
@@ -186,14 +187,14 @@ contract StrategyOliveLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Takes out 4.5% as system fees from the rewards. 
+     * @dev Takes out 4.5% as system fees from the rewards.
      * 0.25% -> Call Fee
      * 3.75% -> Treasury fee
      * 0.5% -> Strategist fee
      */
     function chargeFees() internal {
         uint256 toWavax = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWavax, 0, outputToWavaxRoute, address(this), now.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWavax, 0, outputToWavaxRoute, address(this), block.timestamp.add(600));
 
         uint256 wavaxBal = IERC20(wavax).balanceOf(address(this));
 
@@ -207,7 +208,7 @@ contract StrategyOliveLP is Ownable, Pausable {
         IERC20(wavax).safeTransfer(strategist, strategistFee);
 
     }
-    
+
     /**
      * @dev Swaps {output} for {lpToken0}, {lpToken1}.
      */
@@ -215,16 +216,16 @@ contract StrategyOliveLP is Ownable, Pausable {
         uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
 
         if (lpToken0 != output) {
-            IUniswapRouter(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), now.add(600));
+            IUniswapRouter(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), block.timestamp.add(600));
         }
 
         if (lpToken1 != output) {
-            IUniswapRouter(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), now.add(600));
+            IUniswapRouter(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), block.timestamp.add(600));
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
+        IUniswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp.add(600));
     }
 
     /**
@@ -251,7 +252,7 @@ contract StrategyOliveLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
      * vault, ready to be migrated to the new strat.
      */
     function retireStrat() external {
@@ -289,14 +290,14 @@ contract StrategyOliveLP is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(lpPair).safeApprove(masterchef, uint(-1));
-        IERC20(output).safeApprove(unirouter, uint(-1));
+        IERC20(lpPair).safeApprove(masterchef, type(uint).max);
+        IERC20(output).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
+        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
     }
 
     /**

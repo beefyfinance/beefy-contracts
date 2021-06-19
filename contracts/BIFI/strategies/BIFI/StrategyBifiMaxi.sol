@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../../interfaces/common/IWBNB.sol";
 import "../../interfaces/thugs/IThugswapRouter.sol";
@@ -50,7 +51,7 @@ contract StrategyBifiMaxi is Ownable, Pausable {
      * {REWARDS_FEE} - 0.5% goes to BIFI holders through the {rewards} pool.
      * {CALL_FEE} - 0.5% goes to pay for harvest execution.
      * {MAX_FEE} - Aux const used to safely calc the correct amounts.
-     * 
+     *
      * {WITHDRAWAL_FEE} - Fee taxed when a user withdraws funds. 5 === 0.05% fee.
      * {WITHDRAWAL_MAX} - Aux const used to safely calc the correct amounts.
      */
@@ -66,17 +67,17 @@ contract StrategyBifiMaxi is Ownable, Pausable {
      * {wbnbToBifiRoute} - Route we take to get from {wbnb} into {bifi}.
      */
     address[] public wbnbToBifiRoute = [wbnb, bifi];
-  
+
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _vault) public {
+    constructor(address _vault) {
         vault = _vault;
 
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
-        IERC20(bifi).safeApprove(rewards, uint(-1));
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
+        IERC20(bifi).safeApprove(rewards, type(uint).max);
     }
-    
+
     /**
      * @dev Function that puts the funds to work.
      * It gets called whenever someone deposits in the strategy's vault contract.
@@ -100,15 +101,15 @@ contract StrategyBifiMaxi is Ownable, Pausable {
 
         uint256 bifiBal = IERC20(bifi).balanceOf(address(this));
 
-        if (bifiBal < _amount) {   
+        if (bifiBal < _amount) {
             IRewardPool(rewards).withdraw(_amount.sub(bifiBal));
             bifiBal = IERC20(bifi).balanceOf(address(this));
         }
 
         if (bifiBal > _amount) {
-            bifiBal = _amount;    
+            bifiBal = _amount;
         }
-        
+
         uint256 withdrawalFee = bifiBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
         IERC20(bifi).safeTransfer(vault, bifiBal.sub(withdrawalFee));
     }
@@ -129,7 +130,7 @@ contract StrategyBifiMaxi is Ownable, Pausable {
     }
 
     /**
-     * @dev Takes out 1% as system fees from the rewards. 
+     * @dev Takes out 1% as system fees from the rewards.
      * 0.5% -> Call Fee
      * 0.5% -> Rewards fee
      */
@@ -148,7 +149,7 @@ contract StrategyBifiMaxi is Ownable, Pausable {
      */
     function swapRewards() internal {
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
-        IThugswapRouter(unirouter).swapExactTokensForTokens(wbnbBal, 0, wbnbToBifiRoute, address(this), now.add(600));
+        IThugswapRouter(unirouter).swapExactTokensForTokens(wbnbBal, 0, wbnbToBifiRoute, address(this), block.timestamp.add(600));
     }
 
     /**
@@ -174,9 +175,9 @@ contract StrategyBifiMaxi is Ownable, Pausable {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
      * vault, ready to be migrated to the new strat.
-     */ 
+     */
     function retireStrat() external onlyOwner {
         panic();
 
@@ -208,7 +209,7 @@ contract StrategyBifiMaxi is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(wbnb).safeApprove(unirouter, uint(-1));
-        IERC20(bifi).safeApprove(rewards, uint(-1));
+        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
+        IERC20(bifi).safeApprove(rewards, type(uint).max);
     }
 }
