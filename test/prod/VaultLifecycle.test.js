@@ -1,57 +1,49 @@
 const { expect } = require("chai");
+const { addressBook } = require("blockchain-addressbook");
 
-const {
-  zapNativeToToken,
-  getVaultWant,
-  unpauseIfPaused,
-  getUnirouterData,
-  getWrappedNativeAddr,
-} = require("../../utils/testHelpers");
+const { zapNativeToToken, getVaultWant, unpauseIfPaused, getUnirouterData } = require("../../utils/testHelpers");
 const { delay } = require("../../utils/timeHelpers");
 
 const TIMEOUT = 10 * 60 * 1000;
 
-const { addressBook } = require("blockchain-addressbook");
-
-const chainName = "polygon";
+const chainName = "bsc";
 const chainData = addressBook[chainName];
+const { beefyfinance } = chainData.platforms;
 
 const config = {
-  vault: "0xdD32ca42a5bab4073D319BC26bb4e951e767Ba6E",
+  vault: "0x26107644A6dbC38385F4B7263d9bA96D829eC090",
   vaultContract: "BeefyVaultV6",
   strategyContract: "StrategyCommonRewardPoolLP",
-  nativeTokenAddr: getWrappedNativeAddr(chainName),
   testAmount: ethers.utils.parseEther("5"),
-  keeper: chainData.platforms.beefyfinance.keeper,
-  strategyOwner: chainData.platforms.beefyfinance.strategyOwner,
-  vaultOwner: chainData.platforms.beefyfinance.vaultOwner,
+  wnative: chainData.tokens.WNATIVE.address,
+  keeper: beefyfinance.keeper,
+  strategyOwner: beefyfinance.strategyOwner,
+  vaultOwner: beefyfinance.vaultOwner,
 };
 
 describe("VaultLifecycleTest", () => {
   let vault, strategy, unirouter, want, deployer, keeper, other;
 
-  before(async () => {
+  beforeEach(async () => {
     [deployer, keeper, other] = await ethers.getSigners();
 
     vault = await ethers.getContractAt(config.vaultContract, config.vault);
-
     const strategyAddr = await vault.strategy();
     strategy = await ethers.getContractAt(config.strategyContract, strategyAddr);
 
     const unirouterAddr = await strategy.unirouter();
     const unirouterData = getUnirouterData(unirouterAddr);
     unirouter = await ethers.getContractAt(unirouterData.interface, unirouterAddr);
-    want = await getVaultWant(vault, config.nativeTokenAddr);
+    want = await getVaultWant(vault, config.wnative);
 
     await zapNativeToToken({
       amount: config.testAmount,
       want,
-      nativeTokenAddr: config.nativeTokenAddr,
+      nativeTokenAddr: config.wnative,
       unirouter,
       swapSignature: unirouterData.swapSignature,
       recipient: deployer.address,
     });
-
     const wantBal = await want.balanceOf(deployer.address);
     await want.transfer(other.address, wantBal.div(2));
   });

@@ -125,23 +125,6 @@ const getUnirouterData = address => {
   }
 };
 
-const getWrappedNativeAddr = networkId => {
-  switch (networkId) {
-    case "bsc":
-      return "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c";
-    case "avax":
-      return "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7";
-    case "polygon":
-      return "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270";
-    case "heco":
-      return "0x5545153CCFcA01fbd7Dd11C0b23ba694D9509A6F";
-    case "fantom":
-      return "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83";
-    default:
-      throw new Error("Unknown network.");
-  }
-};
-
 const wrapNative = async (amount, wNativeAddr) => {
   const wNative = await ethers.getContractAt("IWrappedNative", wNativeAddr);
   await wNative.deposit({ value: amount });
@@ -154,5 +137,4 @@ module.exports = {
   logTokenBalance,
   unpauseIfPaused,
   getUnirouterData,
-  getWrappedNativeAddr,
 };
