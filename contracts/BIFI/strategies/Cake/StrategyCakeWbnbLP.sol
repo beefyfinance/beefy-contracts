@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.4;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -46,7 +47,7 @@ contract StrategyCakeWbnbLP is StratManager, FeeManager, GasThrottler {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
         want = _want;
         lpToken0 = IUniswapV2Pair(want).token0();
         lpToken1 = IUniswapV2Pair(want).token1();
@@ -99,7 +100,7 @@ contract StrategyCakeWbnbLP is StratManager, FeeManager, GasThrottler {
         IMasterChef(masterchef).deposit(poolId, 0);
 
         uint256 toWbnb = IERC20(cake).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), block.timestamp);
 
         chargeFees();
         addLiquidity();
@@ -127,16 +128,16 @@ contract StrategyCakeWbnbLP is StratManager, FeeManager, GasThrottler {
         uint256 wbnbHalf = IERC20(wbnb).balanceOf(address(this)).div(2);
 
         if (lpToken0 != wbnb) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(wbnbHalf, 0, wbnbToLp0Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(wbnbHalf, 0, wbnbToLp0Route, address(this), block.timestamp);
         }
 
         if (lpToken1 != wbnb) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(wbnbHalf, 0, wbnbToLp1Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(wbnbHalf, 0, wbnbToLp1Route, address(this), block.timestamp);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
+        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -186,15 +187,15 @@ contract StrategyCakeWbnbLP is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(masterchef, uint256(-1));
-        IERC20(cake).safeApprove(unirouter, uint256(-1));
-        IERC20(wbnb).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(masterchef, type(uint256).max);
+        IERC20(cake).safeApprove(unirouter, type(uint256).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint256).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
+        IERC20(lpToken0).safeApprove(unirouter, type(uint256).max);
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint256(-1));
+        IERC20(lpToken1).safeApprove(unirouter, type(uint256).max);
     }
 
     function _removeAllowances() internal {
