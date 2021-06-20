@@ -41,7 +41,7 @@ const deployAllVaults: DeployFunction = async function (hre: HardhatRuntimeEnvir
         let config = vaults[vault];
         if (config.chainId != hre.network.config.chainId) continue;
 
-        let beefyfinance = addressBook[ChainId[config.chainId]].platforms.beefyfinance;
+        let beefyfinance = addressBook[config.chainId].platforms.beefyfinance;
 
         let contractAddress = await contractAddressGenerator(deployer);
 
@@ -101,9 +101,9 @@ const deployAllVaults: DeployFunction = async function (hre: HardhatRuntimeEnvir
         if (vaultDeployOptions === null) throw "Impossible";
         if (stratDeployOptions === null) throw "Impossible";
 
-        console.debug(vaultDeployOptions);
+        //console.debug(vaultDeployOptions);
         const vaultDeployResult = await deploy(vaultName, vaultDeployOptions);
-        console.debug(stratDeployOptions);
+        //console.debug(stratDeployOptions);
         const stratDeployResult = await deploy(stratName, stratDeployOptions);
     }
 };

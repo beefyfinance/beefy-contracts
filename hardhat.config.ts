@@ -12,6 +12,8 @@ import "@nomiclabs/hardhat-waffle";
 
 import { addressBook } from "blockchain-addressbook";
 
+import { IStrategy } from "./typechain/IStrategy";
+
 const DEPLOYER_PK_FILE = ".config/DEPLOYER_PK";
 const OTHER_PK_FILE = ".config/OTHER_PK";
 
@@ -36,12 +38,12 @@ task("node", "Starts a JSON-RPC server on top of Hardhat Network")
 task("panic", "Panics a given strategy.")
   .addParam("strat", "The strategy to panic.")
   .setAction(async (taskArgs, hre) => {
-    const IStrategy = await hre.artifacts.readArtifact("IStrategy");
-    const strategy = await hre.ethers.getContractAt(IStrategy.abi, taskArgs.strat);
+    const strategy = await hre.ethers.getContractAt<IStrategy>("IStrategy", taskArgs.strat);
 
     try {
-      const tx = await strategy.panic({ gasPrice: 10000000000, gasLimit: 3500000 });
+      const tx = await strategy.panic();
       const url = `https://bscscan.com/tx/${tx.hash}`;
+      await tx.wait();
       console.log(`Successful panic with tx at ${url}`);
     } catch (err) {
       console.log(`Couldn't panic due to ${err}`);
@@ -51,12 +53,12 @@ task("panic", "Panics a given strategy.")
 task("unpause", "Unpauses a given strategy.")
   .addParam("strat", "The strategy to unpause.")
   .setAction(async (taskArgs, hre) => {
-    const IStrategy = await hre.artifacts.readArtifact("IStrategy");
-    const strategy = await hre.ethers.getContractAt(IStrategy.abi, taskArgs.strat);
+    const strategy = await hre.ethers.getContractAt<IStrategy>("IStrategy", taskArgs.strat);
 
     try {
-      const tx = await strategy.unpause({ gasPrice: 10000000000, gasLimit: 3500000 });
+      const tx = await strategy.unpause();
       const url = `https://bscscan.com/tx/${tx.hash}`;
+      await tx.wait();
       console.log(`Successful unpaused with tx at ${url}`);
     } catch (err) {
       console.log(`Couldn't unpause due to ${err}`);
@@ -66,12 +68,12 @@ task("unpause", "Unpauses a given strategy.")
 task("harvest", "Harvests a given strategy.")
   .addParam("strat", "The strategy to harvest.")
   .setAction(async (taskArgs, hre) => {
-    const IStrategy = await hre.artifacts.readArtifact("IStrategy");
-    const strategy = await hre.ethers.getContractAt(IStrategy.abi, taskArgs.strat);
+    const strategy = await hre.ethers.getContractAt<IStrategy>("IStrategy", taskArgs.strat);
 
     try {
-      const tx = await strategy.harvest({ gasPrice: 10000000000, gasLimit: 3500000 });
+      const tx = await strategy.harvest();
       const url = `https://bscscan.com/tx/${tx.hash}`;
+      await tx.wait();
       console.log(`Successful harvest with tx at ${url}`);
     } catch (err) {
       console.log(`Couldn't harvest due to ${err}`);

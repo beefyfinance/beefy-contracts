@@ -1,12 +1,14 @@
+import { ChainId } from "blockchain-addressbook/types/chainid";
 import type Token from "blockchain-addressbook/types/token";
 
 // Vault configs //
 export type CommonConfig = {
-    chainId:number;
+    chainId:ChainId;
     platform:string;
     strategist:string;
     unirouter:string,
     outputToNativeRoute:string[];
+    withdrawalFee?:number
 };
 
 // Strat configs //

@@ -44,7 +44,7 @@ const deployAllVaults: DeployFunction = async function (hre: HardhatRuntimeEnvir
             let config = vaults[vault];
             if (config.chainId != hre.network.config.chainId) continue;
 
-            let beefyfinance = addressBook[ChainId[config.chainId]].platforms.beefyfinance;
+            let beefyfinance = addressBook[config.chainId].platforms.beefyfinance;
 
             let contractAddress = await contractAddressGenerator(deployer);
 
