@@ -11,13 +11,13 @@
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "@uniswap/v3-core": "^1.0.0",
     "bignumber.js": "^9.0.1",
-    "blockchain-addressbook": "^0.1.58",
+    "blockchain-addressbook": "^0.1.60",
     "ganache-cli": "^6.12.2",
     "keccak": "^3.0.1",
     "rlp": "^2.2.6"
   },
   "scripts": {
-    "flat-hardhat": "hardhat flatten contracts/BIFI/strategies/Common/StrategyCommonRewardPoolLP.sol > tmp/flattened.sol",
+    "flat-hardhat": "hardhat flatten contracts/BIFI/strategies/Common/StrategyPolygonMiniChefLP.sol > tmp/temp2.sol",
     "flat": "bin/flatten.sh",
     "clean": "rm -r artifacts cache",
     "net:bsc": "ganache-cli --fork ${BSC_RPC} --account=\"${DEPLOYER_PK}, 1000000000000000000000000\" --account=\"${KEEPER_PK}, 1000000000000000000000000\" --account=\"${UPGRADER_PK}, 1000000000000000000000000\"",
@@ -31,7 +31,7 @@
     "test:vault": "hardhat test --network localhost test/prod/VaultLifecycle.test.js",
     "deploy-strat:bsc": "hardhat run --network bsc scripts/deploy-strat-with-pool.js",
     "deploy-strat:lendhub": "hardhat run --network heco scripts/deploy-strat-lendhub.js",
-    "deploy-strat:polygon": "hardhat run --network polygon scripts/deploy-strat-with-pool.js",
+    "deploy-strat:polygon": "hardhat run --network polygon scripts/deploy-generic-chef-strat.js",
     "deploy-pool:bsc": "hardhat run --network bsc scripts/deploy-launchpad-pool.js",
     "notify:bsc": "hardhat run --network bsc scripts/notify-launchpools.js"
   },

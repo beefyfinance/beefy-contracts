@@ -2,8 +2,7 @@ require("@nomiclabs/hardhat-web3");
 require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-etherscan");
 
-let deployerAccount;
-if (process.env.DEPLOYER_PK) deployerAccount = [process.env.DEPLOYER_PK];
+let deployerAccount = []
 
 module.exports = {
   defaultNetwork: "localhost",
@@ -25,9 +24,10 @@ module.exports = {
       accounts: deployerAccount,
     },
     polygon: {
-      url: "https://rpc-mainnet.maticvigil.com/",
+      url: "https://rpc-mainnet.maticvigil.com/v1/70dff8379e9f08a82e64916d893c8509b8e792ac",
       chainId: 137,
       accounts: deployerAccount,
+      gasPrice: 8000000000 * 2
     },
     fantom: {
       url: "https://rpc.ftm.tools",
@@ -73,7 +73,7 @@ module.exports = {
     ],
   },
   paths: {
-    sources: "./contracts/BIFI",
+    sources: "./tmp",
   },
   timeout: 30,
 };
