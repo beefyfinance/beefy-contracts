@@ -20,6 +20,8 @@ contract StrategyCurveAave is StratManager, FeeManager {
     // Tokens used
     address constant public wmatic = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
     address constant public usdc = address(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
+    address constant public crv = address(0x172370d5Cd63279eFa6d502DAB29171933a610AF);
+    address constant public eth = address(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619);
     address constant public want = address(0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171);
     address constant public swapToken = address(0x445FE580eF8d70FF569aB36e80c647af338db351);
 
@@ -27,7 +29,10 @@ contract StrategyCurveAave is StratManager, FeeManager {
     address constant public rewards = address(0xe381C25de995d62b453aF8B931aAc84fcCaa7A62);
 
     // Routes
-    address[] public wmaticToUsdcRoute = [wmatic, usdc];
+    address[] public wmaticToUsdcRoute = [wmatic, eth, usdc];
+    address[] public crvToWmaticRoute = [crv, eth, wmatic];
+
+    bool public harvestOnDeposit = true;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -75,22 +80,38 @@ contract StrategyCurveAave is StratManager, FeeManager {
         }
     }
 
-    // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
-        IRewardsGauge(rewards).claim_rewards(address(this));
-        chargeFees();
-        addLiquidity();
-        deposit();
+    function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            harvest();
+        }
+    }
 
-        emit StratHarvest(msg.sender);
+    // compounds earnings and charges performance fee
+    function harvest() public whenNotPaused {
+        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
+        IRewardsGauge(rewards).claim_rewards(address(this));
+
+        uint256 crvBal = IERC20(crv).balanceOf(address(this));
+        uint256 wmaticBal = IERC20(wmatic).balanceOf(address(this));
+        if (wmaticBal > 0 || crvBal > 0) {
+            chargeFees();
+            addLiquidity();
+            deposit();
+            emit StratHarvest(msg.sender);
+        }
     }
 
     // performance fees
     function chargeFees() internal {
+        uint256 crvBal = IERC20(crv).balanceOf(address(this));
+        if (crvBal > 0) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(crvBal, 0, crvToWmaticRoute, address(this), now);
+        }
+
         uint256 wmaticFeeBal = IERC20(wmatic).balanceOf(address(this)).mul(45).div(1000);
 
         uint256 callFeeAmount = wmaticFeeBal.mul(callFee).div(MAX_FEE);
-        IERC20(wmatic).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(wmatic).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = wmaticFeeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(wmatic).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -122,6 +143,10 @@ contract StrategyCurveAave is StratManager, FeeManager {
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
         return IRewardsGauge(rewards).balanceOf(address(this));
+    }
+
+    function setHarvestOnDeposit(bool _harvest) external onlyManager {
+        harvestOnDeposit = _harvest;
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
@@ -157,12 +182,14 @@ contract StrategyCurveAave is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(rewards, type(uint).max);
         IERC20(wmatic).safeApprove(unirouter, type(uint).max);
+        IERC20(crv).safeApprove(unirouter, type(uint).max);
         IERC20(usdc).safeApprove(swapToken, type(uint).max);
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(rewards, 0);
         IERC20(wmatic).safeApprove(unirouter, 0);
+        IERC20(crv).safeApprove(unirouter, 0);
         IERC20(usdc).safeApprove(swapToken, 0);
     }
 }
