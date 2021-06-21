@@ -105,7 +105,7 @@ contract StrategyCurveAave is StratManager, FeeManager {
     function chargeFees() internal {
         uint256 crvBal = IERC20(crv).balanceOf(address(this));
         if (crvBal > 0) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(crvBal, 0, crvToWmaticRoute, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(crvBal, 0, crvToWmaticRoute, address(this), block.timestamp);
         }
 
         uint256 wmaticFeeBal = IERC20(wmatic).balanceOf(address(this)).mul(45).div(1000);
