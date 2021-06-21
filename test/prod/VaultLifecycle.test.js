@@ -1,87 +1,72 @@
 const { expect } = require("chai");
+const { addressBook } = require("blockchain-addressbook");
 
-const {
-  zapNativeToToken,
-  getVaultWant,
-  unpauseIfPaused,
-  getUnirouterData,
-  getWrappedNativeAddr,
-} = require("../../utils/testHelpers");
+const { zapNativeToToken, getVaultWant, unpauseIfPaused, getUnirouterData } = require("../../utils/testHelpers");
 const { delay } = require("../../utils/timeHelpers");
 
 const TIMEOUT = 10 * 60 * 1000;
 
-const { addressBook } = require("blockchain-addressbook")
-
-const chainName = "polygon"
-const chainData = addressBook[chainName]
+const chainName = "bsc";
+const chainData = addressBook[chainName];
+const { beefyfinance } = chainData.platforms;
 
 const config = {
-  vault: "0xdD32ca42a5bab4073D319BC26bb4e951e767Ba6E",
+  vault: "0x26107644A6dbC38385F4B7263d9bA96D829eC090",
   vaultContract: "BeefyVaultV6",
   strategyContract: "StrategyCommonRewardPoolLP",
-  nativeTokenAddr: getWrappedNativeAddr(chainName),
-  testAmount: ethers.utils.parseEther("1"),
-  keeper: chainData.platforms.beefyfinance.keeper,
-  strategyOwner: chainData.platforms.beefyfinance.strategyOwner,
-  vaultOwner: chainData.platforms.beefyfinance.vaultOwner,
+  testAmount: ethers.utils.parseEther("5"),
+  wnative: chainData.tokens.WNATIVE.address,
+  keeper: beefyfinance.keeper,
+  strategyOwner: beefyfinance.strategyOwner,
+  vaultOwner: beefyfinance.vaultOwner,
 };
 
 describe("VaultLifecycleTest", () => {
-  const setup = async () => {
-    const [signer, other] = await ethers.getSigners();
+  let vault, strategy, unirouter, want, deployer, keeper, other;
 
-    const vault = await ethers.getContractAt(config.vaultContract, config.vault);
+  beforeEach(async () => {
+    [deployer, keeper, other] = await ethers.getSigners();
 
+    vault = await ethers.getContractAt(config.vaultContract, config.vault);
     const strategyAddr = await vault.strategy();
-    const strategy = await ethers.getContractAt(config.strategyContract, strategyAddr);
+    strategy = await ethers.getContractAt(config.strategyContract, strategyAddr);
 
     const unirouterAddr = await strategy.unirouter();
     const unirouterData = getUnirouterData(unirouterAddr);
-    const unirouter = await ethers.getContractAt(unirouterData.interface, unirouterAddr);
-
-    const want = await getVaultWant(vault, config.nativeTokenAddr);
+    unirouter = await ethers.getContractAt(unirouterData.interface, unirouterAddr);
+    want = await getVaultWant(vault, config.wnative);
 
     await zapNativeToToken({
       amount: config.testAmount,
       want,
-      nativeTokenAddr: config.nativeTokenAddr,
+      nativeTokenAddr: config.wnative,
       unirouter,
       swapSignature: unirouterData.swapSignature,
-      recipient: signer.address,
+      recipient: deployer.address,
     });
-
-    const wantBal = await want.balanceOf(signer.address);
+    const wantBal = await want.balanceOf(deployer.address);
     await want.transfer(other.address, wantBal.div(2));
-    await signer.sendTransaction({
-      to: other.address,
-      value: config.testAmount,
-    });
-
-    return { signer, other, want, vault, strategy, unirouter };
-  };
+  });
 
   it("User can deposit and withdraw from the vault.", async () => {
-    const { signer, want, strategy, vault } = await setup();
-    await unpauseIfPaused(strategy);
+    await unpauseIfPaused(strategy, keeper);
 
-    const wantBalStart = await want.balanceOf(signer.address);
+    const wantBalStart = await want.balanceOf(deployer.address);
 
     await want.approve(vault.address, wantBalStart);
     await vault.depositAll();
     await vault.withdrawAll();
 
-    const wantBalFinal = await want.balanceOf(signer.address);
+    const wantBalFinal = await want.balanceOf(deployer.address);
 
     expect(wantBalFinal).to.be.lte(wantBalStart);
     expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
   }).timeout(TIMEOUT);
 
   it("Harvests work as expected.", async () => {
-    const { signer, want, vault, strategy } = await setup();
-    await unpauseIfPaused(strategy);
+    await unpauseIfPaused(strategy, keeper);
 
-    const wantBalStart = await want.balanceOf(signer.address);
+    const wantBalStart = await want.balanceOf(deployer.address);
     await want.approve(vault.address, wantBalStart);
     await vault.depositAll();
 
@@ -93,7 +78,7 @@ describe("VaultLifecycleTest", () => {
     const pricePerShareAfterHarvest = await vault.getPricePerFullShare();
 
     await vault.withdrawAll();
-    const wantBalFinal = await want.balanceOf(signer.address);
+    const wantBalFinal = await want.balanceOf(deployer.address);
 
     expect(vaultBalAfterHarvest).to.be.gt(vaultBal);
     expect(pricePerShareAfterHarvest).to.be.gt(pricePerShare);
@@ -101,17 +86,16 @@ describe("VaultLifecycleTest", () => {
   }).timeout(TIMEOUT);
 
   it("Manager can panic.", async () => {
-    const { signer, want, vault, strategy } = await setup();
-    await unpauseIfPaused(strategy);
+    await unpauseIfPaused(strategy, keeper);
 
-    const wantBalStart = await want.balanceOf(signer.address);
+    const wantBalStart = await want.balanceOf(deployer.address);
     await want.approve(vault.address, wantBalStart);
     await vault.depositAll();
 
     const vaultBal = await vault.balance();
     const balOfPool = await strategy.balanceOfPool();
     const balOfWant = await strategy.balanceOfWant();
-    await strategy.panic();
+    await strategy.connect(keeper).panic();
     const vaultBalAfterPanic = await vault.balance();
     const balOfPoolAfterPanic = await strategy.balanceOfPool();
     const balOfWantAfterPanic = await strategy.balanceOfWant();
@@ -126,15 +110,14 @@ describe("VaultLifecycleTest", () => {
 
     // User can still withdraw
     await vault.withdrawAll();
-    const wantBalFinal = await want.balanceOf(signer.address);
+    const wantBalFinal = await want.balanceOf(deployer.address);
     expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
   }).timeout(TIMEOUT);
 
   it("New user deposit/withdrawals don't lower other users balances.", async () => {
-    const { signer, other, want, strategy, vault } = await setup();
-    await unpauseIfPaused(strategy);
+    await unpauseIfPaused(strategy, keeper);
 
-    const wantBalStart = await want.balanceOf(signer.address);
+    const wantBalStart = await want.balanceOf(deployer.address);
     await want.approve(vault.address, wantBalStart);
     await vault.depositAll();
 
@@ -145,7 +128,7 @@ describe("VaultLifecycleTest", () => {
     const pricePerShareAfterOtherDeposit = await vault.getPricePerFullShare();
 
     await vault.withdrawAll();
-    const wantBalFinal = await want.balanceOf(signer.address);
+    const wantBalFinal = await want.balanceOf(deployer.address);
     const pricePerShareAfterWithdraw = await vault.getPricePerFullShare();
 
     expect(pricePerShareAfterOtherDeposit).to.be.gte(pricePerShare);
@@ -153,9 +136,7 @@ describe("VaultLifecycleTest", () => {
     expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
   }).timeout(TIMEOUT);
 
-  it("It has the correct owner and keeper.", async () => {
-    const { strategy, vault } = await setup();
-
+  it("It has the correct owners and keeper.", async () => {
     const vaultOwner = await vault.owner();
     const stratOwner = await strategy.owner();
     const stratKeeper = await strategy.keeper();
@@ -166,7 +147,6 @@ describe("VaultLifecycleTest", () => {
   }).timeout(TIMEOUT);
 
   it("Vault and strat references are correct", async () => {
-    const { strategy, vault } = await setup();
     const stratReference = await vault.strategy();
     const vaultReference = await strategy.vault();
 
@@ -174,55 +154,42 @@ describe("VaultLifecycleTest", () => {
     expect(vaultReference).to.equal(ethers.utils.getAddress(vault.address));
   }).timeout(TIMEOUT);
 
-  // TO-DO: Check that unpause deposits again into the farm.
-
-  // TO-DO: Check that there's either a withdrawal or deposit fee for 'other'.
-
-  // TO-DO: Check that we're not burning money with buggy routes.
-
-  it("Should be in 'unpaused' state to start.", async () => {
-    const { strategy } = await setup();
-
-    expect(await strategy.paused()).to.equal(false);
-  }).timeout(TIMEOUT);
-
   it("Displays routing correctly", async () => {
-    const { tokenAddressMap } = addressBook[chainName]
-    const { strategy } = await setup();
+    const { tokenAddressMap } = addressBook[chainName];
 
     // outputToLp0Route
-    console.log("outputToLp0Route:")
-    for (let i=0; i<10; ++i) {
+    console.log("outputToLp0Route:");
+    for (let i = 0; i < 10; ++i) {
       try {
         const tokenAddress = await strategy.outputToLp0Route(i);
         if (tokenAddress in tokenAddressMap) {
-          console.log(tokenAddressMap[tokenAddress])
+          console.log(tokenAddressMap[tokenAddress]);
         } else {
-          console.log(tokenAddress)
+          console.log(tokenAddress);
         }
       } catch {
         // reached end
         if (i == 0) {
-          console.log("No routing, output must be lp0")
+          console.log("No routing, output must be lp0");
         }
         break;
       }
     }
 
     // outputToLp1Route
-    console.log("outputToLp1Route:")
-    for (let i=0; i<10; ++i) {
+    console.log("outputToLp1Route:");
+    for (let i = 0; i < 10; ++i) {
       try {
         const tokenAddress = await strategy.outputToLp1Route(i);
         if (tokenAddress in tokenAddressMap) {
-          console.log(tokenAddressMap[tokenAddress].symbol)
+          console.log(tokenAddressMap[tokenAddress].symbol);
         } else {
-          console.log(tokenAddress)
+          console.log(tokenAddress);
         }
       } catch {
         // reached end
         if (i == 0) {
-          console.log("No routing, output must be lp1")
+          console.log("No routing, output must be lp1");
         }
         break;
       }

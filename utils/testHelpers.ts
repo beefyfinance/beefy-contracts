@@ -120,10 +120,10 @@ const getVaultWant = async (vault:Contract, defaultTokenAddress:string) => {
   return want;
 };
 
-const unpauseIfPaused = async (strat:Contract) => {
+const unpauseIfPaused = async (strat:Contract, keeper:Signer) => {
   const isPaused = await strat.paused();
   if (isPaused) {
-    await strat.unpause();
+    await strat.connect(keeper).unpause();
   }
 };
 
@@ -147,6 +147,7 @@ const getUnirouterData = (address:string) => {
   }
 };
 
+<<<<<<< HEAD:utils/testHelpers.ts
 const getWrappedNativeAddr = (networkId:string) => {
   switch (networkId) {
     case "bsc":
@@ -166,6 +167,10 @@ const getWrappedNativeAddr = (networkId:string) => {
 
 const wrapNative = async (amount:BigNumber, wNativeAddr:string, recipient:Signer) => {
   const wNative = await ethers.getContractAt("IWrappedNative", wNativeAddr, recipient);
+=======
+const wrapNative = async (amount, wNativeAddr) => {
+  const wNative = await ethers.getContractAt("IWrappedNative", wNativeAddr);
+>>>>>>> origin/master:utils/testHelpers.js
   await wNative.deposit({ value: amount });
 };
 
@@ -176,5 +181,4 @@ export {
   logTokenBalance,
   unpauseIfPaused,
   getUnirouterData,
-  getWrappedNativeAddr,
 };

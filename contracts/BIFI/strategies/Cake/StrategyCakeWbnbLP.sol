@@ -9,29 +9,30 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IMasterChef.sol";
+import "../../interfaces/pancake/IMasterChef.sol";
+import "../../utils/GasThrottler.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyCommonChefLP is StratManager, FeeManager {
+contract StrategyCakeWbnbLP is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
-    address public native;
-    address public output;
+    address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
+    address constant public cake = address(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
     address public want;
     address public lpToken0;
     address public lpToken1;
 
     // Third party contracts
-    address public chef;
+    address constant public masterchef = address(0x73feaa1eE314F8c655E354234017bE2193C9E24E);
     uint256 public poolId;
 
     // Routes
-    address[] public outputToNativeRoute;
-    address[] public outputToLp0Route;
-    address[] public outputToLp1Route;
+    address[] public cakeToWbnbRoute = [cake, wbnb];
+    address[] public wbnbToLp0Route;
+    address[] public wbnbToLp1Route;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -41,30 +42,24 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     constructor(
         address _want,
         uint256 _poolId,
-        address _chef,
         address _vault,
         address _unirouter,
         address _keeper,
         address _strategist,
-        address _beefyFeeRecipient,
-        address[] memory _outputToNativeRoute,
-        address[] memory _outputToLp0Route,
-        address[] memory _outputToLp1Route
+        address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
         want = _want;
-        poolId = _poolId;
-        chef = _chef;
-
-        output = _outputToNativeRoute[0];
-        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
-        outputToNativeRoute = _outputToNativeRoute;
-
-        // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
-        outputToLp0Route = _outputToLp0Route;
-
         lpToken1 = IUniswapV2Pair(want).token1();
-        outputToLp1Route = _outputToLp1Route;
+        poolId = _poolId;
+
+        if (lpToken0 != wbnb) {
+            wbnbToLp0Route = [wbnb, lpToken0];
+        }
+
+        if (lpToken1 != wbnb) {
+            wbnbToLp1Route = [wbnb, lpToken1];
+        }
 
         _giveAllowances();
     }
@@ -74,7 +69,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IMasterChef(chef).deposit(poolId, wantBal);
+            IMasterChef(masterchef).deposit(poolId, wantBal);
         }
     }
 
@@ -84,7 +79,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            IMasterChef(masterchef).withdraw(poolId, _amount.sub(wantBal));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -101,8 +96,12 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
-        IMasterChef(chef).deposit(poolId, 0);
+    function harvest() external whenNotPaused onlyEOA gasThrottle {
+        IMasterChef(masterchef).deposit(poolId, 0);
+
+        uint256 toWbnb = IERC20(cake).balanceOf(address(this));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, cakeToWbnbRoute, address(this), block.timestamp);
+
         chargeFees();
         addLiquidity();
         deposit();
@@ -112,31 +111,28 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees() internal {
-        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
+        uint256 wbnbFees = IERC20(wbnb).balanceOf(address(this)).mul(45).div(1000);
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        uint256 callFeeAmount = wbnbFees.mul(callFee).div(MAX_FEE);
+        IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
 
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(msg.sender, callFeeAmount);
+        uint256 beefyFeeAmount = wbnbFees.mul(beefyFee).div(MAX_FEE);
+        IERC20(wbnb).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
-
-        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        uint256 strategistFee = wbnbFees.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(wbnb).safeTransfer(strategist, strategistFee);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
+        uint256 wbnbHalf = IERC20(wbnb).balanceOf(address(this)).div(2);
 
-        if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), block.timestamp);
+        if (lpToken0 != wbnb) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(wbnbHalf, 0, wbnbToLp0Route, address(this), block.timestamp);
         }
 
-        if (lpToken1 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), block.timestamp);
+        if (lpToken1 != wbnb) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(wbnbHalf, 0, wbnbToLp1Route, address(this), block.timestamp);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
@@ -156,7 +152,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMasterChef(chef).userInfo(poolId, address(this));
+        (uint256 _amount, ) = IMasterChef(masterchef).userInfo(poolId, address(this));
         return _amount;
     }
 
@@ -164,7 +160,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IMasterChef(masterchef).emergencyWithdraw(poolId);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -173,7 +169,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IMasterChef(masterchef).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {
@@ -191,8 +187,9 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, type(uint256).max);
-        IERC20(output).safeApprove(unirouter, type(uint256).max);
+        IERC20(want).safeApprove(masterchef, type(uint256).max);
+        IERC20(cake).safeApprove(unirouter, type(uint256).max);
+        IERC20(wbnb).safeApprove(unirouter, type(uint256).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, type(uint256).max);
@@ -202,8 +199,9 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(chef, 0);
-        IERC20(output).safeApprove(unirouter, 0);
+        IERC20(want).safeApprove(masterchef, 0);
+        IERC20(cake).safeApprove(unirouter, 0);
+        IERC20(wbnb).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }

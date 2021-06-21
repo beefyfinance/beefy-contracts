@@ -1,34 +1,66 @@
 const { expect } = require("chai");
+const { addressBook } = require("blockchain-addressbook");
 
+const { zapNativeToToken, getVaultWant, getUnirouterData, unpauseIfPaused } = require("../../utils/testHelpers");
 const { delay } = require("../../utils/timeHelpers");
 
+const TIMEOUT = 10 * 60 * 1000;
+
+const chainName = "polygon";
+
 const config = {
-  vault: "0x7f56672fCB5D1d1760511803A0a54c4d1e911dFD",
+  vault: "0xAA7C2879DaF8034722A0977f13c343aF0883E92e",
+  testAmount: ethers.utils.parseEther("5"),
+  wnative: addressBook[chainName].tokens.WNATIVE.address,
 };
 
 describe("StratUpgrade", () => {
-  const setup = async () => {
-    const vault = await ethers.getContractAt("BeefyVaultV5", config.vault);
+  let vault, strategy, candidate, unirouter, want, keeper, upgrader;
+
+  before(async () => {
+    [deployer, keeper, upgrader] = await ethers.getSigners();
+
+    vault = await ethers.getContractAt("BeefyVaultV6", config.vault);
 
     const strategyAddr = await vault.strategy();
     const stratCandidate = await vault.stratCandidate();
 
-    const strategy = await ethers.getContractAt("IStrategyComplete", strategyAddr);
-    const candidate = await ethers.getContractAt("IStrategyComplete", stratCandidate.implementation);
+    strategy = await ethers.getContractAt("IStrategyComplete", strategyAddr);
+    candidate = await ethers.getContractAt("IStrategyComplete", stratCandidate.implementation);
 
-    return { vault, strategy, candidate };
-  };
+    const unirouterAddr = await strategy.unirouter();
+    const unirouterData = getUnirouterData(unirouterAddr);
+    unirouter = await ethers.getContractAt(unirouterData.interface, unirouterAddr);
+
+    want = await getVaultWant(vault, config.wnative);
+
+    // await zapNativeToToken({
+    //   amount: config.testAmount,
+    //   want,
+    //   nativeTokenAddr: config.wnative,
+    //   unirouter,
+    //   swapSignature: unirouterData.swapSignature,
+    //   recipient: deployer.address,
+    // });
+
+    // const wantBal = await want.balanceOf(deployer.address);
+    // await want.transfer(keeper.address, wantBal.div(2));
+  });
+
+  it("New strat has the correct admin accounts", async () => {
+    const { beefyfinance } = addressBook[chainName].platforms;
+    expect(await candidate.keeper()).to.equal(beefyfinance.keeper);
+    expect(await candidate.owner()).to.equal(beefyfinance.strategyOwner);
+  }).timeout(TIMEOUT);
 
   it("Upgrades correctly", async () => {
-    const { vault, strategy, candidate } = await setup();
-
     // check that balances are transfered correctly.
     console.log("Checking Balances");
     const vaultBal = await vault.balance();
     const strategyBal = await strategy.balanceOf();
     const candidateBal = await candidate.balanceOf();
 
-    await vault.upgradeStrat();
+    await vault.connect(upgrader).upgradeStrat();
 
     const vaultBalAfter = await vault.balance();
     const strategyBalAfter = await strategy.balanceOf();
@@ -40,24 +72,55 @@ describe("StratUpgrade", () => {
     expect(candidateBal).not.to.equal(candidateBalAfter);
     expect(candidateBal).to.equal(strategyBalAfter);
 
-    // check that harvesting works.
-    console.log("Checking Harvest");
     await delay(10000);
-
     let tx = candidate.harvest();
     await expect(tx).not.to.be.reverted;
 
-    // check that panic works.
-    console.log("Checking Panic");
     const balBeforePanic = await candidate.balanceOf();
-
-    tx = candidate.panic();
+    tx = candidate.connect(keeper).panic();
     await expect(tx).not.to.be.reverted;
-
     const balAfterPanic = await candidate.balanceOf();
-
     expect(balBeforePanic).to.equal(balAfterPanic);
-  });
+  }).timeout(TIMEOUT);
 
-  // Add multi-user test. (Deposit doesn't lower pricePerFullShare)
+  it("Vault and strat references are correct after upgrade.", async () => {
+    expect(await vault.strategy()).to.equal(candidate.address);
+    expect(await candidate.vault()).to.equal(vault.address);
+  }).timeout(TIMEOUT);
+
+  it("User can deposit and withdraw from the vault.", async () => {
+    await unpauseIfPaused(candidate, keeper);
+
+    const wantBalStart = await want.balanceOf(deployer.address);
+
+    await want.approve(vault.address, wantBalStart);
+    await vault.depositAll();
+    await vault.withdrawAll();
+
+    const wantBalFinal = await want.balanceOf(deployer.address);
+
+    expect(wantBalFinal).to.be.lte(wantBalStart);
+    expect(wantBalFinal).to.be.gt(wantBalStart.mul(95).div(100));
+  }).timeout(TIMEOUT);
+
+  it("New user doesn't lower other users balances.", async () => {
+    await unpauseIfPaused(candidate, keeper);
+
+    const wantBalStart = await want.balanceOf(deployer.address);
+    await want.approve(vault.address, wantBalStart);
+    await vault.depositAll();
+
+    const pricePerShare = await vault.getPricePerFullShare();
+    const wantBalOfOther = await want.balanceOf(upgrader.address);
+    await want.connect(upgrader).approve(vault.address, wantBalOfOther);
+    await vault.connect(upgrader).depositAll();
+    const pricePerShareAfter = await vault.getPricePerFullShare();
+
+    expect(pricePerShareAfter).to.be.gte(pricePerShare);
+
+    await vault.withdrawAll();
+    const wantBalFinal = await want.balanceOf(deployer.address);
+    expect(wantBalFinal).to.be.lte(wantBalStart);
+    expect(wantBalFinal).to.be.gt(wantBalStart.mul(95).div(100));
+  }).timeout(TIMEOUT);
 });
