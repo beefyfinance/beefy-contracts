@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "../interfaces/beefy/IVault.sol";
-import "../interfaces/beefy/IStrategy.sol";
 
 contract BeefyRegistry {
   using Address for address;
