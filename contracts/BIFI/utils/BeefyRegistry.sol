@@ -65,26 +65,26 @@ contract BeefyRegistry {
   }
 
   function getVaultInfo(address _vault) external view returns (
-    address token,
+    address want,
     address strategy
   ) {
-    (token, strategy) = getVaultData(_vault);
+    (want, strategy) = getVaultData(_vault);
     return (
-      token,
+      want,
       strategy
     );
   }
 
   function getVaultsInfo() external view returns (
-    address[] memory tokenArray,
+    address[] memory wantArray,
     address[] memory strategyArray
   ) {
-    tokenArray = new address[](vaults.length());
+    wantArray = new address[](vaults.length());
     strategyArray = new address[](vaults.length());
     
     for (uint i = 0; i < vaults.length(); i++) {
-      (address _token, address _strategy) = getVaultData(vaults.at(i));
-      tokenArray[i] = _token;
+      (address _want, address _strategy) = getVaultData(vaults.at(i));
+      wantArray[i] = _want;
       strategyArray[i] = _strategy;
     }
   }
