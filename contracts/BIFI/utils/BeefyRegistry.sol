@@ -13,6 +13,10 @@ contract BeefyRegistry {
   using SafeMath for uint256;
   using EnumerableSet for EnumerableSet.AddressSet;
 
+  event VaultAdded(address vault);
+  event ProposedGovernance(address governance);
+  event SwitchedGovernance(address oldGovernance, address newGovernance);
+
   address public governance;  
   address public pendingGovernance;
 
@@ -35,6 +39,7 @@ contract BeefyRegistry {
     require(_vault.isContract(), "!contract");
     require(!vaults.contains(_vault), "!duplicated");
     vaults.add(_vault);
+    emit VaultAdded(_vault);
   }
   
   function getVaultData(address _vault) internal view returns (
@@ -92,10 +97,12 @@ contract BeefyRegistry {
  // Governance setters
   function setPendingGovernance(address _pendingGovernance) external onlyGovernance {
     pendingGovernance = _pendingGovernance;
+    emit ProposedGovernance(_pendingGovernance);
   }
   
   function acceptGovernance() external onlyPendingGovernance {
-    governance = msg.sender;
+    emit SwitchedGovernance(governance, msg.sender);
+    governance = pendingGovernance;
   }
 
   modifier onlyGovernance {
