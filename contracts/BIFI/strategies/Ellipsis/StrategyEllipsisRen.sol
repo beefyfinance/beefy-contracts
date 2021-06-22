@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.12;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -102,14 +101,14 @@ contract StrategyEllipsisRen is Ownable, Pausable, GasThrottler {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _vault, address _strategist) {
+    constructor(address _vault, address _strategist) public {
         vault = _vault;
         strategist = _strategist;
 
-        IERC20(want).safeApprove(stakingPool, type(uint).max);
-        IERC20(eps).safeApprove(unirouter, type(uint).max);
-        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
-        IERC20(btcb).safeApprove(poolLp, type(uint).max);
+        IERC20(want).safeApprove(stakingPool, uint(-1));
+        IERC20(eps).safeApprove(unirouter, uint(-1));
+        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(btcb).safeApprove(poolLp, uint(-1));
     }
 
     /**
@@ -184,7 +183,7 @@ contract StrategyEllipsisRen is Ownable, Pausable, GasThrottler {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(eps).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, epsToWbnbRoute, address(this), block.timestamp.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, epsToWbnbRoute, address(this), now.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -193,7 +192,7 @@ contract StrategyEllipsisRen is Ownable, Pausable, GasThrottler {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -207,7 +206,7 @@ contract StrategyEllipsisRen is Ownable, Pausable, GasThrottler {
      */
     function swapRewards() internal {
         uint256 epsBal = IERC20(eps).balanceOf(address(this));
-        IUniswapRouter(unirouter).swapExactTokensForTokens(epsBal, 0, epsToBtcbRoute, address(this), block.timestamp.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(epsBal, 0, epsToBtcbRoute, address(this), now.add(600));
 
         uint256 btcbBal = IERC20(btcb).balanceOf(address(this));
         uint256[2] memory amounts = [btcbBal, 0];
@@ -276,10 +275,10 @@ contract StrategyEllipsisRen is Ownable, Pausable, GasThrottler {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(want).safeApprove(stakingPool, type(uint).max);
-        IERC20(eps).safeApprove(unirouter, type(uint).max);
-        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
-        IERC20(btcb).safeApprove(poolLp, type(uint).max);
+        IERC20(want).safeApprove(stakingPool, uint(-1));
+        IERC20(eps).safeApprove(unirouter, uint(-1));
+        IERC20(wbnb).safeApprove(unirouter, uint(-1));
+        IERC20(btcb).safeApprove(poolLp, uint(-1));
     }
 
     /**

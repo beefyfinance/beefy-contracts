@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -40,7 +39,7 @@ contract StrategyIronDND is StratManager, FeeManager, GasThrottler {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         _giveAllowances();
     }
 
@@ -94,7 +93,7 @@ contract StrategyIronDND is StratManager, FeeManager, GasThrottler {
     // performance fees
     function chargeFees() internal {
         uint256 toWbnb = IERC20(want).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, wantToWbnbRoute, address(this), block.timestamp);
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, wantToWbnbRoute, address(this), now);
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -155,8 +154,8 @@ contract StrategyIronDND is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(masterchef, type(uint256).max);
-        IERC20(want).safeApprove(unirouter, type(uint256).max);
+        IERC20(want).safeApprove(masterchef, uint256(-1));
+        IERC20(want).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {

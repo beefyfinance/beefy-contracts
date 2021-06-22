@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -17,9 +16,9 @@ import "../../interfaces/mdex/IMasterChef.sol";
 /**
  * @dev Implementation of a strategy to get yields from farming LP Pools in MDex.
  * This strategy simply deposits whatever funds it receives from the vault into the selected HECOPool pool.
- * MDX rewards from providing liquidity are farmed every few minutes, sold and split 50/50.
+ * MDX rewards from providing liquidity are farmed every few minutes, sold and split 50/50. 
  * The corresponding pair of assets are bought and more liquidity is added to the HECOPool pool.
- *
+ * 
  * This strat is currently compatible with all LP pools.
  */
 contract StrategyMdexLP is Ownable, Pausable {
@@ -98,7 +97,7 @@ contract StrategyMdexLP is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _lpPair, uint8 _poolId, address _vault, address _strategist) {
+    constructor(address _lpPair, uint8 _poolId, address _vault, address _strategist) public {
         lpPair = _lpPair;
         lpToken0 = IUniswapV2Pair(lpPair).token0();
         lpToken1 = IUniswapV2Pair(lpPair).token1();
@@ -118,15 +117,15 @@ contract StrategyMdexLP is Ownable, Pausable {
             mdxToLp1Route = [mdx, wht, lpToken1];
         }
 
-        IERC20(lpPair).safeApprove(masterchef, type(uint).max);
-        IERC20(mdx).safeApprove(unirouter, type(uint).max);
-        IERC20(wht).safeApprove(unirouter, type(uint).max);
+        IERC20(lpPair).safeApprove(masterchef, uint(-1));
+        IERC20(mdx).safeApprove(unirouter, uint(-1));
+        IERC20(wht).safeApprove(unirouter, uint(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
+        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
+        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
     }
 
     /**
@@ -184,14 +183,14 @@ contract StrategyMdexLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Takes out 4.5% as system fees from the rewards.
+     * @dev Takes out 4.5% as system fees from the rewards. 
      * 3.5% -> Beefy Treasury
      * 0.5% -> Call Fee
      * 0.5% -> Strategist fee
      */
     function chargeFees() internal {
         uint256 toWht = IERC20(mdx).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWht, 0, mdxToWhtRoute, address(this), block.timestamp.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWht, 0, mdxToWhtRoute, address(this), now.add(600));
 
         uint256 whtBal = IERC20(wht).balanceOf(address(this));
 
@@ -212,16 +211,16 @@ contract StrategyMdexLP is Ownable, Pausable {
         uint256 mdxHalf = IERC20(mdx).balanceOf(address(this)).div(2);
 
         if (lpToken0 != mdx) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(mdxHalf, 0, mdxToLp0Route, address(this), block.timestamp.add(600));
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(mdxHalf, 0, mdxToLp0Route, address(this), now.add(600));
         }
 
         if (lpToken1 != mdx) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(mdxHalf, 0, mdxToLp1Route, address(this), block.timestamp.add(600));
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(mdxHalf, 0, mdxToLp1Route, address(this), now.add(600));
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp.add(600));
+        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
     }
 
     /**
@@ -248,7 +247,7 @@ contract StrategyMdexLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
      * vault, ready to be migrated to the new strat.
      */
     function retireStrat() external {
@@ -287,15 +286,15 @@ contract StrategyMdexLP is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(lpPair).safeApprove(masterchef, type(uint).max);
-        IERC20(mdx).safeApprove(unirouter, type(uint).max);
-        IERC20(wht).safeApprove(unirouter, type(uint).max);
+        IERC20(lpPair).safeApprove(masterchef, uint(-1));
+        IERC20(mdx).safeApprove(unirouter, uint(-1));
+        IERC20(wht).safeApprove(unirouter, uint(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
+        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
+        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
 
         deposit();
     }

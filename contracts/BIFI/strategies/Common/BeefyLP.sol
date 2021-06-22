@@ -1,36 +1,35 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/beefy/IVault.sol";
 
 /**
  * @title Yield Balancer
  * @author sirbeefalot
- * @dev This strategy serves as a load balancer for multiple vaults that optimize the same asset.
- *
- * It doesn't implement its own farming strategy and doesn't implement a 'harvest()' function. It insteads
- * distributes the funds deposited into its parent vault into a group of subvaults called 'workers'.
- * Each worker implements its own farming strategy and harvest frequency.
- *
- * The balancer can manage up to {workersMax} workers, due to gas concerns. It can allocate from 0% to 100% of the available
+ * @dev This strategy serves as a load balancer for multiple vaults that optimize the same asset. 
+ * 
+ * It doesn't implement its own farming strategy and doesn't implement a 'harvest()' function. It insteads 
+ * distributes the funds deposited into its parent vault into a group of subvaults called 'workers'. 
+ * Each worker implements its own farming strategy and harvest frequency. 
+ * 
+ * The balancer can manage up to {workersMax} workers, due to gas concerns. It can allocate from 0% to 100% of the available 
  * funds into each of these workers.
- *
- * The implementation looks to make it as cheap as possible for users to use the vault. The worker at index '0' works as
+ * 
+ * The implementation looks to make it as cheap as possible for users to use the vault. The worker at index '0' works as 
  * the 'main' worker. It's where user deposits go and where user withdrawals come out first.
- * The balancer then has a few toggles like {rebalancePair} or the global {rebalance} to make sure it achieves and maintains
- * the desired fund distribution between all the workers. The strategy owner can use {switchWorkerOrder} to optimize worker
+ * The balancer then has a few toggles like {rebalancePair} or the global {rebalance} to make sure it achieves and maintains 
+ * the desired fund distribution between all the workers. The strategy owner can use {switchWorkerOrder} to optimize worker 
  * order within the {workers} array.
  *
- * This architecture works on the pragmatic assumption that there's usually a farm on a given platform or within a given asset
- * that can withstand the most TVL. There are secondary farms that can be used to relieve pressure from the main one
+ * This architecture works on the pragmatic assumption that there's usually a farm on a given platform or within a given asset 
+ * that can withstand the most TVL. There are secondary farms that can be used to relieve pressure from the main one 
  * and to increase overall APY. The calcs to determine optimal allocation ratios happen offchain. This contract provides the tools
  * for trustless fund management and rebalance.
  *
@@ -45,7 +44,7 @@ contract BeefyLP is Ownable, Pausable {
     using SafeMath for uint256;
 
     /**
-     * @dev The token that the vault looks to maximize. Configured through the constructor and can't be
+     * @dev The token that the vault looks to maximize. Configured through the constructor and can't be 
      * changed afterwards.
      */
     address public want;
@@ -56,13 +55,13 @@ contract BeefyLP is Ownable, Pausable {
     address public immutable vault;
 
     /**
-     * @dev Struct to store proposed candidates before they are accepted as workers.
+     * @dev Struct to store proposed candidates before they are accepted as workers.   
      */
     struct WorkerCandidate {
         address addr;
         uint256 proposedTime;
     }
-
+    
     /**
      * @dev Variables for worker and candidate management.
      * {workers} - Array to keep track of active workers.
@@ -76,14 +75,14 @@ contract BeefyLP is Ownable, Pausable {
     uint256 immutable public approvalDelay;
 
     /**
-     * {workersMax} - Max number of workers that the balancer can manage. Prevents out of gas errors.
+     * {workersMax} - Max number of workers that the balancer can manage. Prevents out of gas errors. 
      * {RATIO_MAX} - Aux const used to make sure all available funds are allocated on rebalance.
      */
-    uint8 immutable public workersMax;
+    uint8 immutable public workersMax; 
     uint256 constant public RATIO_MAX = 10000;
 
     /**
-     * @dev All the events that the contract emits.
+     * @dev All the events that the contract emits.  
      */
     event CandidateProposed(address candidate);
     event CandidateAccepted(address candidate);
@@ -91,9 +90,9 @@ contract BeefyLP is Ownable, Pausable {
     event WorkerDeleted(address worker);
 
     /**
-     * @dev Initializes the strategy with its parent {vault} and the token that will maximize {want}. It also sets up the
+     * @dev Initializes the strategy with its parent {vault} and the token that will maximize {want}. It also sets up the 
      * {approvalDelay} that candidates proposed as workers will have to wait before the owner can accept them as workers.
-     *
+     * 
      * @param _want Address of the token to maximize.
      * @param _workers Array of vault addresses that will serve as workers.
      * @param _approvalDelay Delay in seconds before a candidate can be added as worker.
@@ -102,11 +101,11 @@ contract BeefyLP is Ownable, Pausable {
      */
     constructor(
         address _want,
-        address[] memory _workers,
+        address[] memory _workers, 
         uint256 _approvalDelay,
         uint8 _workersMax,
         address _vault
-    ) {
+    ) public {
         want = _want;
         vault = _vault;
         approvalDelay = _approvalDelay;
@@ -155,12 +154,12 @@ contract BeefyLP is Ownable, Pausable {
 
     /**
      * @dev Sends all funds from a vault to another one.
-     * @param fromIndex Index of worker to take funds from.
+     * @param fromIndex Index of worker to take funds from. 
      * @param toIndex Index of worker where funds will go.
      */
     function rebalancePair(uint8 fromIndex, uint8 toIndex) external onlyOwner {
-        require(fromIndex < workers.length, "!from");
-        require(toIndex < workers.length, "!to");
+        require(fromIndex < workers.length, "!from");   
+        require(toIndex < workers.length, "!to");   
 
         _workerWithdrawAll(fromIndex);
         _workerDepositAll(toIndex);
@@ -168,13 +167,13 @@ contract BeefyLP is Ownable, Pausable {
 
     /**
      * @dev Sends a subset funds from a vault to another one.
-     * @param fromIndex Index of worker to take funds from.
+     * @param fromIndex Index of worker to take funds from. 
      * @param toIndex Index of worker where funds will go.
      * @param amount How much funds to send
      */
     function rebalancePairPartial(uint8 fromIndex, uint8 toIndex, uint256 amount) external onlyOwner {
-        require(fromIndex < workers.length, "!from");
-        require(toIndex < workers.length, "!to");
+        require(fromIndex < workers.length, "!from");   
+        require(toIndex < workers.length, "!to");   
 
         _workerWithdraw(fromIndex, amount);
         _workerDepositAll(toIndex);
@@ -182,7 +181,7 @@ contract BeefyLP is Ownable, Pausable {
 
     /**
      * @dev Rebalance all workers.
-     * @param ratios Array containing the desired balance per worker.
+     * @param ratios Array containing the desired balance per worker. 
      */
     function rebalance(uint256[] memory ratios) external onlyOwner {
         require(ratios.length == workers.length, "!balance");
@@ -196,9 +195,9 @@ contract BeefyLP is Ownable, Pausable {
         }
     }
 
-    /**
+    /** 
      * @dev Validates that 100% of the funds are allocated
-     * @param ratios Array containing the desired balance ratio per worker.
+     * @param ratios Array containing the desired balance ratio per worker. 
     */
     function _checkRatios(uint256[] memory ratios) pure internal returns (bool) {
         uint256 ratio = 0;
@@ -207,7 +206,7 @@ contract BeefyLP is Ownable, Pausable {
         }
         return ratio == RATIO_MAX;
     }
-
+    
     //--- CANDIDATE MANAGEMENT ---//
 
     /**
@@ -219,9 +218,9 @@ contract BeefyLP is Ownable, Pausable {
 
         candidates.push(WorkerCandidate({
             addr: candidate,
-            proposedTime: block.timestamp
+            proposedTime: now
         }));
-
+            
         emit CandidateProposed(candidate);
     }
 
@@ -233,8 +232,8 @@ contract BeefyLP is Ownable, Pausable {
         require(candidateIndex < candidates.length, "out of bounds");
         require(workers.length < workersMax, "!capacity");
 
-        WorkerCandidate memory candidate = candidates[candidateIndex];
-        require(candidate.proposedTime.add(approvalDelay) < block.timestamp, "!delay");
+        WorkerCandidate memory candidate = candidates[candidateIndex]; 
+        require(candidate.proposedTime.add(approvalDelay) < now, "!delay");
         require(workersMap[candidate.addr] == false, "!unique");
 
         _removeCandidate(candidateIndex);
@@ -254,28 +253,28 @@ contract BeefyLP is Ownable, Pausable {
         emit CandidateRejected(candidates[candidateIndex].addr);
 
         _removeCandidate(candidateIndex);
-    }
+    }   
 
-    /**
+    /** 
      * @dev Internal function to remove a candidate from the {candidates} array.
      * @param candidateIndex Index of candidate in the {candidates} array.
     */
     function _removeCandidate(uint8 candidateIndex) internal {
         candidates[candidateIndex] = candidates[candidates.length-1];
         candidates.pop();
-    }
+    } 
 
     //--- WORKER MANAGEMENT ---//
 
     /**
-     * @dev Function to switch the order of any two workers.
+     * @dev Function to switch the order of any two workers. 
      * @param workerA Current index of worker A to switch.
      * @param workerB ºCurrent index of worker B to switch.
-     */
+     */ 
     function switchWorkerOrder(uint8 workerA, uint8 workerB) external onlyOwner {
         require(workerA != workerB, "!same");
-        require(workerA < workers.length, "A out of bounds");
-        require(workerB < workers.length, "B out of bounds");
+        require(workerA < workers.length, "A out of bounds");   
+        require(workerB < workers.length, "B out of bounds");   
 
         address temp = workers[workerA];
         workers[workerA] = workers[workerB];
@@ -283,13 +282,13 @@ contract BeefyLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Withdraws all {want} from a worker and removes it from the options.
+     * @dev Withdraws all {want} from a worker and removes it from the options. 
      * The main worker at index 0 can't be deleted.
      * @param workerIndex Index of worker to delete.
      */
     function deleteWorker(uint8 workerIndex) external onlyOwner {
         require(workerIndex != 0, "!main");
-        require(workerIndex < workers.length, "out of bounds");
+        require(workerIndex < workers.length, "out of bounds");   
 
         address worker = workers[workerIndex];
         IERC20(want).safeApprove(worker, 0);
@@ -302,7 +301,7 @@ contract BeefyLP is Ownable, Pausable {
         emit WorkerDeleted(worker);
     }
 
-    /**
+    /** 
      * @dev Removes a worker from the workers list and map.
      * @param workerIndex Index of worker in the array.
     */
@@ -314,9 +313,9 @@ contract BeefyLP is Ownable, Pausable {
 
         workers[workerIndex] = workers[workers.length-1];
         workers.pop();
-    }
+    } 
 
-    /**
+    /** 
      * @dev Adds a group of workers to the workers list and map.
      * @param _workers List of vault addresses.
     */
@@ -326,21 +325,21 @@ contract BeefyLP is Ownable, Pausable {
         }
     }
 
-    /**
+    /** 
      * @dev Adds worker to the workers list and map.
      * @param worker Address of the vault to use as worker.
     */
     function _addWorker(address worker) internal {
         workersMap[worker] = true;
-        workers.push(worker);
-        IERC20(want).safeApprove(worker, type(uint256).max);
-    }
+        workers.push(worker); 
+        IERC20(want).safeApprove(worker, uint256(-1));
+    } 
 
     //--- FUNDS MANAGEMENT HELPERS ---//
 
     /**
      * @dev Give or remove {want} allowance from all workers.
-     * @param amount Allowance to set. Either '0' or 'type(uint).max'
+     * @param amount Allowance to set. Either '0' or 'uint(-1)' 
      */
     function _workersApprove(uint256 amount) internal {
         for (uint8 i = 0; i < workers.length; i++) {
@@ -357,7 +356,7 @@ contract BeefyLP is Ownable, Pausable {
         _workerDeposit(workerIndex, wantBal);
     }
 
-    /**
+    /** 
      * @dev Internal function to deposit some {want} into a particular worker.
      * @param workerIndex Index of the worker to withdraw from.
      * @param amount How much {want} to deposit.
@@ -375,16 +374,16 @@ contract BeefyLP is Ownable, Pausable {
         }
     }
 
-    /**
+    /** 
      * @dev Internal function to withdraw all {want} from a particular worker.
      * @param workerIndex Index of the worker to withdraw from.
     */
     function _workerWithdrawAll(uint8 workerIndex) internal {
-        require(workerIndex < workers.length, "out of bounds");
+        require(workerIndex < workers.length, "out of bounds");   
 
         address worker = workers[workerIndex];
         uint256 shares = IERC20(worker).balanceOf(address(this));
-
+        
         if (shares > 0) {
             IERC20(worker).safeApprove(worker, 0);
             IERC20(worker).safeApprove(worker, shares);
@@ -392,13 +391,13 @@ contract BeefyLP is Ownable, Pausable {
         }
     }
 
-    /**
+    /** 
      * @dev Internal function to withdraw some {want} from a particular worker.
      * @param workerIndex Index of the worker to withdraw from.
      * @param amount How much {want} to withdraw.
     */
     function _workerWithdraw(uint8 workerIndex, uint256 amount) internal {
-        require(workerIndex < workers.length, "out of bounds");
+        require(workerIndex < workers.length, "out of bounds");   
 
         address worker = workers[workerIndex];
         uint256 pricePerFullShare = IVault(worker).getPricePerFullShare();
@@ -414,9 +413,9 @@ contract BeefyLP is Ownable, Pausable {
     //--- STRATEGY LIFECYCLE METHODS ---//
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
      * vault, ready to be migrated to the new strat.
-     */
+     */ 
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
@@ -429,13 +428,13 @@ contract BeefyLP is Ownable, Pausable {
     /**
      * @dev Pauses deposits. Withdraws all funds from workers.
      */
-    function panic() external onlyOwner {
+    function panic() external onlyOwner {        
         _workersWithdrawAll();
         pause();
     }
 
     /**
-     * @dev Pauses the strat. Current funds continue to farm but new deposits
+     * @dev Pauses the strat. Current funds continue to farm but new deposits 
      * are not allowed.
      */
     function pause() public onlyOwner {
@@ -448,7 +447,7 @@ contract BeefyLP is Ownable, Pausable {
      */
     function unpause() external onlyOwner {
         _unpause();
-        _workersApprove(type(uint256).max);
+        _workersApprove(uint256(-1));
         deposit();
     }
 
@@ -487,7 +486,7 @@ contract BeefyLP is Ownable, Pausable {
      * @param workerIndex Index of the worker to calculate balance.
      */
     function _workerBalance(uint8 workerIndex) internal view returns (uint256) {
-        uint256 shares = IERC20(workers[workerIndex]).balanceOf(address(this));
+        uint256 shares = IERC20(workers[workerIndex]).balanceOf(address(this));  
         uint256 pricePerShare = IVault(workers[workerIndex]).getPricePerFullShare();
         return shares.mul(pricePerShare).div(1e18);
     }

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.12;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/aave/IDataProvider.sol";
 import "../../interfaces/aave/IIncentivesController.sol";
@@ -49,7 +48,7 @@ contract StrategyAaveMatic is StratManager, FeeManager {
 
     /**
      * @dev Helps to differentiate borrowed funds that shouldn't be used in functions like 'deposit()'
-     * as they're required to deleverage correctly.
+     * as they're required to deleverage correctly.  
      */
     uint256 public reserves = 0;
 
@@ -69,7 +68,7 @@ contract StrategyAaveMatic is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         (aToken,,varDebtToken) = IDataProvider(dataProvider).getReserveTokensAddresses(want);
 
         borrowRate = _borrowRate;
@@ -125,7 +124,7 @@ contract StrategyAaveMatic is StratManager, FeeManager {
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
-        ILendingPool(lendingPool).repay(want, type(uint256).max, INTEREST_RATE_MODE, address(this));
+        ILendingPool(lendingPool).repay(want, uint256(-1), INTEREST_RATE_MODE, address(this));
         ILendingPool(lendingPool).withdraw(want, type(uint).max, address(this));
 
         reserves = 0;
@@ -168,7 +167,7 @@ contract StrategyAaveMatic is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         _leverage(wantBal);
 
-        emit StratRebalance(_borrowRate, _borrowDepth);
+        StratRebalance(_borrowRate, _borrowDepth);
     }
 
     // compounds earnings and charges performance fee
@@ -308,10 +307,10 @@ contract StrategyAaveMatic is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(lendingPool, type(uint256).max);
+        IERC20(want).safeApprove(lendingPool, uint256(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(lendingPool, 0);
     }
-}
+} 

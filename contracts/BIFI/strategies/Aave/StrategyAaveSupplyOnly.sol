@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.12;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/aave/IDataProvider.sol";
 import "../../interfaces/aave/IIncentivesController.sol";
@@ -46,7 +45,7 @@ contract StrategyAaveSupplyOnly is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         (aToken,,) = IDataProvider(dataProvider).getReserveTokensAddresses(want);
 
@@ -120,7 +119,7 @@ contract StrategyAaveSupplyOnly is StratManager, FeeManager {
     // swap rewards to {want}
     function swapRewards() internal {
         uint256 wmaticBal = IERC20(wmatic).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(wmaticBal, 0, wmaticToWantRoute, address(this), block.timestamp);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(wmaticBal, 0, wmaticToWantRoute, address(this), now);
     }
 
     // return supply and borrow balance
@@ -188,12 +187,12 @@ contract StrategyAaveSupplyOnly is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(lendingPool, type(uint256).max);
-        IERC20(wmatic).safeApprove(unirouter, type(uint256).max);
+        IERC20(want).safeApprove(lendingPool, uint256(-1));
+        IERC20(wmatic).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(lendingPool, 0);
         IERC20(wmatic).safeApprove(unirouter, 0);
     }
-}
+} 

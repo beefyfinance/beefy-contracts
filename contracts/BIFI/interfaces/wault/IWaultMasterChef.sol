@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.0;
 
 interface IWaultMasterChef {
     function deposit(uint256 _pid, uint256 _amount, bool _withdrawRewards) external;

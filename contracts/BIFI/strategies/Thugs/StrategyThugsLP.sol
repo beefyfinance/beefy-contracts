@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/thugs/IThugswapRouter.sol";
 import "../../interfaces/thugs/IThugswapPair.sol";
@@ -16,7 +15,7 @@ import "../../interfaces/thugs/IOriginalGangsterV2.sol";
 
 /**
  * @dev Implementation of a strategy to get yields from farming LP Pools in StreetSwap.
- *
+ * 
  * This strat is currently compatible with all LP pools.
  */
 contract StrategyThugsLP is Ownable, Pausable {
@@ -99,7 +98,7 @@ contract StrategyThugsLP is Ownable, Pausable {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _lpPair, uint8 _poolId, address _vault, address _unirouter) {
+    constructor(address _lpPair, uint8 _poolId, address _vault, address _unirouter) public {
         lpPair = _lpPair;
         lpToken0 = IThugswapPair(lpPair).token0();
         lpToken1 = IThugswapPair(lpPair).token1();
@@ -119,15 +118,15 @@ contract StrategyThugsLP is Ownable, Pausable {
             drugsToLp1Route = [drugs, wbnb, lpToken1];
         }
 
-        IERC20(lpPair).safeApprove(gangster, type(uint).max);
-        IERC20(drugs).safeApprove(unirouter, type(uint).max);
-        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
+        IERC20(lpPair).safeApprove(gangster, uint(-1));
+        IERC20(drugs).safeApprove(unirouter, uint(-1));
+        IERC20(wbnb).safeApprove(unirouter, uint(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
+        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
+        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
     }
 
     /**
@@ -153,15 +152,15 @@ contract StrategyThugsLP is Ownable, Pausable {
 
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
 
-        if (pairBal < _amount) {
+        if (pairBal < _amount) {   
             IOriginalGangsterV2(gangster).withdraw(poolId, _amount.sub(pairBal));
             pairBal = IERC20(lpPair).balanceOf(address(this));
         }
 
         if (pairBal > _amount) {
-            pairBal = _amount;
+            pairBal = _amount;    
         }
-
+        
         uint256 withdrawalFee = pairBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
         IERC20(lpPair).safeTransfer(vault, pairBal.sub(withdrawalFee));
     }
@@ -185,15 +184,15 @@ contract StrategyThugsLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Takes out 6% as system fees from the rewards.
+     * @dev Takes out 6% as system fees from the rewards. 
      * 1.0% -> Call Fee
      * 1.0% -> Treasury fee
      * 4.0% -> BIFI Holders
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(drugs).balanceOf(address(this)).mul(6).div(100);
-        IThugswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, drugsToWbnbRoute, address(this), block.timestamp.add(600));
-
+        IThugswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, drugsToWbnbRoute, address(this), now.add(600));
+        
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
         uint256 callFee = wbnbBal.mul(CALL_FEE).div(MAX_FEE);
@@ -201,7 +200,7 @@ contract StrategyThugsLP is Ownable, Pausable {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IThugswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
+        IThugswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -210,20 +209,20 @@ contract StrategyThugsLP is Ownable, Pausable {
     /**
      * @dev Swaps {drugs} for {lpToken0}, {lpToken1} & {wbnb} using ThugSwap.
      */
-    function addLiquidity() internal {
+    function addLiquidity() internal { 
         uint256 drugsHalf = IERC20(drugs).balanceOf(address(this)).div(2);
 
         if (lpToken0 != drugs) {
-            IThugswapRouter(unirouter).swapExactTokensForTokens(drugsHalf, 0, drugsToLp0Route, address(this), block.timestamp.add(600));
+            IThugswapRouter(unirouter).swapExactTokensForTokens(drugsHalf, 0, drugsToLp0Route, address(this), now.add(600));
         }
 
         if (lpToken1 != drugs) {
-            IThugswapRouter(unirouter).swapExactTokensForTokens(drugsHalf, 0, drugsToLp1Route, address(this), block.timestamp.add(600));
+            IThugswapRouter(unirouter).swapExactTokensForTokens(drugsHalf, 0, drugsToLp1Route, address(this), now.add(600));
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IThugswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp.add(600));
+        IThugswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
     }
 
     /**
@@ -250,12 +249,12 @@ contract StrategyThugsLP is Ownable, Pausable {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
      * vault, ready to be migrated to the new strat.
-     */
+     */ 
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
-
+        
         IOriginalGangsterV2(gangster).emergencyWithdraw(poolId);
 
         uint256 pairBal = IERC20(lpPair).balanceOf(address(this));
@@ -288,15 +287,15 @@ contract StrategyThugsLP is Ownable, Pausable {
      */
     function unpause() external onlyOwner {
         _unpause();
-
-        IERC20(lpPair).safeApprove(gangster, type(uint).max);
-        IERC20(drugs).safeApprove(unirouter, type(uint).max);
-        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
+        
+        IERC20(lpPair).safeApprove(gangster, uint(-1));
+        IERC20(drugs).safeApprove(unirouter, uint(-1));
+        IERC20(wbnb).safeApprove(unirouter, uint(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
+        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
+        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
     }
 }

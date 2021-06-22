@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -115,7 +114,7 @@ contract StrategyMdexBscSingle is Ownable, Pausable, GasThrottler {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _want, uint8 _poolId, bool _useOutputToWantRoute, address _vault, address _strategist) {
+    constructor(address _want, uint8 _poolId, bool _useOutputToWantRoute, address _vault, address _strategist) public {
         want = _want;
         poolId = _poolId;
         vault = _vault;
@@ -125,9 +124,9 @@ contract StrategyMdexBscSingle is Ownable, Pausable, GasThrottler {
         outputToWantRoute = [output, busd, want];
         wbnbToWantRoute = [wbnb, want];
 
-        IERC20(want).safeApprove(masterchef, type(uint).max);
-        IERC20(output).safeApprove(mdxrouter, type(uint).max);
-        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
+        IERC20(want).safeApprove(masterchef, uint(-1));
+        IERC20(output).safeApprove(mdxrouter, uint(-1));
+        IERC20(wbnb).safeApprove(unirouter, uint(-1));
     }
 
     /**
@@ -188,7 +187,7 @@ contract StrategyMdexBscSingle is Ownable, Pausable, GasThrottler {
     }
 
     /**
-     * @dev Takes out 4.5% as system fees from the rewards.
+     * @dev Takes out 4.5% as system fees from the rewards. 
      * 0.5% -> Call Fee
      * 0.5% -> Treasury fee
      * 0.5% -> Strategist fee
@@ -196,7 +195,7 @@ contract StrategyMdexBscSingle is Ownable, Pausable, GasThrottler {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(mdxrouter).swapExactTokensForTokens(toWbnb, 0, outputToWbnbRoute, address(this), block.timestamp.add(600));
+        IUniswapRouterETH(mdxrouter).swapExactTokensForTokens(toWbnb, 0, outputToWbnbRoute, address(this), now.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -205,7 +204,7 @@ contract StrategyMdexBscSingle is Ownable, Pausable, GasThrottler {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
 
         uint256 rewardsFeeAmount = wbnbBal.mul(rewardsFee).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFeeAmount);
@@ -220,12 +219,12 @@ contract StrategyMdexBscSingle is Ownable, Pausable, GasThrottler {
     function swapRewards() internal {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (useOutputToWantRoute) {
-            IUniswapRouterETH(mdxrouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), block.timestamp.add(600));
+            IUniswapRouterETH(mdxrouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), now.add(600));
         } else {
-            IUniswapRouterETH(mdxrouter).swapExactTokensForTokens(outputBal, 0, outputToWbnbRoute, address(this), block.timestamp.add(600));
+            IUniswapRouterETH(mdxrouter).swapExactTokensForTokens(outputBal, 0, outputToWbnbRoute, address(this), now.add(600));
 
             uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(wbnbBal, 0, wbnbToWantRoute, address(this), block.timestamp.add(600));
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(wbnbBal, 0, wbnbToWantRoute, address(this), now.add(600));
         }
     }
 
@@ -264,7 +263,7 @@ contract StrategyMdexBscSingle is Ownable, Pausable, GasThrottler {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
      * vault, ready to be migrated to the new strat.
      */
     function retireStrat() external {
@@ -301,9 +300,9 @@ contract StrategyMdexBscSingle is Ownable, Pausable, GasThrottler {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(want).safeApprove(masterchef, type(uint).max);
-        IERC20(output).safeApprove(mdxrouter, type(uint).max);
-        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
+        IERC20(want).safeApprove(masterchef, uint(-1));
+        IERC20(output).safeApprove(mdxrouter, uint(-1));
+        IERC20(wbnb).safeApprove(unirouter, uint(-1));
     }
 
     /**

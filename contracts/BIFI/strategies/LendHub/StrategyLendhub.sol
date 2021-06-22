@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.12;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/lendhub/IComptroller.sol";
@@ -17,7 +16,7 @@ import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
 
-// Lendhub Lending Strategy
+// Lendhub Lending Strategy 
 contract StrategyLendhub is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -53,10 +52,10 @@ contract StrategyLendhub is StratManager, FeeManager {
 
     /**
      * @dev Helps to differentiate borrowed funds that shouldn't be used in functions like 'deposit()'
-     * as they're required to deleverage correctly.
+     * as they're required to deleverage correctly.  
      */
     uint256 public reserves = 0;
-
+    
     uint256 public balanceOfPool;
 
     /**
@@ -77,7 +76,7 @@ contract StrategyLendhub is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         iToken = _iToken;
         want = IVToken(_iToken).underlying();
         borrowRate = _borrowRate;
@@ -88,7 +87,7 @@ contract StrategyLendhub is StratManager, FeeManager {
         outputToWantRoute = [output, usdt, want];
 
         _giveAllowances();
-
+        
         IComptroller(comptroller).enterMarkets(_markets);
     }
 
@@ -99,7 +98,7 @@ contract StrategyLendhub is StratManager, FeeManager {
         if (wantBal > 0) {
             _leverage(wantBal);
         }
-
+        
     }
 
     /**
@@ -116,7 +115,7 @@ contract StrategyLendhub is StratManager, FeeManager {
         }
 
         reserves = reserves.add(_amount);
-
+        
         updateBalance();
     }
 
@@ -135,22 +134,22 @@ contract StrategyLendhub is StratManager, FeeManager {
 
             borrowBal = IVToken(iToken).borrowBalanceCurrent(address(this));
             uint256 targetSupply = borrowBal.mul(100).div(borrowRate);
-
+        
             uint256 supplyBal = IVToken(iToken).balanceOfUnderlying(address(this));
             IVToken(iToken).redeemUnderlying(supplyBal.sub(targetSupply));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
-        IVToken(iToken).repayBorrow(type(uint256).max);
-
+        IVToken(iToken).repayBorrow(uint256(-1));
+        
         uint256 iTokenBal = IERC20(iToken).balanceOf(address(this));
         IVToken(iToken).redeem(iTokenBal);
 
         reserves = 0;
-
+        
         updateBalance();
     }
-
+    
 
     /**
      * @dev Extra safety measure that allows us to manually unwind one level. In case we somehow get into
@@ -166,16 +165,16 @@ contract StrategyLendhub is StratManager, FeeManager {
 
         uint256 borrowBal = IVToken(iToken).borrowBalanceCurrent(address(this));
         uint256 targetSupply = borrowBal.mul(100).div(_borrowRate);
-
+        
         uint256 supplyBal = IVToken(iToken).balanceOfUnderlying(address(this));
         IVToken(iToken).redeemUnderlying(supplyBal.sub(targetSupply));
-
+        
         wantBal = IERC20(want).balanceOf(address(this));
         reserves = wantBal;
-
+        
         updateBalance();
     }
-
+    
 
 
     /**
@@ -194,7 +193,7 @@ contract StrategyLendhub is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         _leverage(wantBal);
 
-        emit StratRebalance(_borrowRate, _borrowDepth);
+        StratRebalance(_borrowRate, _borrowDepth);
     }
 
     // compounds earnings and charges performance fee
@@ -212,8 +211,8 @@ contract StrategyLendhub is StratManager, FeeManager {
     // performance fees
     function chargeFees() internal {
         uint256 toWht = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWht, 0, outputToWhtRoute, address(this), block.timestamp);
-
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWht, 0, outputToWhtRoute, address(this), now);
+        
         uint256 whtBal = IERC20(wht).balanceOf(address(this));
 
         uint256 callFeeAmount = whtBal.mul(callFee).div(MAX_FEE);
@@ -229,7 +228,7 @@ contract StrategyLendhub is StratManager, FeeManager {
     // swap rewards to {want}
     function swapRewards() internal {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        IUniswapRouter(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), block.timestamp);
+        IUniswapRouter(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), now);
     }
 
     /**
@@ -271,7 +270,7 @@ contract StrategyLendhub is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         return wantBal.sub(reserves);
     }
-
+    
     // return supply and borrow balance
     function updateBalance() public {
         uint256 supplyBal = IVToken(iToken).balanceOfUnderlying(address(this));
@@ -321,8 +320,8 @@ contract StrategyLendhub is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(iToken, type(uint256).max);
-        IERC20(output).safeApprove(unirouter, type(uint256).max);
+        IERC20(want).safeApprove(iToken, uint256(-1));
+        IERC20(output).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {

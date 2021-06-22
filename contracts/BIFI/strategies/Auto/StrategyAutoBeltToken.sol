@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/auto/IAutoFarmV2.sol";
@@ -50,7 +49,7 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         wantToken = IBeltToken(want).token();
         poolId = _poolId;
@@ -108,7 +107,7 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
     // performance fees
     function chargeFees() internal {
         uint256 toWbnb = IERC20(Auto).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, AutoToWbnbRoute, address(this), block.timestamp);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, AutoToWbnbRoute, address(this), now);
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -125,7 +124,7 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
         uint256 autoBal = IERC20(Auto).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(autoBal, 0, AutoToWantTokenRoute, address(this), block.timestamp);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(autoBal, 0, AutoToWantTokenRoute, address(this), now);
 
         uint256 wantTokenBal = IERC20(wantToken).balanceOf(address(this));
         IBeltToken(want).deposit(wantTokenBal, 0);
@@ -161,7 +160,7 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
     }
 
     function _retireStrat() internal {
-        IAutoFarmV2(autofarm).withdraw(poolId, type(uint).max);
+        IAutoFarmV2(autofarm).withdraw(poolId, uint(-1));
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -177,7 +176,7 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IAutoFarmV2(autofarm).withdraw(poolId, type(uint).max);
+        IAutoFarmV2(autofarm).withdraw(poolId, uint(-1));
     }
 
     // pauses deposits and withdraws all funds from third party systems.
@@ -201,9 +200,9 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(autofarm, type(uint).max);
-        IERC20(Auto).safeApprove(unirouter, type(uint).max);
-        IERC20(wantToken).safeApprove(want, type(uint).max);
+        IERC20(want).safeApprove(autofarm, uint(-1));
+        IERC20(Auto).safeApprove(unirouter, uint(-1));
+        IERC20(wantToken).safeApprove(want, uint(-1));
     }
 
     function _removeAllowances() internal {

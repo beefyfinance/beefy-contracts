@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.0;
 
 interface IUniswapRouterAVAX {
     function addLiquidity(
@@ -44,10 +43,10 @@ interface IUniswapRouterAVAX {
     ) external returns (uint amountToken, uint amountAVAX);
 
     function swapExactTokensForTokens(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
+        uint amountIn, 
+        uint amountOutMin, 
+        address[] calldata path, 
+        address to, 
         uint deadline
     ) external returns (uint[] memory amounts);
 
@@ -55,7 +54,7 @@ interface IUniswapRouterAVAX {
         external
         payable
         returns (uint[] memory amounts);
-
+    
     function swapExactTokensForAVAX(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
         external
         returns (uint[] memory amounts);

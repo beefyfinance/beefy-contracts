@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -100,7 +99,7 @@ contract StrategySwirlLP is Ownable, Pausable, GasThrottler {
     /**
      * @dev Initializes the strategy with the token to maximize.
      */
-    constructor(address _vault, address _strategist) {
+    constructor(address _vault, address _strategist) public {
         lpToken0 = IUniswapV2Pair(lpPair).token0();
         lpToken1 = IUniswapV2Pair(lpPair).token1();
         vault = _vault;
@@ -118,15 +117,15 @@ contract StrategySwirlLP is Ownable, Pausable, GasThrottler {
             swirlToLp1Route = [swirl, wbnb, lpToken1];
         }
 
-        IERC20(lpPair).safeApprove(masterchef, type(uint).max);
-        IERC20(swirl).safeApprove(unirouter, type(uint).max);
-        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
+        IERC20(lpPair).safeApprove(masterchef, uint(-1));
+        IERC20(swirl).safeApprove(unirouter, uint(-1));
+        IERC20(wbnb).safeApprove(unirouter, uint(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
+        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
+        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
     }
 
     /**
@@ -188,7 +187,7 @@ contract StrategySwirlLP is Ownable, Pausable, GasThrottler {
     }
 
     /**
-     * @dev Takes out 4.5% as system fees from the rewards.
+     * @dev Takes out 4.5% as system fees from the rewards. 
      * 0.5% -> Call Fee
      * 0.5% -> Treasury fee
      * 0.5% -> Strategist fee
@@ -196,7 +195,7 @@ contract StrategySwirlLP is Ownable, Pausable, GasThrottler {
      */
     function chargeFees() internal {
         uint256 toWbnb = IERC20(swirl).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toWbnb, 0, swirlToWbnbRoute, address(this), block.timestamp.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toWbnb, 0, swirlToWbnbRoute, address(this), now.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -205,7 +204,7 @@ contract StrategySwirlLP is Ownable, Pausable, GasThrottler {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -221,16 +220,16 @@ contract StrategySwirlLP is Ownable, Pausable, GasThrottler {
         uint256 swirlHalf = IERC20(swirl).balanceOf(address(this)).div(2);
 
         if (lpToken0 != swirl) {
-            IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(swirlHalf, 0, swirlToLp0Route, address(this), block.timestamp.add(600));
+            IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(swirlHalf, 0, swirlToLp0Route, address(this), now.add(600));
         }
 
         if (lpToken1 != swirl) {
-            IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(swirlHalf, 0, swirlToLp1Route, address(this), block.timestamp.add(600));
+            IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(swirlHalf, 0, swirlToLp1Route, address(this), now.add(600));
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp.add(600));
+        IUniswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now.add(600));
     }
 
     /**
@@ -257,7 +256,7 @@ contract StrategySwirlLP is Ownable, Pausable, GasThrottler {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
      * vault, ready to be migrated to the new strat.
      */
     function retireStrat() external {
@@ -296,15 +295,15 @@ contract StrategySwirlLP is Ownable, Pausable, GasThrottler {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(lpPair).safeApprove(masterchef, type(uint).max);
-        IERC20(swirl).safeApprove(unirouter, type(uint).max);
-        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
+        IERC20(lpPair).safeApprove(masterchef, uint(-1));
+        IERC20(swirl).safeApprove(unirouter, uint(-1));
+        IERC20(wbnb).safeApprove(unirouter, uint(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
+        IERC20(lpToken0).safeApprove(unirouter, uint(-1));
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
+        IERC20(lpToken1).safeApprove(unirouter, uint(-1));
     }
 
     /**

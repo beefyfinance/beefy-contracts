@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -27,7 +26,7 @@ contract StrategyEllipsisSingleAsset is StratManager, FeeManager {
 
     // Routes
     address[] public outputToWantRoute;
-    address[] public outputToWbnbRoute = [output, wbnb];
+    address[] public outputToWbnbRoute = [output, wbnb]; 
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -42,11 +41,11 @@ contract StrategyEllipsisSingleAsset is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         rewardPool = _rewardPool;
 
-        outputToWantRoute = [output, wbnb, want];
+        outputToWantRoute = [output, wbnb, want]; 
 
         _giveAllowances();
     }
@@ -94,8 +93,8 @@ contract StrategyEllipsisSingleAsset is StratManager, FeeManager {
 
     // performance fees
     function chargeFees() internal {
-        uint256 toBnb = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toBnb, 0, outputToWbnbRoute, address(this), block.timestamp);
+        uint256 toBnb = IERC20(output).balanceOf(address(this)).mul(45).div(1000); 
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toBnb, 0, outputToWbnbRoute, address(this), now);
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -111,8 +110,8 @@ contract StrategyEllipsisSingleAsset is StratManager, FeeManager {
 
     // swap rewards to {want}
     function swapRewards() internal {
-        uint256 outputBalance = IERC20(output).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBalance, 0, outputToWantRoute, address(this), block.timestamp);
+        uint256 outputBalance = IERC20(output).balanceOf(address(this)); 
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBalance, 0, outputToWantRoute, address(this), now);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -161,12 +160,12 @@ contract StrategyEllipsisSingleAsset is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(rewardPool, type(uint256).max);
-        IERC20(output).safeApprove(unirouter, type(uint256).max);
+        IERC20(want).safeApprove(rewardPool, uint256(-1));
+        IERC20(output).safeApprove(unirouter, uint256(-1)); 
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(rewardPool, 0);
-        IERC20(output).safeApprove(unirouter, 0);
+        IERC20(output).safeApprove(unirouter, 0); 
     }
 }

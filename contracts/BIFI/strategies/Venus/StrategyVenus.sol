@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.12;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/venus/IUnitroller.sol";
@@ -18,8 +17,8 @@ import "../../utils/GasThrottler.sol";
 /**
  * @title Strategy Venus
  * @author sirbeefalot & superbeefyboy
- * @dev It maximizes yields doing leveraged lending with a single configurable BEP20 asset
- * on the Venus lending platform.
+ * @dev It maximizes yields doing leveraged lending with a single configurable BEP20 asset 
+ * on the Venus lending platform. 
  */
 contract StrategyVenus is Ownable, Pausable, GasThrottler {
     using SafeERC20 for IERC20;
@@ -29,10 +28,10 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
     /**
      * @dev Tokens Used:
      * {venus}   - Token earned through farming.
-     * {wbnb}    - Required for liquidity routing when doing swaps.
+     * {wbnb}    - Required for liquidity routing when doing swaps. 
      * {bifi}    - BeefyFinance token, used to send funds to the treasury.
      * {vtoken}  - Venus Token. We interact with it to mint/redem/borrow/repay the loan.
-     * {want}    - Token that the strategy maximizes.
+     * {want}    - Token that the strategy maximizes. 
      */
     address constant public venus = address(0xcF6BB5389c92Bdda8a3747Ddb454cB7a64626C63);
     address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
@@ -95,7 +94,7 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
     /**
      * @dev Variables that can be changed to config profitability and risk:
      * {borrowRate}          - What % of our collateral do we borrow per leverage level.
-     * {borrowDepth}         - How many levels of leverage do we take.
+     * {borrowDepth}         - How many levels of leverage do we take. 
      * {minLeverage}         - The minimum amount of collateral required to leverage.
      * {BORROW_RATE_MAX}     - A limit on how much we can push borrow risk.
      * {BORROW_DEPTH_MAX}    - A limit on how many steps we can leverage.
@@ -106,16 +105,16 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
     uint256 constant public BORROW_RATE_MAX = 58;
     uint256 constant public BORROW_DEPTH_MAX = 10;
 
-    /**
+    /** 
      * @dev We keep and update a cache of the strat's {want} deposited in venus. Contract
      * functions that use this value always update it first. We use it to keep the UI helper
-     * functions as view only.
+     * functions as view only.  
      */
     uint256 public depositedBalance;
 
     /**
      * @dev Helps to differentiate borrowed funds that shouldn't be used in functions like 'deposit()'
-     * as they're required to deleverage correctly.
+     * as they're required to deleverage correctly.  
      */
     uint256 public reserves = 0;
 
@@ -131,17 +130,17 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
      * @param _vtoken Address of the vtoken that we will interact with.
      * @param _borrowRate Initial borrow rate used.
      * @param _borrowDepth Initial borow depth used.
-     * @param _minLeverage Minimum amount that the '_leverage' function will actually leverage.
+     * @param _minLeverage Minimum amount that the '_leverage' function will actually leverage. 
      * @param _markets Array with a single element being the target vtoken address.
      */
     constructor(
-        address _vault,
-        address _vtoken,
-        uint256 _borrowRate,
-        uint256 _borrowDepth,
-        uint256 _minLeverage,
+        address _vault, 
+        address _vtoken, 
+        uint256 _borrowRate, 
+        uint256 _borrowDepth, 
+        uint256 _minLeverage, 
         address[] memory _markets
-    ) {
+    ) public {
         vault = _vault;
         vtoken = _vtoken;
         want = IVToken(_vtoken).underlying();
@@ -152,21 +151,21 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
 
         venusToWantRoute = [venus, wbnb, want];
 
-        IERC20(want).safeApprove(vtoken, type(uint).max);
-        IERC20(venus).safeApprove(unirouter, type(uint).max);
-        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
+        IERC20(want).safeApprove(vtoken, uint(-1));
+        IERC20(venus).safeApprove(unirouter, uint(-1));
+        IERC20(wbnb).safeApprove(unirouter, uint(-1));
 
         IUnitroller(unitroller).enterMarkets(_markets);
     }
 
     /**
      * @dev Function that puts the funds to work.
-     * It gets called whenever someone deposits in the strategy's vault. It does {borrowDepth}
+     * It gets called whenever someone deposits in the strategy's vault. It does {borrowDepth} 
      * levels of compound lending. It also updates the helper {depositedBalance} variable.
      */
     function deposit() public whenNotPaused {
         uint256 wantBal = availableWant();
-
+        
         if (wantBal > 0) {
             _leverage(wantBal);
         }
@@ -188,11 +187,11 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
         }
 
         reserves = reserves.add(_amount);
-    }
+    } 
 
     /**
-     * @dev Incrementally alternates between paying part of the debt and withdrawing part of the supplied
-     * collateral. Continues to do this until it repays the entire debt and withdraws all the supplied {want}
+     * @dev Incrementally alternates between paying part of the debt and withdrawing part of the supplied 
+     * collateral. Continues to do this until it repays the entire debt and withdraws all the supplied {want} 
      * from the system
      */
     function _deleverage() internal {
@@ -210,7 +209,7 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
-        IVToken(vtoken).repayBorrow(type(uint256).max);
+        IVToken(vtoken).repayBorrow(uint256(-1));
 
         uint256 vtokenBal = IERC20(vtoken).balanceOf(address(this));
         IVToken(vtoken).redeem(vtokenBal);
@@ -219,9 +218,9 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
     }
 
     /**
-     * @dev Extra safety measure that allows us to manually unwind one level. In case we somehow get into
-     * as state where the cost of unwinding freezes the system. We can manually unwind a few levels
-     * with this function and then 'rebalance()' with new {borrowRate} and {borrowConfig} values.
+     * @dev Extra safety measure that allows us to manually unwind one level. In case we somehow get into 
+     * as state where the cost of unwinding freezes the system. We can manually unwind a few levels 
+     * with this function and then 'rebalance()' with new {borrowRate} and {borrowConfig} values. 
      * @param _borrowRate configurable borrow rate in case it's required to unwind successfully
      */
     function deleverageOnce(uint _borrowRate) external onlyOwner {
@@ -235,7 +234,7 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
         uint256 balanceOfUnderlying = IVToken(vtoken).balanceOfUnderlying(address(this));
 
         IVToken(vtoken).redeemUnderlying(balanceOfUnderlying.sub(targetUnderlying));
-
+        
         updateBalance();
 
         wantBal = IERC20(want).balanceOf(address(this));
@@ -258,7 +257,7 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         _leverage(wantBal);
 
-        emit StratRebalance(_borrowRate, _borrowDepth);
+        StratRebalance(_borrowRate, _borrowDepth);
     }
 
     /**
@@ -288,7 +287,7 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
      */
     function _chargeFees() internal {
         uint256 toWbnb = IERC20(venus).balanceOf(address(this)).mul(50).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, venusToWbnbRoute, address(this), block.timestamp.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWbnb, 0, venusToWbnbRoute, address(this), now.add(600));
 
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
@@ -297,7 +296,7 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, block.timestamp.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wbnbToBifiRoute, treasury, now.add(600));
 
         uint256 rewardsFee = wbnbBal.mul(REWARDS_FEE).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(rewards, rewardsFee);
@@ -311,12 +310,12 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
      */
     function _swapRewards() internal {
         uint256 venusBal = IERC20(venus).balanceOf(address(this));
-        IUniswapRouter(unirouter).swapExactTokensForTokens(venusBal, 0, venusToWantRoute, address(this), block.timestamp.add(600));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(venusBal, 0, venusToWantRoute, address(this), now.add(600));
     }
 
     /**
      * @dev Withdraws funds and sends them back to the vault. It deleverages from venus first,
-     * and then deposits again after the withdraw to make sure it mantains the desired ratio.
+     * and then deposits again after the withdraw to make sure it mantains the desired ratio. 
      * @param _amount How much {want} to withdraw.
      */
     function withdraw(uint256 _amount) external {
@@ -330,7 +329,7 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
         }
 
         if (wantBal > _amount) {
-            wantBal = _amount;
+            wantBal = _amount;    
         }
 
         uint256 withdrawalFee = wantBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
@@ -339,14 +338,14 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
         if (!paused()) {
             _leverage(availableWant());
         }
-
+  
         updateBalance();
     }
 
     /**
-     * @dev It helps mantain a cached version of the {want} deposited in venus.
-     * We use it to be able to keep the vault's 'balance()' function and
-     * 'getPricePerFullShare()' with view visibility.
+     * @dev It helps mantain a cached version of the {want} deposited in venus. 
+     * We use it to be able to keep the vault's 'balance()' function and 
+     * 'getPricePerFullShare()' with view visibility. 
      */
     function updateBalance() public {
         uint256 supplyBal = IVToken(vtoken).balanceOfUnderlying(address(this));
@@ -355,9 +354,9 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
     }
 
     /**
-     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the
+     * @dev Function that has to be called as part of strat migration. It sends all the available funds back to the 
      * vault, ready to be migrated to the new strat.
-     */
+     */ 
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
@@ -370,7 +369,7 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
     /**
      * @dev Pauses deposits. Withdraws all funds from the Venus Platform.
      */
-    function panic() public onlyOwner {
+    function panic() public onlyOwner {        
         _deleverage();
         updateBalance();
         pause();
@@ -393,9 +392,9 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
     function unpause() external onlyOwner {
         _unpause();
 
-        IERC20(want).safeApprove(vtoken, type(uint).max);
-        IERC20(venus).safeApprove(unirouter, type(uint).max);
-        IERC20(wbnb).safeApprove(unirouter, type(uint).max);
+        IERC20(want).safeApprove(vtoken, uint(-1));
+        IERC20(venus).safeApprove(unirouter, uint(-1));
+        IERC20(wbnb).safeApprove(unirouter, uint(-1));
     }
 
     /**
@@ -434,4 +433,4 @@ contract StrategyVenus is Ownable, Pausable, GasThrottler {
         require(msg.sender == strategist, "!strategist");
         strategist = _strategist;
     }
-}
+} 

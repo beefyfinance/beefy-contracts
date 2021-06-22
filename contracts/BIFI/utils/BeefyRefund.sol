@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.12;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 contract BeefyRefund {
@@ -16,10 +15,10 @@ contract BeefyRefund {
     address constant public dead = address(0x000000000000000000000000000000000000dEaD);
     address public token;
     address public mootoken;
-
+    
     uint256 public pricePerFullShare;
 
-    constructor(address _token, address _mootoken, uint256 _pricePerFullShare) {
+    constructor(address _token, address _mootoken, uint256 _pricePerFullShare) public {
         token = _token;
         mootoken = _mootoken;
         pricePerFullShare = _pricePerFullShare;

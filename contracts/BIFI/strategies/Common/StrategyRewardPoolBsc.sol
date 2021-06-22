@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.12;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IRewardPool.sol";
@@ -43,7 +42,7 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         output = _output;
         rewardPool = _rewardPool;
@@ -110,7 +109,7 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
 
         if (output != wbnb) {
             uint256 toWbnb = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, outputToWbnbRoute, address(this), block.timestamp);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWbnb, 0, outputToWbnbRoute, address(this), now);
             wbnbBal = IERC20(wbnb).balanceOf(address(this));
         } else {
             wbnbBal = IERC20(wbnb).balanceOf(address(this)).mul(45).div(1000);
@@ -130,7 +129,7 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
     function _swapRewards() internal {
         if (output != want) {
             uint256 toWant = IERC20(output).balanceOf(address(this));
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWant, 0, outputToWantRoute, address(this), block.timestamp);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toWant, 0, outputToWantRoute, address(this), now);
         }
     }
 
@@ -177,8 +176,8 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(rewardPool, type(uint256).max);
-        IERC20(output).safeApprove(unirouter, type(uint256).max);
+        IERC20(want).safeApprove(rewardPool, uint256(-1));
+        IERC20(output).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {

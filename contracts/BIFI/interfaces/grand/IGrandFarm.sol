@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.0;
 
 interface IGrandFarm {
     function stakedWantTokens(uint256 _pid, address _user) external view returns (uint256);

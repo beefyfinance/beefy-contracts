@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.0;
 
 interface IThugswapRouter {
     function addLiquidity(
@@ -44,10 +43,10 @@ interface IThugswapRouter {
     ) external returns (uint amountToken, uint amountBNB);
 
     function swapExactTokensForTokens(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
+        uint amountIn, 
+        uint amountOutMin, 
+        address[] calldata path, 
+        address to, 
         uint deadline
     ) external returns (uint[] memory amounts);
 
@@ -55,7 +54,7 @@ interface IThugswapRouter {
         external
         payable
         returns (uint[] memory amounts);
-
+    
     function swapExactTokensForBNB(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
         external
         returns (uint[] memory amounts);

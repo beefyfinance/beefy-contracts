@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
 interface IMiniChefV2 {
     struct UserInfo {
@@ -20,4 +21,4 @@ interface IMiniChefV2 {
     function harvest(uint256 pid, address to) external;
     function withdrawAndHarvest(uint256 pid, uint256 amount, address to) external;
     function emergencyWithdraw(uint256 pid, address to) external;
-}
+} 

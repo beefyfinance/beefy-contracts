@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
-pragma abicoder v1;
+pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
@@ -43,7 +42,7 @@ contract AddySingleAssetStrat is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         rewardPool = _rewardPool;
 
@@ -96,7 +95,7 @@ contract AddySingleAssetStrat is StratManager, FeeManager {
     // performance fees
     function chargeFees() internal {
         uint256 toMatic = IERC20(quick).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toMatic, 0, quickToMaticRoute, address(this), block.timestamp);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toMatic, 0, quickToMaticRoute, address(this), now);
 
         uint256 maticBal = IERC20(matic).balanceOf(address(this));
 
@@ -113,7 +112,7 @@ contract AddySingleAssetStrat is StratManager, FeeManager {
     // swap rewards to {want}
     function swapRewards() internal {
         uint256 quickBalance = IERC20(quick).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(quickBalance, 0, quickToAddyRoute, address(this), block.timestamp);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(quickBalance, 0, quickToAddyRoute, address(this), now);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -162,8 +161,8 @@ contract AddySingleAssetStrat is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(rewardPool, type(uint256).max);
-        IERC20(quick).safeApprove(unirouter, type(uint256).max);
+        IERC20(want).safeApprove(rewardPool, uint256(-1));
+        IERC20(quick).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {
