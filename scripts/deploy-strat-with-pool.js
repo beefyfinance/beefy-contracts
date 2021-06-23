@@ -3,23 +3,29 @@ const hardhat = require("hardhat");
 const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const getNetworkRpc = require("../utils/getNetworkRpc");
+const { addressBook } = require("blockchain-addressbook")
+const { pancake, beefyfinance } = addressBook[hardhat.network.name].platforms;
 
 const ethers = hardhat.ethers;
-
-const config = {
-  want: "0x8E04b3972b5C25766c681dFD30a8A1cBf6dcc8c1",
-  mooName: "Moo CakeV2 RFOX-BNB",
-  mooSymbol: "mooCakeV2RFOX-BNB",
-  delay: 21600,
-  strategyName: "StrategyCakeLP",
-  poolId: 385,
-  unirouter: "0x10ED43C718714eb63d5aA57B78B54704E256024E", // Pancakeswap Router V2
-  strategist: "0xEB41298BA4Ea3865c33bDE8f60eC414421050d53", // your address for rewards
-  keeper: "0xd529b1894491a0a26B18939274ae8ede93E81dbA",
-  beefyFeeRecipient: "0xEB41298BA4Ea3865c33bDE8f60eC414421050d53",
-};
+const rpc = getNetworkRpc(hardhat.network.name);
 
 async function main() {
+  const deployer = await ethers.getSigner();
+
+  const config = {
+    want: "0x547A355E70cd1F8CAF531B950905aF751dBEF5E6",
+    mooName: "Moo CakeV2 WEX-WBNB",
+    mooSymbol: "mooCakeV2WEX-WBNB",
+    delay: 21600,
+    strategyName: "StrategyCakeWbnbLP",
+    poolId: 418,
+    unirouter: pancake.router, // Pancakeswap Router V2
+    strategist: deployer.address, // your address for rewards
+    keeper: beefyfinance.keeper,
+    beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
+  };
+  console.log(config)
+
   if (Object.values(config).some((v) => v === undefined)) {
     console.error("one of config values undefined");
     return;
@@ -29,9 +35,6 @@ async function main() {
 
   const Vault = await ethers.getContractFactory("BeefyVaultV6");
   const Strategy = await ethers.getContractFactory(config.strategyName);
-
-  const [deployer] = await ethers.getSigners();
-  const rpc = getNetworkRpc(hardhat.network.name);
 
   console.log("Deploying:", config.mooName);
 
