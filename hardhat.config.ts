@@ -91,7 +91,7 @@ task<{
     let tx;
 
     {
-      const vaultName = `Moo ${vault} Vault`;
+      const vaultName = `${vault}-vault`;
       const vaultDeployment = await hre.deployments.get(vaultName);
       const vContract = Ownable__factory.connect(vaultDeployment.address, signer);
       process.stdout.write(`Transfering ownership of "${vaultName}" at "${vContract.address}" to "${vaultOwner}"`);
@@ -101,7 +101,7 @@ task<{
     }
 
     {
-      const stratName = `Moo ${vault} Strat`;
+      const stratName = `${vault}-strat`;
       const stratDeployment = await hre.deployments.get(stratName);
       const sContract = Ownable__factory.connect(stratDeployment.address, signer);
       process.stdout.write(`Transfering ownership of "${stratName}" at "${sContract.address}" to "${stratOwner}"`);
@@ -112,7 +112,7 @@ task<{
 
     console.log("done");
   })
-  .addPositionalParam("contract", "Address of contract to transfer");
+  .addPositionalParam("vault", "Name of vault to transfer");
 
 task("generate_accounts", "Creates new deployer and test accounts")
   .setAction(async (taskArgs, hre) => {
