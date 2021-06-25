@@ -5,8 +5,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 const { polygon } = addressBook;
 
-export default async function(this:DeployFunction, hre: HardhatRuntimeEnvironment) {
-    this.tags = ['Polygon','Mai'];
+const deployFunc:DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     // mai-usdc-mimatic
     await deployVault(hre, VaultConfig(StrategyCommonChefLPConfig, {
@@ -58,3 +57,5 @@ export default async function(this:DeployFunction, hre: HardhatRuntimeEnvironmen
         ],
     }));
 };
+deployFunc.tags = ['Polygon','Mai'];
+export default deployFunc;
