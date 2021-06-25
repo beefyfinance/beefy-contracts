@@ -1,11 +1,12 @@
-const hardhat = require("hardhat");
+import { addressBook } from "blockchain-addressbook";
+import hardhat from "hardhat";
 
 const ethers = hardhat.ethers;
 
 const abi = ["function transferOwnership(address newOwner) public"];
-const newOwner = "0x362704FC0e43Ad29963331AC986645ff6b0e8552";
+const newOwner = addressBook.polygon.platforms.beefyfinance.strategyOwner;
 
-const contracts = ["0x1BA1B43227325E8Dc0FA1378d7C41fa7F49e32e0"];
+const contracts = ["0x46FfF3f004afeE180CF96cCa92560a94A696044B"];
 
 async function main() {
   for (const address of contracts) {

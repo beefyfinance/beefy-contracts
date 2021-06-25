@@ -7,12 +7,13 @@ import 'hardhat-deploy';
 import "@typechain/hardhat";
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
-import "@nomiclabs/hardhat-etherscan";
+//import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
 
 import { addressBook } from "blockchain-addressbook";
 
 import { IStrategy } from "./typechain/IStrategy";
+import { Ownable, Ownable__factory } from "./typechain";
 
 const DEPLOYER_PK_FILE = ".config/DEPLOYER_PK";
 const OTHER_PK_FILE = ".config/OTHER_PK";
@@ -21,7 +22,7 @@ task("node", "Starts a JSON-RPC server on top of Hardhat Network")
   .setAction(async (taskArgs, hre, runSuper) => {
     let network = hre.config.networks[taskArgs.fork] as HttpNetworkConfig;
     if (network) {
-      taskArgs.forkDeployments = taskArgs.fork;
+      process.env['HARDHAT_DEPLOY_FORK'] = taskArgs.fork;
       taskArgs.noReset = true;
       taskArgs.write = false;
       let rpc = network.url;
@@ -38,7 +39,7 @@ task("node", "Starts a JSON-RPC server on top of Hardhat Network")
 task("panic", "Panics a given strategy.")
   .addParam("strat", "The strategy to panic.")
   .setAction(async (taskArgs, hre) => {
-    const strategy = await hre.ethers.getContractAt<IStrategy>("IStrategy", taskArgs.strat);
+    const strategy = await hre.ethers.getContractAt("IStrategy", taskArgs.strat) as IStrategy;
 
     try {
       const tx = await strategy.panic();
@@ -53,7 +54,7 @@ task("panic", "Panics a given strategy.")
 task("unpause", "Unpauses a given strategy.")
   .addParam("strat", "The strategy to unpause.")
   .setAction(async (taskArgs, hre) => {
-    const strategy = await hre.ethers.getContractAt<IStrategy>("IStrategy", taskArgs.strat);
+    const strategy = await hre.ethers.getContractAt("IStrategy", taskArgs.strat) as IStrategy;
 
     try {
       const tx = await strategy.unpause();
@@ -68,7 +69,7 @@ task("unpause", "Unpauses a given strategy.")
 task("harvest", "Harvests a given strategy.")
   .addParam("strat", "The strategy to harvest.")
   .setAction(async (taskArgs, hre) => {
-    const strategy = await hre.ethers.getContractAt<IStrategy>("IStrategy", taskArgs.strat);
+    const strategy = await hre.ethers.getContractAt("IStrategy", taskArgs.strat) as IStrategy;
 
     try {
       const tx = await strategy.harvest();
@@ -79,6 +80,39 @@ task("harvest", "Harvests a given strategy.")
       console.log(`Couldn't harvest due to ${err}`);
     }
   });
+
+task<{
+  vault:string
+}>("transfer", "Transfer contract ownership",
+  async ({vault}, hre) => {
+    const {deployer, vaultOwner, stratOwner} = await hre.getNamedAccounts();
+    const signer = await hre.ethers.getSigner(deployer);
+
+    let tx;
+
+    {
+      const vaultName = `Moo ${vault} Vault`;
+      const vaultDeployment = await hre.deployments.get(vaultName);
+      const vContract = Ownable__factory.connect(vaultDeployment.address, signer);
+      process.stdout.write(`Transfering ownership of "${vaultName}" at "${vContract.address}" to "${vaultOwner}"`);
+      tx = await vContract.transferOwnership(vaultOwner);
+      process.stdout.write(` (tx: ${tx.hash})\n`);
+      await tx.wait();
+    }
+
+    {
+      const stratName = `Moo ${vault} Strat`;
+      const stratDeployment = await hre.deployments.get(stratName);
+      const sContract = Ownable__factory.connect(stratDeployment.address, signer);
+      process.stdout.write(`Transfering ownership of "${stratName}" at "${sContract.address}" to "${stratOwner}"`);
+      tx = await sContract.transferOwnership(stratOwner);
+      process.stdout.write(` (tx: ${tx.hash})\n`);
+      await tx.wait();
+    }
+
+    console.log("done");
+  })
+  .addPositionalParam("contract", "Address of contract to transfer");
 
 task("generate_accounts", "Creates new deployer and test accounts")
   .setAction(async (taskArgs, hre) => {
@@ -173,7 +207,7 @@ const config: HardhatUserConfig = {
       accounts: deployerAccount,
     },
     polygon: {
-      url: "https://rpc-mainnet.maticvigil.com/",
+      url: "https://speedy-nodes-nyc.moralis.io/64b5b48009c1b462c3173a1c/polygon/mainnet",
       chainId: 137,
       accounts: deployerAccount,
     },
@@ -207,15 +241,23 @@ const config: HardhatUserConfig = {
       polygon: addressBook.polygon.platforms.beefyfinance.keeper,
       fantom: addressBook.fantom.platforms.beefyfinance.keeper,
       avax: addressBook.avax.platforms.beefyfinance.keeper,
-      heco: addressBook.heco.platforms.beefyfinance.keeper
+      heco: addressBook.heco.platforms.beefyfinance.keeper,
     },
-    owner: {
+    vaultOwner: {
       default: 0,
       bsc: addressBook.bsc.platforms.beefyfinance.vaultOwner,
       polygon: addressBook.polygon.platforms.beefyfinance.vaultOwner,
       fantom: addressBook.fantom.platforms.beefyfinance.vaultOwner,
       avax: addressBook.avax.platforms.beefyfinance.vaultOwner,
-      heco: addressBook.heco.platforms.beefyfinance.vaultOwner
+      heco: addressBook.heco.platforms.beefyfinance.vaultOwner,
+    },
+    stratOwner: {
+      default: 0,
+      bsc: addressBook.bsc.platforms.beefyfinance.strategyOwner,
+      polygon: addressBook.polygon.platforms.beefyfinance.strategyOwner,
+      fantom: addressBook.fantom.platforms.beefyfinance.strategyOwner,
+      avax: addressBook.avax.platforms.beefyfinance.strategyOwner,
+      heco: addressBook.heco.platforms.beefyfinance.strategyOwner,
     }
   },
   etherscan: {

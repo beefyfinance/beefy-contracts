@@ -1,16 +1,22 @@
 import { Contract } from "@ethersproject/contracts";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signers";
 import { expect, use } from "chai";
 import hre from "hardhat";
 import { HardhatRuntimeEnvironment, RequestArguments } from "hardhat/types";
 import hardhatRPC from "../../utils/hardhatRPC";
+import {
+  BeefyVaultV6,
+  BeefyVaultV6__factory,
+  IERC20,
+  IStrategy,
+  IStrategy__factory
+} from "../../typechain";
 
 import { addressBook } from "blockchain-addressbook";
 const {
   QUICK: { address: QUICK },
   WMATIC: { address: WMATIC },
-  USDC: {address: USDC},
-  miMATIC: {address: miMATIC},
+  USDC: { address: USDC },
+  miMATIC: { address: miMATIC },
 } = addressBook.polygon.tokens;
 
 const ethers = hre.ethers;
@@ -21,8 +27,8 @@ import {
   getVaultWant,
   unpauseIfPaused,
   getUnirouterData,
-  getWrappedNativeAddr,
 } from "../../utils/testHelpers";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 const TIMEOUT = 10 * 60 * 1000;
 
@@ -35,7 +41,7 @@ const deployment = {
   nativeToLp1: [WMATIC, USDC, miMATIC],
 };
 
-const nativeTokenAddr = getWrappedNativeAddr(network);
+const nativeTokenAddr = addressBook[network].tokens.WNATIVE.address;
 const testAmount = ethers.utils.parseEther("10");
 
 const fixture = deployments.createFixture(async ({ deployments, network }, options) => {
@@ -50,7 +56,7 @@ const fixture = deployments.createFixture(async ({ deployments, network }, optio
   return await deployments.run(undefined, { resetMemory: false, deletePreviousDeployments: false, writeDeploymentsToFiles: false });
 });
 
-async function getUnirouter(strategy: Contract) {
+async function getUnirouter(strategy: IStrategy) {
   const unirouterAddr = await strategy.unirouter();
   const unirouterData = getUnirouterData(unirouterAddr);
   const unirouter = await ethers.getContractAt(unirouterData.interface, unirouterAddr, strategy.signer);
@@ -60,7 +66,7 @@ async function getUnirouter(strategy: Contract) {
   };
 }
 
-async function createLP(want: Contract, strategy: Contract) {
+async function createLP(want: Contract, strategy: IStrategy) {
   const unirouter = await getUnirouter(strategy);
   await zapNativeToToken({
     amount: testAmount,
@@ -75,8 +81,8 @@ async function createLP(want: Contract, strategy: Contract) {
 }
 
 async function getContracts(signer: SignerWithAddress) {
-  const vault = await ethers.getContract(deployment.vault, signer);
-  const strategy = await ethers.getContract(deployment.strategy, signer);
+  const vault = BeefyVaultV6__factory.connect(deployment.vault, signer);
+  const strategy = IStrategy__factory.connect(deployment.strategy, signer);
   const want = await getVaultWant(vault, nativeTokenAddr);
   return {
     signer,
@@ -87,13 +93,17 @@ async function getContracts(signer: SignerWithAddress) {
 }
 
 async function getNamedSigner(name: string) {
-  const signer = await ethers.getNamedSigner(name);
+  const addr = await hre.getNamedAccounts()[name];
+  const signer = await ethers.getSigner(addr);
   return getContracts(signer);
 }
 
 async function getUnnamedSigners(count: number) {
-  const signers = await ethers.getUnnamedSigners();
-  return Promise.all(signers.slice(0, count).map(async signer => await getContracts(signer)));
+  return await Promise.all(
+    (await hre.getUnnamedAccounts())
+      .slice(0, count)
+      .map(async (a) => await getContracts(await ethers.getSigner(a)))
+  );
 }
 
 describe("VaultLifecycleTest", function () {
@@ -131,7 +141,7 @@ describe("VaultLifecycleTest", function () {
     const vaultBal = await vault.balance();
     const pricePerShare = await vault.getPricePerFullShare();
 
-    await hardhatRPC.increaseTime(hre.network.provider, 24*60*60);
+    await hardhatRPC.increaseTime(hre.network.provider, 24 * 60 * 60);
 
     await strategy.harvest({ gasPrice: 5000000 });
     const vaultBalAfterHarvest = await vault.balance();
@@ -202,22 +212,21 @@ describe("VaultLifecycleTest", function () {
   });
 
   it("It has the correct owner and keeper.", async () => {
-    const owner = await ethers.getNamedSigner('owner');
-    const keeper = await ethers.getNamedSigner('keeper');
+    const {owner,keeper} = await hre.getNamedAccounts();
 
-    const [{vault, strategy}] = await getUnnamedSigners(1);
+    const [{ vault, strategy }] = await getUnnamedSigners(1);
 
     const vaultOwner = await vault.owner();
     const stratOwner = await strategy.owner();
     const stratKeeper = await strategy.keeper();
 
-    expect(vaultOwner).to.equal(owner.address);
-    expect(stratOwner).to.equal(owner.address);
-    expect(stratKeeper).to.equal(keeper.address);
+    expect(vaultOwner).to.equal(owner);
+    expect(stratOwner).to.equal(owner);
+    expect(stratKeeper).to.equal(keeper);
   });
 
   it("Vault and strat references are correct", async () => {
-    const [{vault, strategy}] = await getUnnamedSigners(1);
+    const [{ vault, strategy }] = await getUnnamedSigners(1);
 
     const stratReference = await vault.strategy();
     const vaultReference = await strategy.vault();
@@ -233,7 +242,7 @@ describe("VaultLifecycleTest", function () {
   // TO-DO: Check that we're not burning money with buggy routes.
 
   it("Should be in 'unpaused' state to start.", async () => {
-    const [{strategy}] = await getUnnamedSigners(1);
+    const [{ strategy }] = await getUnnamedSigners(1);
 
     expect(await strategy.paused()).to.equal(false);
   });

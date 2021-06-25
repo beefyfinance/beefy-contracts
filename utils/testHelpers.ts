@@ -1,6 +1,7 @@
 import { Contract } from "@ethersproject/contracts";
 import hardhat from "hardhat";
 import { BigNumber, Signer } from "ethers";
+import { BeefyVaultV5, BeefyVaultV6, IERC20, IERC20__factory } from "../typechain";
 const ethers = hardhat.ethers;
 
 // TODO: Handle custom LPs (Like Belt LPs)
@@ -102,22 +103,24 @@ const logTokenBalance = async (token:Contract, wallet:string) => {
   console.log(`Balance: ${ethers.utils.formatEther(balance.toString())}`);
 };
 
-const getVaultWant = async (vault:Contract, defaultTokenAddress:string) => {
+const getVaultWant = async (vault:BeefyVaultV5|BeefyVaultV6, defaultTokenAddress:string) => {
   let wantAddr;
 
   try {
-    wantAddr = await vault.token();
-  } catch (e) {
-    try {
+    if ("token" in vault) {
+      wantAddr = await vault.token();
+    }
+    else {
       wantAddr = await vault.want();
-    } catch (e) {
-      wantAddr = defaultTokenAddress;
     }
   }
+  catch (e) {
+    console.warn(e);
+    console.warn("Using default token");
+    wantAddr = defaultTokenAddress;
+  }
 
-  const want = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", wantAddr, vault.signer);
-
-  return want;
+  return IERC20__factory.connect(wantAddr, vault.signer);
 };
 
 const unpauseIfPaused = async (strat:Contract, keeper:Signer) => {
@@ -147,30 +150,8 @@ const getUnirouterData = (address:string) => {
   }
 };
 
-<<<<<<< HEAD:utils/testHelpers.ts
-const getWrappedNativeAddr = (networkId:string) => {
-  switch (networkId) {
-    case "bsc":
-      return "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c";
-    case "avax":
-      return "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7";
-    case "polygon":
-      return "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270";
-    case "heco":
-      return "0x5545153CCFcA01fbd7Dd11C0b23ba694D9509A6F";
-    case "fantom":
-      return "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83";
-    default:
-      throw new Error("Unknown network.");
-  }
-};
-
-const wrapNative = async (amount:BigNumber, wNativeAddr:string, recipient:Signer) => {
-  const wNative = await ethers.getContractAt("IWrappedNative", wNativeAddr, recipient);
-=======
-const wrapNative = async (amount, wNativeAddr) => {
-  const wNative = await ethers.getContractAt("IWrappedNative", wNativeAddr);
->>>>>>> origin/master:utils/testHelpers.js
+const wrapNative = async (amount, wNativeAddr, signer) => {
+  const wNative = await ethers.getContractAt("IWrappedNative", wNativeAddr, signer);
   await wNative.deposit({ value: amount });
 };
 
