@@ -25,7 +25,7 @@ contract StrategyCurveAave is StratManager, FeeManager {
     address constant public swapToken = address(0x445FE580eF8d70FF569aB36e80c647af338db351);
 
     // Third party contracts
-    address constant public rewards = address(0xe381C25de995d62b453aF8B931aAc84fcCaa7A62);
+    address constant public rewards = address(0x19793B454D3AfC7b454F206Ffe95aDE26cA6912c);
 
     // Routes
     address[] public wmaticToUsdcRoute = [wmatic, eth, usdc];
