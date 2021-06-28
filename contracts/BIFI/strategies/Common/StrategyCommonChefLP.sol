@@ -38,7 +38,6 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     event StratHarvest(address indexed harvester);
 
     constructor(
-        address _want,
         uint256 _poolId,
         address _chef,
         address _vault,
@@ -50,20 +49,25 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
-        want = _want;
+
+        (address lpToken, uint256 allocPoint,,) = IMasterChef(_chef).poolInfo(_poolId);
+        require(allocPoint > 0, "!allocPoint");
         poolId = _poolId;
         chef = _chef;
+        want = lpToken;
 
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
-        
+
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
         outputToLp0Route = _outputToLp0Route;
+        require(lpToken0 == _outputToLp0Route[_outputToLp0Route.length - 1], "!lp0");
 
         lpToken1 = IUniswapV2Pair(want).token1();
         outputToLp1Route = _outputToLp1Route;
+        require(lpToken1 == _outputToLp1Route[_outputToLp1Route.length - 1], "!lp1");
 
         _giveAllowances();
     }
@@ -94,7 +98,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         if (tx.origin == owner() || paused()) {
             IERC20(want).safeTransfer(vault, wantBal);
         } else {
-            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);	
+            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
             IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
         }
     }
@@ -155,7 +159,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMasterChef(chef).userInfo(poolId, address(this));	
+        (uint256 _amount, ) = IMasterChef(chef).userInfo(poolId, address(this));
         return _amount;
     }
 
