@@ -17,15 +17,15 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     using SafeMath for uint256;
 
     // Tokens used
-    address public native;
-    address public output;
-    address public want;
-    address public lpToken0;
-    address public lpToken1;
+    address immutable public native;
+    address immutable public output;
+    address immutable public want;
+    address immutable public lpToken0;
+    address immutable public lpToken1;
 
     // Third party contracts
-    address public chef;
-    uint256 public poolId;
+    address immutable public chef;
+    uint256 immutable public poolId;
 
     // Routes
     address[] public outputToNativeRoute;
@@ -38,6 +38,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     event StratHarvest(address indexed harvester);
 
     constructor(
+        address _want,
         uint256 _poolId,
         address _chef,
         address _vault,
@@ -49,27 +50,31 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
-
-        (address lpToken, uint256 allocPoint,,) = IMasterChef(_chef).poolInfo(_poolId);
-        require(allocPoint > 0, "!allocPoint");
+        want = _want;
         poolId = _poolId;
         chef = _chef;
-        want = lpToken;
 
-        output = _outputToNativeRoute[0];
-        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
+        address _output = _outputToNativeRoute[0];
+        require(_output != address(0), "!output");
+        output = _output;
+
+        address _native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
+        require(_native != address(0), "!native");
+        native = _native;
         outputToNativeRoute = _outputToNativeRoute;
 
         // setup lp routing
-        lpToken0 = IUniswapV2Pair(want).token0();
+        address _lpToken0 = IUniswapV2Pair(_want).token0();
+        require(_lpToken0 == _outputToLp0Route[_outputToLp0Route.length - 1], "!token0");
         outputToLp0Route = _outputToLp0Route;
-        require(lpToken0 == _outputToLp0Route[_outputToLp0Route.length - 1], "!lp0");
+        lpToken0 = _lpToken0;
 
-        lpToken1 = IUniswapV2Pair(want).token1();
+        address _lpToken1 = IUniswapV2Pair(_want).token1();
+        require(_lpToken1 == _outputToLp1Route[_outputToLp1Route.length - 1], "!token1");
         outputToLp1Route = _outputToLp1Route;
-        require(lpToken1 == _outputToLp1Route[_outputToLp1Route.length - 1], "!lp1");
+        lpToken1 = _lpToken1;
 
-        _giveAllowances();
+        _giveAllowancesArguments(_want, _chef, _output, _unirouter, _lpToken0, _lpToken1);
     }
 
     // puts the funds to work
@@ -104,7 +109,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() public virtual whenNotPaused onlyEOA {
         IMasterChef(chef).deposit(poolId, 0);
         chargeFees();
         addLiquidity();
@@ -194,14 +199,25 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
+        _giveAllowancesArguments(want, chef, output, unirouter, lpToken0, lpToken1);
+    }
 
-        IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
+    function _giveAllowancesArguments(
+        address _want,
+        address _chef,
+        address _output,
+        address _unirouter,
+        address _lpToken0,
+        address _lpToken1
+    ) internal {
+        IERC20(_want).safeApprove(_chef, uint256(-1));
+        IERC20(_output).safeApprove(_unirouter, uint256(-1));
 
-        IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint256(-1));
+        IERC20(_lpToken0).safeApprove(_unirouter, 0);
+        IERC20(_lpToken0).safeApprove(_unirouter, uint256(-1));
+
+        IERC20(_lpToken1).safeApprove(_unirouter, 0);
+        IERC20(_lpToken1).safeApprove(_unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {

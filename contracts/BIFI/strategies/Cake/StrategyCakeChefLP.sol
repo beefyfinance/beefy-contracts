@@ -7,9 +7,10 @@ import "../../utils/GasThrottler.sol";
 
 contract StrategyCakeChefLP is StrategyCommonChefLP, GasThrottler {
 
-    address constant public masterchef = address(0x73feaa1eE314F8c655E354234017bE2193C9E24E);
+    address constant private chefAddress = address(0x73feaa1eE314F8c655E354234017bE2193C9E24E);
 
     constructor(
+        address _want,
         uint256 _poolId,
         address _vault,
         address _unirouter,
@@ -20,8 +21,9 @@ contract StrategyCakeChefLP is StrategyCommonChefLP, GasThrottler {
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
     ) StrategyCommonChefLP(
+        _want,
         _poolId,
-        masterchef,
+        chefAddress,
         _vault,
         _unirouter,
         _keeper,
@@ -31,4 +33,8 @@ contract StrategyCakeChefLP is StrategyCommonChefLP, GasThrottler {
         _outputToLp0Route,
         _outputToLp1Route
     ) public {}
+
+    function harvest() public override(StrategyCommonChefLP) gasThrottle {
+        super.harvest();
+    }
 }
