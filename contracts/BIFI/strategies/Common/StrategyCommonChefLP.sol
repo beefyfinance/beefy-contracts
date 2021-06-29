@@ -226,4 +226,16 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
+
+    function outputToNative() external view returns(address[] memory) {
+        return outputToNativeRoute;
+    }
+
+    function outputToLp0() external view returns(address[] memory) {
+        return outputToLp0Route;
+    }
+
+    function outputToLp1() external view returns(address[] memory) {
+        return outputToLp1Route;
+    }
 }
