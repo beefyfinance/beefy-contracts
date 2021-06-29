@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+import "../../interfaces/common/IERC20Extended.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/DFYN/IStakingRewards.sol";
@@ -194,6 +195,24 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         _giveAllowances();
 
         deposit();
+    }
+
+    function lp0route() public view returns (string[] memory) {
+        return _getSymbolRoute(outputToLp0Route);
+    }
+
+    function lp1route() public view returns (string[] memory) {
+        return _getSymbolRoute(outputToLp1Route);
+    }
+
+    function _getSymbolRoute(address[] route) internal view returns (string[] memory) {
+        string[] symbolRoute = [];
+        for (uint i = 0; i < route.length; i++) {
+            address tokenAddress = route[i];
+            string symbol = IERC20Extended(tokenAddress).symbol();
+            symbolRoute.push(symbol);
+        } 
+        return symbolRoute;
     }
 
     function _giveAllowances() internal {
