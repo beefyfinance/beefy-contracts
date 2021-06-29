@@ -17,7 +17,7 @@ abstract contract FeeManager is StratManager {
     uint public callFee = 111;
     uint public beefyFee = MAX_FEE - STRATEGIST_FEE - callFee;
 
-    function setCallFee(uint256 _fee) external onlyManager {
+    function setCallFee(uint256 _fee) public onlyManager {
         require(_fee <= MAX_CALL_FEE, "!cap");
         
         callFee = _fee;
