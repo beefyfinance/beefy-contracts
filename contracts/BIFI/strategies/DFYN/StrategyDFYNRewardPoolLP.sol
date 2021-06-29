@@ -17,7 +17,8 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
     using SafeMath for uint256;
 
     // Tokens used
-    address public native;
+    address public native = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
+    address public intermediate;
     address public output;
     address public want;
     address public lpToken0;
@@ -25,11 +26,13 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
 
     // Third party contracts
     address public rewardPool;
+    address public quickRouter = address(0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff);
 
     // Routes
-    address[] public outputToNativeRoute;
+    address[] public outputToIntermediateRoute; // since DFYN uses its own native, convert to common token, then convert that token to native beefy uses
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
+    address[] public intermediateToNativeRoute;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -44,16 +47,18 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient,
-        address[] memory _outputToNativeRoute,
+        address[] memory _outputToIntermediateRoute,
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         rewardPool = _rewardPool;
 
-        output = _outputToNativeRoute[0];
-        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
-        outputToNativeRoute = _outputToNativeRoute;
+        output = _outputToIntermediateRoute[0];
+        intermediate = _outputToIntermediateRoute[_outputToIntermediateRoute.length - 1];
+        outputToIntermediateRoute = _outputToIntermediateRoute;
+
+        intermediateToNativeRoute = [ intermediate, native ];
         
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
@@ -112,8 +117,10 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees() internal {
-        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        uint256 toIntermediate = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toIntermediate, 0, outputToIntermediateRoute, address(this), now);
+        uint256 toNative = IERC20(intermediate).balanceOf(address(this));
+        IUniswapRouterETH(quickRouter).swapExactTokensForTokens(toNative, 0, intermediateToNativeRoute, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
