@@ -1,12 +1,17 @@
-require("@nomiclabs/hardhat-waffle");
-require("@nomiclabs/hardhat-web3");
-require("@nomiclabs/hardhat-ethers");
-require("@nomiclabs/hardhat-etherscan");
+import "@nomiclabs/hardhat-waffle";
+import "@nomiclabs/hardhat-web3";
+import "@nomiclabs/hardhat-ethers";
+import "@nomiclabs/hardhat-etherscan";
+
+import { HardhatUserConfig } from "hardhat/src/types/config";
+import { HardhatUserConfig as WithEtherscanConfig } from "hardhat/config";
+
+type DeploymentConfig = HardhatUserConfig & WithEtherscanConfig;
 
 let deployerAccount;
 if (process.env.DEPLOYER_PK) deployerAccount = [process.env.DEPLOYER_PK];
 
-module.exports = {
+const config: DeploymentConfig = {
   defaultNetwork: "localhost",
   networks: {
     hardhat: {},
@@ -85,5 +90,6 @@ module.exports = {
   paths: {
     sources: "./contracts/BIFI",
   },
-  timeout: 30,
 };
+
+export default config
