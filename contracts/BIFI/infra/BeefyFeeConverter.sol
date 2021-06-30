@@ -31,13 +31,13 @@ contract BeefyFeeConverter is Ownable {
     ) public {
         beefyFeeRecipient = _beefyFeeRecipient;
         cowllector = _cowllector;
-        
         unirouter = _unirouter;
-        IERC20(input).safeApprove(unirouter, uint256(-1));
 
         input = _inputToOutputRoute[0];
         output = _inputToOutputRoute[_inputToOutputRoute.length - 1];
         inputToOutputRoute = _inputToOutputRoute;
+
+        IERC20(input).safeApprove(unirouter, uint256(-1));
     }
 
     modifier onlyCowllector() {

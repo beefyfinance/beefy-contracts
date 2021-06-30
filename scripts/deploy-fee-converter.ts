@@ -30,7 +30,12 @@ async function main() {
 
   console.log("Deploying:", contractNames.feeConverter);
 
-  const feeConverter = await BeefyFeeConverter.deploy(feeConverterParams);
+  const feeConverter = await BeefyFeeConverter.deploy(
+    feeConverterParams.beefyFeeRecipient,
+    feeConverterParams.cowllector,
+    feeConverterParams.unirouter,
+    feeConverterParams.inputToOutputRoute
+  );
   await feeConverter.deployed();
 
   console.log(contractNames.feeConverter, "deployed to:", feeConverter.address);
