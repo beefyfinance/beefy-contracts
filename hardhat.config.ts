@@ -3,12 +3,15 @@ import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
 
-import { HardhatUserConfig } from "hardhat/config";
+import { HardhatUserConfig } from "hardhat/src/types/config";
+import { HardhatUserConfig as WithEtherscanConfig } from "hardhat/config";
+
+type DeploymentConfig = HardhatUserConfig & WithEtherscanConfig;
 
 let deployerAccount;
 if (process.env.DEPLOYER_PK) deployerAccount = [process.env.DEPLOYER_PK];
 
-const config: HardhatUserConfig = {
+const config: DeploymentConfig = {
   defaultNetwork: "localhost",
   networks: {
     hardhat: {},
