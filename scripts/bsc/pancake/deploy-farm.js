@@ -9,7 +9,8 @@ const predictAddresses = require("../../../utils/predictAddresses");
 const getNetworkRpc = require("../../../utils/getNetworkRpc");
 const { addressBook } = require("blockchain-addressbook")
 const { pancake, beefyfinance } = addressBook.bsc.platforms;
-const { CAKE, WBNB } =  addressBook.bsc.tokens;
+const { CAKE, WBNB, BUSD, USDT } =  addressBook.bsc.tokens;
+const baseTokenAddresses = [CAKE, WBNB, BUSD, USDT].map(t => t.address);
 
 const ethers = hardhat.ethers;
 const rpc = getNetworkRpc(hardhat.network.name);
@@ -18,7 +19,7 @@ const rpc = getNetworkRpc(hardhat.network.name);
 // if (poolId < 1) {
 //   throw Error('Usage: Need to pass a poolId as argument.');
 // }
-poolId = 422;
+poolId = 424;
 
 async function main() {
   const deployer = await ethers.getSigner();
@@ -45,6 +46,13 @@ async function main() {
     symbol: await token1Contract.symbol(),
   }
 
+  const resolveSwapRoute = (input, proxies, preferredProxy, output) => {
+    if (input === output) return [input];
+    if (proxies.includes(output)) return [input, output];
+    if (proxies.includes(preferredProxy)) return [input, preferredProxy, output];
+    return [input, proxies.filter(input)[0], output]; // TODO: Choose the best proxy
+  }
+
   const mooPairName = `${token0.symbol}-${token1.symbol}`;
 
   const vaultParams = {
@@ -61,8 +69,8 @@ async function main() {
     keeper: beefyfinance.keeper,
     beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
     outputToNativeRoute: [CAKE.address, WBNB.address],
-    outputToLp0Route: [CAKE.address, lpPair.token0],
-    outputToLp1Route: [CAKE.address, lpPair.token1],
+    outputToLp0Route: resolveSwapRoute(CAKE.address, baseTokenAddresses, lpPair.token1, lpPair.token0),
+    outputToLp1Route: resolveSwapRoute(CAKE.address, baseTokenAddresses, lpPair.token0, lpPair.token1),
   };
 
   const contractNames = {
