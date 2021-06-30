@@ -1,36 +1,36 @@
 const hardhat = require("hardhat");
 
-const registerSubsidy = require("../utils/registerSubsidy");
+// const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const getNetworkRpc = require("../utils/getNetworkRpc");
 
 const { addressBook } = require("blockchain-addressbook")
-const { USDC: { address: USDC }, USDT: { address: USDT }, QUICK: { address: QUICK }, WMATIC: { address: WMATIC }, ETH: { address: ETH } } = addressBook.polygon.tokens;
-const { quickswap, beefyfinance } = addressBook.polygon.platforms;
+const { USDC: { address: USDC }, USDT: { address: USDT }, QUICK: { address: QUICK }, WMATIC: { address: WMATIC }, ETH: { address: ETH }, DFYN: { address: DFYN }, UST: { address: UST } } = addressBook.polygon.tokens;
+const { dfyn, beefyfinance } = addressBook.polygon.platforms;
 
 const ethers = hardhat.ethers;
 
 const vaultParams = {
-  mooName: "Moo Quick USDC-USDT",
-  mooSymbol: "mooquickUSDC-USDT",
+  mooName: "Moo DFYN UST-USDT",
+  mooSymbol: "mooDFYNUST-USDT",
   delay: 21600,
 }
 
 const strategyParams = {
-  want: "0x2cf7252e74036d1da831d11089d326296e64a728",
-  rewardPool: "0x251d9837a13F38F3Fe629ce2304fa00710176222",
-  unirouter: quickswap.router,
-  strategist: "0x4e3227c0b032161Dd6D780E191A590D917998Dc7", // some address
+  want: "0x39BEd7f1C412ab64443196A6fEcb2ac20C707224",
+  rewardPool: "0x4B47d7299Ac443827d4468265A725750475dE9E6",
+  unirouter: dfyn.router,
+  strategist: "0x2C6bd2d42AaA713642ee7c6e83291Ca9F94832C6", // some address
   keeper: beefyfinance.keeper,
-  beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [ QUICK, WMATIC ],
-  outputToLp0Route: [ QUICK, ETH, USDC ],
-  outputToLp1Route: [ QUICK, ETH, USDT ]
+  beefyFeeRecipient: beefyfinance.beefyFeeConverterETHtoWMATIC,
+  outputToNativeRoute: [ DFYN, ETH ],
+  outputToLp0Route: [ DFYN, USDC, USDT, UST ],
+  outputToLp1Route: [ DFYN, USDC, USDT ]
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonRewardPoolLP"
+  strategy: "StrategyDFYNRewardPoolLP"
 }
 
 async function main() {
@@ -70,11 +70,6 @@ async function main() {
 
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
-
-  if (hardhat.network.name === "bsc") {
-    await registerSubsidy(vault.address, deployer);
-    await registerSubsidy(strategy.address, deployer);
-  }
 }
 
 main()
