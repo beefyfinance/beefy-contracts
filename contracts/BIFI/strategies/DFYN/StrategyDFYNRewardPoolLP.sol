@@ -19,7 +19,6 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
     using SafeMath for uint256;
 
     // Tokens used
-    address public native = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
     address public intermediate;
     address public output;
     address public want;
@@ -28,13 +27,11 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
 
     // Third party contracts
     address public rewardPool;
-    address public quickRouter = address(0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff);
 
     // Routes
     address[] public outputToIntermediateRoute; // since DFYN uses its own native, convert to common token, then convert that token to native beefy uses
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
-    address[] public intermediateToNativeRoute;
 
     // View
     string[] public outputToLp0SymbolRoute;
@@ -64,8 +61,6 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         intermediate = _outputToIntermediateRoute[_outputToIntermediateRoute.length - 1];
         outputToIntermediateRoute = _outputToIntermediateRoute;
 
-        intermediateToNativeRoute = [ intermediate, native ];
-        
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
         outputToLp0Route = _outputToLp0Route;
@@ -127,19 +122,17 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
     function chargeFees() internal {
         uint256 toIntermediate = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toIntermediate, 0, outputToIntermediateRoute, address(this), now);
-        uint256 toNative = IERC20(intermediate).balanceOf(address(this));
-        IUniswapRouterETH(quickRouter).swapExactTokensForTokens(toNative, 0, intermediateToNativeRoute, address(this), now);
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        uint256 intermediateBal = IERC20(intermediate).balanceOf(address(this));
 
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(msg.sender, callFeeAmount);
+        uint256 callFeeAmount = intermediateBal.mul(callFee).div(MAX_FEE);
+        IERC20(intermediate).safeTransfer(msg.sender, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
+        uint256 beefyFeeAmount = intermediateBal.mul(beefyFee).div(MAX_FEE);
+        IERC20(intermediate).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        uint256 strategistFee = intermediateBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(intermediate).safeTransfer(strategist, strategistFee);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
