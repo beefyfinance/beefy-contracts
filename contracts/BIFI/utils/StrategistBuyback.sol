@@ -19,43 +19,42 @@ contract BeefyFeeConverter is Ownable {
     address public input;
     address public output;
 
+    address public bifiMaxi;
     address public unirouter;
 
     address[] public inputToOutputRoute;
 
     constructor(
-        address _beefyFeeRecipient, 
-        address _cowllector,
+        address _bifiMaxi,
         address _unirouter, 
         address[] memory _inputToOutputRoute
     ) public {
-        beefyFeeRecipient = _beefyFeeRecipient;
-        cowllector = _cowllector;
         unirouter = _unirouter;
+        bifiMaxi = _bifiMaxi;
 
-        input = _inputToOutputRoute[0];
-        output = _inputToOutputRoute[_inputToOutputRoute.length - 1];
-        inputToOutputRoute = _inputToOutputRoute;
+        _setInputToOutputRoute(_inputToOutputRoute);
 
         IERC20(input).safeApprove(unirouter, uint256(-1));
     }
 
-    modifier onlyCowllector() {
-        require(msg.sender == cowllector, "!cowllector");
-        _;
+    function depositAllIntoBifiMaxi() external onlyOwner {
+        _depositAllIntoBifiMaxi();
     }
 
-    // Convert and send to beefy fee recipient
-    function harvest() public onlyCowllector {
+    function withdrawAllFromBifiMaxi() external onlyOwner {
+        _withdrawAllFromBifiMaxi();
+    }
+
+    // Convert and send to beefy maxi
+    function harvest() public {
         uint256 inputBal = IERC20(input).balanceOf(address(this));
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(inputBal, 0, inputToOutputRoute, address(this), now);
 
-        uint256 outputBal = IERC20(output).balanceOf(address(this));
-        IERC20(output).safeTransfer(beefyFeeRecipient, outputBal);
+        _depositAllIntoBifiMaxi();
     }
 
     function setVaultStrategist(address _vault, address _newStrategist) external onlyOwner {
-        address strategy = IVault(_vault).strategy();
+        address strategy = address(IVault(_vault).strategy());
         address strategist = IStrategyComplete(strategy).strategist();
         require(strategist == address(this), "Strategist buyback is not the strategist for the target vault");
         IStrategyComplete(strategy).setStrategist(_newStrategist);
@@ -69,12 +68,25 @@ contract BeefyFeeConverter is Ownable {
     }
 
     function setInputToOutputRoute(address[] memory _route) external onlyOwner {
-        inputToOutputRoute = _route;
+        _setInputToOutputRoute(_route);
     }
     
-    // Rescue locked funds sent by mistake
-    function inCaseTokensGetStuck(address _token) external onlyOwner {
+    function withdrawToken(address _token) external onlyOwner {
         uint256 amount = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransfer(msg.sender, amount);
+    }
+
+    function _depositAllIntoBifiMaxi() internal {
+        IVault(bifiMaxi).depositAll();
+    }
+
+    function _withdrawAllFromBifiMaxi() internal {
+        IVault(bifiMaxi).withdrawAll();
+    }
+
+    function _setInputToOutputRoute(address[] memory _route) internal {
+        input = _route[0];
+        output = _route[_route.length - 1];
+        inputToOutputRoute = _route;
     }
 }
