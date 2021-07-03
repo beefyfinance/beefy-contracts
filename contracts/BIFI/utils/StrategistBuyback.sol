@@ -35,6 +35,9 @@ contract StrategistBuyback is Ownable {
         _setInputToOutputRoute(_inputToOutputRoute);
 
         IERC20(input).safeApprove(unirouter, uint256(-1));
+        // approve spending by bifiMaxi
+        IERC20(input).safeApprove(bifiMaxi, uint256(-1));
+        IERC20(output).safeApprove(bifiMaxi, uint256(-1));
     }
 
     function depositAllIntoBifiMaxi() external onlyOwner {
