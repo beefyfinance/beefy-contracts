@@ -11,7 +11,7 @@ import "../interfaces/common/IUniswapRouterETH.sol";
 import "../interfaces/beefy/IVault.sol";
 import "../interfaces/beefy/IStrategyComplete.sol";
 
-contract BeefyFeeConverter is Ownable {
+contract StrategistBuyback is Ownable {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
