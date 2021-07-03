@@ -54,6 +54,13 @@ contract BeefyFeeConverter is Ownable {
         IERC20(output).safeTransfer(beefyFeeRecipient, outputBal);
     }
 
+    function setVaultStrategist(address _vault, address _newStrategist) external onlyOwner {
+        address strategy = IVault(_vault).strategy();
+        address strategist = IStrategyComplete(strategy).strategist();
+        require(strategist == address(this), "Strategist buyback is not the strategist for the target vault");
+        IStrategyComplete(strategy).setStrategist(_newStrategist);
+    }
+
     function setUnirouter(address _unirouter) external onlyOwner {
         IERC20(input).safeApprove(_unirouter, uint256(-1));
         IERC20(input).safeApprove(unirouter, 0);
