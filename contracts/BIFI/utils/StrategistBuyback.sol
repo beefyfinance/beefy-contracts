@@ -40,6 +40,11 @@ contract StrategistBuyback is Ownable {
         IERC20(output).safeApprove(bifiMaxi, uint256(-1));
     }
 
+    modifier onlyEOA() {
+        require(msg.sender == tx.origin, "!EOA");
+        _;
+    }
+
     function depositAllIntoBifiMaxi() external onlyOwner {
         _depositAllIntoBifiMaxi();
     }
@@ -49,7 +54,7 @@ contract StrategistBuyback is Ownable {
     }
 
     // Convert and send to beefy maxi
-    function harvest() public {
+    function harvest() public onlyEOA {
         uint256 inputBal = IERC20(input).balanceOf(address(this));
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(inputBal, 0, inputToOutputRoute, address(this), now);
 
