@@ -119,7 +119,9 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
     // performance fees
     function chargeFees() internal {
         uint256 toOutput = IERC20(secondOutput).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, secondOutputToOutputRoute, address(this), now);
+        if (toOutput > 0) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, secondOutputToOutputRoute, address(this), now);
+        }
 
         uint256 toIntermediate = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toIntermediate, 0, outputToIntermediateRoute, address(this), now);
