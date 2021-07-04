@@ -64,11 +64,9 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
         outputToLp0Route = _outputToLp0Route;
-//        outputToLp0SymbolRoute = _getSymbolRoute(outputToLp0Route);
 
         lpToken1 = IUniswapV2Pair(want).token1();
         outputToLp1Route = _outputToLp1Route;
-//        outputToLp1SymbolRoute = _getSymbolRoute(outputToLp1Route);
 
         setCallFee(11);
 
@@ -197,31 +195,17 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         deposit();
     }
 
-    function lp0AddressRoute() public view returns (address[] memory) {
+    function outputToIntermediate() public view returns (address[] memory) {
+        return outputToIntermediateRoute;
+    }
+
+    function outputToLp0() public view returns (address[] memory) {
         return outputToLp0Route;
     }
 
-    function lp1AddressRoute() public view returns (address[] memory) {
+    function outputToLp1() public view returns (address[] memory) {
         return outputToLp1Route;
     }
-
-//    function lp0SymbolRoute() public view returns (string[] memory) {
-//        return outputToLp0SymbolRoute;
-//    }
-//
-//    function lp1SymbolRoute() public view returns (string[] memory) {
-//        return outputToLp1SymbolRoute;
-//    }
-//
-//    function _getSymbolRoute(address[] memory route) internal view returns (string[] memory) {
-//        string[] memory symbolRoute = new string[](route.length);
-//        for (uint i = 0; i < route.length; i++) {
-//            address tokenAddress = route[i];
-//            string memory symbol = IERC20Extended(tokenAddress).symbol();
-//            symbolRoute[i] = symbol;
-//        }
-//        return symbolRoute;
-//    }
 
     function _giveAllowances() internal {
         IERC20(want).safeApprove(rewardPool, uint256(-1));
