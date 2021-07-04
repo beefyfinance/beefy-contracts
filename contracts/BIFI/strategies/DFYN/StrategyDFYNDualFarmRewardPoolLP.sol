@@ -21,6 +21,7 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
     // Tokens used
     address public intermediate;
     address public output;
+    address public secondOutput;
     address public want;
     address public lpToken0;
     address public lpToken1;
@@ -32,10 +33,7 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
     address[] public outputToIntermediateRoute; // since DFYN uses its own native, convert to common token, then convert that token to native beefy uses
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
-
-    // View
-    string[] public outputToLp0SymbolRoute;
-    string[] public outputToLp1SymbolRoute;
+    address[] public secondOutputToOutputRoute;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -52,7 +50,8 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
         address _beefyFeeRecipient,
         address[] memory _outputToIntermediateRoute,
         address[] memory _outputToLp0Route,
-        address[] memory _outputToLp1Route
+        address[] memory _outputToLp1Route,
+        address[] memory _secondOutputToOutputRoute
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         rewardPool = _rewardPool;
@@ -60,6 +59,9 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
         output = _outputToIntermediateRoute[0];
         intermediate = _outputToIntermediateRoute[_outputToIntermediateRoute.length - 1];
         outputToIntermediateRoute = _outputToIntermediateRoute;
+
+        secondOutput = _secondOutputToOutputRoute[0];
+        secondOutputToOutputRoute = _secondOutputToOutputRoute;
 
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
@@ -71,13 +73,11 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
         setCallFee(11);
 
         _giveAllowances();
-
-        IStakingRewards(rewardPool).setVestingConfig(false);
     }
 
     // puts the funds to work
     function deposit() public whenNotPaused {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal > 0) {
             IStakingRewards(rewardPool).stake(wantBal);
@@ -87,11 +87,11 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal < _amount) {
             IStakingRewards(rewardPool).withdraw(_amount.sub(wantBal));
-            wantBal = IERC20(want).balanceOf(address(this));
+            wantBal = balanceOfWant();
         }
 
         if (wantBal > _amount) {
@@ -118,6 +118,9 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees() internal {
+        uint256 toOutput = IERC20(secondOutput).balanceOf(address(this));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, secondOutputToOutputRoute, address(this), now);
+
         uint256 toIntermediate = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toIntermediate, 0, outputToIntermediateRoute, address(this), now);
 
@@ -171,7 +174,7 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
 
         IStakingRewards(rewardPool).withdraw(balanceOfPool());
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
         IERC20(want).transfer(vault, wantBal);
     }
 
@@ -195,17 +198,26 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
         deposit();
     }
 
-    function lp0AddressRoute() public view returns (address[] memory) {
+    function outputToIntermediate() public view returns (address[] memory) {
+        return outputToIntermediateRoute;
+    }
+
+    function outputToLp0() public view returns (address[] memory) {
         return outputToLp0Route;
     }
 
-    function lp1AddressRoute() public view returns (address[] memory) {
+    function outputToLp1() public view returns (address[] memory) {
         return outputToLp1Route;
+    }
+
+    function secondOutputToOutput() public view returns (address[] memory) {
+        return secondOutputToOutputRoute;
     }
 
     function _giveAllowances() internal {
         IERC20(want).safeApprove(rewardPool, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(secondOutput).safeApprove(unirouter, uint256(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
@@ -217,6 +229,7 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(rewardPool, 0);
         IERC20(output).safeApprove(unirouter, 0);
+        IERC20(secondOutput).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
