@@ -28,9 +28,10 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     uint256 immutable public poolId;
 
     // Routes
-    address[] public outputToNativeRoute;
-    address[] public outputToLp0Route;
-    address[] public outputToLp1Route;
+    address[] public toNativeRoute;
+    address[] public toLp0Route;
+    address[] public toLp1Route;
+    bool immutable public isNativeRoutes;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -46,33 +47,35 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient,
-        address[] memory _outputToNativeRoute,
-        address[] memory _outputToLp0Route,
-        address[] memory _outputToLp1Route
+        address[] memory _toNativeRoute,
+        address[] memory _toLp0Route,
+        address[] memory _toLp1Route
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         poolId = _poolId;
         chef = _chef;
 
-        address _output = _outputToNativeRoute[0];
+        address _output = _toNativeRoute[0];
         require(_output != address(0), "!output");
         output = _output;
 
-        address _native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
+        address _native = _toNativeRoute[_toNativeRoute.length - 1];
         require(_native != address(0), "!native");
         native = _native;
-        outputToNativeRoute = _outputToNativeRoute;
+        toNativeRoute = _toNativeRoute;
 
         // setup lp routing
         address _lpToken0 = IUniswapV2Pair(_want).token0();
-        require(_lpToken0 == _outputToLp0Route[_outputToLp0Route.length - 1], "!token0");
-        outputToLp0Route = _outputToLp0Route;
+        require(_lpToken0 == _toLp0Route[_toLp0Route.length - 1], "!token0");
+        toLp0Route = _toLp0Route;
         lpToken0 = _lpToken0;
 
         address _lpToken1 = IUniswapV2Pair(_want).token1();
-        require(_lpToken1 == _outputToLp1Route[_outputToLp1Route.length - 1], "!token1");
-        outputToLp1Route = _outputToLp1Route;
+        require(_lpToken1 == _toLp1Route[_toLp1Route.length - 1], "!token1");
+        toLp1Route = _toLp1Route;
         lpToken1 = _lpToken1;
+
+        isNativeRoutes = (_toLp0Route[0] == _native && _toLp1Route[0] == _native);
 
         _giveAllowancesArguments(_want, _chef, _output, _unirouter, _lpToken0, _lpToken1);
     }
@@ -111,40 +114,61 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     // compounds earnings and charges performance fee
     function harvest() public virtual whenNotPaused onlyEOA {
         IMasterChef(chef).deposit(poolId, 0);
-        chargeFees();
-        addLiquidity();
+
+        if (isNativeRoutes) {
+            swapAllToNative();
+            chargeFeesNative();
+            addLiquidityFrom(native);
+        } else {
+            chargeFees();
+            addLiquidityFrom(output);
+        }
+
         deposit();
 
         emit StratHarvest(msg.sender);
     }
 
     // performance fees
+    function swapAllToNative() internal {
+        uint256 toNative = IERC20(output).balanceOf(address(this));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, toNativeRoute, address(this), now);
+    }
+
     function chargeFees() internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, toNativeRoute, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        transferFees(nativeBal);
+    }
 
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
+    function chargeFeesNative() internal {
+        uint256 nativeFees = IERC20(native).balanceOf(address(this)).mul(45).div(1000);
+        transferFees(nativeFees);
+    }
+
+    function transferFees(uint256 amount) internal {
+        uint256 callFeeAmount = amount.mul(callFee).div(MAX_FEE);
         IERC20(native).safeTransfer(msg.sender, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
+        uint256 beefyFeeAmount = amount.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        uint256 strategistFee = amount.mul(STRATEGIST_FEE).div(MAX_FEE);
         IERC20(native).safeTransfer(strategist, strategistFee);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
-    function addLiquidity() internal {
-        uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
+    function addLiquidityFrom(address yield) internal {
+        uint256 yieldHalf = IERC20(yield).balanceOf(address(this)).div(2);
 
-        if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), now);
+        if (lpToken0 != yield) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(yieldHalf, 0, toLp0Route, address(this), now);
         }
 
-        if (lpToken1 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), now);
+        if (lpToken1 != yield) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(yieldHalf, 0, toLp1Route, address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
@@ -227,15 +251,15 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
 
-    function outputToNative() external view returns(address[] memory) {
-        return outputToNativeRoute;
+    function routeToNative() external view returns(address[] memory) {
+        return toNativeRoute;
     }
 
-    function outputToLp0() external view returns(address[] memory) {
-        return outputToLp0Route;
+    function routeToLp0() external view returns(address[] memory) {
+        return toLp0Route;
     }
 
-    function outputToLp1() external view returns(address[] memory) {
-        return outputToLp1Route;
+    function routeToLp1() external view returns(address[] memory) {
+        return toLp1Route;
     }
 }

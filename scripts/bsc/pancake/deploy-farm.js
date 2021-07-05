@@ -19,7 +19,7 @@ const rpc = getNetworkRpc(hardhat.network.name);
 // if (poolId < 1) {
 //   throw Error('Usage: Need to pass a poolId as argument.');
 // }
-poolId = 424;
+poolId = 421;
 
 async function main() {
   const deployer = await ethers.getSigner();
@@ -47,6 +47,11 @@ async function main() {
   }
 
   const resolveSwapRoute = (input, proxies, preferredProxy, output) => {
+    if ([lpPair.token0, lpPair.token1].includes(WBNB.address)) { // Native pair
+      if (output === WBNB.address) return [WBNB.address];
+      return [WBNB.address, output];
+    }
+
     if (input === output) return [input];
     if (proxies.includes(output)) return [input, output];
     if (proxies.includes(preferredProxy)) return [input, preferredProxy, output];
@@ -68,9 +73,9 @@ async function main() {
     strategist: deployer.address, // your address for rewards
     keeper: beefyfinance.keeper,
     beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-    outputToNativeRoute: [CAKE.address, WBNB.address],
-    outputToLp0Route: resolveSwapRoute(CAKE.address, baseTokenAddresses, lpPair.token1, lpPair.token0),
-    outputToLp1Route: resolveSwapRoute(CAKE.address, baseTokenAddresses, lpPair.token0, lpPair.token1),
+    toNativeRoute: [CAKE.address, WBNB.address],
+    toLp0Route: resolveSwapRoute(CAKE.address, baseTokenAddresses, lpPair.token1, lpPair.token0),
+    toLp1Route: resolveSwapRoute(CAKE.address, baseTokenAddresses, lpPair.token0, lpPair.token1),
   };
 
   const contractNames = {
@@ -86,6 +91,8 @@ async function main() {
   }
 
   await hardhat.run("compile");
+
+  // return;
 
   const Vault = await ethers.getContractFactory(contractNames.vault);
   const Strategy = await ethers.getContractFactory(contractNames.strategy);
@@ -105,9 +112,9 @@ async function main() {
     strategyParams.keeper,
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
-    strategyParams.outputToNativeRoute,
-    strategyParams.outputToLp0Route,
-    strategyParams.outputToLp1Route
+    strategyParams.toNativeRoute,
+    strategyParams.toLp0Route,
+    strategyParams.toLp1Route
   );
   await strategy.deployed();
 
@@ -158,9 +165,9 @@ async function main() {
     strategyParams.keeper,
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
-    strategyParams.outputToNativeRoute,
-    strategyParams.outputToLp0Route,
-    strategyParams.outputToLp1Route
+    strategyParams.toNativeRoute,
+    strategyParams.toLp0Route,
+    strategyParams.toLp1Route
     ],
   })
 
