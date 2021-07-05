@@ -72,8 +72,6 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         setCallFee(11);
 
         _giveAllowances();
-
-        IStakingRewards(rewardPool).setVestingConfig(false);
     }
 
     // puts the funds to work
