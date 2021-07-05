@@ -231,6 +231,7 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
         IERC20(want).safeApprove(rewardPool, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
         IERC20(secondOutput).safeApprove(unirouter, uint256(-1));
+        IERC20(intermediate).safeApprove(quickRouter, uint256(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
@@ -243,6 +244,7 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
         IERC20(want).safeApprove(rewardPool, 0);
         IERC20(output).safeApprove(unirouter, 0);
         IERC20(secondOutput).safeApprove(unirouter, 0);
+        IERC20(intermediate).safeApprove(quickRouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
