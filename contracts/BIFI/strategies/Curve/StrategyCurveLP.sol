@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/curve/IRewardsGauge.sol";
-import "../../interfaces/curve/IStableSwapAave.sol";
+import "../../interfaces/curve/ICurveSwap.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
@@ -18,11 +18,15 @@ contract StrategyCurveLP is StratManager, FeeManager {
 
     // Tokens used
     address public want; // curve lpToken
-    address public pool;
-    address public depositToken;
-    address public rewardsGauge;
     address public crv;
     address public native;
+    address public depositToken;
+
+    // Third party contracts
+    address public rewardsGauge;
+    address public pool;
+    uint public poolSize;
+    uint public depositIndex;
 
     // Routes
     address[] public crvToNativeRoute;
@@ -37,16 +41,32 @@ contract StrategyCurveLP is StratManager, FeeManager {
 
     constructor(
         address _want,
+        address _gauge,
         address _pool,
-        address _poolSize,
+        uint _poolSize,
+        uint _depositIndex,
+        address[] memory _crvToNativeRoute,
+        address[] memory _nativeToDepositRoute,
         address _vault,
         address _unirouter,
         address _keeper,
         address _strategist,
-        address _beefyFeeRecipient,
-        address[] memory _outputToNativeRoute,
-        address[] memory _nativeToDepositRoute
+        address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+        want = _want;
+        rewardsGauge = _gauge;
+        pool = _pool;
+        poolSize = _poolSize;
+        depositIndex = _depositIndex;
+
+        crv = _crvToNativeRoute[0];
+        native = _crvToNativeRoute[_crvToNativeRoute.length - 1];
+        crvToNativeRoute = _crvToNativeRoute;
+
+        require(_nativeToDepositRoute[0] == native, '_nativeToDepositRoute[0] != native');
+        depositToken = _nativeToDepositRoute[_nativeToDepositRoute.length - 1];
+        nativeToDepositRoute = _nativeToDepositRoute;
+
         _giveAllowances();
     }
 
@@ -55,7 +75,7 @@ contract StrategyCurveLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IRewardsGauge(rewards).deposit(wantBal);
+            IRewardsGauge(rewardsGauge).deposit(wantBal);
         }
     }
 
@@ -65,7 +85,7 @@ contract StrategyCurveLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IRewardsGauge(rewards).withdraw(_amount.sub(wantBal));
+            IRewardsGauge(rewardsGauge).withdraw(_amount.sub(wantBal));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -90,11 +110,11 @@ contract StrategyCurveLP is StratManager, FeeManager {
     // compounds earnings and charges performance fee
     function harvest() public whenNotPaused {
         require(tx.origin == msg.sender || msg.sender == vault, "!contract");
-        IRewardsGauge(rewards).claim_rewards(address(this));
+        IRewardsGauge(rewardsGauge).claim_rewards(address(this));
 
         uint256 crvBal = IERC20(crv).balanceOf(address(this));
-        uint256 wmaticBal = IERC20(wmatic).balanceOf(address(this));
-        if (wmaticBal > 0 || crvBal > 0) {
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        if (nativeBal > 0 || crvBal > 0) {
             chargeFees();
             addLiquidity();
             deposit();
@@ -127,13 +147,24 @@ contract StrategyCurveLP is StratManager, FeeManager {
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeBal, 0, nativeToDepositRoute, address(this), block.timestamp);
 
         uint256 depositBal = IERC20(depositToken).balanceOf(address(this));
-        uint256[3] memory amounts = [0, usdcBal, 0];
-        IStableSwapAave(swapToken).add_liquidity(amounts, 0, true);
 
-        uint256 busdBal = IERC20(busd).balanceOf(address(this));
-        uint256[] memory amounts = new uint256[](swapSize);
-        amounts[busdIndex] = busdBal;
-        IDoppleSwap(swapToken).addLiquidity(amounts, 0, now);
+        if (poolSize == 2) {
+            uint256[2] memory amounts;
+            amounts[depositIndex] = depositBal;
+            ICurveSwap2(pool).add_liquidity(amounts, 0);
+        } else if (poolSize == 3) {
+            uint256[3] memory amounts;
+            amounts[depositIndex] = depositBal;
+            ICurveSwap3(pool).add_liquidity(amounts, 0);
+        } else if (poolSize == 4) {
+            uint256[4] memory amounts;
+            amounts[depositIndex] = depositBal;
+            ICurveSwap4(pool).add_liquidity(amounts, 0);
+        } else if (poolSize == 5) {
+            uint256[5] memory amounts;
+            amounts[depositIndex] = depositBal;
+            ICurveSwap5(pool).add_liquidity(amounts, 0);
+        }
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -148,7 +179,15 @@ contract StrategyCurveLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        return IRewardsGauge(rewards).balanceOf(address(this));
+        return IRewardsGauge(rewardsGauge).balanceOf(address(this));
+    }
+
+    function crvToNative() external view returns(address[] memory) {
+        return crvToNativeRoute;
+    }
+
+    function nativeToDeposit() external view returns(address[] memory) {
+        return nativeToDepositRoute;
     }
 
     function setHarvestOnDeposit(bool _harvest) external onlyManager {
@@ -159,7 +198,7 @@ contract StrategyCurveLP is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IRewardsGauge(rewards).withdraw(balanceOfPool());
+        IRewardsGauge(rewardsGauge).withdraw(balanceOfPool());
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -168,7 +207,7 @@ contract StrategyCurveLP is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IRewardsGauge(rewards).withdraw(balanceOfPool());
+        IRewardsGauge(rewardsGauge).withdraw(balanceOfPool());
     }
 
     function pause() public onlyManager {
@@ -186,16 +225,16 @@ contract StrategyCurveLP is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(rewards, type(uint).max);
-        IERC20(wmatic).safeApprove(unirouter, type(uint).max);
+        IERC20(want).safeApprove(rewardsGauge, type(uint).max);
+        IERC20(native).safeApprove(unirouter, type(uint).max);
         IERC20(crv).safeApprove(unirouter, type(uint).max);
-        IERC20(usdc).safeApprove(swapToken, type(uint).max);
+        IERC20(depositToken).safeApprove(pool, type(uint).max);
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(rewards, 0);
-        IERC20(wmatic).safeApprove(unirouter, 0);
+        IERC20(want).safeApprove(rewardsGauge, 0);
+        IERC20(native).safeApprove(unirouter, 0);
         IERC20(crv).safeApprove(unirouter, 0);
-        IERC20(usdc).safeApprove(swapToken, 0);
+        IERC20(depositToken).safeApprove(pool, 0);
     }
 }

@@ -31,7 +31,7 @@ const config: DeploymentConfig = {
       accounts: deployerAccount,
     },
     polygon: {
-      url: "https://rpc-mainnet.maticvigil.com/",
+      url: "https://rpc-mainnet.maticvigil.com/v1/de4204cef56aa2763bc505469cd11605e367e114",
       chainId: 137,
       accounts: deployerAccount,
     },

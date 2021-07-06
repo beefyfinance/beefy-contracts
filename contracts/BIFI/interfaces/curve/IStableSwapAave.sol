@@ -9,7 +9,3 @@ interface IStableSwapAave {
 interface IStableSwapAave2 {
     function add_liquidity(uint256[2] memory amounts, uint256 min_mint_amount, bool _use_underlying) external;
 }
-
-interface CurveCryptoSwap {
-    function add_liquidity(uint256[2] memory amounts, uint256 min_mint_amount, bool _use_underlying) external;
-}
