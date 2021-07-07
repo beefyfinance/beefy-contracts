@@ -9,7 +9,7 @@ const predictAddresses = require("../../../utils/predictAddresses");
 const getNetworkRpc = require("../../../utils/getNetworkRpc");
 const { addressBook } = require("blockchain-addressbook")
 const { pancake, beefyfinance } = addressBook.bsc.platforms;
-const { CAKE, WBNB, BUSD, USDT } =  addressBook.bsc.tokens;
+const { CAKE, WBNB, BUSD, USDT } = addressBook.bsc.tokens;
 const baseTokenAddresses = [CAKE, WBNB, BUSD, USDT].map(t => t.address);
 
 const ethers = hardhat.ethers;
@@ -19,10 +19,11 @@ const rpc = getNetworkRpc(hardhat.network.name);
 // if (poolId < 1) {
 //   throw Error('Usage: Need to pass a poolId as argument.');
 // }
-poolId = 421;
+poolId = 425;
 
 async function main() {
   const deployer = await ethers.getSigner();
+  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
 
   const masterchefContract = new ethers.Contract(pancake.masterchef, masterchefABI, deployer);
   const poolInfo = await masterchefContract.poolInfo(poolId);
@@ -61,6 +62,7 @@ async function main() {
   const mooPairName = `${token0.symbol}-${token1.symbol}`;
 
   const vaultParams = {
+    strategy: predictedAddresses.strategy,
     mooName: `Moo CakeV2 ${mooPairName}`,
     mooSymbol: `mooCakeV2${mooPairName}`,
     delay: 21600,
@@ -69,9 +71,10 @@ async function main() {
   const strategyParams = {
     want: lpPair.address,
     poolId: poolId,
+    vault: predictedAddresses.vault,
     unirouter: pancake.router, // Pancakeswap Router V2
-    strategist: deployer.address, // your address for rewards
     keeper: beefyfinance.keeper,
+    strategist: deployer.address, // your address for rewards
     beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
     toNativeRoute: [CAKE.address, WBNB.address],
     toLp0Route: resolveSwapRoute(CAKE.address, baseTokenAddresses, lpPair.token1, lpPair.token0),
@@ -92,32 +95,16 @@ async function main() {
 
   await hardhat.run("compile");
 
-  // return;
-
   const Vault = await ethers.getContractFactory(contractNames.vault);
   const Strategy = await ethers.getContractFactory(contractNames.strategy);
 
   console.log("Deploying:", vaultParams.mooName);
 
-  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
-
-  const vault = await Vault.deploy(predictedAddresses.strategy, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay);
+  const vault = await Vault.deploy(...Object.values(vaultParams));
   await vault.deployed();
 
-  const strategy = await Strategy.deploy(
-    strategyParams.want,
-    strategyParams.poolId,
-    vault.address,
-    strategyParams.unirouter,
-    strategyParams.keeper,
-    strategyParams.strategist,
-    strategyParams.beefyFeeRecipient,
-    strategyParams.toNativeRoute,
-    strategyParams.toLp0Route,
-    strategyParams.toLp1Route
-  );
+  const strategy = await Strategy.deploy(...Object.values(strategyParams));
   await strategy.deployed();
-
 
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
@@ -148,31 +135,21 @@ async function main() {
       `https://exchange.pancakeswap.finance/#/swap?inputCurrency=${lpPair.token0}&outputCurrency=${lpPair.token1}`,
   });
 
-  await hardhat.run("verify:verify", {
-    address: vault.address,
-    constructorArguments: [
-      strategy.address, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay
-    ],
-  })
-
-  await hardhat.run("verify:verify", {
-    address: strategy.address,
-    constructorArguments: [
-    strategyParams.want,
-    strategyParams.poolId,
-    vault.address,
-    strategyParams.unirouter,
-    strategyParams.keeper,
-    strategyParams.strategist,
-    strategyParams.beefyFeeRecipient,
-    strategyParams.toNativeRoute,
-    strategyParams.toLp0Route,
-    strategyParams.toLp1Route
-    ],
-  })
-
   await registerSubsidy(vault.address, deployer);
   await registerSubsidy(strategy.address, deployer);
+
+  const strategyVerificationArgs = {
+    address: strategy.address,
+    constructorArguments: Object.values(strategyParams),
+  }
+
+  const vaultVerificationArgs = {
+    address: vault.address,
+    constructorArguments: Object.values(vaultParams),
+  }
+
+  await hardhat.run("verify:verify", strategyVerificationArgs)
+  await hardhat.run("verify:verify", vaultVerificationArgs)
 }
 
 main()
