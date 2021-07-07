@@ -14,7 +14,7 @@ import "../../interfaces/DFYN/IStakingRewards.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
+contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -22,6 +22,7 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
     address public native = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
     address public intermediate;
     address public output;
+    address public secondOutput;
     address public want;
     address public lpToken0;
     address public lpToken1;
@@ -34,6 +35,7 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
     address[] public outputToIntermediateRoute; // since DFYN uses its own native, convert to common token, then convert that token to native beefy uses
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
+    address[] public secondOutputToOutputRoute;
     address[] public intermediateToNativeRoute;
 
     /**
@@ -51,7 +53,8 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         address _beefyFeeRecipient,
         address[] memory _outputToIntermediateRoute,
         address[] memory _outputToLp0Route,
-        address[] memory _outputToLp1Route
+        address[] memory _outputToLp1Route,
+        address[] memory _secondOutputToOutputRoute
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         rewardPool = _rewardPool;
@@ -60,8 +63,11 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         intermediate = _outputToIntermediateRoute[_outputToIntermediateRoute.length - 1];
         outputToIntermediateRoute = _outputToIntermediateRoute;
 
+        secondOutput = _secondOutputToOutputRoute[0];
+        secondOutputToOutputRoute = _secondOutputToOutputRoute;
+
         intermediateToNativeRoute = [ intermediate, native ];
-        
+
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
         outputToLp0Route = _outputToLp0Route;
@@ -76,7 +82,7 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
 
     // puts the funds to work
     function deposit() public whenNotPaused {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal > 0) {
             IStakingRewards(rewardPool).stake(wantBal);
@@ -86,11 +92,11 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal < _amount) {
             IStakingRewards(rewardPool).withdraw(_amount.sub(wantBal));
-            wantBal = IERC20(want).balanceOf(address(this));
+            wantBal = balanceOfWant();
         }
 
         if (wantBal > _amount) {
@@ -117,6 +123,11 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees() internal {
+        uint256 toOutput = IERC20(secondOutput).balanceOf(address(this));
+        if (toOutput > 0) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, secondOutputToOutputRoute, address(this), now);
+        }
+
         uint256 toIntermediate = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toIntermediate, 0, outputToIntermediateRoute, address(this), now);
         uint256 toNative = IERC20(intermediate).balanceOf(address(this));
@@ -125,7 +136,7 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -172,7 +183,7 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
 
         IStakingRewards(rewardPool).withdraw(balanceOfPool());
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
         IERC20(want).transfer(vault, wantBal);
     }
 
@@ -208,6 +219,10 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         return outputToLp1Route;
     }
 
+    function secondOutputToOutput() public view returns (address[] memory) {
+        return secondOutputToOutputRoute;
+    }
+
     function intermediateToNative() public view returns (address[] memory) {
         return intermediateToNativeRoute;
     }
@@ -215,6 +230,7 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(rewardPool, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(secondOutput).safeApprove(unirouter, uint256(-1));
         IERC20(intermediate).safeApprove(quickRouter, uint256(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
@@ -227,8 +243,8 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(rewardPool, 0);
         IERC20(output).safeApprove(unirouter, 0);
+        IERC20(secondOutput).safeApprove(unirouter, 0);
         IERC20(intermediate).safeApprove(quickRouter, 0);
-
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
