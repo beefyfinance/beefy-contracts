@@ -7,7 +7,7 @@
     "@openzeppelin-2/contracts": "npm:@openzeppelin/contracts@2.5.1",
     "@openzeppelin/contracts": "^3.2.0",
     "bignumber.js": "^9.0.1",
-    "blockchain-addressbook": "^0.1.85",
+    "blockchain-addressbook": "^0.1.95",
     "ganache-cli": "^6.12.2",
     "keccak": "^3.0.1",
     "rlp": "^2.2.6",

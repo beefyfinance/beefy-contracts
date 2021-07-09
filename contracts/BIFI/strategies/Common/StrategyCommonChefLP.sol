@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/common/IERC20Extended.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/common/IMasterChef.sol";
@@ -33,10 +31,6 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     address[] public outputToNativeRoute;
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
-
-    // View
-    string[] public outputToLp0SymbolRoute;
-    string[] public outputToLp1SymbolRoute;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -66,12 +60,14 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
+        require(_outputToLp0Route[0] == output, "outputToLp0Route[0] != output");
+        require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0, "outputToLp0Route[last] != lpToken0");
         outputToLp0Route = _outputToLp0Route;
-//        outputToLp0SymbolRoute = _getSymbolRoute(outputToLp0Route);
 
         lpToken1 = IUniswapV2Pair(want).token1();
+        require(_outputToLp1Route[0] == output, "outputToLp1Route[0] != output");
+        require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1, "outputToLp1Route[last] != lpToken1");
         outputToLp1Route = _outputToLp1Route;
-//        outputToLp1SymbolRoute = _getSymbolRoute(outputToLp1Route);
 
         _giveAllowances();
     }
@@ -102,7 +98,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         if (tx.origin == owner() || paused()) {
             IERC20(want).safeTransfer(vault, wantBal);
         } else {
-            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);	
+            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
             IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
         }
     }
@@ -163,7 +159,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMasterChef(chef).userInfo(poolId, address(this));	
+        (uint256 _amount, ) = IMasterChef(chef).userInfo(poolId, address(this));
         return _amount;
     }
 
@@ -197,28 +193,6 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         deposit();
     }
 
-    function lp0AddressRoute() public view returns (address[] memory) {
-        return outputToLp0Route;
-    }
-    function lp1AddressRoute() public view returns (address[] memory) {
-        return outputToLp1Route;
-    }
-//    function lp0SymbolRoute() public view returns (string[] memory) {
-//        return outputToLp0SymbolRoute;
-//    }
-//    function lp1SymbolRoute() public view returns (string[] memory) {
-//        return outputToLp1SymbolRoute;
-//    }
-//    function _getSymbolRoute(address[] memory route) internal view returns (string[] memory) {
-//        string[] memory symbolRoute = new string[](route.length);
-//        for (uint i = 0; i < route.length; i++) {
-//            address tokenAddress = route[i];
-//            string memory symbol = IERC20Extended(tokenAddress).symbol();
-//            symbolRoute[i] = symbol;
-//        }
-//        return symbolRoute;
-//    }
-
     function _giveAllowances() internal {
         IERC20(want).safeApprove(chef, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
@@ -235,5 +209,17 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         IERC20(output).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
+    }
+
+    function outputToNative() external view returns(address[] memory) {
+        return outputToNativeRoute;
+    }
+
+    function outputToLp0() external view returns(address[] memory) {
+        return outputToLp0Route;
+    }
+
+    function outputToLp1() external view returns(address[] memory) {
+        return outputToLp1Route;
     }
 }
