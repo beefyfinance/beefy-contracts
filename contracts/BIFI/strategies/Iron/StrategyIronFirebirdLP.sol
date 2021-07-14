@@ -1,36 +1,39 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/common/IERC20Extended.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/DFYN/IStakingRewards.sol";
 import "../../interfaces/common/IWrappedNative.sol";
+import "../../interfaces/firebird/IFirebirdRouter.sol";
+import "../../interfaces/iron/IIronSwapLP.sol";
+import "../../interfaces/iron/IIronSwap.sol";
+import "../../interfaces/sushi/IMiniChefV2.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
+contract StrategyIronFirebirdLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
-    address public native;
-    address public output;
+    address constant public output = address(0x4A81f8796e0c6Ad4877A51C86693B0dE8093F2ef); // ICE
+    address constant public native = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270); // MATIC
     address public want;
     address public lpToken0;
     address public lpToken1;
 
     // Third party contracts
-    address public rewardPool;
+    address constant public masterchef = address(0x1fD1259Fa8CdC60c6E8C86cfA592CA1b8403DFaD);
+    uint256 public poolId;
+    address public firebirdRouter = address(0xF6fa9Ea1f64f1BBfA8d71f7f43fAF6D45520bfac);
 
     // Routes
-    address[] public outputToNativeRoute; // since DFYN uses its own native, convert to common token, then convert that token to native beefy uses
+    address[] public outputToNativeRoute;
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
 
@@ -41,31 +44,32 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
 
     constructor(
         address _want,
-        address _rewardPool,
+        uint256 _poolId,
+        address[] memory _outputToNativeRoute,
+        address[] memory _outputToLp0Route,
+        address[] memory _outputToLp1Route,
         address _vault,
         address _unirouter,
         address _keeper,
         address _strategist,
-        address _beefyFeeRecipient,
-        address[] memory _outputToNativeRoute,
-        address[] memory _outputToLp0Route,
-        address[] memory _outputToLp1Route
+        address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
-        rewardPool = _rewardPool;
+        poolId = _poolId;
 
-        output = _outputToNativeRoute[0];
-        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
+        require(_outputToNativeRoute[0] == output, "toNative[0] != output");
         outputToNativeRoute = _outputToNativeRoute;
-        
+
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
+        require(_outputToLp0Route[0] == output, "outputToLp0Route[0] != output");
+        require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0, "outputToLp0Route[last] != lpToken0");
         outputToLp0Route = _outputToLp0Route;
 
         lpToken1 = IUniswapV2Pair(want).token1();
+        require(_outputToLp1Route[0] == output, "outputToLp1Route[0] != output");
+        require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1, "outputToLp1Route[last] != lpToken1");
         outputToLp1Route = _outputToLp1Route;
-
-        setCallFee(11);
 
         _giveAllowances();
     }
@@ -75,7 +79,7 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IStakingRewards(rewardPool).stake(wantBal);
+            IMiniChefV2(masterchef).deposit(poolId, wantBal, address(this));
         }
     }
 
@@ -85,7 +89,7 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IStakingRewards(rewardPool).withdraw(_amount.sub(wantBal));
+            IMiniChefV2(masterchef).withdraw(poolId, _amount.sub(wantBal), address(this));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -103,7 +107,7 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA {
-        IStakingRewards(rewardPool).getReward();
+        IMiniChefV2(masterchef).harvest(poolId, address(this));
         chargeFees();
         addLiquidity();
         deposit();
@@ -134,16 +138,16 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
 
         if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), block.timestamp);
         }
 
         if (lpToken1 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), block.timestamp);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
+        IFirebirdRouter(firebirdRouter).addLiquidity(want, lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -158,14 +162,15 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        return IStakingRewards(rewardPool).balanceOf(address(this));
+        (uint256 _amount,) = IMiniChefV2(masterchef).userInfo(poolId, address(this));
+        return _amount;
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IStakingRewards(rewardPool).withdraw(balanceOfPool());
+        IMiniChefV2(masterchef).emergencyWithdraw(poolId, address(this));
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -174,7 +179,7 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IStakingRewards(rewardPool).withdraw(balanceOfPool());
+        IMiniChefV2(masterchef).emergencyWithdraw(poolId, address(this));
     }
 
     function pause() public onlyManager {
@@ -191,34 +196,35 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         deposit();
     }
 
-    function outputToNative() public view returns (address[] memory) {
-        return outputToNativeRoute;
-    }
-
-    function outputToLp0() public view returns (address[] memory) {
-        return outputToLp0Route;
-    }
-
-    function outputToLp1() public view returns (address[] memory) {
-        return outputToLp1Route;
-    }
-
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(rewardPool, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(masterchef, type(uint).max);
+        IERC20(output).safeApprove(unirouter, type(uint).max);
 
-        IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
+        IERC20(lpToken0).safeApprove(firebirdRouter, 0);
+        IERC20(lpToken0).safeApprove(firebirdRouter, type(uint).max);
 
-        IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint256(-1));
+        IERC20(lpToken1).safeApprove(firebirdRouter, 0);
+        IERC20(lpToken1).safeApprove(firebirdRouter, type(uint).max);
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(rewardPool, 0);
+        IERC20(want).safeApprove(masterchef, 0);
         IERC20(output).safeApprove(unirouter, 0);
-
-        IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, 0);
+        IERC20(lpToken0).safeApprove(firebirdRouter, 0);
+        IERC20(lpToken1).safeApprove(firebirdRouter, 0);
     }
+
+    function outputToNative() external view returns(address[] memory) {
+        return outputToNativeRoute;
+    }
+
+    function outputToLp0() external view returns(address[] memory) {
+        return outputToLp0Route;
+    }
+
+    function outputToLp1() external view returns(address[] memory) {
+        return outputToLp1Route;
+    }
+
+    receive () external payable {}
 }
