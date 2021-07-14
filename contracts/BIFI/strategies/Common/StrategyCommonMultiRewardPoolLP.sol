@@ -59,7 +59,7 @@ contract StrategyCommonMultiRewardPoolLP is StratManager, FeeManager {
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
 
-        secondOutput = secondOutputToOutputRoute[0];
+        secondOutput = _secondOutputToOutputRoute[0];
         secondOutputToOutputRoute = _secondOutputToOutputRoute;
         
         // setup lp routing
