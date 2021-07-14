@@ -75,7 +75,7 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
 
     // puts the funds to work
     function deposit() public whenNotPaused {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal > 0) {
             IRewardPool(rewardPool).stake(wantBal);
@@ -85,11 +85,11 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal < _amount) {
             IRewardPool(rewardPool).withdraw(_amount.sub(wantBal));
-            wantBal = IERC20(want).balanceOf(address(this));
+            wantBal = balanceOfWant();
         }
 
         if (wantBal > _amount) {
@@ -122,7 +122,7 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -169,7 +169,7 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
 
         IRewardPool(rewardPool).withdraw(balanceOfPool());
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
         IERC20(want).transfer(vault, wantBal);
     }
 
@@ -193,27 +193,17 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
         deposit();
     }
 
-    function lp0AddressRoute() public view returns (address[] memory) {
+    function outputToLp0() public view returns (address[] memory) {
         return outputToLp0Route;
     }
-    function lp1AddressRoute() public view returns (address[] memory) {
+
+    function outputToLp1() public view returns (address[] memory) {
         return outputToLp1Route;
     }
-//    function lp0SymbolRoute() public view returns (string[] memory) {
-//        return outputToLp0SymbolRoute;
-//    }
-//    function lp1SymbolRoute() public view returns (string[] memory) {
-//        return outputToLp1SymbolRoute;
-//    }
-//    function _getSymbolRoute(address[] memory route) internal view returns (string[] memory) {
-//        string[] memory symbolRoute = new string[](route.length);
-//        for (uint i = 0; i < route.length; i++) {
-//            address tokenAddress = route[i];
-//            string memory symbol = IERC20Extended(tokenAddress).symbol();
-//            symbolRoute[i] = symbol;
-//        }
-//        return symbolRoute;
-//    }
+
+    function outputToNative() public view returns (address[] memory) {
+        return outputToNativeRoute;
+    }
 
     function _giveAllowances() internal {
         IERC20(want).safeApprove(rewardPool, uint256(-1));

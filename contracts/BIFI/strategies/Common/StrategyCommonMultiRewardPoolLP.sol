@@ -74,7 +74,7 @@ contract StrategyCommonMultiRewardPoolLP is StratManager, FeeManager {
 
     // puts the funds to work
     function deposit() public whenNotPaused {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal > 0) {
             IRewardPool(rewardPool).stake(wantBal);
@@ -84,11 +84,11 @@ contract StrategyCommonMultiRewardPoolLP is StratManager, FeeManager {
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal < _amount) {
             IRewardPool(rewardPool).withdraw(_amount.sub(wantBal));
-            wantBal = IERC20(want).balanceOf(address(this));
+            wantBal = balanceOfWant();
         }
 
         if (wantBal > _amount) {
@@ -116,7 +116,9 @@ contract StrategyCommonMultiRewardPoolLP is StratManager, FeeManager {
     // performance fees
     function chargeFees() internal {
         uint256 toOutput = IERC20(secondOutput).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, secondOutputToOutputRoute, address(this), now);
+        if (toOutput > 0) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, secondOutputToOutputRoute, address(this), now);
+        }
         
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
@@ -171,7 +173,7 @@ contract StrategyCommonMultiRewardPoolLP is StratManager, FeeManager {
 
         IRewardPool(rewardPool).withdraw(balanceOfPool());
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
         IERC20(want).transfer(vault, wantBal);
     }
 
@@ -205,6 +207,10 @@ contract StrategyCommonMultiRewardPoolLP is StratManager, FeeManager {
 
     function outputToNative() public view returns (address[] memory) {
         return outputToNativeRoute;
+    }
+
+    function secondOutputToOutput() public view returns (address[] memory) {
+        return secondOutputToOutputRoute;
     }
 
     function _giveAllowances() internal {
