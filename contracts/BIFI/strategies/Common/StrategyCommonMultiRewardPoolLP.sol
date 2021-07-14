@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/common/IERC20Extended.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/common/IRewardPool.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
+contract StrategyCommonMultiRewardPoolLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
     address public native;
     address public output;
+    address public secondOutput;
     address public want;
     address public lpToken0;
     address public lpToken1;
@@ -32,10 +32,7 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
     address[] public outputToNativeRoute;
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
-
-    // View
-    string[] public outputToLp0SymbolRoute;
-    string[] public outputToLp1SymbolRoute;
+    address[] public secondOutputToOutputRoute;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -52,7 +49,8 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
         address _beefyFeeRecipient,
         address[] memory _outputToNativeRoute,
         address[] memory _outputToLp0Route,
-        address[] memory _outputToLp1Route
+        address[] memory _outputToLp1Route,
+        address[] memory _secondOutputToOutputRoute
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         rewardPool = _rewardPool;
@@ -60,15 +58,16 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
+
+        secondOutput = secondOutputToOutputRoute[0];
+        secondOutputToOutputRoute = _secondOutputToOutputRoute;
         
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
         outputToLp0Route = _outputToLp0Route;
-//        outputToLp0SymbolRoute = _getSymbolRoute(outputToLp0Route);
 
         lpToken1 = IUniswapV2Pair(want).token1();
         outputToLp1Route = _outputToLp1Route;
-//        outputToLp1SymbolRoute = _getSymbolRoute(outputToLp1Route);
 
         _giveAllowances();
     }
@@ -116,13 +115,16 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees() internal {
+        uint256 toOutput = IERC20(secondOutput).balanceOf(address(this));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, secondOutputToOutputRoute, address(this), now);
+        
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -193,31 +195,22 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
         deposit();
     }
 
-    function lp0AddressRoute() public view returns (address[] memory) {
+    function outputToLp0() public view returns (address[] memory) {
         return outputToLp0Route;
     }
-    function lp1AddressRoute() public view returns (address[] memory) {
+
+    function outputToLp1() public view returns (address[] memory) {
         return outputToLp1Route;
     }
-//    function lp0SymbolRoute() public view returns (string[] memory) {
-//        return outputToLp0SymbolRoute;
-//    }
-//    function lp1SymbolRoute() public view returns (string[] memory) {
-//        return outputToLp1SymbolRoute;
-//    }
-//    function _getSymbolRoute(address[] memory route) internal view returns (string[] memory) {
-//        string[] memory symbolRoute = new string[](route.length);
-//        for (uint i = 0; i < route.length; i++) {
-//            address tokenAddress = route[i];
-//            string memory symbol = IERC20Extended(tokenAddress).symbol();
-//            symbolRoute[i] = symbol;
-//        }
-//        return symbolRoute;
-//    }
+
+    function outputToNative() public view returns (address[] memory) {
+        return outputToNativeRoute;
+    }
 
     function _giveAllowances() internal {
         IERC20(want).safeApprove(rewardPool, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(secondOutput).safeApprove(unirouter, uint256(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
@@ -229,6 +222,7 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(rewardPool, 0);
         IERC20(output).safeApprove(unirouter, 0);
+        IERC20(secondOutput).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
