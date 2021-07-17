@@ -6,13 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/common/IUniswapRouter.sol";
+import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/polyyeld/IxYeldMasterChef.sol";
+import "../../interfaces/common/IMasterChefReferrer.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
+contract StrategyCommonChefReferrerSingle is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -60,8 +60,6 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
 
         outputToWantRoute = _outputToWantRoute;
 
-        setCallFee(11);
-
         _giveAllowances();
     }
 
@@ -70,7 +68,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
         uint256 wantBal = balanceOfWant();
 
         if (wantBal > 0) {
-            IxYeldMasterChef(chef).deposit(poolId, wantBal, referrer);
+            IMasterChefReferrer(chef).deposit(poolId, wantBal, referrer);
         }
     }
 
@@ -80,7 +78,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
         uint256 wantBal = balanceOfWant();
 
         if (wantBal < _amount) {
-            IxYeldMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            IMasterChefReferrer(chef).withdraw(poolId, _amount.sub(wantBal));
             wantBal = balanceOfWant();
         }
 
@@ -105,7 +103,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
     // compounds earnings and charges performance fee
     function harvest() public whenNotPaused {
         require(tx.origin == msg.sender || msg.sender == vault, "!contract");
-        IxYeldMasterChef(chef).deposit(poolId, 0, referrer);
+        IMasterChefReferrer(chef).deposit(poolId, 0, referrer);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
             chargeFees();
@@ -118,7 +116,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
     // performance fees
     function chargeFees() internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
@@ -136,7 +134,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
     function swapRewards() internal {
         if (want != output) {
             uint256 outputBal = IERC20(output).balanceOf(address(this));
-            IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(outputBal, 0, outputToWantRoute, address(this), block.timestamp);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), block.timestamp);
         }
     }
 
@@ -152,7 +150,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IxYeldMasterChef(chef).userInfo(poolId, address(this));
+        (uint256 _amount, ) = IMasterChefReferrer(chef).userInfo(poolId, address(this));
         return _amount;
     }
 
@@ -160,7 +158,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IxYeldMasterChef(chef).emergencyWithdraw(poolId);
+        IMasterChefReferrer(chef).emergencyWithdraw(poolId);
 
         uint256 wantBal = balanceOfWant();
         IERC20(want).transfer(vault, wantBal);
@@ -169,7 +167,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IxYeldMasterChef(chef).emergencyWithdraw(poolId);
+        IMasterChefReferrer(chef).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {
