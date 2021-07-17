@@ -104,8 +104,8 @@ contract StrategyCommonChefReferrerSingle is StratManager, FeeManager {
     function harvest() public whenNotPaused {
         require(tx.origin == msg.sender || msg.sender == vault, "!contract");
         IMasterChefReferrer(chef).deposit(poolId, 0, referrer);
-        uint256 wantBal = balanceOfWant();
-        if (wantBal > 0) {
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        if (outputBal > 0) {
             chargeFees();
             swapRewards();
             deposit();
