@@ -2,7 +2,7 @@ const hardhat = require("hardhat");
 
 const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
-const getNetworkRpc = require("../utils/getNetworkRpc");
+const { getNetworkRpc } = require("../utils/getNetworkRpc");
 
 const { addressBook } = require("blockchain-addressbook")
 const { DFYN: { address: DFYN }, ICE: { address: ICE }, ETH: { address: ETH } } = addressBook.polygon.tokens;

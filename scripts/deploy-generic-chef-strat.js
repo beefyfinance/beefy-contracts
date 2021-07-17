@@ -2,7 +2,7 @@ const hardhat = require("hardhat");
 
 const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
-const getNetworkRpc = require("../utils/getNetworkRpc");
+const { getNetworkRpc } = require("../utils/getNetworkRpc");
 const { addressBook } = require("blockchain-addressbook")
 const { DAI: { address: DAI }, USDC: { address: USDC }, ETH: { address: ETH }, WMATIC: { address: WMATIC }, SUSHI: { address: SUSHI } } = addressBook.polygon.tokens;
 const { sushi, beefyfinance } = addressBook.polygon.platforms;
