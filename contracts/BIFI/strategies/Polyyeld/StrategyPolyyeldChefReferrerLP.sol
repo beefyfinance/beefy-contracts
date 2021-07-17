@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IMasterChefReferrer.sol";
+import "../../interfaces/polyyeld/IxYeldMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
@@ -81,7 +81,7 @@ contract StrategyCommonChefReferrerLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IMasterChefReferrer(chef).deposit(poolId, wantBal, referrer);
+            IxYeldMasterChef(chef).deposit(poolId, wantBal, referrer);
         }
     }
 
@@ -91,7 +91,7 @@ contract StrategyCommonChefReferrerLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterChefReferrer(chef).withdraw(poolId, _amount.sub(wantBal));
+            IxYeldMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -109,7 +109,7 @@ contract StrategyCommonChefReferrerLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA {
-        IMasterChefReferrer(chef).deposit(poolId, 0, address(0));
+        IxYeldMasterChef(chef).deposit(poolId, 0, address(0));
         chargeFees();
         addLiquidity();
         deposit();
@@ -163,7 +163,7 @@ contract StrategyCommonChefReferrerLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMasterChefReferrer(chef).userInfo(poolId, address(this));
+        (uint256 _amount, ) = IxYeldMasterChef(chef).userInfo(poolId, address(this));
         return _amount;
     }
 
@@ -171,7 +171,7 @@ contract StrategyCommonChefReferrerLP is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChefReferrer(chef).emergencyWithdraw(poolId);
+        IxYeldMasterChef(chef).emergencyWithdraw(poolId);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -180,7 +180,7 @@ contract StrategyCommonChefReferrerLP is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMasterChefReferrer(chef).emergencyWithdraw(poolId);
+        IxYeldMasterChef(chef).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {

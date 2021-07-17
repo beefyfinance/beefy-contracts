@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IMasterChef.sol";
+import "../../interfaces/polyyeld/IxYeldMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
@@ -29,6 +29,8 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
     address[] public outputToNativeRoute;
     address[] public outputToWantRoute;
 
+    address public referrer;
+
     /**
      * @dev Event that is fired each time someone harvests the strat.
      */
@@ -38,6 +40,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
         address _want,
         uint256 _poolId,
         address _chef,
+        address _referrer,
         address _vault,
         address _unirouter,
         address _keeper,
@@ -49,6 +52,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
         want = _want;
         poolId = _poolId;
         chef = _chef;
+        referrer = _referrer;
 
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
@@ -64,7 +68,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
         uint256 wantBal = balanceOfWant();
 
         if (wantBal > 0) {
-            IMasterChef(chef).deposit(poolId, wantBal);
+            IxYeldMasterChef(chef).deposit(poolId, wantBal, referrer);
         }
     }
 
@@ -74,7 +78,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
         uint256 wantBal = balanceOfWant();
 
         if (wantBal < _amount) {
-            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            IxYeldMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
             wantBal = balanceOfWant();
         }
 
@@ -99,7 +103,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
     // compounds earnings and charges performance fee
     function harvest() public whenNotPaused {
         require(tx.origin == msg.sender || msg.sender == vault, "!contract");
-        IMasterChef(chef).deposit(poolId, 0);
+        IxYeldMasterChef(chef).deposit(poolId, 0, referrer);
         uint256 wantBal = balanceOfWant();
         if (wantBal > 0) {
             chargeFees();
@@ -146,7 +150,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMasterChef(chef).userInfo(poolId, address(this));
+        (uint256 _amount, ) = IxYeldMasterChef(chef).userInfo(poolId, address(this));
         return _amount;
     }
 
@@ -154,7 +158,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IxYeldMasterChef(chef).emergencyWithdraw(poolId);
 
         uint256 wantBal = balanceOfWant();
         IERC20(want).transfer(vault, wantBal);
@@ -163,7 +167,7 @@ contract StrategyPolyyeldChefReferrerSingle is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IxYeldMasterChef(chef).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {
