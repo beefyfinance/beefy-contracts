@@ -117,7 +117,7 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
     }
 
     function inCaseTokensGetStuck(address _token) external onlyOwner {
-        if (periodFinish != 0) {
+        if (totalSupply() != 0) {
             require(_token != address(stakedToken), "!staked");
         }
 
