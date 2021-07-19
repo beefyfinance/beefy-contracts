@@ -7,11 +7,10 @@ import "../../utils/GasThrottler.sol";
 
 contract StrategyCakeChefLP is StrategyCommonChefLP, GasThrottler {
 
-    address constant private chefAddress = address(0x73feaa1eE314F8c655E354234017bE2193C9E24E);
-
     constructor(
         address _want,
         uint256 _poolId,
+        address _chef,
         address _vault,
         address _unirouter,
         address _keeper,
@@ -23,7 +22,7 @@ contract StrategyCakeChefLP is StrategyCommonChefLP, GasThrottler {
     ) StrategyCommonChefLP(
         _want,
         _poolId,
-        chefAddress,
+        _chef,
         _vault,
         _unirouter,
         _keeper,
