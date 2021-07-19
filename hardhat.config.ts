@@ -1,3 +1,4 @@
+require('dotenv').config()
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
@@ -8,53 +9,59 @@ import { HardhatUserConfig as WithEtherscanConfig } from "hardhat/config";
 
 type DeploymentConfig = HardhatUserConfig & WithEtherscanConfig;
 
-let deployerAccount;
-if (process.env.DEPLOYER_PK) deployerAccount = [process.env.DEPLOYER_PK];
+const DEPLOYER_PK = [`${process.env.DEPLOYER_PK}`];
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY
+const BSC_RPC = process.env.BSC_RPC
+const HECO_RPC = process.env.HECO_RPC
+const AVAX_RPC = process.env.AVAX_RPC
+const POLYGON_RPC = process.env.POLYGON_RPC
+const FANTOM_RPC = process.env.FANTOM_RPC
+const LOCALHOST_RPC = process.env.LOCALHOST_RPC
 
 const config: DeploymentConfig = {
   defaultNetwork: "localhost",
   networks: {
     hardhat: {},
     bsc: {
-      url: "https://bsc-dataseed.binance.org/",
+      url: BSC_RPC,
       chainId: 56,
-      accounts: deployerAccount,
+      accounts: DEPLOYER_PK,
     },
     heco: {
-      url: "https://http-mainnet.hecochain.com",
+      url: HECO_RPC,
       chainId: 128,
-      accounts: deployerAccount,
+      accounts: DEPLOYER_PK,
     },
     avax: {
-      url: "https://api.avax.network/ext/bc/C/rpc",
+      url: AVAX_RPC,
       chainId: 43114,
-      accounts: deployerAccount,
+      accounts: DEPLOYER_PK,
     },
     polygon: {
-      url: "https://rpc-mainnet.maticvigil.com/v1/de4204cef56aa2763bc505469cd11605e367e114",
+      url: POLYGON_RPC,
       chainId: 137,
-      accounts: deployerAccount,
+      accounts: DEPLOYER_PK,
     },
     fantom: {
-      url: "https://rpc.ftm.tools",
+      url: FANTOM_RPC,
       chainId: 250,
-      accounts: deployerAccount,
+      accounts: DEPLOYER_PK,
     },
     localhost: {
-      url: "http://127.0.0.1:8545",
+      url: LOCALHOST_RPC,
       timeout: 300000,
       accounts: "remote",
     },
     testnet: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
       chainId: 97,
-      accounts: deployerAccount,
+      accounts: DEPLOYER_PK,
     },
   },
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: "",
+    apiKey: ETHERSCAN_API_KEY,
   },
   solidity: {
     compilers: [
