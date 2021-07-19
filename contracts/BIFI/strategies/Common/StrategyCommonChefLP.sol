@@ -113,12 +113,12 @@ contract StrategyCommonChefLP is StratManager, FeeManager, GasThrottler {
     }
 
     function beforeDeposit() external override {
-        require(msg.sender == vault, "!vault");
         harvest();
     }
 
     // compounds earnings and charges performance fee
-    function harvest() public virtual whenNotPaused onlyEOA gasThrottle {
+    function harvest() public virtual whenNotPaused gasThrottle {
+        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
         IMasterChef(chef).deposit(poolId, 0);
 
         if (isNativeRoutes) {
