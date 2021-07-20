@@ -11,14 +11,14 @@ const chainData = addressBook[chainName];
 const { beefyfinance } = chainData.platforms;
 
 const config = {
-  vault: "0x26107644A6dbC38385F4B7263d9bA96D829eC090",
+  vault: "0xd5FC5f7E91Ae77B1DC560bc291079aA9892F5cB3",
   vaultContract: "BeefyVaultV6",
   strategyContract: "StrategyCommonRewardPoolLP",
   testAmount: ethers.utils.parseEther("5"),
   wnative: chainData.tokens.WNATIVE.address,
   keeper: beefyfinance.keeper,
-  strategyOwner: beefyfinance.strategyOwner,
-  vaultOwner: beefyfinance.vaultOwner,
+  strategyOwner: "0xae155C8ab5cD232DEFC3b7185658771009F7Cb60",
+  vaultOwner: "0xae155C8ab5cD232DEFC3b7185658771009F7Cb60",
 };
 
 describe("VaultLifecycleTest", () => {
@@ -49,7 +49,7 @@ describe("VaultLifecycleTest", () => {
   });
 
   it("User can deposit and withdraw from the vault.", async () => {
-    await unpauseIfPaused(strategy, keeper);
+    // await unpauseIfPaused(strategy, keeper);
 
     const wantBalStart = await want.balanceOf(deployer.address);
 
@@ -64,7 +64,7 @@ describe("VaultLifecycleTest", () => {
   }).timeout(TIMEOUT);
 
   it("Harvests work as expected.", async () => {
-    await unpauseIfPaused(strategy, keeper);
+    // await unpauseIfPaused(strategy, keeper);
 
     const wantBalStart = await want.balanceOf(deployer.address);
     await want.approve(vault.address, wantBalStart);
@@ -86,7 +86,7 @@ describe("VaultLifecycleTest", () => {
   }).timeout(TIMEOUT);
 
   it("Manager can panic.", async () => {
-    await unpauseIfPaused(strategy, keeper);
+    // await unpauseIfPaused(strategy, keeper);
 
     const wantBalStart = await want.balanceOf(deployer.address);
     await want.approve(vault.address, wantBalStart);
@@ -115,7 +115,7 @@ describe("VaultLifecycleTest", () => {
   }).timeout(TIMEOUT);
 
   it("New user deposit/withdrawals don't lower other users balances.", async () => {
-    await unpauseIfPaused(strategy, keeper);
+    // await unpauseIfPaused(strategy, keeper);
 
     const wantBalStart = await want.balanceOf(deployer.address);
     await want.approve(vault.address, wantBalStart);

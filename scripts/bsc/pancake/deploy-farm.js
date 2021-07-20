@@ -8,47 +8,49 @@ const registerSubsidy = require("../../../utils/registerSubsidy");
 const predictAddresses = require("../../../utils/predictAddresses");
 const getNetworkRpc = require("../../../utils/getNetworkRpc");
 const { addressBook } = require("blockchain-addressbook")
-const { pancake, beefyfinance } = addressBook.bsc.platforms;
 const { CAKE, WBNB, BUSD, USDT } = addressBook.bsc.tokens;
 const baseTokenAddresses = [CAKE, WBNB, BUSD, USDT].map(t => t.address);
 
 const ethers = hardhat.ethers;
 const rpc = getNetworkRpc(hardhat.network.name);
 
-// const poolId = parseInt(process.argv[2], 10);
+// const poolId = parseInt(argv[2], 10);
 // if (poolId < 1) {
 //   throw Error('Usage: Need to pass a poolId as argument.');
 // }
-poolId = 425;
+
+const poolId = 129
 
 async function main() {
   const deployer = await ethers.getSigner();
   const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
 
-  const masterchefContract = new ethers.Contract(pancake.masterchef, masterchefABI, deployer);
+  const masterchefContract = new ethers.Contract(addressBook.bsc.platforms.pancake.masterchef, masterchefABI, deployer);
   const poolInfo = await masterchefContract.poolInfo(poolId);
   const lpAddress = ethers.utils.getAddress(poolInfo.lpToken);
 
   const lpContract = new ethers.Contract(lpAddress, LPPairABI, deployer);
   const lpPair = {
     address: lpAddress,
-    token0: await lpContract.token0(),
-    token1: await lpContract.token1(),
+    token0: {
+      address: await lpContract.token0(),
+      symbol: ''
+    },
+    token1: {
+      address: await lpContract.token1(),
+      symbol: ''
+    },
     decimals: await lpContract.decimals(),
   };
 
-  const token0Contract = new ethers.Contract(lpPair.token0, ERC20ABI, deployer);
-  const token0 = {
-    symbol: await token0Contract.symbol(),
-  }
-
-  const token1Contract = new ethers.Contract(lpPair.token1, ERC20ABI, deployer);
-  const token1 = {
-    symbol: await token1Contract.symbol(),
-  }
+  const token0Contract = new ethers.Contract(lpPair.token0.address, ERC20ABI, deployer);
+  lpPair.token0.symbol = await token0Contract.symbol();
+  
+  const token1Contract = new ethers.Contract(lpPair.token1.address, ERC20ABI, deployer);
+  lpPair.token1.symbol = await token1Contract.symbol();
 
   const resolveSwapRoute = (input, proxies, preferredProxy, output) => {
-    if ([lpPair.token0, lpPair.token1].includes(WBNB.address)) { // Native pair
+    if ([lpPair.token0.address, lpPair.token1.address].includes(WBNB.address)) { // Native pair
       if (output === WBNB.address) return [WBNB.address];
       return [WBNB.address, output];
     }
@@ -59,7 +61,7 @@ async function main() {
     return [input, proxies.filter(input)[0], output]; // TODO: Choose the best proxy
   }
 
-  const mooPairName = `${token0.symbol}-${token1.symbol}`;
+  const mooPairName = `${lpPair.token0.symbol}-${lpPair.token1.symbol}`;
 
   const vaultParams = {
     strategy: predictedAddresses.strategy,
@@ -71,22 +73,23 @@ async function main() {
   const strategyParams = {
     want: lpPair.address,
     poolId: poolId,
+    chefAddress: addressBook.bsc.platforms.pancake.masterchef,
     vault: predictedAddresses.vault,
-    unirouter: pancake.router, // Pancakeswap Router V2
-    keeper: beefyfinance.keeper,
+    unirouter: addressBook.bsc.platforms.pancake.router, // Pancakeswap Router V2
+    keeper: addressBook.bsc.platforms.beefyfinance.keeper,
     strategist: deployer.address, // your address for rewards
-    beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
+    beefyFeeRecipient: addressBook.bsc.platforms.beefyfinance.beefyFeeRecipient,
     toNativeRoute: [CAKE.address, WBNB.address],
-    toLp0Route: resolveSwapRoute(CAKE.address, baseTokenAddresses, lpPair.token1, lpPair.token0),
-    toLp1Route: resolveSwapRoute(CAKE.address, baseTokenAddresses, lpPair.token0, lpPair.token1),
+    toLp0Route: resolveSwapRoute(CAKE.address, baseTokenAddresses, lpPair.token1.address, lpPair.token0.address),
+    toLp1Route: resolveSwapRoute(CAKE.address, baseTokenAddresses, lpPair.token0.address, lpPair.token1.address),
   };
 
   const contractNames = {
     vault: "BeefyVaultV6",
-    strategy: "StrategyCakeChefLP"
+    strategy: "StrategyCommonChefLP"
   }
 
-  console.log(vaultParams, strategyParams, contractNames);
+  console.log({vaultParams, strategyParams, contractNames});
 
   if (Object.values(vaultParams).some((v) => v === undefined) || Object.values(strategyParams).some((v) => v === undefined) || Object.values(contractNames).some((v) => v === undefined)) {
     console.error("one of config values undefined");
@@ -127,12 +130,12 @@ async function main() {
     depositsPaused: false,
     status: 'active',
     platform: 'PancakeSwap',
-    assets: [token0.symbol, token1.symbol],
+    assets: [lpPair.token0.symbol, lpPair.token1.symbol],
     callFee: 0.5,
     addLiquidityUrl:
-      `https://exchange.pancakeswap.finance/#/add/${lpPair.token0}/${lpPair.token1}`,
+      `https://exchange.pancakeswap.finance/#/add/${lpPair.token0.address}/${lpPair.token1.address}`,
     buyTokenUrl:
-      `https://exchange.pancakeswap.finance/#/swap?inputCurrency=${lpPair.token0}&outputCurrency=${lpPair.token1}`,
+      `https://exchange.pancakeswap.finance/#/swap?inputCurrency=${lpPair.token0.address}&outputCurrency=${lpPair.token1.address}`,
   });
 
   await registerSubsidy(vault.address, deployer);
