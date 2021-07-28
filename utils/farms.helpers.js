@@ -1,3 +1,4 @@
+const { addressBook } = require('blockchain-addressbook');
 const fs = require('fs');
 
 const ABI = {
@@ -12,6 +13,7 @@ const ABI = {
  * @param {number} poolId - pool id number 
  * @param {address} deployer - deployer public address 
  * @param {address} chefAddress - chef address 
+ * @param {string} chainName - Blockchain name
  * @param {ABI} masterchefABI - masterchef ABI json
  * @param {ABI} minichefABI - minichef ABI json
  * @param {ABI} LPPairABI - LP Pair ABI json
@@ -21,6 +23,7 @@ const getLpPair = async ({
     poolId,
     deployer,
     chefAddress,
+    chainName,
     masterchefABI = ABI.masterchef,
     minichefABI = ABI.minichef,
     LPPairABI = ABI.LPPair
@@ -62,10 +65,12 @@ const getLpPair = async ({
 
     const token0Contract = new ethers.Contract(lpPair.token0.address, ABI.ERC20, deployer);
     lpPair.token0.symbol = await token0Contract.symbol();
+    if(lpPair.token0.symbol == addressBook[chainName].tokens.WNATIVE.symbol) lpPair.token0.symbol = lpPair.token0.symbol.replace('W','')
     lpPair.token0.decimals = `1e${await token0Contract.decimals()}`;
-
+    
     const token1Contract = new ethers.Contract(lpPair.token1.address, ABI.ERC20, deployer);
     lpPair.token1.symbol = await token1Contract.symbol();
+    if(lpPair.token1.symbol == addressBook[chainName].tokens.WNATIVE.symbol) lpPair.token1.symbol = lpPair.token1.symbol.replace('W','')
     lpPair.token1.decimals = `1e${await token1Contract.decimals()}`;
 
     lpPair.name = `${lpPair.token0.symbol}-${lpPair.token1.symbol}`

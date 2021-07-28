@@ -44,9 +44,14 @@ const proxieTokenAddress = [PLATFORM.tokens.reward, PLATFORM.tokens.wnative, BUS
 const main = async () => {
   console.log('Platform:', PLATFORM, '\n')
   const deployer = await ethers.getSigner();
-  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc: hardhat.network.config.url });
-  const lpPair = await getLpPair({ poolId: POOL_ID, deployer, chefAddress: PLATFORM.chef })
+  const lpPair = await getLpPair({ poolId: POOL_ID, deployer, chefAddress: PLATFORM.chef, chainName: CHAIN_NAME })
+
   const write = writer({ dirname: `${__dirname}/outputs`, filename: `${hardhat.network.name}-${lpPair.name}` })
+  
+  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc: hardhat.network.config.url });
+  CONTRACTS.vault.address = predictedAddresses.vault
+  CONTRACTS.strategy.address = predictedAddresses.strategy
+  
   const swapRouteConfig = {
     toLp0Route: {
       input: PLATFORM.tokens.reward.address,
@@ -65,9 +70,6 @@ const main = async () => {
   }
 
   const KEEPER = process.env.KEEPER || deployer.address
-
-  CONTRACTS.vault.address = predictedAddresses.vault
-  CONTRACTS.strategy.address = predictedAddresses.strategy
 
   CONTRACTS.vault.params = {
     strategy: predictedAddresses.strategy,
