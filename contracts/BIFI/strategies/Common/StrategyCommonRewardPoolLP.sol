@@ -113,7 +113,7 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() public whenNotPaused onlyEOA {
         IRewardPool(rewardPool).getReward();
         chargeFees();
         addLiquidity();
