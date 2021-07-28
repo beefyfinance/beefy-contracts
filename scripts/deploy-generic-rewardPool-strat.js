@@ -5,30 +5,30 @@ const predictAddresses = require("../utils/predictAddresses");
 const { getNetworkRpc } = require("../utils/getNetworkRpc");
 
 const { addressBook } = require("blockchain-addressbook")
-const { BNB: { address: BNB }, BIFI: { address: BIFI }, PNG: { address: PNG }, WAVAX: { address: WAVAX} } = addressBook.avax.tokens;
-const { pangolin, beefyfinance } = addressBook.avax.platforms;
+const { YAMP: { address: YAMP }, USDC: { address: USDC }, QUICK: { address: QUICK }, WMATIC: { address: WMATIC} } = addressBook.polygon.tokens;
+const { quickswap, beefyfinance } = addressBook.polygon.platforms;
 
 const ethers = hardhat.ethers;
 
-const want = web3.utils.toChecksumAddress("0x76BC30aCdC88b2aD2e8A5377e59ed88c7f9287f9");
-const rewardPool = web3.utils.toChecksumAddress("0x68a90C38bF4f90AC2a870d6FcA5b0A5A218763AD");
+const want = web3.utils.toChecksumAddress("0x87d68f797623590E45982AD0f21228557207FdDa");
+const rewardPool = web3.utils.toChecksumAddress("0x1DdF6be5B3c6fe04e5161701e2753b28bBF85dc2");
 
 const vaultParams = {
-  mooName: "Moo Pangolin BNB-PNG",
-  mooSymbol: "mooPangolinBNB-PNG",
+  mooName: "Moo Quick YAMP-USDC",
+  mooSymbol: "mooQuickYAMP-USDC",
   delay: 21600,
 }
 
 const strategyParams = {
   want: want,
   rewardPool: rewardPool,
-  unirouter: pangolin.router,
+  unirouter: quickswap.router,
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToIntermediateRoute: [ PNG, WAVAX ],
-  outputToLp0Route: [ PNG, BNB ],
-  outputToLp1Route: [ PNG ]
+  outputToIntermediateRoute: [ QUICK, WMATIC ],
+  outputToLp0Route: [ QUICK, USDC ],
+  outputToLp1Route: [ QUICK, USDC, YAMP ]
 };
 
 const contractNames = {
@@ -52,7 +52,7 @@ async function main() {
 
   console.log("Deploying:", vaultParams.mooName);
 
-  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
+  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc: "https://rpc-mainnet.maticvigil.com/v1/de4204cef56aa2763bc505469cd11605e367e114" });
 
   const vault = await Vault.deploy(predictedAddresses.strategy, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay);
   await vault.deployed();
