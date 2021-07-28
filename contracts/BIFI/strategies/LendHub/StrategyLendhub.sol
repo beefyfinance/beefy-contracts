@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/lendhub/IComptroller.sol";
 import "../../interfaces/venus/IVToken.sol";
+import "../../interfaces/mdex/ISwapMining.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
@@ -25,14 +26,17 @@ contract StrategyLendhub is StratManager, FeeManager {
     address constant public wht = address(0x5545153CCFcA01fbd7Dd11C0b23ba694D9509A6F);
     address constant public usdt = address(0xa71EdC38d189767582C38A3145b5873052c3e47a);
     address constant public output = address(0x8F67854497218043E1f72908FFE38D0Ed7F24721);
+    address constant public mdx = address(0x25D2e80cB6B86881Fd7e07dd263Fb79f4AbE033c);
     address public want;
     address public iToken;
 
     // Third party contracts
     address constant public comptroller = address(0x6537d6307ca40231939985BCF7D83096Dd1B4C09);
+    address constant public swapContract = address(0x7373c42502874C88954bDd6D50b53061F018422e);
 
     // Routes
     address[] public outputToWhtRoute = [output, wht];
+    address[] public mdxToOutputRoute = [mdx, wht, output];
     address[] public outputToWantRoute;
 
     /**
@@ -210,6 +214,13 @@ contract StrategyLendhub is StratManager, FeeManager {
 
     // performance fees
     function chargeFees() internal {
+        ISwapMining(swapContract).takerWithdraw();
+        uint256 mdxClaim = IERC20(mdx).balanceOf(address(this));
+
+        if (mdxClaim > 0) {
+        IUniswapRouter(unirouter).swapExactTokensForTokens(mdxClaim, 0, mdxToOutputRoute, address(this), block.timestamp);
+        }
+
         uint256 toWht = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouter(unirouter).swapExactTokensForTokens(toWht, 0, outputToWhtRoute, address(this), now);
         
@@ -270,6 +281,10 @@ contract StrategyLendhub is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         return wantBal.sub(reserves);
     }
+
+    function beforeDeposit() external override {
+        updateBalance();
+    }
     
     // return supply and borrow balance
     function updateBalance() public {
@@ -322,10 +337,12 @@ contract StrategyLendhub is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(iToken, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(mdx).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(iToken, 0);
         IERC20(output).safeApprove(unirouter, 0);
+        IERC20(mdx).safeApprove(unirouter, 0);
     }
 }

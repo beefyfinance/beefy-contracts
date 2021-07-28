@@ -5,32 +5,35 @@ const predictAddresses = require("../utils/predictAddresses");
 const { getNetworkRpc } = require("../utils/getNetworkRpc");
 
 const { addressBook } = require("blockchain-addressbook")
-const { DFYN: { address: DFYN }, ICE: { address: ICE }, ETH: { address: ETH } } = addressBook.polygon.tokens;
-const { dfyn, beefyfinance } = addressBook.polygon.platforms;
+const { BNB: { address: BNB }, BIFI: { address: BIFI }, PNG: { address: PNG }, WAVAX: { address: WAVAX} } = addressBook.avax.tokens;
+const { pangolin, beefyfinance } = addressBook.avax.platforms;
 
 const ethers = hardhat.ethers;
 
+const want = web3.utils.toChecksumAddress("0x76BC30aCdC88b2aD2e8A5377e59ed88c7f9287f9");
+const rewardPool = web3.utils.toChecksumAddress("0x68a90C38bF4f90AC2a870d6FcA5b0A5A218763AD");
+
 const vaultParams = {
-  mooName: "Moo DFYN ICE-DFYN",
-  mooSymbol: "mooDfynICE-DFYN",
+  mooName: "Moo Pangolin BNB-PNG",
+  mooSymbol: "mooPangolinBNB-PNG",
   delay: 21600,
 }
 
 const strategyParams = {
-  want: "0x9bb608dc0F9308B9beCA2F7c80865454d02E74cA",
-  rewardPool: "0xD854E7339840F7D1E12B54FD75235eBc0bB6BfAC",
-  unirouter: dfyn.router,
+  want: want,
+  rewardPool: rewardPool,
+  unirouter: pangolin.router,
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToIntermediateRoute: [ DFYN, ETH ],
-  outputToLp0Route: [ DFYN, ICE ],
-  outputToLp1Route: [ DFYN ]
+  outputToIntermediateRoute: [ PNG, WAVAX ],
+  outputToLp0Route: [ PNG, BNB ],
+  outputToLp1Route: [ PNG ]
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyDFYNRewardPoolLP"
+  strategy: "StrategyCommonRewardPoolLP"
 }
 
 async function main() {
@@ -70,6 +73,7 @@ async function main() {
 
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
+  console.log("Staking Token:", strategyParams.want);
 
   if (hardhat.network.name === "bsc") {
     await registerSubsidy(vault.address, deployer);

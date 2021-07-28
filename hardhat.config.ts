@@ -21,7 +21,7 @@ const config: DeploymentConfig = {
       accounts: deployerAccount,
     },
     heco: {
-      url: "https://http-mainnet.hecochain.com",
+      url: "https://http-mainnet-node.huobichain.com",
       chainId: 128,
       accounts: deployerAccount,
     },

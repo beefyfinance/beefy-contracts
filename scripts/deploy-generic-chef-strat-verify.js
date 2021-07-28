@@ -30,7 +30,7 @@ const strategyParams = {
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonChefLP"
+  strategy: "StrategyCommonChefSingle"
 }
 
 async function main() {
