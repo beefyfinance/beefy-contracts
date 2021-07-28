@@ -56,7 +56,4 @@ The final step. In the [beefy-cowllector](https://github.com/beefyfinance/beefy-
 Another Beefy dev will review everything, merge the PRs and ship it to production.
 
 ## Environment variables
-- BSC_RPC *Any BSC RPC url like https://bsc-dataseed.binance.org/*
-- HECO RPC *Any HECO RPC url like https://http-mainnet.hecochain.com*
-- DEPLOYER_PK= *A private key to serve as main account.*
-- OTHER_PK = *A private key to serve as secondary account when testing.*
+copy pasta `.env.example`, fill it and rename it to `.env`to work with
