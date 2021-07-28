@@ -11,9 +11,8 @@ import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/common/IMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
-import "../../utils/GasThrottler.sol";
 
-contract StrategyCommonChefLP is StratManager, FeeManager, GasThrottler {
+contract StrategyCommonChefLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -112,27 +111,22 @@ contract StrategyCommonChefLP is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function beforeDeposit() external override {
-        harvest();
-    }
-
     // compounds earnings and charges performance fee
-    function harvest() public virtual whenNotPaused gasThrottle {
-        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
+    function harvest() public virtual whenNotPaused onlyEOA {
         IMasterChef(chef).deposit(poolId, 0);
-
-        if (isNativeRoutes) {
-            swapAllToNative();
-            chargeFeesNative();
-            addLiquidityFrom(native);
-        } else {
-            chargeFees();
-            addLiquidityFrom(output);
-        }
-
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        if (outputBal > 0) {
+            if (isNativeRoutes) {
+                swapAllToNative();
+                chargeFeesNative();
+                addLiquidityFrom(native);
+            } else {
+                chargeFees();
+                addLiquidityFrom(output);
+            }
         deposit();
-
         emit StratHarvest(msg.sender);
+        }
     }
 
     // performance fees

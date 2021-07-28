@@ -1,35 +1,40 @@
+require('dotenv');
 const { expect } = require("chai");
 const { addressBook } = require("blockchain-addressbook");
 
 const { zapNativeToToken, getVaultWant, unpauseIfPaused, getUnirouterData } = require("../../utils/testHelpers");
 const { delay } = require("../../utils/timeHelpers");
+const { ethers } = require('hardhat');
 
-const TIMEOUT = 10 * 60 * 1000;
-
-const chainName = "bsc";
-const chainData = addressBook[chainName];
-const { beefyfinance } = chainData.platforms;
+const TIMEOUT = process.env.TIMEOUT || 10 * 60 * 1000;
+const CHAIN_NAME = process.env.CHAIN_NAME || "bsc";
 
 const config = {
-  vault: "0xd5FC5f7E91Ae77B1DC560bc291079aA9892F5cB3",
-  vaultContract: "BeefyVaultV6",
-  strategyContract: "StrategyCommonRewardPoolLP",
-  testAmount: ethers.utils.parseEther("5"),
-  wnative: chainData.tokens.WNATIVE.address,
-  keeper: beefyfinance.keeper,
-  strategyOwner: "0xae155C8ab5cD232DEFC3b7185658771009F7Cb60",
-  vaultOwner: "0xae155C8ab5cD232DEFC3b7185658771009F7Cb60",
+  vault: {
+    address: process.env.VAULT_ADDRESS || `0x2c7926bE88b20Ecb14b1FcB929549bc8Fc8F9905`,
+    name: process.env.VAULT_NAME || "BeefyVaultV6",
+    owner: addressBook[CHAIN_NAME].platforms.beefyfinance.strategyOwner
+  },
+  strategy: {
+    name: process.env.STRATEGY_NAME || "StrategyCommonChefLP",
+    owner: addressBook[CHAIN_NAME].platforms.beefyfinance.vaultOwner
+  },
+  testAmount: ethers.utils.parseEther("10"),
+  wnative: addressBook[CHAIN_NAME].tokens.WNATIVE.address,
+  keeper: process.env.KEEPER || addressBook[CHAIN_NAME].platforms.beefyfinance.keeper,
 };
 
 describe("VaultLifecycleTest", () => {
+  
+  console.log('Test Config', config);
   let vault, strategy, unirouter, want, deployer, keeper, other;
 
   beforeEach(async () => {
     [deployer, keeper, other] = await ethers.getSigners();
 
-    vault = await ethers.getContractAt(config.vaultContract, config.vault);
+    vault = await ethers.getContractAt(config.vault.name, config.vault.address);
     const strategyAddr = await vault.strategy();
-    strategy = await ethers.getContractAt(config.strategyContract, strategyAddr);
+    strategy = await ethers.getContractAt(config.strategy.name, strategyAddr);
 
     const unirouterAddr = await strategy.unirouter();
     const unirouterData = getUnirouterData(unirouterAddr);
@@ -46,11 +51,25 @@ describe("VaultLifecycleTest", () => {
     });
     const wantBal = await want.balanceOf(deployer.address);
     await want.transfer(other.address, wantBal.div(2));
-  });
+    await unpauseIfPaused(strategy,keeper)
+  })
 
-  it("User can deposit and withdraw from the vault.", async () => {
-    // await unpauseIfPaused(strategy, keeper);
+  it("User can deposit a little and withdraw it from the vault.", async () => {
+    const wantBalStart = await want.balanceOf(deployer.address);
 
+    let littleAmount = ethers.utils.parseUnits('1000','gwei');
+
+    await want.approve(vault.address, littleAmount);
+    await vault.deposit(littleAmount);
+    await vault.withdraw(littleAmount);
+
+    const wantBalFinal = await want.balanceOf(deployer.address);
+
+    expect(wantBalFinal).to.be.lte(wantBalStart);
+    expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
+  }).timeout(TIMEOUT);
+
+  it("User can deposit and withdraw all from the vault.", async () => {
     const wantBalStart = await want.balanceOf(deployer.address);
 
     await want.approve(vault.address, wantBalStart);
@@ -63,16 +82,14 @@ describe("VaultLifecycleTest", () => {
     expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
   }).timeout(TIMEOUT);
 
-  it("Harvests work as expected.", async () => {
-    // await unpauseIfPaused(strategy, keeper);
-
+  it("User can deposit again and wait 30 seconds to a minute and harvest.", async () => {
     const wantBalStart = await want.balanceOf(deployer.address);
     await want.approve(vault.address, wantBalStart);
     await vault.depositAll();
 
     const vaultBal = await vault.balance();
     const pricePerShare = await vault.getPricePerFullShare();
-    await delay(5000);
+    await delay(30000);
     await strategy.harvest({ gasPrice: 5000000 });
     const vaultBalAfterHarvest = await vault.balance();
     const pricePerShareAfterHarvest = await vault.getPricePerFullShare();
@@ -86,8 +103,6 @@ describe("VaultLifecycleTest", () => {
   }).timeout(TIMEOUT);
 
   it("Manager can panic.", async () => {
-    // await unpauseIfPaused(strategy, keeper);
-
     const wantBalStart = await want.balanceOf(deployer.address);
     await want.approve(vault.address, wantBalStart);
     await vault.depositAll();
@@ -114,9 +129,7 @@ describe("VaultLifecycleTest", () => {
     expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
   }).timeout(TIMEOUT);
 
-  it("New user deposit/withdrawals don't lower other users balances.", async () => {
-    // await unpauseIfPaused(strategy, keeper);
-
+  it("If new user deposit/withdrawals, don't lower other users balances.", async () => {
     const wantBalStart = await want.balanceOf(deployer.address);
     await want.approve(vault.address, wantBalStart);
     await vault.depositAll();
@@ -136,17 +149,53 @@ describe("VaultLifecycleTest", () => {
     expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
   }).timeout(TIMEOUT);
 
-  it("It has the correct owners and keeper.", async () => {
-    const vaultOwner = await vault.owner();
-    const stratOwner = await strategy.owner();
-    const stratKeeper = await strategy.keeper();
+  it("Keeper can pause and unpause vault.", async () => {
+    const wantBalStart = await want.balanceOf(deployer.address);
+    await want.approve(vault.address, wantBalStart);
+    
+    await strategy.connect(keeper).pause();
+    // Users can't deposit.
+    const tx = vault.depositAll();
+    await expect(tx).to.be.revertedWith("Pausable: paused");
+    
+    await strategy.connect(keeper).unpause();
+    // Users can deposit.
+    await vault.depositAll();
+    const wantBalFinal = await vault.balanceOf(deployer.address);
 
-    expect(vaultOwner).to.equal(config.vaultOwner);
-    expect(stratOwner).to.equal(config.strategyOwner);
-    expect(stratKeeper).to.equal(config.keeper);
+    expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
   }).timeout(TIMEOUT);
 
-  it("Vault and strat references are correct", async () => {
+  it("It has the correct owners and keeper.", async () => {
+    const vaultOwner = await vault.owner();
+    const strategyOwner = await strategy.owner();
+    const strategyKeeper = await strategy.keeper();
+
+    /* Nota Bene when testing local 
+    *  BEFORE transfer ownership and testing local:
+    *  - vaultOwner == deployer
+    *  - strategyOwner == deployer
+    *  - keeper == keeper (second address on ENV)
+    */
+    if(config.keeper === process.env.KEEPER) {
+      expect(vaultOwner).to.equal(deployer.address);
+      expect(strategyOwner).to.equal(deployer.address);
+      expect(strategyKeeper).to.equal(config.keeper);
+    } else {
+    /* Nota Bene when testing local 
+    *  AFTER transfer ownership and testing local:
+    *  - vaultOwner ==  beefy.vaultOwner 
+    *  - strategyOwner ==  beefy.strategyOwner
+    *  - keeper == beefy.keeper
+    */
+      expect(vaultOwner).to.equal(config.vault.owner);
+      expect(stratOwner).to.equal(config.strategy.owner);
+      expect(stratKeeper).to.equal(config.keeper);
+    }
+
+  }).timeout(TIMEOUT);
+
+  it("Vault and Strategy references are correct", async () => {
     const stratReference = await vault.strategy();
     const vaultReference = await strategy.vault();
 
@@ -155,44 +204,47 @@ describe("VaultLifecycleTest", () => {
   }).timeout(TIMEOUT);
 
   it("Displays routing correctly", async () => {
-    const { tokenAddressMap } = addressBook[chainName];
+    const { tokenAddressMap } = addressBook[CHAIN_NAME];
 
-    // outputToLp0Route
-    console.log("outputToLp0Route:");
+    // toLp0Route
+    let toLp0Route = []
     for (let i = 0; i < 10; ++i) {
       try {
-        const tokenAddress = await strategy.outputToLp0Route(i);
+        const tokenAddress = await strategy.toLp0Route(i);
         if (tokenAddress in tokenAddressMap) {
-          console.log(tokenAddressMap[tokenAddress]);
+          toLp0Route.push(tokenAddressMap[tokenAddress].symbol)
         } else {
-          console.log(tokenAddress);
+          toLp0Route.push(tokenAddress)
         }
       } catch {
         // reached end
         if (i == 0) {
           console.log("No routing, output must be lp0");
+        } else {
+          console.log(`toLp0Route: ${toLp0Route}`);
         }
         break;
       }
     }
-
-    // outputToLp1Route
-    console.log("outputToLp1Route:");
+    // toLp1Route
+    let toLp1Route = []
     for (let i = 0; i < 10; ++i) {
       try {
-        const tokenAddress = await strategy.outputToLp1Route(i);
+        const tokenAddress = await strategy.toLp1Route(i);
         if (tokenAddress in tokenAddressMap) {
-          console.log(tokenAddressMap[tokenAddress].symbol);
+          toLp1Route.push(tokenAddressMap[tokenAddress].symbol)
         } else {
-          console.log(tokenAddress);
+          toLp1Route.push(tokenAddress)
         }
       } catch {
         // reached end
         if (i == 0) {
-          console.log("No routing, output must be lp1");
+          console.log("No routing, output must be lp0");
+        } else {
+          console.log(`toLp1Route: ${toLp1Route}`);
         }
         break;
       }
-    }
+  }
   }).timeout(TIMEOUT);
 });

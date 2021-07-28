@@ -25,6 +25,7 @@ const config: DeploymentConfig = {
     bsc: {
       url: BSC_RPC,
       chainId: 56,
+      timeout: 600000,
       accounts: DEPLOYER_PK,
     },
     heco: {
@@ -50,7 +51,6 @@ const config: DeploymentConfig = {
     localhost: {
       url: LOCALHOST_RPC,
       timeout: 300000,
-      accounts: "remote",
     },
     testnet: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
