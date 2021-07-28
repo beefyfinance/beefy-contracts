@@ -28,6 +28,8 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
     // Third party contracts
     address public rewardPool;
 
+    bool public harvestOnDeposit = false;
+
     // Routes
     address[] public outputToNativeRoute;
     address[] public outputToLp0Route;
@@ -104,6 +106,12 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
         }
     }
 
+    function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            harvest();
+        }
+    }
+
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA {
         IRewardPool(rewardPool).getReward();
@@ -171,6 +179,10 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
 
         uint256 wantBal = balanceOfWant();
         IERC20(want).transfer(vault, wantBal);
+    }
+
+    function setHarvestOnDeposit(bool _harvest) external onlyManager {
+        harvestOnDeposit = _harvest;
     }
 
     // pauses deposits and withdraws all funds from third party systems.

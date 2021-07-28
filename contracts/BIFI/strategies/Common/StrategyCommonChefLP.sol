@@ -27,6 +27,8 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     address public chef;
     uint256 public poolId;
 
+    bool public harvestOnDeposit = false;
+
     // Routes
     address[] public outputToNativeRoute;
     address[] public outputToLp0Route;
@@ -103,6 +105,12 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         }
     }
 
+    function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            harvest();
+        }
+    }
+
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA {
         IMasterChef(chef).deposit(poolId, 0);
@@ -161,6 +169,10 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     function balanceOfPool() public view returns (uint256) {
         (uint256 _amount, ) = IMasterChef(chef).userInfo(poolId, address(this));
         return _amount;
+    }
+
+      function setHarvestOnDeposit(bool _harvest) external onlyManager {
+        harvestOnDeposit = _harvest;
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
