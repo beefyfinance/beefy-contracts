@@ -20,6 +20,7 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
     using SafeMath for uint256;
 
     // Tokens used
+    address public immutable wmatic = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
     address public native;
     address public output;
     address public want;
@@ -115,18 +116,18 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
     function chargeFees() internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForETH(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
-        IWrappedNative(native).deposit{value: address(this).balance}();
+        IWrappedNative(wmatic).deposit{value: address(this).balance}();
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        uint256 wmaticBal = IERC20(wmatic).balanceOf(address(this));
 
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(msg.sender, callFeeAmount);
+        uint256 callFeeAmount = wmaticBal.mul(callFee).div(MAX_FEE);
+        IERC20(wmatic).safeTransfer(msg.sender, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
+        uint256 beefyFeeAmount = wmaticBal.mul(beefyFee).div(MAX_FEE);
+        IERC20(wmatic).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        uint256 strategistFee = wmaticBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(wmatic).safeTransfer(strategist, strategistFee);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
@@ -221,4 +222,6 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
+
+    receive () external payable {}
 }

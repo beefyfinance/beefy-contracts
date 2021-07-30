@@ -5,35 +5,35 @@ const predictAddresses = require("../utils/predictAddresses");
 const { getNetworkRpc } = require("../utils/getNetworkRpc");
 
 const { addressBook } = require("blockchain-addressbook")
-const { YAMP: { address: YAMP }, USDC: { address: USDC }, QUICK: { address: QUICK }, WMATIC: { address: WMATIC} } = addressBook.polygon.tokens;
-const { quickswap, beefyfinance } = addressBook.polygon.platforms;
+const { WMATIC_DFYN: { address: WMATIC_DFYN }, DFYN: { address: DFYN }, CRV: { address: CRV }, WMATIC: { address: WMATIC} } = addressBook.polygon.tokens;
+const { dfyn, beefyfinance } = addressBook.polygon.platforms;
 
 const ethers = hardhat.ethers;
 
-const want = web3.utils.toChecksumAddress("0x87d68f797623590E45982AD0f21228557207FdDa");
-const rewardPool = web3.utils.toChecksumAddress("0x1DdF6be5B3c6fe04e5161701e2753b28bBF85dc2");
+const want = web3.utils.toChecksumAddress("0x4ea3e2cfc39fa51df85ebcfa366d7f0eed448a1c");
+const rewardPool = web3.utils.toChecksumAddress("0x098fdadCcde328e6CD1168125e1e7685eEa54342");
 
 const vaultParams = {
-  mooName: "Moo Quick YAMP-USDC",
-  mooSymbol: "mooQuickYAMP-USDC",
+  mooName: "Moo DFyn CRV-DFYN",
+  mooSymbol: "mooDFynCRV-DFYN",
   delay: 21600,
 }
 
 const strategyParams = {
   want: want,
   rewardPool: rewardPool,
-  unirouter: quickswap.router,
+  unirouter: dfyn.router,
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToIntermediateRoute: [ QUICK, WMATIC ],
-  outputToLp0Route: [ QUICK, USDC ],
-  outputToLp1Route: [ QUICK, USDC, YAMP ]
+  outputToNativeRoute: [ DFYN, WMATIC_DFYN ],
+  outputToLp0Route: [ DFYN, CRV ],
+  outputToLp1Route: [ DFYN ]
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonRewardPoolLP"
+  strategy: "StrategyDFYNRewardPoolLP"
 }
 
 async function main() {
@@ -65,7 +65,7 @@ async function main() {
     strategyParams.keeper,
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
-    strategyParams.outputToIntermediateRoute,
+    strategyParams.outputToNativeRoute,
     strategyParams.outputToLp0Route,
     strategyParams.outputToLp1Route
   );
@@ -86,24 +86,24 @@ async function main() {
       strategy.address, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay
     ],
   })
- 
+  
   await hardhat.run("verify:verify", {
-    address: "0x6ef302f46543d1045F3c93D2eE77AcD58d3854C4",
+    address: strategy.address,
     constructorArguments: [
       strategyParams.want,
       strategyParams.rewardPool,
-      "0xB198A916123394f2d9c31D4645468566e87080d5",
+      vault.address,
       strategyParams.unirouter,
       strategyParams.keeper,
       strategyParams.strategist,
       strategyParams.beefyFeeRecipient,
-      strategyParams.outputToIntermediateRoute,
+      strategyParams.outputToNativeRoute,
       strategyParams.outputToLp0Route,
       strategyParams.outputToLp1Route
     ],
    
   })
- */
+*/
 }
 
 main()
