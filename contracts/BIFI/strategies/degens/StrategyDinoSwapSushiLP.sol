@@ -12,22 +12,26 @@ import "../../interfaces/common/IMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyDinoSwapLP is StratManager, FeeManager {
+contract StrategyDinoSwapSushiLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
     address constant public native = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
-    address constant public output = address(0xAa9654BECca45B5BDFA5ac646c939C62b527D394); // dino
+    address constant public dino = address(0xAa9654BECca45B5BDFA5ac646c939C62b527D394);
+    // output == usdc, swapped via sushiRouter
+    address constant public output = address(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     address public want;
     address public lpToken0;
     address public lpToken1;
 
     // Third party contracts
+    address constant public sushiRouter = address(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
     address constant public chef = address(0x1948abC5400Aa1d72223882958Da3bec643fb4E5);
     uint256 public poolId;
 
     // Routes
+    address[] public dinoToOutputRoute = [dino, output];
     address[] public outputToNativeRoute;
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
@@ -104,11 +108,17 @@ contract StrategyDinoSwapLP is StratManager, FeeManager {
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA {
         IMasterChef(chef).deposit(poolId, 0);
+        dinoToOutput();
         chargeFees();
         addLiquidity();
         deposit();
 
         emit StratHarvest(msg.sender);
+    }
+
+    function dinoToOutput() internal {
+        uint256 toOutput = IERC20(dino).balanceOf(address(this));
+        IUniswapRouterETH(sushiRouter).swapExactTokensForTokens(toOutput, 0, dinoToOutputRoute, address(this), now);
     }
 
     // performance fees
@@ -193,6 +203,7 @@ contract StrategyDinoSwapLP is StratManager, FeeManager {
 
     function _giveAllowances() internal {
         IERC20(want).safeApprove(chef, uint256(-1));
+        IERC20(dino).safeApprove(sushiRouter, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
@@ -204,6 +215,7 @@ contract StrategyDinoSwapLP is StratManager, FeeManager {
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
+        IERC20(dino).safeApprove(sushiRouter, 0);
         IERC20(output).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
