@@ -3,6 +3,7 @@
   "version": "0.5.0",
   "private": true,
   "dependencies": {
+    "@chainlink/contracts": "^0.2.1",
     "@nomiclabs/hardhat-etherscan": "^2.1.4",
     "@openzeppelin-2/contracts": "npm:@openzeppelin/contracts@2.5.1",
     "@openzeppelin/contracts": "^3.2.0",
@@ -16,7 +17,7 @@
     "typescript": "^4.3.4"
   },
   "scripts": {
-    "flat-hardhat": "hardhat flatten contracts/BIFI/strategies/Mdex/StrategyMdexChefSingle.sol > tmp/flattened.sol",
+    "flat-hardhat": "hardhat flatten contracts/BIFI/strategies/Common/StrategyCommonChefLP.sol > tmp/keeper.sol",
     "flat": "bin/flatten.sh",
     "clean": "rm -r artifacts cache",
     "net:bsc": "ganache-cli --fork ${BSC_RPC} --account=\"${DEPLOYER_PK}, 1000000000000000000000000\" --account=\"${KEEPER_PK}, 1000000000000000000000000\" --account=\"${UPGRADER_PK}, 1000000000000000000000000\"",
