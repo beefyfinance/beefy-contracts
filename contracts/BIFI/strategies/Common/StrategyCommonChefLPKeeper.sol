@@ -114,7 +114,7 @@ contract StrategyCommonChefLPKeeper is StratManager, FeeManager, KeeperCompatibl
         }
     }
 
-    function checkUpkeep(bytes calldata checkData) external override returns (bool upkeepNeeded, bytes memory performData) {
+    function checkUpkeep(bytes calldata checkData) external view override returns (bool upkeepNeeded, bytes memory performData) {
         upkeepNeeded = shouldHarvest();
 
         // We don't use the checkData
@@ -131,8 +131,8 @@ contract StrategyCommonChefLPKeeper is StratManager, FeeManager, KeeperCompatibl
     }
 
     function shouldHarvest() internal view returns (bool) {
-        bool hasOutputBalance = IERC20(output).balanceOf(address(this)) > harvestThreshold;
-        bool harvestCondition = hasOutputBalance && !paused();
+        bool hasPendingOutput = IMasterChef(chef).pendingBall(poolId, address(this)) > harvestThreshold;
+        bool harvestCondition = hasPendingOutput && !paused();
         return harvestCondition;
     }
 
