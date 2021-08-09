@@ -4,30 +4,30 @@ const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const { getNetworkRpc } = require("../utils/getNetworkRpc");
 const { addressBook } = require("blockchain-addressbook")
-const { TAPE: { address: TAPE }, WBNB: { address: WBNB }, BANANA: { address: BANANA } } = addressBook.bsc.tokens;
-const { ape, beefyfinance } = addressBook.bsc.platforms;
+const { YFI: { address: YFI }, ETH: { address: ETH }, WFTM: { address: WFTM }, BOO: { address: BOO} } = addressBook.fantom.tokens;
+const { spookyswap, beefyfinance } = addressBook.fantom.platforms;
 
 const ethers = hardhat.ethers;
 
-const want = web3.utils.toChecksumAddress("0x756d4406169273d99aAc8366cf5eAf7865d6a9b9");
+const want = web3.utils.toChecksumAddress("0x0845c0bfe75691b1e21b24351aac581a7fb6b7df");
 
 const vaultParams = {
-  mooName: "Moo Ape TAPE-BNB",
-  mooSymbol: "mooApeTAPE-BNB",
+  mooName: "Moo Boo YFI-ETH",
+  mooSymbol: "mooBooYFI-ETH",
   delay: 21600,
 }
 
 const strategyParams = {
   want: want,
-  poolId: 58,
-  chef: ape.masterape,
-  unirouter: ape.router,
+  poolId: 26,
+  chef: spookyswap.masterchef,
+  unirouter: spookyswap.router,
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [ BANANA, WBNB ],
-  outputToLp0Route: [ BANANA, WBNB ],
-  outputToLp1Route: [ BANANA, WBNB, TAPE ]
+  outputToNativeRoute: [ BOO, WFTM ],
+  outputToLp0Route: [ BOO, ETH, YFI ],
+  outputToLp1Route: [ BOO, ETH ]
 };
 
 const contractNames = {

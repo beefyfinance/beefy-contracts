@@ -6,12 +6,12 @@ const { delay } = require("../../utils/timeHelpers");
 
 const TIMEOUT = 10 * 60 * 1000;
 
-const chainName = "polygon";
+const chainName = "bsc";
 const chainData = addressBook[chainName];
 const { beefyfinance } = chainData.platforms;
 
 const config = {
-  vault: "0x4A2De8466873fCb21D7bDE5A754Baaf244729c72",
+  vault: "0x7f7d3734903341464a685809405ff3b5463FF379",
   vaultContract: "BeefyVaultV6",
   strategyContract: "StrategyCommonChefLP",
   testAmount: ethers.utils.parseEther("5"),

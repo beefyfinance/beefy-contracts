@@ -12,32 +12,30 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/lendhub/IComptroller.sol";
 import "../../interfaces/venus/IVToken.sol";
-import "../../interfaces/mdex/ISwapMining.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
 
-//Lendhub Strategy 
-contract StrategyLendhub is StratManager, FeeManager {
+//Lending Strategy 
+contract StrategyScream is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
-    address constant public wht = address(0x5545153CCFcA01fbd7Dd11C0b23ba694D9509A6F);
-    address constant public usdt = address(0xa71EdC38d189767582C38A3145b5873052c3e47a);
-    address constant public output = address(0x8F67854497218043E1f72908FFE38D0Ed7F24721);
-    address constant public mdx = address(0x25D2e80cB6B86881Fd7e07dd263Fb79f4AbE033c);
+    address public native;
+    address public output;
     address public want;
     address public iToken;
 
     // Third party contracts
-    address constant public comptroller = address(0x6537d6307ca40231939985BCF7D83096Dd1B4C09);
-    address constant public swapContract = address(0x7373c42502874C88954bDd6D50b53061F018422e);
+    address public comptroller;
 
     // Routes
-    address[] public outputToWhtRoute = [output, wht];
-    address[] public mdxToOutputRoute = [mdx, wht, output];
+    address[] public outputToNativeRoute;
     address[] public outputToWantRoute;
+    address[] public markets;
+
+    bool public harvestOnDeposit;
 
     /**
      * @dev Variables that can be changed to config profitability and risk:
@@ -58,7 +56,7 @@ contract StrategyLendhub is StratManager, FeeManager {
      * @dev Helps to differentiate borrowed funds that shouldn't be used in functions like 'deposit()'
      * as they're required to deleverage correctly.  
      */
-    uint256 public reserves = 0;
+    uint256 public reserves;
     
     uint256 public balanceOfPool;
 
@@ -69,30 +67,43 @@ contract StrategyLendhub is StratManager, FeeManager {
     event StratRebalance(uint256 _borrowRate, uint256 _borrowDepth);
 
     constructor(
-        address _iToken,
         uint256 _borrowRate,
         uint256 _borrowRateMax,
         uint256 _borrowDepth,
         uint256 _minLeverage,
+        address[] memory _outputToNativeRoute,
+        address[] memory _outputToWantRoute,
         address[] memory _markets,
+        address _comptroller,
         address _vault,
         address _unirouter,
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
-        iToken = _iToken;
-        want = IVToken(_iToken).underlying();
         borrowRate = _borrowRate;
         borrowRateMax = _borrowRateMax;
         borrowDepth = _borrowDepth;
         minLeverage = _minLeverage;
+        comptroller = _comptroller;
 
-        outputToWantRoute = [output, usdt, want];
+        iToken = _markets[0];
+        markets = _markets;
+        want = IVToken(iToken).underlying();
+
+        output = _outputToNativeRoute[0];
+        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
+        outputToNativeRoute = _outputToNativeRoute;
+
+        require(_outputToWantRoute[0] == output, "outputToWantRoute[0] != output");
+        require(_outputToWantRoute[_outputToWantRoute.length - 1] == want, "outputToNativeRoute[last] != want");
+        outputToWantRoute = _outputToWantRoute;
+
+      
 
         _giveAllowances();
-        
-        IComptroller(comptroller).enterMarkets(_markets);
+
+        IComptroller(comptroller).enterMarkets(markets);
     }
 
     // puts the funds to work
@@ -201,39 +212,34 @@ contract StrategyLendhub is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
-        address[] memory markets = new address[](1);
-        markets[0] = iToken;
+    function harvest() public whenNotPaused onlyEOA {
+        if (IComptroller(comptroller).pendingComptrollerImplementation() == address(0)) {
         IComptroller(comptroller).claimComp(address(this), markets);
         chargeFees();
         swapRewards();
         deposit();
+        } else {
+            panic();
+        }
 
         emit StratHarvest(msg.sender);
     }
 
     // performance fees
     function chargeFees() internal {
-        ISwapMining(swapContract).takerWithdraw();
-        uint256 mdxClaim = IERC20(mdx).balanceOf(address(this));
+        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
-        if (mdxClaim > 0) {
-        IUniswapRouter(unirouter).swapExactTokensForTokens(mdxClaim, 0, mdxToOutputRoute, address(this), block.timestamp);
-        }
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
-        uint256 toWht = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toWht, 0, outputToWhtRoute, address(this), now);
-        
-        uint256 whtBal = IERC20(wht).balanceOf(address(this));
+        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
+        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
 
-        uint256 callFeeAmount = whtBal.mul(callFee).div(MAX_FEE);
-        IERC20(wht).safeTransfer(msg.sender, callFeeAmount);
+        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
+        IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 beefyFeeAmount = whtBal.mul(beefyFee).div(MAX_FEE);
-        IERC20(wht).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
-
-        uint256 strategistFee = whtBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(wht).safeTransfer(strategist, strategistFee);
+        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(native).safeTransfer(strategist, strategistFee);
     }
 
     // swap rewards to {want}
@@ -283,6 +289,9 @@ contract StrategyLendhub is StratManager, FeeManager {
     }
 
     function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            harvest();
+        }
         updateBalance();
     }
     
@@ -302,6 +311,14 @@ contract StrategyLendhub is StratManager, FeeManager {
     // it calculates how much 'want' this contract holds.
     function balanceOfWant() public view returns (uint256) {
         return IERC20(want).balanceOf(address(this));
+    }
+
+    function setHarvestOnDeposit(bool _harvest) external onlyManager {
+        harvestOnDeposit = _harvest;
+
+        if (harvestOnDeposit = true) {
+            this.setWithdrawalFee(0);
+        }
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
@@ -337,12 +354,18 @@ contract StrategyLendhub is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(iToken, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
-        IERC20(mdx).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(iToken, 0);
         IERC20(output).safeApprove(unirouter, 0);
-        IERC20(mdx).safeApprove(unirouter, 0);
+    }
+
+     function outputToNative() external view returns(address[] memory) {
+        return outputToNativeRoute;
+    }
+
+    function outputToWant() external view returns(address[] memory) {
+        return outputToWantRoute;
     }
 }
