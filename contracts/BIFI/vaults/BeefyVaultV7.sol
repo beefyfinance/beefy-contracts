@@ -50,7 +50,7 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
      * @param _symbol the symbol of the vault token.
      * @param _approvalDelay the delay before a new strat can be approved.
      */
-     function initializeBeefyVaultv7(
+     function initializeBeefyVaultV7(
         IStrategyV7 _strategy,
         string memory _name,
         string memory _symbol,
@@ -168,6 +168,7 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
      */
     function proposeStrat(address _implementation) public onlyOwner {
         require(address(this) == IStrategyV7(_implementation).vault(), "Proposal not valid for this Vault");
+        require(want() == IStrategyV7(_implementation).want(), "Different want");
         stratCandidate = StratCandidate({
             implementation: _implementation,
             proposedTime: block.timestamp
