@@ -9,7 +9,7 @@ import "../utils/ProxyFactory.sol";
 // Minimal proxy pattern for creating new Beefy vaults
 contract BeefyVaultV7ProxyFactory is ProxyFactory {
 
-  // Contract template for deploying proxied Prize Pools
+  // Contract template for deploying proxied Beefy vaults
   BeefyVaultV7 public instance;
 
   // Initializes the Factory with an instance of the Beefy Vault V7
