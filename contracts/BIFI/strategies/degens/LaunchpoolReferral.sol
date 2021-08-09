@@ -18,13 +18,11 @@ interface IRouter {
 contract LaunchpoolReferral is Ownable {
     using SafeERC20 for IERC20;
 
-    address payable constant public multisig = payable(address(0x37EA21Cb5e080C27a47CAf767f24a8BF7Fcc7d4d));
-
     address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
-    address public router = address(0x10ED43C718714eb63d5aA57B78B54704E256024E);
+    address public pcsV2Router = address(0x10ED43C718714eb63d5aA57B78B54704E256024E);
+    address public router = pcsV2Router;
 
-    address public pantherRouter = address(0x24f7C33ae5f77e2A9ECeed7EA858B4ca2fa1B7eC);
-    address public panther = address(0x1f546aD641B56b86fD9dCEAc473d1C7a357276B7);
+    address public honey = address(0xFa363022816aBf82f18a9C2809dCd2BB393F6AC5);
 
     mapping(address => bool) public admins;
 
@@ -49,7 +47,7 @@ contract LaunchpoolReferral is Ownable {
         address token = _route[0];
         uint256 tokenBal = IERC20(token).balanceOf(address(this));
         IERC20(token).safeIncreaseAllowance(_router, tokenBal);
-        IRouter(_router).swapExactTokensForETHSupportingFeeOnTransferTokens(tokenBal, 0, _route, multisig, now);
+        IRouter(_router).swapExactTokensForETHSupportingFeeOnTransferTokens(tokenBal, 0, _route, owner(), now);
     }
 
     function swapToBNB(address _token, address _router) public onlyAdmin {
@@ -64,15 +62,15 @@ contract LaunchpoolReferral is Ownable {
     }
 
     function withdrawToken(address _token, uint256 _amount) external onlyAdmin {
-        IERC20(_token).safeTransfer(multisig, _amount);
+        IERC20(_token).safeTransfer(owner(), _amount);
     }
 
     function withdrawNative(uint256 _amount) external onlyAdmin {
-        multisig.transfer(_amount);
+        payable(owner()).transfer(_amount);
     }
 
-    function pantherToBNB() external onlyAdmin {
-        swapToBNB(panther, pantherRouter);
+    function honeyToBNB() external onlyAdmin {
+        swapToBNB(honey, pcsV2Router);
     }
 
     receive() external payable {}
