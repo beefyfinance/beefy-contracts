@@ -16,7 +16,7 @@ const config: DeploymentConfig = {
   networks: {
     hardhat: {},
     bsc: {
-      url: "https://bsc-dataseed.binance.org/",
+      url: "https://bsc-dataseed2.defibit.io/",
       chainId: 56,
       accounts: deployerAccount,
     },

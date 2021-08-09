@@ -6,29 +6,35 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/common/IUniswapRouterETH.sol";
+import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IMasterChef.sol";
+import "../../utils/GasThrottler.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyDinoSwapLP is StratManager, FeeManager {
+interface IPera {
+    function userInfo(address _user) external view returns (uint256, uint256);
+    function depositLPtoken(uint256 _amount) external;
+    function withdraw(uint256 _amount) external;
+    function emergencyWithdraw(uint256 _exit) external;
+}
+
+contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
-    address constant public native = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
-    address constant public output = address(0xAa9654BECca45B5BDFA5ac646c939C62b527D394); // dino
-    address public want;
+    address constant public native = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
+    address constant public output = address(0xb9D8592E16A9c1a3AE6021CDDb324EaC1Cbc70d6);
+    address constant public want = address(0x59eA11cfe863A6D680F4D14Bb24343e852ABBbbb);
     address public lpToken0;
     address public lpToken1;
 
     // Third party contracts
-    address constant public chef = address(0x1948abC5400Aa1d72223882958Da3bec643fb4E5);
-    uint256 public poolId;
+    address public pera = address(0xb9D8592E16A9c1a3AE6021CDDb324EaC1Cbc70d6);
 
     // Routes
-    address[] public outputToNativeRoute;
+    address[] public outputToNativeRoute = [output, native];
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
 
@@ -38,34 +44,21 @@ contract StrategyDinoSwapLP is StratManager, FeeManager {
     event StratHarvest(address indexed harvester);
 
     constructor(
-        address _want,
-        uint256 _poolId,
         address _vault,
         address _unirouter,
         address _keeper,
         address _strategist,
-        address _beefyFeeRecipient,
-        address[] memory _outputToNativeRoute,
-        address[] memory _outputToLp0Route,
-        address[] memory _outputToLp1Route
+        address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
-        want = _want;
-        poolId = _poolId;
-
-        require(_outputToNativeRoute[0] == output, "!output");
-        require(_outputToNativeRoute[_outputToNativeRoute.length - 1] == native, "!native");
-        outputToNativeRoute = _outputToNativeRoute;
-
-        // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
-        require(_outputToLp0Route[0] == output, "outputToLp0Route[0] != output");
-        require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0, "outputToLp0Route[last] != lpToken0");
-        outputToLp0Route = _outputToLp0Route;
-
         lpToken1 = IUniswapV2Pair(want).token1();
-        require(_outputToLp1Route[0] == output, "outputToLp1Route[0] != output");
-        require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1, "outputToLp1Route[last] != lpToken1");
-        outputToLp1Route = _outputToLp1Route;
+
+        if (lpToken0 != output) {
+            outputToLp0Route = [output, lpToken0];
+        }
+        if (lpToken1 != output) {
+            outputToLp1Route = [output, lpToken1];
+        }
 
         _giveAllowances();
     }
@@ -75,7 +68,7 @@ contract StrategyDinoSwapLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IMasterChef(chef).deposit(poolId, wantBal);
+            IPera(pera).depositLPtoken(wantBal);
         }
     }
 
@@ -85,7 +78,7 @@ contract StrategyDinoSwapLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            IPera(pera).withdraw(_amount.sub(wantBal));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -101,9 +94,17 @@ contract StrategyDinoSwapLP is StratManager, FeeManager {
         }
     }
 
+    function harvest() external whenNotPaused onlyEOA gasThrottle {
+        _harvest();
+    }
+
+    function managerHarvest() external onlyManager {
+        _harvest();
+    }
+
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
-        IMasterChef(chef).deposit(poolId, 0);
+    function _harvest() internal {
+        IPera(pera).depositLPtoken(0);
         chargeFees();
         addLiquidity();
         deposit();
@@ -114,7 +115,7 @@ contract StrategyDinoSwapLP is StratManager, FeeManager {
     // performance fees
     function chargeFees() internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
@@ -133,16 +134,16 @@ contract StrategyDinoSwapLP is StratManager, FeeManager {
         uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
 
         if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), now);
+            IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(outputHalf, 0, outputToLp0Route, address(this), now);
         }
 
         if (lpToken1 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), now);
+            IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(outputHalf, 0, outputToLp1Route, address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
+        IUniswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -157,7 +158,7 @@ contract StrategyDinoSwapLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMasterChef(chef).userInfo(poolId, address(this));
+        (uint256 _amount, ) = IPera(pera).userInfo(address(this));
         return _amount;
     }
 
@@ -165,7 +166,7 @@ contract StrategyDinoSwapLP is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IPera(pera).emergencyWithdraw(0);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -174,7 +175,7 @@ contract StrategyDinoSwapLP is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IPera(pera).emergencyWithdraw(0);
     }
 
     function pause() public onlyManager {
@@ -192,7 +193,7 @@ contract StrategyDinoSwapLP is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, uint256(-1));
+        IERC20(want).safeApprove(pera, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
@@ -203,7 +204,7 @@ contract StrategyDinoSwapLP is StratManager, FeeManager {
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(chef, 0);
+        IERC20(want).safeApprove(pera, 0);
         IERC20(output).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);

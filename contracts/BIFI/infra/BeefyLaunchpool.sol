@@ -117,11 +117,14 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
     }
 
     function inCaseTokensGetStuck(address _token) external onlyOwner {
+        uint256 amount = IERC20(_token).balanceOf(address(this));
+        inCaseTokensGetStuck(_token, msg.sender, amount);
+    }
+
+    function inCaseTokensGetStuck(address _token, address _to, uint _amount) public onlyOwner {
         if (totalSupply() != 0) {
             require(_token != address(stakedToken), "!staked");
         }
-
-        uint256 amount = IERC20(_token).balanceOf(address(this));
-        IERC20(_token).safeTransfer(msg.sender, amount);
+        IERC20(_token).safeTransfer(_to, _amount);
     }
 }
