@@ -6,6 +6,8 @@
     "@nomiclabs/hardhat-etherscan": "^2.1.4",
     "@openzeppelin-2/contracts": "npm:@openzeppelin/contracts@2.5.1",
     "@openzeppelin/contracts": "^3.2.0",
+    "@openzeppelin/contracts-upgradeable": "3.4.0",
+    "@openzeppelin/upgrades": "^2.8.0",
     "@uniswap/lib": "^4.0.1-alpha",
     "bignumber.js": "^9.0.1",
     "blockchain-addressbook": "^0.1.146",
@@ -16,7 +18,7 @@
     "typescript": "^4.3.4"
   },
   "scripts": {
-    "flat-hardhat": "hardhat flatten contracts/BIFI/strategies/Scream/StrategyScream.sol > tmp/flattened.sol",
+    "flat-hardhat": "hardhat flatten contracts/BIFI/vaults/BeefyVaultV7/StrategyScream.sol > tmp/flattened.sol",
     "flat": "bin/flatten.sh",
     "clean": "rm -r artifacts cache",
     "net:bsc": "ganache-cli --fork ${BSC_RPC} --account=\"${DEPLOYER_PK}, 1000000000000000000000000\" --account=\"${KEEPER_PK}, 1000000000000000000000000\" --account=\"${UPGRADER_PK}, 1000000000000000000000000\"",
@@ -28,6 +30,7 @@
     "all": "yarn clean && yarn compile && yarn net",
     "test": "hardhat test --network localhost",
     "test:vault": "hardhat test --network localhost test/prod/VaultLifecycle.test.js",
+    "deploy:vaultFactory": "hardhat run scripts/deploy-vault-proxyFactory.js --network",
     "deploy-strat:bsc": "hardhat run --network bsc scripts/deploy-strat-with-pool.js",
     "deploy:lend": "hardhat run scripts/deploy-strat-lend.js --network",
     "deploy-strat:polygon": "hardhat run --network polygon scripts/deploy-strat-with-pool.js",
