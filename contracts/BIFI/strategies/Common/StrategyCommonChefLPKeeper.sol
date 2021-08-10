@@ -137,7 +137,7 @@ contract StrategyCommonChefLPKeeper is StratManager, FeeManager, KeeperCompatibl
     }
 
     // compounds earnings and charges performance fee
-    function harvest() public whenNotPaused onlyEOA {
+    function harvest() public whenNotPaused {
         IMasterChef(chef).deposit(poolId, 0);
         chargeFees();
         addLiquidity();
