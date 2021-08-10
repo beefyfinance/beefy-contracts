@@ -5,35 +5,35 @@ const predictAddresses = require("../utils/predictAddresses");
 const { getNetworkRpc } = require("../utils/getNetworkRpc");
 
 const { addressBook } = require("blockchain-addressbook")
-const { BNB: { address: BNB }, BIFI: { address: BIFI }, PNG: { address: PNG }, WAVAX: { address: WAVAX} } = addressBook.avax.tokens;
-const { pangolin, beefyfinance } = addressBook.avax.platforms;
+const { WMATIC_DFYN: { address: WMATIC_DFYN }, DFYN: { address: DFYN }, CRV: { address: CRV }, WMATIC: { address: WMATIC} } = addressBook.polygon.tokens;
+const { dfyn, beefyfinance } = addressBook.polygon.platforms;
 
 const ethers = hardhat.ethers;
 
-const want = web3.utils.toChecksumAddress("0x76BC30aCdC88b2aD2e8A5377e59ed88c7f9287f9");
-const rewardPool = web3.utils.toChecksumAddress("0x68a90C38bF4f90AC2a870d6FcA5b0A5A218763AD");
+const want = web3.utils.toChecksumAddress("0x4ea3e2cfc39fa51df85ebcfa366d7f0eed448a1c");
+const rewardPool = web3.utils.toChecksumAddress("0x098fdadCcde328e6CD1168125e1e7685eEa54342");
 
 const vaultParams = {
-  mooName: "Moo Pangolin BNB-PNG",
-  mooSymbol: "mooPangolinBNB-PNG",
+  mooName: "Moo DFyn CRV-DFYN",
+  mooSymbol: "mooDFynCRV-DFYN",
   delay: 21600,
 }
 
 const strategyParams = {
   want: want,
   rewardPool: rewardPool,
-  unirouter: pangolin.router,
+  unirouter: dfyn.router,
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToIntermediateRoute: [ PNG, WAVAX ],
-  outputToLp0Route: [ PNG, BNB ],
-  outputToLp1Route: [ PNG ]
+  outputToNativeRoute: [ DFYN, WMATIC_DFYN ],
+  outputToLp0Route: [ DFYN, CRV ],
+  outputToLp1Route: [ DFYN ]
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonRewardPoolLP"
+  strategy: "StrategyDFYNRewardPoolLP"
 }
 
 async function main() {
@@ -52,7 +52,7 @@ async function main() {
 
   console.log("Deploying:", vaultParams.mooName);
 
-  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
+  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc: "https://rpc-mainnet.maticvigil.com/v1/de4204cef56aa2763bc505469cd11605e367e114" });
 
   const vault = await Vault.deploy(predictedAddresses.strategy, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay);
   await vault.deployed();
@@ -65,7 +65,7 @@ async function main() {
     strategyParams.keeper,
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
-    strategyParams.outputToIntermediateRoute,
+    strategyParams.outputToNativeRoute,
     strategyParams.outputToLp0Route,
     strategyParams.outputToLp1Route
   );
@@ -86,24 +86,24 @@ async function main() {
       strategy.address, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay
     ],
   })
- 
+  
   await hardhat.run("verify:verify", {
-    address: "0x6ef302f46543d1045F3c93D2eE77AcD58d3854C4",
+    address: strategy.address,
     constructorArguments: [
       strategyParams.want,
       strategyParams.rewardPool,
-      "0xB198A916123394f2d9c31D4645468566e87080d5",
+      vault.address,
       strategyParams.unirouter,
       strategyParams.keeper,
       strategyParams.strategist,
       strategyParams.beefyFeeRecipient,
-      strategyParams.outputToIntermediateRoute,
+      strategyParams.outputToNativeRoute,
       strategyParams.outputToLp0Route,
       strategyParams.outputToLp1Route
     ],
    
   })
- */
+*/
 }
 
 main()

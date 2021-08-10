@@ -4,28 +4,30 @@ const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const { getNetworkRpc } = require("../utils/getNetworkRpc");
 const { addressBook } = require("blockchain-addressbook")
-const { DAI: { address: DAI }, USDC: { address: USDC }, ETH: { address: ETH }, WMATIC: { address: WMATIC }, SUSHI: { address: SUSHI } } = addressBook.polygon.tokens;
-const { sushi, beefyfinance } = addressBook.polygon.platforms;
+const { YFI: { address: YFI }, ETH: { address: ETH }, WFTM: { address: WFTM }, BOO: { address: BOO} } = addressBook.fantom.tokens;
+const { spookyswap, beefyfinance } = addressBook.fantom.platforms;
 
 const ethers = hardhat.ethers;
 
+const want = web3.utils.toChecksumAddress("0x0845c0bfe75691b1e21b24351aac581a7fb6b7df");
+
 const vaultParams = {
-  mooName: "Moo Sushi USDC-DAI",
-  mooSymbol: "mooSushiUSDC-DAI",
+  mooName: "Moo Boo YFI-ETH",
+  mooSymbol: "mooBooYFI-ETH",
   delay: 21600,
 }
 
 const strategyParams = {
-  want: "0xcd578f016888b57f1b1e3f887f392f0159e26747",
-  poolId: 11,
-  chef: sushi.minichef,
-  unirouter: sushi.router,
-  strategist: "0x4e3227c0b032161Dd6D780E191A590D917998Dc7", // some address
+  want: want,
+  poolId: 26,
+  chef: spookyswap.masterchef,
+  unirouter: spookyswap.router,
+  strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [ SUSHI, WMATIC ],
-  outputToLp0Route: [ SUSHI, ETH, USDC ],
-  outputToLp1Route: [ SUSHI, ETH, DAI ]
+  outputToNativeRoute: [ BOO, WFTM ],
+  outputToLp0Route: [ BOO, ETH, YFI ],
+  outputToLp1Route: [ BOO, ETH ]
 };
 
 const contractNames = {

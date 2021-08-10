@@ -3,24 +3,31 @@ const hardhat = require("hardhat");
 const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const { getNetworkRpc } = require("../utils/getNetworkRpc");
+const { addressBook } = require("blockchain-addressbook")
+const { SCREAM: { address: SCREAM }, USDC: { address: USDC }, WFTM: { address: WFTM } } = addressBook.fantom.tokens;
+const { spookyswap, beefyfinance } = addressBook.fantom.platforms;
+
+const iToken = web3.utils.toChecksumAddress("0xE45Ac34E528907d0A0239ab5Db507688070B20bf");
 
 const ethers = hardhat.ethers;
 
 const config = {
-    strategyName: "StrategyLendhub",
-    mooName: "Moo Lendhub ETH",
-    mooSymbol: "mooLendhubETH",
+    strategyName: "StrategyScream",
+    mooName: "Moo Scream USDC",
+    mooSymbol: "mooScreamUSDC",
     delay: 21600,
-    iToken: "0x505bdd86108e7d9d662234f6a5f8a4cbaece81ab",
-    borrowRate: 78,
-    borrowRateMax: 80,
+    borrowRate: 72,
+    borrowRateMax: 75,
     borrowDepth: 4,
-    minLeverage: 1000000000000,
-    markets: ["0x505bdd86108e7d9d662234f6a5f8a4cbaece81ab"],
-    unirouter: "0xED7d5F38C79115ca12fe6C0041abb22F0A06C300",
-    keeper: "0x10aee6B5594942433e7Fc2783598c979B030eF3D",
+    minLeverage: 1000,
+    outputToNativeRoute: [SCREAM, WFTM],
+    outputToWantRoute: [SCREAM, WFTM, USDC],
+    markets: [iToken];
+    comptroller: "0x260E596DAbE3AFc463e75B6CC05d8c46aCAcFB09",
+    unirouter: spookyswap.router,
+    keeper: beefyfinance.keeper,
     strategist:"0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b",
-    beefyFeeRecipient:"0x183D1aaEf1a86De6f16B2737c30eF94a6d2A9308"
+    beefyFeeRecipient:beefyfinance.beefyFeeRecipient
   };
 
 async function main() {
@@ -39,18 +46,20 @@ async function main() {
 
   console.log("Deploying:", config.mooName);
 
-  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc:"https://http-mainnet.hecochain.com" });
+  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc: "https://rpc.ftm.tools" });
 
   const vault = await Vault.deploy(predictedAddresses.strategy, config.mooName, config.mooSymbol, config.delay);
   await vault.deployed();
 
   const strategy = await Strategy.deploy(
-    config.iToken,
     config.borrowRate,
     config.borrowRateMax,
     config.borrowDepth,
     config.minLeverage,
+    config.outputToNativeRoute,
+    config.outputToWantRoute,
     config.markets,
+    config.comptroller,
     vault.address,
     config.unirouter,
     config.keeper,
@@ -62,29 +71,6 @@ async function main() {
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
 
-  await hardhat.run("verify:verify", {
-    address: vault.address,
-    constructorArguments: [
-      strategy.address, config.mooName, config.mooSymbol, config.delay
-    ],
-  })
-  
-  await hardhat.run("verify:verify", {
-    address: strategy.address,
-    constructorArguments: [
-      config.iToken,
-      config.borrowRate,
-      config.borrowRateMax,
-      config.borrowDepth,
-      config.minLeverage,
-      config.markets,
-      vault.address,
-      config.unirouter,
-      config.keeper,
-      config.strategist,
-      config.beefyFeeRecipient
-    ],
-  })
 }
 
 main()

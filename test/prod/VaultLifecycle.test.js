@@ -11,7 +11,7 @@ const chainData = addressBook[chainName];
 const { beefyfinance } = chainData.platforms;
 
 const config = {
-  vault: "0x13071d48A5FDe2735102657e15D1132F92eE8C83",
+  vault: "0x7f7d3734903341464a685809405ff3b5463FF379",
   vaultContract: "BeefyVaultV6",
   strategyContract: "StrategyCommonChefLP",
   testAmount: ethers.utils.parseEther("5"),
