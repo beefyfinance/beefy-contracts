@@ -136,6 +136,7 @@ contract StrategyCommonChefLPKeeper is StratManager, FeeManager, KeeperCompatibl
         return harvestCondition;
     }
 
+    // TODO: use onlyEOA that contains a whitelist
     // compounds earnings and charges performance fee
     function harvest() public whenNotPaused {
         IMasterChef(chef).deposit(poolId, 0);
