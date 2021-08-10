@@ -22,8 +22,7 @@ const config = {
     minLeverage: 1000,
     outputToNativeRoute: [SCREAM, WFTM],
     outputToWantRoute: [SCREAM, WFTM, USDC],
-    markets: [iToken];
-    comptroller: "0x260E596DAbE3AFc463e75B6CC05d8c46aCAcFB09",
+    markets: [iToken],
     unirouter: spookyswap.router,
     keeper: beefyfinance.keeper,
     strategist:"0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b",
@@ -59,7 +58,6 @@ async function main() {
     config.outputToNativeRoute,
     config.outputToWantRoute,
     config.markets,
-    config.comptroller,
     vault.address,
     config.unirouter,
     config.keeper,
@@ -71,6 +69,23 @@ async function main() {
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
 
+  await hardhat.run("verify:verify", {
+    address: strategy.address,
+    constructorArguments: [
+      config.borrowRate,
+      config.borrowRateMax,
+      config.borrowDepth,
+      config.minLeverage,
+      config.outputToNativeRoute,
+      config.outputToWantRoute,
+      config.markets,
+      vault.address,
+      config.unirouter,
+      config.keeper,
+      config.strategist,
+      config.beefyFeeRecipient
+    ],
+  })
 }
 
 main()

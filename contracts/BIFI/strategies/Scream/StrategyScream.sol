@@ -74,7 +74,6 @@ contract StrategyScream is StratManager, FeeManager {
         address[] memory _outputToNativeRoute,
         address[] memory _outputToWantRoute,
         address[] memory _markets,
-        address _comptroller,
         address _vault,
         address _unirouter,
         address _keeper,
@@ -85,11 +84,11 @@ contract StrategyScream is StratManager, FeeManager {
         borrowRateMax = _borrowRateMax;
         borrowDepth = _borrowDepth;
         minLeverage = _minLeverage;
-        comptroller = _comptroller;
 
         iToken = _markets[0];
         markets = _markets;
         want = IVToken(iToken).underlying();
+        comptroller = IVToken(iToken).comptroller();
 
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
@@ -102,6 +101,8 @@ contract StrategyScream is StratManager, FeeManager {
       
 
         _giveAllowances();
+
+        super.setCallFee(11);
 
         IComptroller(comptroller).enterMarkets(markets);
     }
@@ -212,12 +213,13 @@ contract StrategyScream is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() public whenNotPaused onlyEOA {
+    function harvest() public whenNotPaused {
+        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
         if (IComptroller(comptroller).pendingComptrollerImplementation() == address(0)) {
-        IComptroller(comptroller).claimComp(address(this), markets);
-        chargeFees();
-        swapRewards();
-        deposit();
+            IComptroller(comptroller).claimComp(address(this), markets);
+            chargeFees();
+            swapRewards();
+            deposit();
         } else {
             panic();
         }
@@ -316,8 +318,10 @@ contract StrategyScream is StratManager, FeeManager {
     function setHarvestOnDeposit(bool _harvest) external onlyManager {
         harvestOnDeposit = _harvest;
 
-        if (harvestOnDeposit = true) {
-            this.setWithdrawalFee(0);
+        if (harvestOnDeposit == true) {
+            super.setWithdrawalFee(0);
+        } else {
+            super.setWithdrawalFee(10);
         }
     }
 
