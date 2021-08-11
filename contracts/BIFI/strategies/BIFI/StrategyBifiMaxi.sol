@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IWBNB.sol";
-import "../../interfaces/thugs/IThugswapRouter.sol";
+import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IRewardPool.sol";
 
 /**
@@ -148,7 +148,7 @@ contract StrategyBifiMaxi is Ownable, Pausable {
      */
     function swapRewards() internal {
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
-        IThugswapRouter(unirouter).swapExactTokensForTokens(wbnbBal, 0, wbnbToBifiRoute, address(this), now.add(600));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(wbnbBal, 0, wbnbToBifiRoute, address(this), now.add(600));
     }
 
     /**
