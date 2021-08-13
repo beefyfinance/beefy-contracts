@@ -12,7 +12,8 @@ import "../../interfaces/common/IMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyCommonChefStaking is StratManager, FeeManager {
+// Copy of StrategyCommonChefStaking with callFee=0 and 4% perf fee
+contract StrategyBanana is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -53,6 +54,7 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
 
         _giveAllowances();
         setWithdrawalFee(0);
+        setCallFee(0);
     }
 
     // puts the funds to work
@@ -115,7 +117,7 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
 
     // performance fees
     function chargeFees() internal {
-        uint256 toNative = balanceOfWant().mul(45).div(1000);
+        uint256 toNative = balanceOfWant().mul(40).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, wantToNativeRoute, address(this), block.timestamp);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));

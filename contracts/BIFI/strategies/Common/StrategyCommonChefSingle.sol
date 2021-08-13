@@ -29,6 +29,8 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
     address[] public outputToNativeRoute;
     address[] public outputToWantRoute;
 
+    bool public harvestOnDeposit = true;
+
     /**
      * @dev Event that is fired each time someone harvests the strat.
      */
@@ -54,9 +56,12 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
 
+        require(_outputToWantRoute[0] == output, "toDeposit[0] != output");
+        require(_outputToWantRoute[_outputToWantRoute.length - 1] == want, "!want");
         outputToWantRoute = _outputToWantRoute;
 
         _giveAllowances();
+        setWithdrawalFee(0);
     }
 
     // puts the funds to work
@@ -91,13 +96,22 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
     }
 
     function beforeDeposit() external override {
-        if (want == output) {
-            harvest();	
+        if (harvestOnDeposit) {
+            require(msg.sender == vault, "!contract");
+            _harvest();
         }
     }
 
+    function harvest() external whenNotPaused onlyEOA {
+        _harvest();
+    }
+
+    function managerHarvest() external onlyManager {
+        _harvest();
+    }
+
     // compounds earnings and charges performance fee
-    function harvest() public whenNotPaused {
+    function _harvest() internal {
         require(tx.origin == msg.sender || msg.sender == vault, "!contract");
         IMasterChef(chef).deposit(poolId, 0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
@@ -188,5 +202,17 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
+    }
+
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+    }
+
+    function outputToNative() public view returns (address[] memory) {
+        return outputToNativeRoute;
+    }
+
+    function outputToWant() public view returns (address[] memory) {
+        return outputToWantRoute;
     }
 }
