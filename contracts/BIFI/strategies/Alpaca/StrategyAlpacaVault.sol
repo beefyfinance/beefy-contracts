@@ -100,7 +100,7 @@ contract StrategyAlpacaVault is StratManager, FeeManager, GasThrottler {
 
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
-            require(msg.sender == vault, "!contract");
+            require(msg.sender == vault, "!vault");
             _harvest();
         }
     }

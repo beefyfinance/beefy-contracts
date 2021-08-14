@@ -79,7 +79,7 @@ contract StrategyKingDefi is StratManager, FeeManager, GasThrottler {
     }
 
     function beforeDeposit() external override {
-        require(msg.sender == vault, "!contract");
+        require(msg.sender == vault, "!vault");
         _harvest();
     }
 
