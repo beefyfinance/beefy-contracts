@@ -221,10 +221,12 @@ describe("VaultLifecycleTest", () => {
       console.log("harvestOnDeposit call failed, strat must not have this function");
     }
 
+    const withdrawalFee = await strategy.withdrawalFee();
+    const actualWithdrawalFee = parseInt(withdrawalFee);
     if(harvestOnDeposit) {
-      const expectedWithdrawalFee = 0;
-      const actualWithdrawalFee = await strategy.withdrawalFee();
-      expect(actualWithdrawalFee).to.equal(expectedWithdrawalFee)
+      expect(actualWithdrawalFee).to.equal(0);
+    } else {
+      expect(actualWithdrawalFee).not.to.equal(0);
     }
   }).timeout(TIMEOUT);
 });
