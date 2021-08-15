@@ -6,31 +6,27 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/common/IUniswapRouterETH.sol";
+import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IMasterChef.sol";
-import "../../utils/GasThrottler.sol";
-import "../Common/StratManager.sol";
+import "../../interfaces/polycat/IMasterChefCat.sol";
 import "../Common/FeeManager.sol";
+import "../Common/StratManager.sol";
 
-interface IKrownMaster {
-    function claim(uint256 _pid) external;
-}
-
-contract StrategyKingDefi is StratManager, FeeManager, GasThrottler {
+contract StrategyFish is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
-    address public native = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
-    address public want = address(0x1446f3CEdf4d86a9399E49f7937766E6De2A3AAB);
+    address constant public wrapped = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
+    address constant public want = address(0x3a3Df212b7AA91Aa0402B9035b098891d276572B);
 
     // Third party contracts
-    address public chef = address(0x49A44ea2B4126CC1C53C47Ed7f9a5905Cbecae8d);
-    uint256 public poolId = 1;
+    address constant public masterchef = address(0x8CFD1B9B7478E7B0422916B72d1DB6A9D513D734);
+    address constant public referrer = address(0x0000000000000000000000000000000000000000);
+    uint256 constant public poolId = 1;
 
     // Routes
-    address[] public wantToNativeRoute = [want, native];
+    address[] public wantToWrappedRoute = [want, wrapped];
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -52,7 +48,7 @@ contract StrategyKingDefi is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IMasterChef(chef).deposit(poolId, wantBal);
+            IMasterChefCat(masterchef).deposit(poolId, wantBal, referrer);
         }
     }
 
@@ -62,7 +58,7 @@ contract StrategyKingDefi is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            IMasterChefCat(masterchef).withdraw(poolId, _amount.sub(wantBal));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -79,20 +75,13 @@ contract StrategyKingDefi is StratManager, FeeManager, GasThrottler {
     }
 
     function beforeDeposit() external override {
-        require(msg.sender == vault, "!vault");
-        _harvest();
+        harvest();
     }
 
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
-        _harvest();
-    }
-
-    function managerHarvest() external onlyManager {
-        _harvest();
-    }
-
-    function _harvest() internal {
-        IKrownMaster(chef).claim(poolId);
+    // compounds earnings and charges performance fee
+    function harvest() public whenNotPaused {
+        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
+        IMasterChefCat(masterchef).deposit(poolId, 0, referrer);
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         if (wantBal > 0) {
             chargeFees();
@@ -103,19 +92,19 @@ contract StrategyKingDefi is StratManager, FeeManager, GasThrottler {
 
     // performance fees
     function chargeFees() internal {
-        uint256 toNative = IERC20(want).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, wantToNativeRoute, address(this), now);
+        uint256 toWrapped = IERC20(want).balanceOf(address(this)).mul(45).div(1000);
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toWrapped, 0, wantToWrappedRoute, address(this), now);
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        uint256 wrappedBal = IERC20(wrapped).balanceOf(address(this));
 
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
+        uint256 callFeeAmount = wrappedBal.mul(callFee).div(MAX_FEE);
+        IERC20(wrapped).safeTransfer(tx.origin, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
+        uint256 beefyFeeAmount = wrappedBal.mul(beefyFee).div(MAX_FEE);
+        IERC20(wrapped).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        uint256 strategistFee = wrappedBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(wrapped).safeTransfer(strategist, strategistFee);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -130,7 +119,7 @@ contract StrategyKingDefi is StratManager, FeeManager, GasThrottler {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMasterChef(chef).userInfo(poolId, address(this));
+        (uint256 _amount, ) = IMasterChefCat(masterchef).userInfo(poolId, address(this));
         return _amount;
     }
 
@@ -138,7 +127,7 @@ contract StrategyKingDefi is StratManager, FeeManager, GasThrottler {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IMasterChefCat(masterchef).emergencyWithdraw(poolId);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -147,7 +136,7 @@ contract StrategyKingDefi is StratManager, FeeManager, GasThrottler {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IMasterChefCat(masterchef).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {
@@ -165,16 +154,12 @@ contract StrategyKingDefi is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, uint256(-1));
+        IERC20(want).safeApprove(masterchef, uint256(-1));
         IERC20(want).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(chef, 0);
+        IERC20(want).safeApprove(masterchef, 0);
         IERC20(want).safeApprove(unirouter, 0);
-    }
-
-    function wantToNative() external view returns(address[] memory) {
-        return wantToNativeRoute;
     }
 }

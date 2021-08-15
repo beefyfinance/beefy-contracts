@@ -59,7 +59,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
-        
+
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
         require(_outputToLp0Route[0] == output, "outputToLp0Route[0] != output");
@@ -167,11 +167,11 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMasterChef(chef).userInfo(poolId, address(this));
+        (uint256 _amount,) = IMasterChef(chef).userInfo(poolId, address(this));
         return _amount;
     }
 
-      function setHarvestOnDeposit(bool _harvest) external onlyManager {
+    function setHarvestOnDeposit(bool _harvest) external onlyManager {
         harvestOnDeposit = _harvest;
     }
 
@@ -223,15 +223,15 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
 
-    function outputToNative() external view returns(address[] memory) {
+    function outputToNative() external view returns (address[] memory) {
         return outputToNativeRoute;
     }
 
-    function outputToLp0() external view returns(address[] memory) {
+    function outputToLp0() external view returns (address[] memory) {
         return outputToLp0Route;
     }
 
-    function outputToLp1() external view returns(address[] memory) {
+    function outputToLp1() external view returns (address[] memory) {
         return outputToLp1Route;
     }
 }

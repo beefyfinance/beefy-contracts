@@ -15,14 +15,8 @@ interface IRouter {
     ) external;
 }
 
-contract LaunchpoolReferral is Ownable {
+contract LaunchpoolReferralPolygon is Ownable {
     using SafeERC20 for IERC20;
-
-    address constant public wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
-    address public pcsV2Router = address(0x10ED43C718714eb63d5aA57B78B54704E256024E);
-    address public router = pcsV2Router;
-
-    address public honey = address(0xFa363022816aBf82f18a9C2809dCd2BB393F6AC5);
 
     mapping(address => bool) public admins;
 
@@ -39,8 +33,10 @@ contract LaunchpoolReferral is Ownable {
         admins[admin] = false;
     }
 
-    function setRouter(address _router) external onlyOwner {
-        router = _router;
+    function owner() public view override returns (address) {
+        if (super.owner() == address(0)) {
+            return address(0x982F264ce97365864181df65dF4931C593A515ad);
+        } else return super.owner();
     }
 
     function swap(address[] memory _route, address _router) public onlyAdmin {
@@ -50,15 +46,15 @@ contract LaunchpoolReferral is Ownable {
         IRouter(_router).swapExactTokensForETHSupportingFeeOnTransferTokens(tokenBal, 0, _route, owner(), now);
     }
 
-    function swapToBNB(address _token, address _router) public onlyAdmin {
-        address[] memory wbnbRoute = new address[](2);
-        wbnbRoute[0] = _token;
-        wbnbRoute[1] = wbnb;
-        swap(wbnbRoute, _router);
+    function swapToNative(address _token, address _router) public onlyAdmin {
+        address[] memory nativeRoute = new address[](2);
+        nativeRoute[0] = _token;
+        nativeRoute[1] = native();
+        swap(nativeRoute, _router);
     }
 
-    function swapToBNB(address _token) external onlyAdmin {
-        swapToBNB(_token, router);
+    function swapToNative(address _token) external onlyAdmin {
+        swapToNative(_token, defaultRouter());
     }
 
     function withdrawToken(address _token, uint256 _amount) external onlyAdmin {
@@ -69,8 +65,18 @@ contract LaunchpoolReferral is Ownable {
         payable(owner()).transfer(_amount);
     }
 
-    function honeyToBNB() external onlyAdmin {
-        swapToBNB(honey, pcsV2Router);
+    function native() public pure returns (address) {return address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);}
+    function defaultRouter() public pure returns (address) {return quickRouter();}
+    function quickRouter() public pure returns (address) {return address(0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff);}
+    function sushiRouter() public pure returns (address) {return address(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);}
+    function waultRouter() public pure returns (address) {return address(0x3a1D87f206D12415f5b0A33E786967680AAb4f6d);}
+
+    function spadeToMatic() external onlyAdmin {
+        swapToNative(address(0xf5EA626334037a2cf0155D49eA6462fDdC6Eff19), sushiRouter());
+    }
+
+    function pearToMatic() external onlyAdmin {
+        swapToNative(address(0xc8bcb58caEf1bE972C0B638B1dD8B0748Fdc8A44), waultRouter());
     }
 
     receive() external payable {}

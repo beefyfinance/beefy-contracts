@@ -7,19 +7,21 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
-import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IMasterChef.sol";
+import "../../interfaces/alpaca/IFairLaunch.sol";
+import "../../interfaces/alpaca/IAlpacaVault.sol";
+import "../../utils/GasThrottler.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyCommonChefSingle is StratManager, FeeManager {
+contract StrategyAlpacaVault is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
-    address public native;
     address public output;
+    address public native;
     address public want;
+    address public wantToken;
 
     // Third party contracts
     address public chef;
@@ -27,7 +29,7 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
 
     // Routes
     address[] public outputToNativeRoute;
-    address[] public outputToWantRoute;
+    address[] public outputToWantTokenRoute;
 
     bool public harvestOnDeposit = true;
 
@@ -40,15 +42,16 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
         address _want,
         uint256 _poolId,
         address _chef,
+        address[] memory _outputToNativeRoute,
+        address[] memory _outputToWantTokenRoute,
         address _vault,
         address _unirouter,
         address _keeper,
         address _strategist,
-        address _beefyFeeRecipient,
-        address[] memory _outputToNativeRoute,
-        address[] memory _outputToWantRoute
+        address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
+        wantToken = IAlpacaVault(want).token();
         poolId = _poolId;
         chef = _chef;
 
@@ -56,9 +59,9 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
 
-        require(_outputToWantRoute[0] == output, "toDeposit[0] != output");
-        require(_outputToWantRoute[_outputToWantRoute.length - 1] == want, "!want");
-        outputToWantRoute = _outputToWantRoute;
+        require(_outputToWantTokenRoute[0] == output, "toDeposit[0] != alpaca");
+        require(_outputToWantTokenRoute[_outputToWantTokenRoute.length - 1] == wantToken, "!wantToken");
+        outputToWantTokenRoute = _outputToWantTokenRoute;
 
         _giveAllowances();
         setWithdrawalFee(0);
@@ -66,21 +69,21 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
 
     // puts the funds to work
     function deposit() public whenNotPaused {
-        uint256 wantBal = balanceOfWant();
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IMasterChef(chef).deposit(poolId, wantBal);
+            IFairLaunch(chef).deposit(address(this), poolId, wantBal);
         }
     }
 
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = balanceOfWant();
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
-            wantBal = balanceOfWant();
+            IFairLaunch(chef).withdraw(address(this), poolId, _amount.sub(wantBal));
+            wantBal = IERC20(want).balanceOf(address(this));
         }
 
         if (wantBal > _amount) {
@@ -102,7 +105,7 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
         }
     }
 
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused onlyEOA gasThrottle {
         _harvest();
     }
 
@@ -112,13 +115,12 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest() internal {
-        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
-        IMasterChef(chef).deposit(poolId, 0);
-        uint256 outputBal = IERC20(output).balanceOf(address(this));
-        if (outputBal > 0) {
+        if (balanceOfPool() > 0) {
+            IFairLaunch(chef).harvest(poolId);
             chargeFees();
-            swapRewards();
+            addLiquidity();
             deposit();
+
             emit StratHarvest(msg.sender);
         }
     }
@@ -140,12 +142,15 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
         IERC20(native).safeTransfer(strategist, strategistFee);
     }
 
-    // swap rewards to {want}
-    function swapRewards() internal {
-        if (want != output) {
+    // Adds liquidity to AMM and gets more LP tokens.
+    function addLiquidity() internal {
+        if (outputToWantTokenRoute.length > 1) {
             uint256 outputBal = IERC20(output).balanceOf(address(this));
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), block.timestamp);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantTokenRoute, address(this), now);
         }
+
+        uint256 wantTokenBal = IERC20(wantToken).balanceOf(address(this));
+        IAlpacaVault(want).deposit(wantTokenBal);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -160,7 +165,7 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMasterChef(chef).userInfo(poolId, address(this));
+        (uint256 _amount, ) = IFairLaunch(chef).userInfo(poolId, address(this));
         return _amount;
     }
 
@@ -168,16 +173,16 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IFairLaunch(chef).emergencyWithdraw(poolId);
 
-        uint256 wantBal = balanceOfWant();
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
     }
 
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IFairLaunch(chef).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {
@@ -195,13 +200,15 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(chef, uint(-1));
+        IERC20(output).safeApprove(unirouter, uint(-1));
+        IERC20(wantToken).safeApprove(want, uint(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
+        IERC20(wantToken).safeApprove(want, 0);
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
@@ -213,6 +220,6 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
     }
 
     function outputToWant() public view returns (address[] memory) {
-        return outputToWantRoute;
+        return outputToWantTokenRoute;
     }
 }

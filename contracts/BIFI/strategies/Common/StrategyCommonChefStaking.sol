@@ -27,6 +27,8 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
     // Routes
     address[] public wantToNativeRoute;
 
+    bool public harvestOnDeposit = true;
+
     /**
      * @dev Event that is fired each time someone harvests the strat.
      */
@@ -50,6 +52,7 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
         wantToNativeRoute = _wantToNativeRoute;
 
         _giveAllowances();
+        setWithdrawalFee(0);
     }
 
     // puts the funds to work
@@ -84,11 +87,22 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
     }
 
     function beforeDeposit() external override {
-        harvest();
+        if (harvestOnDeposit) {
+            require(msg.sender == vault, "!vault");
+            _harvest();
+        }
+    }
+
+    function harvest() external whenNotPaused onlyEOA {
+        _harvest();
+    }
+
+    function managerHarvest() external onlyManager {
+        _harvest();
     }
 
     // compounds earnings and charges performance fee
-    function harvest() public whenNotPaused {
+    function _harvest() internal {
         require(tx.origin == msg.sender || msg.sender == vault, "!contract");
         IMasterChef(chef).leaveStaking(0);
         uint256 wantBal = balanceOfWant();
@@ -172,7 +186,11 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
         IERC20(want).safeApprove(unirouter, 0);
     }
 
-    function wantToNative() external view returns(address[] memory) {
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+    }
+
+    function wantToNative() external view returns (address[] memory) {
         return wantToNativeRoute;
     }
 }

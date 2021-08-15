@@ -8,7 +8,7 @@ import "@openzeppelin-2/contracts/ownership/Ownable.sol";
 
 import "./BeefyLaunchpool.sol";
 
-interface IVault {
+interface IMooVault {
     function want() external view returns (address);
     function depositAll() external;
 }
@@ -60,7 +60,7 @@ contract BeefyLaunchpoolReceiver is Ownable {
 
         // rewardToken or mooVault.want must be 'token'
         if (_rewardToken != token) {
-            address vaultWant = IVault(_rewardToken).want();
+            address vaultWant = IMooVault(_rewardToken).want();
             require(vaultWant == token, "!token");
         }
 
@@ -82,12 +82,12 @@ contract BeefyLaunchpoolReceiver is Ownable {
 
         address rewardToken = ILaunchpool(launchpool).rewardToken();
         if (rewardToken != token) {
-            address vaultWant = IVault(rewardToken).want();
+            address vaultWant = IMooVault(rewardToken).want();
             require(vaultWant == token, "!token");
 
             uint depositBal = IERC20(token).balanceOf(address(this));
             IERC20(token).approve(rewardToken, depositBal);
-            IVault(rewardToken).depositAll();
+            IMooVault(rewardToken).depositAll();
         }
 
         uint rewardBal = IERC20(rewardToken).balanceOf(address(this));

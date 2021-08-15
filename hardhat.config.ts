@@ -50,6 +50,11 @@ const config: DeploymentConfig = {
       chainId: 97,
       accounts: deployerAccount,
     },
+    kovan: {
+      url: "https://kovan.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
+      chainId: 42,
+      accounts: deployerAccount,
+    }
   },
   etherscan: {
     // Your API key for Etherscan

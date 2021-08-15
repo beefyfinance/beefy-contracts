@@ -3,6 +3,7 @@
   "version": "0.5.0",
   "private": true,
   "dependencies": {
+    "@chainlink/contracts": "^0.2.1",
     "@nomiclabs/hardhat-etherscan": "^2.1.4",
     "@openzeppelin-2/contracts": "npm:@openzeppelin/contracts@2.5.1",
     "@openzeppelin/contracts": "^3.2.0",
@@ -43,6 +44,7 @@
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "abi-to-sol": "^0.2.1",
     "chai": "^4.2.0",
+    "axios": "^0.21.1",
     "ethereum-waffle": "^3.0.0",
     "ethers": "^5.0.31",
     "hardhat": "2.0.9",
