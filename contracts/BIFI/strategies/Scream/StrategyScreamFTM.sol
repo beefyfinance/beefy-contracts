@@ -17,7 +17,7 @@ import "../Common/FeeManager.sol";
 
 
 //Lending Strategy 
-contract StrategyScream is StratManager, FeeManager {
+contract StrategyScreamFTM is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -228,18 +228,19 @@ contract StrategyScream is StratManager, FeeManager {
 
     // performance fees
     function chargeFees() internal {
+        uint balBefore = balanceOfWant();
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        uint balAfter = balanceOfWant();
+        uint feeBal = balAfter.sub(balBefore);
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
-
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
+        uint256 callFeeAmount = feeBal.mul(callFee).div(MAX_FEE);
         IERC20(native).safeTransfer(tx.origin, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
+        uint256 beefyFeeAmount = feeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        uint256 strategistFee = feeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
         IERC20(native).safeTransfer(strategist, strategistFee);
     }
 

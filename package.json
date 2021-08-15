@@ -16,7 +16,7 @@
     "typescript": "^4.3.4"
   },
   "scripts": {
-    "flat-hardhat": "hardhat flatten contracts/BIFI/strategies/Scream/StrategyScream.sol > tmp/flattened.sol",
+    "flat-hardhat": "hardhat flatten contracts/BIFI/strategies/Scream/StrategySteakHouseLP.sol > tmp/flattened.sol",
     "flat": "bin/flatten.sh",
     "clean": "rm -r artifacts cache",
     "net:bsc": "ganache-cli --fork ${BSC_RPC} --account=\"${DEPLOYER_PK}, 1000000000000000000000000\" --account=\"${KEEPER_PK}, 1000000000000000000000000\" --account=\"${UPGRADER_PK}, 1000000000000000000000000\"",
