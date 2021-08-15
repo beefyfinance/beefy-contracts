@@ -195,4 +195,21 @@ describe("VaultLifecycleTest", () => {
       }
     }
   }).timeout(TIMEOUT);
+
+  it("Has correct call fee", async () => {
+    const callFee = await strategy.callFee();
+
+    const expectedCallFeeMap = {
+      bsc: 111,
+      avax: 11,
+      polygon: 11,
+      heco: 11,
+      fantom: 11
+    }
+
+    const expectedCallFee = expectedCallFeeMap[chainName];
+    const actualCallFee = parseInt(callFee)
+
+    expect(expectedCallFee).to.equal(actualCallFee);
+  }).timeout(TIMEOUT);
 });
