@@ -210,6 +210,21 @@ describe("VaultLifecycleTest", () => {
     const expectedCallFee = expectedCallFeeMap[chainName];
     const actualCallFee = parseInt(callFee)
 
-    expect(expectedCallFee).to.equal(actualCallFee);
+    expect(actualCallFee).to.equal(expectedCallFee);
+  }).timeout(TIMEOUT);
+
+  it("has withdraw fee of 0 if harvest on deposit is true", async () => {
+    let harvestOnDeposit = false;
+    try {
+      harvestOnDeposit = await strategy.harvestOnDeposit();
+    } catch {
+      console.log("harvestOnDeposit call failed, strat must not have this function");
+    }
+
+    if(harvestOnDeposit) {
+      const expectedWithdrawalFee = 0;
+      const actualWithdrawalFee = await strategy.withdrawalFee();
+      expect(actualWithdrawalFee).to.equal(expectedWithdrawalFee)
+    }
   }).timeout(TIMEOUT);
 });
