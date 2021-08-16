@@ -113,7 +113,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         }
     }
 
-    function harvest() public virtual whenNotPaused onlyEOA {
+    function harvest() external virtual whenNotPaused onlyEOA {
         _harvest();
     }
 
