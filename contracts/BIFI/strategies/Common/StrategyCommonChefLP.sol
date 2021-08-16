@@ -29,7 +29,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
-    
+
     // Routes
     address[] public outputToNativeRoute;
     address[] public outputToLp0Route;
