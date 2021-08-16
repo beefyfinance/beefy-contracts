@@ -30,6 +30,9 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
 
     bool public harvestOnDeposit = false;
 
+    // Views for frontend
+    uint256 public lastHarvest;
+
     // Routes
     address[] public outputToNativeRoute;
     address[] public outputToLp0Route;
@@ -118,6 +121,8 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
         chargeFees();
         addLiquidity();
         deposit();
+
+        lastHarvest = block.timestamp;
 
         emit StratHarvest(msg.sender);
     }

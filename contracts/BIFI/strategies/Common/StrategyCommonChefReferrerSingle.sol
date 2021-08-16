@@ -25,6 +25,9 @@ contract StrategyCommonChefReferrerSingle is StratManager, FeeManager {
     address public chef;
     uint256 public poolId;
 
+    // Views for frontend
+    uint256 public lastHarvest;
+
     // Routes
     address[] public outputToNativeRoute;
     address[] public outputToWantRoute;
@@ -109,6 +112,9 @@ contract StrategyCommonChefReferrerSingle is StratManager, FeeManager {
             chargeFees();
             swapRewards();
             deposit();
+
+            lastHarvest = block.timestamp;
+
             emit StratHarvest(msg.sender);
         }
     }

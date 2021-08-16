@@ -28,6 +28,9 @@ contract StrategyCommonMultiRewardPoolLP is StratManager, FeeManager {
     // Third party contracts
     address public rewardPool;
 
+    // Views for frontend
+    uint256 public lastHarvest;
+
     // Routes
     address[] public outputToNativeRoute;
     address[] public outputToLp0Route;
@@ -109,6 +112,8 @@ contract StrategyCommonMultiRewardPoolLP is StratManager, FeeManager {
         chargeFees();
         addLiquidity();
         deposit();
+
+        lastHarvest = block.timestamp;
 
         emit StratHarvest(msg.sender);
     }

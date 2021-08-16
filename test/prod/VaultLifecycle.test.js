@@ -83,6 +83,9 @@ describe("VaultLifecycleTest", () => {
     expect(vaultBalAfterHarvest).to.be.gt(vaultBal);
     expect(pricePerShareAfterHarvest).to.be.gt(pricePerShare);
     expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
+
+    const lastHarvest = await strategy.lastHarvest();
+    expect(lastHarvest).to.be.gt(0);
   }).timeout(TIMEOUT);
 
   it("Manager can panic.", async () => {
