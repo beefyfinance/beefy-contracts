@@ -27,6 +27,8 @@ contract StrategyPolygonMiniChefLP is StratManager, FeeManager {
     address public chef;
     uint256 public poolId;
 
+    uint256 public lastHarvest;
+
     // Routes
     address[] public outputToNativeRoute;
     address[] public nativeToOutputRoute;
@@ -118,6 +120,7 @@ contract StrategyPolygonMiniChefLP is StratManager, FeeManager {
         addLiquidity();
         deposit();
 
+        lastHarvest = block.timestamp;
         emit StratHarvest(msg.sender);
     }
 

@@ -24,6 +24,8 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
     // Third party contracts
     address public rewardPool;
 
+    uint256 public lastHarvest;
+
     // Routes
     address[] public outputToWantRoute;
     address[] public outputToWbnbRoute;
@@ -100,6 +102,7 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
         _swapRewards();
         deposit();
 
+        lastHarvest = block.timestamp;
         emit StratHarvest(msg.sender);
     }
 

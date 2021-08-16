@@ -24,6 +24,8 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
     address public chef;
     uint256 constant public poolId = 0;
 
+    uint256 public lastHarvest;
+
     // Routes
     address[] public wantToNativeRoute;
 
@@ -109,6 +111,8 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
         if (wantBal > 0) {
             chargeFees();
             deposit();
+
+            lastHarvest = block.timestamp;
             emit StratHarvest(msg.sender);
         }
     }
