@@ -27,9 +27,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     address public chef;
     uint256 public poolId;
 
-    bool public harvestOnDeposit = false;
-
-    // Views for frontend
+    bool public harvestOnDeposit;
     uint256 public lastHarvest;
     
     // Routes
@@ -122,7 +120,6 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         deposit();
 
         lastHarvest = block.timestamp;
-
         emit StratHarvest(msg.sender);
     }
 
@@ -178,6 +175,12 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     function setHarvestOnDeposit(bool _harvest) external onlyManager {
         harvestOnDeposit = _harvest;
+
+        if (harvestOnDeposit == true) {
+            super.setWithdrawalFee(0);
+        } else {
+            super.setWithdrawalFee(10);
+        }
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.

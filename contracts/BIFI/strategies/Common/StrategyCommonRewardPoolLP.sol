@@ -28,15 +28,13 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
     // Third party contracts
     address public rewardPool;
 
-    bool public harvestOnDeposit = false;
-
-    // Views for frontend
-    uint256 public lastHarvest;
-
     // Routes
     address[] public outputToNativeRoute;
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
+
+    bool public harvestOnDeposit;
+    uint256 public lastHarvest;
 
     // View
     string[] public outputToLp0SymbolRoute;
@@ -123,7 +121,6 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
         deposit();
 
         lastHarvest = block.timestamp;
-
         emit StratHarvest(msg.sender);
     }
 
@@ -188,6 +185,12 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
 
     function setHarvestOnDeposit(bool _harvest) external onlyManager {
         harvestOnDeposit = _harvest;
+
+        if (harvestOnDeposit == true) {
+            super.setWithdrawalFee(0);
+        } else {
+            super.setWithdrawalFee(10);
+        }
     }
 
     // pauses deposits and withdraws all funds from third party systems.
