@@ -24,7 +24,6 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
     address public chef;
     uint256 constant public poolId = 0;
 
-    // Views for frontend
     uint256 public lastHarvest;
 
     // Routes
@@ -114,7 +113,6 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
             deposit();
 
             lastHarvest = block.timestamp;
-
             emit StratHarvest(msg.sender);
         }
     }

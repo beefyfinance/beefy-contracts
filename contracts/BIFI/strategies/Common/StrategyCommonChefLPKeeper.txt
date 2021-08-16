@@ -31,8 +31,6 @@ contract StrategyCommonChefLPKeeper is StratManager, FeeManager, KeeperCompatibl
     uint256 public harvestThreshold = 10793285679655677588; // random low number for now
 
     bool public harvestOnDeposit = false;
-
-    // Views for frontend
     uint256 public lastHarvest;
 
     // Routes
@@ -148,7 +146,6 @@ contract StrategyCommonChefLPKeeper is StratManager, FeeManager, KeeperCompatibl
         deposit();
 
         lastHarvest = block.timestamp;
-
         emit StratHarvest(msg.sender);
     }
 

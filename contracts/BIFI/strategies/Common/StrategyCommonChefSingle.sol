@@ -25,7 +25,6 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
     address public chef;
     uint256 public poolId;
 
-    // Views for frontend
     uint256 public lastHarvest;
 
     // Routes
@@ -124,7 +123,6 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
             deposit();
 
             lastHarvest = block.timestamp;
-
             emit StratHarvest(msg.sender);
         }
     }
