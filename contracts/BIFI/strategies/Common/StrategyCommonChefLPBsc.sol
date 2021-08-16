@@ -33,7 +33,7 @@ contract StrategyCommonChefLPBsc is StrategyCommonChefLP, GasThrottler {
         _outputToLp1Route
     ) public {}
 
-    function harvest() public override(StrategyCommonChefLP) gasThrottle {
+    function harvest() external override(StrategyCommonChefLP) gasThrottle {
         super.harvest();
     }
 }

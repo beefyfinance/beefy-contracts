@@ -109,12 +109,22 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
 
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
-            harvest();
+            require(msg.sender == vault, "!vault");
+            _harvest();
         }
     }
 
+    function harvest() external whenNotPaused onlyEOA {
+        _harvest();
+    }
+
+    function managerHarvest() external onlyManager {
+        _harvest();
+    }
+
     // compounds earnings and charges performance fee
-    function harvest() public whenNotPaused onlyEOA {
+    function _harvest() internal {
+        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
         IRewardPool(rewardPool).getReward();
         chargeFees();
         addLiquidity();
@@ -183,8 +193,8 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
         IERC20(want).transfer(vault, wantBal);
     }
 
-    function setHarvestOnDeposit(bool _harvest) external onlyManager {
-        harvestOnDeposit = _harvest;
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
 
         if (harvestOnDeposit == true) {
             super.setWithdrawalFee(0);
