@@ -1,18 +1,18 @@
-const { addressBook } = require('blockchain-addressbook');
-const fs = require('fs');
+const { addressBook } = require("blockchain-addressbook");
+const fs = require("fs");
 
 const ABI = {
-    ERC20: require("../data/abi/ERC20.json"),
-    masterchef: require("../data/abi/SushiMasterChef.json"),
-    minichef: require("../data/abi/MiniChefV2.json"),
-    LPPair: require("../data/abi/UniswapLPPair.json")
-}
+  ERC20: require("../data/abi/ERC20.json"),
+  masterchef: require("../data/abi/SushiMasterChef.json"),
+  minichef: require("../data/abi/MiniChefV2.json"),
+  LPPair: require("../data/abi/UniswapLPPair.json"),
+};
 
 /**
  * Generate LP Pair object
- * @param {number} poolId - pool id number 
- * @param {address} deployer - deployer public address 
- * @param {address} chefAddress - chef address 
+ * @param {number} poolId - pool id number
+ * @param {address} deployer - deployer public address
+ * @param {address} chefAddress - chef address
  * @param {string} chainName - Blockchain name
  * @param {ABI} masterchefABI - masterchef ABI json
  * @param {ABI} minichefABI - minichef ABI json
@@ -20,63 +20,87 @@ const ABI = {
  * @returns object
  */
 const getLpPair = async ({
-    poolId,
-    deployer,
-    chefAddress,
-    chainName,
-    masterchefABI = ABI.masterchef,
-    minichefABI = ABI.minichef,
-    LPPairABI = ABI.LPPair
+  poolId,
+  deployer,
+  chefAddress,
+  chainName,
+  masterchefABI = ABI.masterchef,
+  minichefABI = ABI.minichef,
+  LPPairABI = ABI.LPPair,
 }) => {
-    let chef = {
-        type: '',
-        contract: ''
-    }
-    let pool
-    let lpAddress
+  let chef = {
+    type: "",
+    contract: "",
+  };
+  let pool;
+  let lpAddress;
 
-    chef.type = await checkChefType(chefAddress, deployer)
-    if (chef.type === 'master') {
-        const contract = new ethers.Contract(chefAddress, masterchefABI, deployer);
-        pool = await contract.poolInfo(poolId);
-        lpAddress = ethers.utils.getAddress(pool.lpToken);
-    } 
-    if (chef.type === 'mini') {
-        const contract = new ethers.Contract(chefAddress, minichefABI, deployer);
-        pool = await contract.lpToken(poolId)
-        lpAddress = ethers.utils.getAddress(pool);
-    }
-    const lpContract = new ethers.Contract(lpAddress, LPPairABI, deployer);
-    let lpPair = {
-        name: '',
-        address: lpAddress,
-        token0: {
-            address: await lpContract.token0(),
-            symbol: '',
-            decimals: '',
-        },
-        token1: {
-            address: await lpContract.token1(),
-            symbol: '',
-            decimals: '',
-        },
-        decimals: `1e${await lpContract.decimals()}`,
-    };
+  chef.type = await checkChefType(chefAddress, deployer);
+  if (chef.type === "master") {
+    const contract = new ethers.Contract(chefAddress, masterchefABI, deployer);
+    pool = await contract.poolInfo(poolId);
+    lpAddress = ethers.utils.getAddress(pool.lpToken);
+  }
+  if (chef.type === "mini") {
+    const contract = new ethers.Contract(chefAddress, minichefABI, deployer);
+    pool = await contract.lpToken(poolId);
+    lpAddress = ethers.utils.getAddress(pool);
+  }
+  const lpContract = new ethers.Contract(lpAddress, LPPairABI, deployer);
+  let lpPair = {
+    name: "",
+    address: lpAddress,
+    token0: {
+      address: await lpContract.token0(),
+      symbol: "",
+      decimals: "",
+    },
+    token1: {
+      address: await lpContract.token1(),
+      symbol: "",
+      decimals: "",
+    },
+    decimals: `1e${await lpContract.decimals()}`,
+  };
 
-    const token0Contract = new ethers.Contract(lpPair.token0.address, ABI.ERC20, deployer);
-    lpPair.token0.symbol = await token0Contract.symbol();
-    if(lpPair.token0.symbol == addressBook[chainName].tokens.WNATIVE.symbol) lpPair.token0.symbol = lpPair.token0.symbol.replace('W','')
-    lpPair.token0.decimals = `1e${await token0Contract.decimals()}`;
-    
-    const token1Contract = new ethers.Contract(lpPair.token1.address, ABI.ERC20, deployer);
-    lpPair.token1.symbol = await token1Contract.symbol();
-    if(lpPair.token1.symbol == addressBook[chainName].tokens.WNATIVE.symbol) lpPair.token1.symbol = lpPair.token1.symbol.replace('W','')
-    lpPair.token1.decimals = `1e${await token1Contract.decimals()}`;
+  const token0Contract = new ethers.Contract(lpPair.token0.address, ABI.ERC20, deployer);
+  lpPair.token0.symbol = await token0Contract.symbol();
+  lpPair.token0.decimals = `1e${await token0Contract.decimals()}`;
 
-    lpPair.name = `${lpPair.token0.symbol}-${lpPair.token1.symbol}`
+  const token1Contract = new ethers.Contract(lpPair.token1.address, ABI.ERC20, deployer);
+  lpPair.token1.symbol = await token1Contract.symbol();
+  lpPair.token1.decimals = `1e${await token1Contract.decimals()}`;
 
-    return lpPair
-}
+  if (checkIsWnative(lpPair.token0.symbol, chainName)) {
+    lpPair.name = `${lpPair.token1.symbol}-${removeWofWnative(lpPair.token0.symbol, chainName)}`;
+  } else {
+    lpPair.name = `${lpPair.token0.symbol}-${removeWofWnative(lpPair.token1.symbol, chainName)}`;
+  }
+
+  return lpPair;
+};
+
+/**
+ * Remove W from Wrapped native
+ * @param {String} symbol token symbol
+ * @param {String} chainName Chain name
+ * @returns {String}
+ */
+const removeWofWnative = (symbol, chainName) => {
+  if (checkIsWnative(symbol, chainName)) return symbol.replace("W", "");
+  return symbol;
+};
+
+/**
+ * Check is native
+ * @param {String} symbol token symbol
+ * @param {String} chainName Chain name
+ * @returns {String}
+ */
+const checkIsWnative = (symbol, chainName) => {
+  if (symbol == addressBook[chainName].tokens.WNATIVE.symbol) return true;
+  return false;
+};
 
 /**
  * Check which kind of Chef is
@@ -84,47 +108,41 @@ const getLpPair = async ({
  * @returns {String} 'mini', 'master' or 'no detected'
  */
 const checkChefType = async (chefAddress, deployer) => {
-    let chef = 'No detected'
-    try {
-        const contract = new ethers.Contract(chefAddress, ABI.masterchef, deployer);
-        const pool = await contract.poolInfo(0)
-        if (ethers.utils.isAddress(pool.lpToken)) chef = 'master'
-    } catch (error) {}
-    try {
-        const contract = new ethers.Contract(chefAddress, ABI.minichef, deployer);
-        const pool = await contract.lpToken(0)
-        if (ethers.utils.isAddress(pool)) chef = 'mini'
-    } catch (error) {}
-    return chef
-}
-
+  let chef = "No detected";
+  try {
+    const contract = new ethers.Contract(chefAddress, ABI.masterchef, deployer);
+    const pool = await contract.poolInfo(0);
+    if (ethers.utils.isAddress(pool.lpToken)) chef = "master";
+  } catch (error) {}
+  try {
+    const contract = new ethers.Contract(chefAddress, ABI.minichef, deployer);
+    const pool = await contract.lpToken(0);
+    if (ethers.utils.isAddress(pool)) chef = "mini";
+  } catch (error) {}
+  return chef;
+};
 
 /**
  * Resolve Swap Route
  * @param {address} input reward token
  * @param {array} proxies array with proxies token address
- * @param {address} preferredProxy 
- * @param {address} output 
- * @param {address} wnative 
- * @returns 
+ * @param {address} preferredProxy
+ * @param {address} output
+ * @param {address} wnative
+ * @returns
  */
-const resolveSwapRoute = ({
-    input,
-    proxies,
-    preferredProxy,
-    output,
-    wnative
-}) => {
-    if ([preferredProxy, output].includes(wnative)) { // Native pair
-        if (output === wnative) return [wnative];
-        return [wnative, output];
-    }
+const resolveSwapRoute = ({ input, proxies, preferredProxy, output, wnative }) => {
+  if ([preferredProxy, output].includes(wnative)) {
+    // Native pair
+    if (output === wnative) return [wnative];
+    return [wnative, output];
+  }
 
-    if (input === output) return [input];
-    if (proxies.includes(output)) return [input, output];
-    if (proxies.includes(preferredProxy)) return [input, preferredProxy, output];
-    return [input, proxies.filter(input)[0], output]; // TODO: Choose the best proxy
-}
+  if (input === output) return [input];
+  if (proxies.includes(output)) return [input, output];
+  if (proxies.includes(preferredProxy)) return [input, preferredProxy, output];
+  return [input, proxies.filter(t => t != input)[0], output]; // TODO: Choose the best proxy
+};
 
 /**
  * Writer - create a instance for a output log writer
@@ -132,19 +150,19 @@ const resolveSwapRoute = ({
  * @param {String} [fileName] output filename - default 'ouput'
  * @param {timestamp} [timestamp] date time - default now
  */
-const writer = ({
-    dirname,
-    filename = 'output',
-    timestamp = Date.now()
-}) => (data) => {
-    if (dirname === undefined) throw new Error('no dirname argument passed')
-    let time = new Date(timestamp).toISOString().replace(/(:|\.)/g, '-')
-    fs.appendFileSync(`${dirname}/${filename}-${time}.txt`, data)
-}
+const writer =
+  ({ dirname, filename = "output", timestamp = Date.now() }) =>
+  data => {
+    if (dirname === undefined) throw new Error("no dirname argument passed");
+    let time = new Date(timestamp).toISOString().replace(/(:|\.)/g, "-");
+    fs.appendFileSync(`${dirname}/${filename}-${time}.txt`, data);
+  };
 
 module.exports = {
-    getLpPair,
-    resolveSwapRoute,
-    checkChefType,
-    writer
-}
+  getLpPair,
+  resolveSwapRoute,
+  checkIsWnative,
+  removeWofWnative,
+  checkChefType,
+  writer,
+};
