@@ -8,13 +8,14 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IWrappedNative.sol";
-import "../../interfaces/iron/IIronSwapLP.sol";
 import "../../interfaces/iron/IIronSwap.sol";
+import "../../interfaces/iron/IIronSwapLP.sol";
+import "../../interfaces/iron/IIronSwapRouter.sol";
 import "../../interfaces/sushi/IMiniChefV2.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyIronStableLP is StratManager, FeeManager {
+contract StrategyIronMetaLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -26,9 +27,12 @@ contract StrategyIronStableLP is StratManager, FeeManager {
 
     // Third party contracts
     address constant public masterchef = address(0x1fD1259Fa8CdC60c6E8C86cfA592CA1b8403DFaD);
+    address constant public ironRouter = address(0x4C96C61AF64e78F848fB2Ec965C4da08430dF348);
     uint256 public poolId;
-    address public pool;
-    uint256 public poolSize;
+    address public metaPool;
+    address public basePool;
+    uint256 public metaPoolSize;
+    uint256 public basePoolSize;
     uint8 public depositIndex;
 
     // Routes
@@ -59,9 +63,13 @@ contract StrategyIronStableLP is StratManager, FeeManager {
         poolId = _poolId;
         depositIndex = _depositIndex;
 
-        pool = IIronSwapLP(want).swap();
-        poolSize = IIronSwap(pool).getNumberOfTokens();
-        depositToken = IIronSwap(pool).getToken(depositIndex);
+        metaPool = IIronSwapLP(want).swap();
+        metaPoolSize = IIronSwap(metaPool).getNumberOfTokens();
+
+        address basePoolLP = IIronSwap(metaPool).getToken(0);
+        basePool = IIronSwapLP(basePoolLP).swap();
+        basePoolSize = IIronSwap(basePool).getNumberOfTokens();
+        depositToken = IIronSwap(basePool).getToken(depositIndex);
 
         require(_outputToNativeRoute[0] == output, "toNative[0] != output");
         outputToNativeRoute = _outputToNativeRoute;
@@ -71,6 +79,8 @@ contract StrategyIronStableLP is StratManager, FeeManager {
         outputToDepositRoute = _outputToDepositRoute;
 
         _giveAllowances();
+        setCallFee(11);
+        setWithdrawalFee(1);
     }
 
     // puts the funds to work
@@ -156,10 +166,11 @@ contract StrategyIronStableLP is StratManager, FeeManager {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToDepositRoute, address(this), block.timestamp);
 
+        uint256[] memory metaAmounts = new uint256[](metaPoolSize);
         uint256 depositBal = IERC20(depositToken).balanceOf(address(this));
-        uint256[] memory amounts = new uint256[](poolSize);
+        uint256[] memory amounts = new uint256[](basePoolSize);
         amounts[depositIndex] = depositBal;
-        IIronSwap(pool).addLiquidity(amounts, 0, block.timestamp);
+        IIronSwapRouter(ironRouter).addLiquidity(metaPool, basePool, metaAmounts, amounts, 0, block.timestamp);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -215,13 +226,13 @@ contract StrategyIronStableLP is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(masterchef, type(uint).max);
         IERC20(output).safeApprove(unirouter, type(uint).max);
-        IERC20(depositToken).safeApprove(pool, type(uint).max);
+        IERC20(depositToken).safeApprove(ironRouter, type(uint).max);
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(masterchef, 0);
         IERC20(output).safeApprove(unirouter, 0);
-        IERC20(depositToken).safeApprove(pool, 0);
+        IERC20(depositToken).safeApprove(ironRouter, 0);
     }
 
     function outputToNative() external view returns(address[] memory) {
