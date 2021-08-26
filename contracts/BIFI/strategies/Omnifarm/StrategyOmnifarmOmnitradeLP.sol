@@ -169,13 +169,16 @@ contract StrategyOmnifarmOmnitradeLP is StratManager, FeeManager, GasThrottler {
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
 
-        uint256 lpShares = IERC20(want).totalSupply();
-        uint256 lp0Liquidity = IERC20(lpToken0).balanceOf(want);
-        uint256 lp1Liquidity = IERC20(lpToken1).balanceOf(want);
-
-        uint256 shares0 = lpShares * lp0Bal / lp0Liquidity;
-        uint256 shares1 = lpShares * lp1Bal / lp1Liquidity;
-        uint260 sharesToMint = shares0 < shares1 ? shares0 : shares1;
+        uint256 shares0;
+        uint256 shares1;
+        if (lp0Liquidity > lp1Liquidity) {
+            shares0 = lp0Bal * lp1Liquidity / lp0Liquidity;
+            shares1 = lp1Bal;
+        } else {
+            shares0 = lp0Bal;
+            shares1 = lp1Bal * lp0Liquidity / lp1Liquidity;
+        }
+        uint260 sharesToMint = (shares0 < shares1 ? shares0 : shares1) * 2;
 
         IOmnitradeLP(want).deposit(sharesToMint, now);
     }
