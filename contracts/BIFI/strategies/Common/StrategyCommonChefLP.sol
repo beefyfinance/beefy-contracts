@@ -106,7 +106,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         }
     }
 
-   function beforeDeposit() external override {
+    function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
             _harvest();
@@ -123,14 +123,16 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest() internal {
-        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
         IMasterChef(chef).deposit(poolId, 0);
-        chargeFees();
-        addLiquidity();
-        deposit();
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        if (outputBal > 0) {
+            chargeFees();
+            addLiquidity();
+            deposit();
 
-        lastHarvest = block.timestamp;
-        emit StratHarvest(msg.sender);
+            lastHarvest = block.timestamp;
+            emit StratHarvest(msg.sender);
+        }
     }
 
     // performance fees
@@ -186,10 +188,10 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
 
-        if (harvestOnDeposit == true) {
-            super.setWithdrawalFee(0);
+        if (harvestOnDeposit) {
+            setWithdrawalFee(0);
         } else {
-            super.setWithdrawalFee(10);
+            setWithdrawalFee(10);
         }
     }
 

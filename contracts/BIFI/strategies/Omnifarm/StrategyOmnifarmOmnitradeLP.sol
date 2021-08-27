@@ -178,7 +178,7 @@ contract StrategyOmnifarmOmnitradeLP is StratManager, FeeManager, GasThrottler {
             shares0 = lp0Bal;
             shares1 = lp1Bal * lp0Liquidity / lp1Liquidity;
         }
-        uint260 sharesToMint = (shares0 < shares1 ? shares0 : shares1) * 2;
+        uint256 sharesToMint = (shares0 < shares1 ? shares0 : shares1) * 2;
 
         IOmnitradeLP(want).deposit(sharesToMint, now);
     }
