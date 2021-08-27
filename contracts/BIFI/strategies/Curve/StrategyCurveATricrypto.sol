@@ -20,11 +20,11 @@ contract StrategyCurveATricrypto is StratManager, FeeManager {
     address constant public wmatic = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
     address constant public crv = address(0x172370d5Cd63279eFa6d502DAB29171933a610AF);
     address constant public eth = address(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619);
-    address constant public want = address(0xbece5d20A8a104c54183CC316C8286E3F00ffC71);
+    address constant public want = address(0xdAD97F7713Ae9437fa9249920eC8507e5FbB23d3);
 
     // Third party contracts
-    address constant public swap = address(0x3Fa8ebd5d16445b42e0b6A54678718C94eA99aBC);
-    address constant public rewards = address(0x9bd996Db02b3f271c6533235D452a56bc2Cd195a);
+    address constant public swap = address(0x1d8b86e3D88cDb2d34688e87E72F388Cb541B7C8);
+    address constant public rewards = address(0x3B6B158A76fd8ccc297538F454ce7B4787778c7C);
 
     // Routes
     address[] public wmaticToEthRoute = [wmatic, eth];
