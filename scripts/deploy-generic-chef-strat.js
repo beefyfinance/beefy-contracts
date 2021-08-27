@@ -4,35 +4,35 @@ const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const { getNetworkRpc } = require("../utils/getNetworkRpc");
 const { addressBook } = require("blockchain-addressbook")
-const { YFI: { address: YFI }, ETH: { address: ETH }, WFTM: { address: WFTM }, BOO: { address: BOO} } = addressBook.fantom.tokens;
-const { spookyswap, beefyfinance } = addressBook.fantom.platforms;
+const { BUSD: { address: BUSD }, WBNB: { address: WBNB }, CAKE: { address: CAKE }, PHA: { address: PHA} } = addressBook.bsc.tokens;
+const { pancake, beefyfinance } = addressBook.bsc.platforms;
 
 const ethers = hardhat.ethers;
 
-const want = web3.utils.toChecksumAddress("0x0845c0bfe75691b1e21b24351aac581a7fb6b7df");
+const want = web3.utils.toChecksumAddress("0x4ddd56e2f34338839BB5953515833950eA680aFb");
 
 const vaultParams = {
-  mooName: "Moo Boo YFI-ETH",
-  mooSymbol: "mooBooYFI-ETH",
+  mooName: "Moo CakeV2 PHA-BUSD",
+  mooSymbol: "mooCakeV2PHA-BUSD",
   delay: 21600,
 }
 
 const strategyParams = {
   want: want,
-  poolId: 26,
-  chef: spookyswap.masterchef,
-  unirouter: spookyswap.router,
+  poolId: 451,
+  chef: pancake.masterchef,
+  unirouter: pancake.router,
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [ BOO, WFTM ],
-  outputToLp0Route: [ BOO, ETH, YFI ],
-  outputToLp1Route: [ BOO, ETH ]
+  outputToNativeRoute: [ CAKE, WBNB ],
+  outputToLp0Route: [ CAKE, BUSD, PHA ],
+  outputToLp1Route: [ CAKE, BUSD ]
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonChefLP"
+  strategy: "StrategyCommonChefLPBsc"
 }
 
 async function main() {
@@ -73,6 +73,7 @@ async function main() {
 
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
+  console.log("Want:", strategyParams.want);
 
   if (hardhat.network.name === "bsc") {
     await registerSubsidy(vault.address, deployer);

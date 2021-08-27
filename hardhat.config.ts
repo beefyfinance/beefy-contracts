@@ -31,7 +31,7 @@ const config: DeploymentConfig = {
       accounts: deployerAccount,
     },
     polygon: {
-      url: "https://rpc-mainnet.maticvigil.com/v1/de4204cef56aa2763bc505469cd11605e367e114",
+      url: "https://polygon-rpc.com/",
       chainId: 137,
       accounts: deployerAccount,
     },
@@ -59,7 +59,7 @@ const config: DeploymentConfig = {
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: "JD7Q22W6E6W8G9P186PZDEHJGGJ32RN4SR",
+    apiKey: "",
   },
   solidity: {
     compilers: [

@@ -123,11 +123,13 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest() internal {
-        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
         IMasterChef(chef).deposit(poolId, 0);
-        chargeFees();
-        addLiquidity();
-        deposit();
+        uint outputBal = IERC20(output).balanceOf(address(this));
+            if (outputBal > 0) {
+                chargeFees();
+                addLiquidity();
+                deposit();
+            }
 
         lastHarvest = block.timestamp;
         emit StratHarvest(msg.sender);
