@@ -7,12 +7,12 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
-import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IMasterChef.sol";
+import "../../interfaces/yel/IYelChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
+import "../../utils/GasThrottler.sol";
 
-contract StrategyCommonChefLP is StratManager, FeeManager {
+contract StrategyYelChefSingle is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -20,20 +20,18 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     address public native;
     address public output;
     address public want;
-    address public lpToken0;
-    address public lpToken1;
 
     // Third party contracts
     address public chef;
     uint256 public poolId;
 
-    bool public harvestOnDeposit;
     uint256 public lastHarvest;
 
     // Routes
     address[] public outputToNativeRoute;
-    address[] public outputToLp0Route;
-    address[] public outputToLp1Route;
+    address[] public outputToWantRoute;
+
+    bool public harvestOnDeposit = true;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -50,8 +48,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         address _strategist,
         address _beefyFeeRecipient,
         address[] memory _outputToNativeRoute,
-        address[] memory _outputToLp0Route,
-        address[] memory _outputToLp1Route
+        address[] memory _outputToWantRoute
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         poolId = _poolId;
@@ -61,37 +58,31 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
 
-        // setup lp routing
-        lpToken0 = IUniswapV2Pair(want).token0();
-        require(_outputToLp0Route[0] == output, "outputToLp0Route[0] != output");
-        require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0, "outputToLp0Route[last] != lpToken0");
-        outputToLp0Route = _outputToLp0Route;
-
-        lpToken1 = IUniswapV2Pair(want).token1();
-        require(_outputToLp1Route[0] == output, "outputToLp1Route[0] != output");
-        require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1, "outputToLp1Route[last] != lpToken1");
-        outputToLp1Route = _outputToLp1Route;
+        require(_outputToWantRoute[0] == output, "toDeposit[0] != output");
+        require(_outputToWantRoute[_outputToWantRoute.length - 1] == want, "!want");
+        outputToWantRoute = _outputToWantRoute;
 
         _giveAllowances();
+        setWithdrawalFee(0);
     }
 
     // puts the funds to work
     function deposit() public whenNotPaused {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal > 0) {
-            IMasterChef(chef).deposit(poolId, wantBal);
+            IYelChef(chef).deposit(poolId, wantBal);
         }
     }
 
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal < _amount) {
-            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
-            wantBal = IERC20(want).balanceOf(address(this));
+            IYelChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            wantBal = balanceOfWant();
         }
 
         if (wantBal > _amount) {
@@ -113,7 +104,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused onlyEOA gasThrottle {
         _harvest();
     }
 
@@ -123,11 +114,11 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest() internal {
-        IMasterChef(chef).deposit(poolId, 0);
+        IYelChef(chef).deposit(poolId, 0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
             chargeFees();
-            addLiquidity();
+            swapRewards();
             deposit();
 
             lastHarvest = block.timestamp;
@@ -152,21 +143,12 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         IERC20(native).safeTransfer(strategist, strategistFee);
     }
 
-    // Adds liquidity to AMM and gets more LP tokens.
-    function addLiquidity() internal {
-        uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
-
-        if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), now);
+    // swap rewards to {want}
+    function swapRewards() internal {
+        if (want != output) {
+            uint256 outputBal = IERC20(output).balanceOf(address(this));
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), block.timestamp);
         }
-
-        if (lpToken1 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), now);
-        }
-
-        uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
-        uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -181,34 +163,24 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount,) = IMasterChef(chef).userInfo(poolId, address(this));
+        (uint256 _amount, ) = IYelChef(chef).userInfo(poolId, address(this));
         return _amount;
-    }
-
-    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
-        harvestOnDeposit = _harvestOnDeposit;
-
-        if (harvestOnDeposit) {
-            setWithdrawalFee(0);
-        } else {
-            setWithdrawalFee(10);
-        }
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IYelChef(chef).emergencyWithdraw(poolId);
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
         IERC20(want).transfer(vault, wantBal);
     }
 
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IYelChef(chef).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {
@@ -228,30 +200,22 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(chef, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
-
-        IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
-
-        IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, 0);
     }
 
-    function outputToNative() external view returns (address[] memory) {
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+    }
+
+    function outputToNative() public view returns (address[] memory) {
         return outputToNativeRoute;
     }
 
-    function outputToLp0() external view returns (address[] memory) {
-        return outputToLp0Route;
-    }
-
-    function outputToLp1() external view returns (address[] memory) {
-        return outputToLp1Route;
+    function outputToWant() public view returns (address[] memory) {
+        return outputToWantRoute;
     }
 }

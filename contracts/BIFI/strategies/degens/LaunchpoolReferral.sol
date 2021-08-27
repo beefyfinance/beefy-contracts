@@ -22,7 +22,7 @@ contract LaunchpoolReferral is Ownable {
     address public pcsV2Router = address(0x10ED43C718714eb63d5aA57B78B54704E256024E);
     address public router = pcsV2Router;
 
-    address public honey = address(0xFa363022816aBf82f18a9C2809dCd2BB393F6AC5);
+    address public bear = address(0xc3EAE9b061Aa0e1B9BD3436080Dc57D2d63FEdc1);
 
     mapping(address => bool) public admins;
 
@@ -69,8 +69,8 @@ contract LaunchpoolReferral is Ownable {
         payable(owner()).transfer(_amount);
     }
 
-    function honeyToBNB() external onlyAdmin {
-        swapToBNB(honey, pcsV2Router);
+    function bearToBNB() external onlyAdmin {
+        swapToBNB(bear, pcsV2Router);
     }
 
     receive() external payable {}

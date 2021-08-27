@@ -8,11 +8,13 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IMasterChef.sol";
+import "../../interfaces/yel/IYelChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
+import "../../utils/GasThrottler.sol";
 
-contract StrategyCommonChefLP is StratManager, FeeManager {
+
+contract StrategyYelChefLP is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -80,7 +82,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IMasterChef(chef).deposit(poolId, wantBal);
+            IYelChef(chef).deposit(poolId, wantBal);
         }
     }
 
@@ -90,7 +92,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            IYelChef(chef).withdraw(poolId, _amount.sub(wantBal));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -106,14 +108,14 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         }
     }
 
-    function beforeDeposit() external override {
+   function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
             _harvest();
         }
     }
 
-    function harvest() external virtual whenNotPaused onlyEOA {
+    function harvest() external virtual whenNotPaused onlyEOA gasThrottle {
         _harvest();
     }
 
@@ -123,16 +125,13 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest() internal {
-        IMasterChef(chef).deposit(poolId, 0);
-        uint256 outputBal = IERC20(output).balanceOf(address(this));
-        if (outputBal > 0) {
-            chargeFees();
-            addLiquidity();
-            deposit();
+        IYelChef(chef).deposit(poolId, 0);
+        chargeFees();
+        addLiquidity();
+        deposit();
 
-            lastHarvest = block.timestamp;
-            emit StratHarvest(msg.sender);
-        }
+        lastHarvest = block.timestamp;
+        emit StratHarvest(msg.sender);
     }
 
     // performance fees
@@ -181,17 +180,17 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount,) = IMasterChef(chef).userInfo(poolId, address(this));
+        (uint256 _amount,) = IYelChef(chef).userInfo(poolId, address(this));
         return _amount;
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
 
-        if (harvestOnDeposit) {
-            setWithdrawalFee(0);
+        if (harvestOnDeposit == true) {
+            super.setWithdrawalFee(0);
         } else {
-            setWithdrawalFee(10);
+            super.setWithdrawalFee(10);
         }
     }
 
@@ -199,7 +198,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IYelChef(chef).emergencyWithdraw(poolId);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -208,7 +207,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IYelChef(chef).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {
