@@ -11,8 +11,7 @@ import "../Common/FeeManager.sol";
 import "../../utils/GasThrottler.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
-import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/omnifarm/IOmnitradeLP.sol";
+import "../../interfaces/omnifarm/IOmnitradeCurve.sol";
 import "../../interfaces/omnifarm/IOmnifarmFarm.sol";
 
 contract StrategyOmnifarmOmnitradeLP is StratManager, FeeManager, GasThrottler {
@@ -62,12 +61,12 @@ contract StrategyOmnifarmOmnitradeLP is StratManager, FeeManager, GasThrottler {
         outputToNativeRoute = _outputToNativeRoute;
 
         // setup lp routing
-        lpToken0 = IUniswapV2Pair(want).token0();
+        lpToken0 = IOmnitradeCurve(want).numeraires(0);
         require(_outputToLp0Route[0] == output, "outputToLp0Route[0] != output");
         require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0, "outputToLp0Route[last] != lpToken0");
         outputToLp0Route = _outputToLp0Route;
 
-        lpToken1 = IUniswapV2Pair(want).token1();
+        lpToken1 = IOmnitradeCurve(want).numeraires(1);
         require(_outputToLp1Route[0] == output, "outputToLp1Route[0] != output");
         require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1, "outputToLp1Route[last] != lpToken1");
         outputToLp1Route = _outputToLp1Route;
@@ -153,10 +152,10 @@ contract StrategyOmnifarmOmnitradeLP is StratManager, FeeManager, GasThrottler {
     function addLiquidity() internal {
         uint256 outputBalance = IERC20(output).balanceOf(address(this));
 
-        uint256 lp0Liquidity = IERC20(lpToken0).balanceOf(want);
-        uint256 lp1Liquidity = IERC20(lpToken1).balanceOf(want);
-        uint256 output0share = outputBalance * lp0Liquidity / (lp0Liquidity + lp1Liquidity);
-        uint256 output1share = outputBalance * lp1Liquidity / (lp0Liquidity + lp1Liquidity);
+        uint256 maxDeposit = 1e36;
+        (, uint256[] memory shares) = IOmnitradeCurve(want).viewDeposit(maxDeposit);
+        uint256 output0share = outputBalance * shares[0] / (shares[0] + shares[1]);
+        uint256 output1share = outputBalance * shares[1] / (shares[0] + shares[1]);
 
         if (lpToken0 != output) {
             IUniswapRouterETH(unirouter).swapExactTokensForTokens(output0share, 0, outputToLp0Route, address(this), now);
@@ -169,18 +168,11 @@ contract StrategyOmnifarmOmnitradeLP is StratManager, FeeManager, GasThrottler {
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
 
-        uint256 shares0;
-        uint256 shares1;
-        if (lp0Liquidity > lp1Liquidity) {
-            shares0 = lp0Bal * lp1Liquidity / lp0Liquidity;
-            shares1 = lp1Bal;
-        } else {
-            shares0 = lp0Bal;
-            shares1 = lp1Bal * lp0Liquidity / lp1Liquidity;
-        }
-        uint256 sharesToMint = (shares0 < shares1 ? shares0 : shares1) * 2;
+        uint256 deposit0 = lp0Bal * maxDeposit / shares[0];
+        uint256 deposit1 = lp1Bal * maxDeposit / shares[1];
 
-        IOmnitradeLP(want).deposit(sharesToMint, now);
+        uint256 _deposit = deposit0 < deposit1 ? deposit0 : deposit1;
+        IOmnitradeCurve(want).deposit(_deposit, now + 1);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -243,18 +235,18 @@ contract StrategyOmnifarmOmnitradeLP is StratManager, FeeManager, GasThrottler {
         IERC20(want).safeApprove(pool, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
 
-        IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
+        IERC20(lpToken0).safeApprove(want, 0);
+        IERC20(lpToken0).safeApprove(want, uint256(-1));
 
-        IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint256(-1));
+        IERC20(lpToken1).safeApprove(want, 0);
+        IERC20(lpToken1).safeApprove(want, uint256(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(pool, 0);
         IERC20(output).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, 0);
+        IERC20(lpToken0).safeApprove(want, 0);
+        IERC20(lpToken1).safeApprove(want, 0);
     }
 
     function outputToNative() external view returns (address[] memory) {
