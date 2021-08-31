@@ -38,6 +38,7 @@ async function main() {
         (swap.name.toLocaleLowerCase() == process.env.PLATFORM.toLocaleLowerCase()) &
         (swap.chain == process.env.CHAIN_NAME)
     );
+    process.env.PLATFORM_STRATEGY = PLATFORM.strategy;
     process.env.CHAIN_NAME = PLATFORM.chain;
     process.env.PLATFORM_NAME = PLATFORM.name;
     beefyApiLp = PLATFORM.beefyApiLp;
