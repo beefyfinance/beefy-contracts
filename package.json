@@ -1,5 +1,6 @@
 {
   "name": "beefy-proto",
+  "license": "UNLICENSED",
   "version": "0.5.0",
   "private": true,
   "dependencies": {
@@ -28,21 +29,9 @@
     "all": "yarn clean && yarn compile && yarn net",
     "test": "hardhat test --network localhost test/prod/VaultLifecycle.test.js",
     "test:vault": "hardhat test --network localhost test/prod/VaultLifecycle.test.js",
-    "test:common:farm": "hardhat run --network localhost scripts/common/deploy-farm-and-test.js",
-    "test:common:iterate": "hardhat run scripts/common/iterate-over-swap.js",
-    "deploy:common:farm": "hardhat run scripts/common/deploy-farm-and-test.js",
-    "deploy:bsc:common:farm": "hardhat run --network bsc scripts/common/deploy-farm-and-test.js",
-    "test:bsc:pancake:farm": "hardhat run --network localhost scripts/bsc/pancake/deploy-farm-and-test.js",
-    "deploy:bsc:pancake:farm": "hardhat run --network bsc scripts/bsc/pancake/deploy-farm.js",
-    "test:bsc:ape:farm": "hardhat run --network localhost scripts/bsc/ape/deploy-farm-and-test.js",
-    "deploy:bsc:ape:farm": "hardhat run --network bsc scripts/bsc/ape/deploy-farm.js",
-    "test:polygon:sushi:farm": "hardhat run --network localhost scripts/polygon/sushi/deploy-farm.js",
-    "deploy:polygon:sushi:farm": "hardhat run --network polygon scripts/polygon/sushi/deploy-farm.js",
-    "deploy-strat:bsc": "hardhat run --network bsc scripts/deploy-strat-with-pool.js",
-    "deploy-strat:lendhub": "hardhat run --network heco scripts/deploy-strat-lendhub.js",
-    "deploy-strat:polygon": "hardhat run --network polygon scripts/deploy-strat-with-pool.js",
-    "deploy-pool:bsc": "hardhat run --network bsc scripts/deploy-launchpad-pool.js",
-    "notify:bsc": "hardhat run --network bsc scripts/notify-launchpools.js"
+    "test:automation:farm": "hardhat run --network localhost scripts/automation/deploy-and-test.js",
+    "test:automation:iterate": "hardhat run scripts/automation/iterate-over-swap.js",
+    "deploy:automation": "hardhat run scripts/automation/deploy-and-test.js"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.1",

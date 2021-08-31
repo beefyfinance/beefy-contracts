@@ -10,7 +10,8 @@ function usage() {
         -pe, --pool-end:         Pool id number until iterate, by default is platform pool id length
         -p, --platform:          Plaform name, by default is "pancakeswap"
         -c, --chain-name:        Chain name, by default is "bsc"
-        -n, --network:           network name, by default is "localhost"
+        -n, --network:           Network name, by default is "localhost"
+        -s, --skip-check:        Skip check if already deployed
 
 USAGE
     exit 1
@@ -35,7 +36,7 @@ function iterate {
 
     for pool in $(seq $POOL_ID_START $POOL_ID_END)
     do 
-        export POOL_ID=$pool && yarn run test:common:iterate --network $NETWORK
+        export POOL_ID=$pool && yarn run test:automation:iterate --network $NETWORK
     done
 }
 
@@ -50,6 +51,7 @@ export POOL_ID_START=99
 export PLATFORM="pancakeswap"
 export CHAIN_NAME="bsc"
 export POOL_ID_END
+export SKIP_CHECK_DEPLOYED
 NETWORK="localhost"
 
 # Check arguments
@@ -74,6 +76,10 @@ while [ "$1" != "" ]; do
     -n | --network)
         shift
         NETWORK=$1
+        ;;
+    -s | --skip-check)
+        shift
+        SKIP_CHECK_DEPLOYED=true
         ;;
     *)
         usage

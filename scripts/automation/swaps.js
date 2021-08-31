@@ -4,19 +4,7 @@ let swaps = [
   {
     chain: "bsc",
     name: "PancakeSwap",
-    prefix: "CakeV2",
-    beefyApiLp: "cakeLp",
-    url: "exchange.pancakeswap.finance/#/",
-    chef: addressBook.bsc.platforms.pancake.masterchef,
-    router: addressBook.bsc.platforms.pancake.router,
-    tokens: {
-      reward: addressBook.bsc.tokens.CAKE,
-      wnative: addressBook.bsc.tokens.WBNB,
-    },
-  },
-  {
-    chain: "bsc",
-    name: "PancakeSwap",
+    strategy: "StrategyCommonChefLPWithGasThrottler",
     prefix: "CakeV2",
     beefyApiLp: "cakeLp",
     url: "exchange.pancakeswap.finance/#/",
@@ -30,6 +18,7 @@ let swaps = [
   {
     chain: "bsc",
     name: "FarmHero",
+    strategy: "",
     prefix: "FarmHero",
     beefyApiLp: "farmhero",
     url: "exchange.pancakeswap.finance/#/",
@@ -40,22 +29,10 @@ let swaps = [
       wnative: addressBook.bsc.tokens.WBNB,
     },
   },
-  // {
-  //     chain: 'bsc',
-  //     name: 'AutoFarm',
-  //     prefix: 'auto',
-  //     beefyApiLp:'auto',
-  //     url: 'exchange.pancakeswap.finance/#/',
-  //     chef: addressBook.bsc.platforms.pancake.masterchef,
-  //     router: addressBook.bsc.platforms.pancake.router,
-  //     tokens: {
-  //         reward: addressBook.bsc.tokens.CAKE,
-  //         wnative: addressBook.bsc.tokens.WBNB
-  //     }
-  // },
   {
     chain: "bsc",
     name: "ApeSwap",
+    strategy: "StrategyCommonChefLPWithGasThrottler",
     prefix: "Banana",
     beefyApiLp: "apeLp",
     isDegens: true,
@@ -70,6 +47,7 @@ let swaps = [
   {
     chain: "polygon",
     name: "ApeSwap",
+    strategy: "",
     prefix: "Ape",
     beefyApiLp: "apeLp",
     isDegens: true,
@@ -84,6 +62,7 @@ let swaps = [
   {
     chain: "bsc",
     name: "Bakery",
+    strategy: "StrategyCommonChefLPWithGasThrottler",
     prefix: "Bakery",
     beefyApiLp: "bakeryLp",
     url: "bakeryswap.org/#/",
@@ -97,6 +76,7 @@ let swaps = [
   {
     chain: "bsc",
     name: "Kebab",
+    strategy: "StrategyCommonChefLPWithGasThrottler",
     prefix: "kebab",
     beefyApiLp: "kebabLp",
     url: "swap.kebabfinance.com/#/",
@@ -110,6 +90,7 @@ let swaps = [
   {
     chain: "polygon",
     name: "JetSwap",
+    strategy: "",
     prefix: "jetswap",
     beefyApiLp: "jetswapLp",
     url: "exchange.jetswap.finance/#/",
@@ -123,6 +104,7 @@ let swaps = [
   {
     chain: "bsc",
     name: "JetSwap",
+    strategy: "StrategyCommonChefLPWithGasThrottler",
     prefix: "Jetswap",
     beefyApiLp: "jetswapLp",
     url: "exchange.jetswap.finance/#/",
@@ -136,7 +118,8 @@ let swaps = [
   {
     chain: "bsc",
     name: "Mdex",
-    prefix: "Mdex-bsc",
+    strategy: "StrategyMdexChefLPWithGasThrottler",
+    prefix: "Mdex",
     beefyApiLp: "mdexBscLp",
     url: "exchange.pancakeswap.finance/#/",
     chef: addressBook.bsc.platforms.mdex.masterchef,
@@ -145,10 +128,14 @@ let swaps = [
       reward: addressBook.bsc.tokens.MDX,
       wnative: addressBook.bsc.tokens.WNATIVE,
     },
+    contracts: {
+      strategy: "",
+    },
   },
   {
     chain: "bsc",
     name: "Wault",
+    strategy: "",
     prefix: "Wex",
     beefyApiLp: "waultLp",
     url: "swap.wault.finance/bsc/index.html#",
@@ -162,6 +149,7 @@ let swaps = [
   {
     chain: "polygon",
     name: "Wault",
+    strategy: "",
     prefix: "wex",
     beefyApiLp: "waultLp",
     url: "swap.wault.finance/polygon/index.html#",
@@ -175,6 +163,7 @@ let swaps = [
   {
     chain: "polygon",
     name: "Sushi",
+    strategy: "",
     prefix: "Sushi",
     beefyApiLp: "sushiLp",
     url: "app.sushi.com",
@@ -188,6 +177,7 @@ let swaps = [
   {
     chain: "polygon",
     name: "Polygonfarm",
+    strategy: "",
     prefix: "Polygonfarm",
     beefyApiLp: "polycatQuickLp",
     url: "quickswap.exchange",
@@ -201,6 +191,7 @@ let swaps = [
   {
     chain: "polygon",
     name: "Polypup",
+    strategy: "",
     prefix: "Polypup",
     beefyApiLp: "polypupLp",
     url: "quickswap.exchange",
@@ -214,6 +205,7 @@ let swaps = [
   {
     chain: "polygon",
     name: "Mai",
+    strategy: "",
     prefix: "Mai",
     beefyApiLp: "maiLp",
     url: "quickswap.exchange",

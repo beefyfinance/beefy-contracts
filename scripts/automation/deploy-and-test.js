@@ -31,7 +31,7 @@ async function main() {
   if (hardhat.network.name === "localhost") process.env.KEEPER = keeper.address;
   try {
     console.log(`\n==> Making contracts for poolId ${process.env.POOL_ID}\n`);
-    await hardhat.run("run", { script: `${__dirname}/deploy-farm.js` });
+    await hardhat.run("run", { script: `${__dirname}/deploy.js` });
     // only in localhost -->
     if (hardhat.network.name === "localhost") {
       console.log(`\n==> Testing contract of poolId: ${process.env.POOL_ID}, address ${VAULT_ADDRESS}\n`);
@@ -39,7 +39,7 @@ async function main() {
     }
     // <-- only in localhost
     console.log(`\n==> Manual testing\n`);
-    await hardhat.run("run", { script: `${__dirname}/manual-test.js` });
+    await hardhat.run("run", { script: `${__dirname}/tests/manual.test.js` });
   } catch (error) {
     console.log("Something happeng, so sad ='( ");
     console.log(error);

@@ -1,4 +1,4 @@
-require('dotenv').config()
+require("dotenv").config();
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
@@ -10,13 +10,13 @@ import { HardhatUserConfig as WithEtherscanConfig } from "hardhat/config";
 type DeploymentConfig = HardhatUserConfig & WithEtherscanConfig;
 
 const DEPLOYER_PK = [`${process.env.DEPLOYER_PK}`];
-const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY
-const BSC_RPC = process.env.BSC_RPC
-const HECO_RPC = process.env.HECO_RPC
-const AVAX_RPC = process.env.AVAX_RPC
-const POLYGON_RPC = process.env.POLYGON_RPC
-const FANTOM_RPC = process.env.FANTOM_RPC
-const LOCALHOST_RPC = process.env.LOCALHOST_RPC
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
+const BSC_RPC = process.env.BSC_RPC;
+const HECO_RPC = process.env.HECO_RPC;
+const AVAX_RPC = process.env.AVAX_RPC;
+const POLYGON_RPC = process.env.POLYGON_RPC;
+const FANTOM_RPC = process.env.FANTOM_RPC;
+const LOCALHOST_RPC = process.env.LOCALHOST_RPC;
 
 const config: DeploymentConfig = {
   defaultNetwork: "localhost",
@@ -99,4 +99,4 @@ const config: DeploymentConfig = {
   },
 };
 
-export default config
+export default config;

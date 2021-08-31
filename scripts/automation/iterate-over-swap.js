@@ -57,10 +57,16 @@ async function main() {
   if (process.env.POOL_ID > Number(length)) throw new Error(`Pool id can not be bigger than ${length}.`);
 
   console.log(`\n===> Iteration ${process.env.POOL_ID} of ${length}\n`);
-  if (deployeds.some(p => (p.poolId == process.env.POOL_ID) & (p.chainId == chainIds(process.env.CHAIN_NAME)))) {
-    console.log(`pool id ${process.env.POOL_ID} already deployed`);
+
+  if (!process.env.SKIP_CHECK_DEPLOYED) {
+    if (deployeds.some(p => (p.poolId == process.env.POOL_ID) & (p.chainId == chainIds(process.env.CHAIN_NAME)))) {
+      console.log(`pool id ${process.env.POOL_ID} already deployed`);
+    } else {
+      await hardhat.run("run", { script: `${__dirname}/deploy-and-test.js` });
+    }
   } else {
-    await hardhat.run("run", { script: `${__dirname}/deploy-farm-and-test.js` });
+    console.log(`Check Already Deployed Skipped`);
+    await hardhat.run("run", { script: `${__dirname}/deploy-and-test.js` });
   }
 }
 

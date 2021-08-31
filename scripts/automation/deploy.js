@@ -14,6 +14,7 @@ const CHAIN_NAME = process.env.CHAIN_NAME || "bsc";
 
 const PLATFORM = {
   name: process.env.PLATFORM_NAME || "PancakeSwap",
+  strategy: process.env.PLATFORM_STRATEGY || "StrategyCommonChefLPWithGasThrottler",
   prefix: process.env.PLATFORM_PREFIX || "CakeV2",
   url: process.env.PLATFORM_URL || "exchange.pancakeswap.finance/#/",
   chef: process.env.PLATFORM_CHEF || addressBook.bsc.platforms.pancake.masterchef,
@@ -35,7 +36,7 @@ const CONTRACTS = {
     params: "",
   },
   strategy: {
-    name: "StrategyCommonChefLP",
+    name: PLATFORM.strategy || "StrategyCommonChefLP",
     address: "",
     params: "",
   },
