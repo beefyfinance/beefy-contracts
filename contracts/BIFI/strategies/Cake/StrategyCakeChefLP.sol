@@ -2,7 +2,7 @@
 
 pragma solidity ^0.6.0;
 
-import "../Common/StrategyCommonChefLP.sol";
+import "../automation/StrategyCommonChefLP.sol";
 import "../../utils/GasThrottler.sol";
 
 contract StrategyCakeChefLP is StrategyCommonChefLP, GasThrottler {
