@@ -177,8 +177,7 @@ contract StrategyScream is StratManager, FeeManager {
             _deleverage();
         } else {
             if (borrowRate == 0) {
-                uint256 supplyReserves = IVToken(iToken).balanceOfUnderlying(address(this)).mul(100 - share);
-                uint256 redeemAmount = IVToken(iToken).balanceOfUnderlying(address(this)).mul(100).sub(supplyReserves).div(100);
+                uint256 redeemAmount = IVToken(iToken).balanceOfUnderlying(address(this)).mul(share).div(100);
                 IVToken(iToken).redeemUnderlying(redeemAmount);
             } else {
                 uint256 repayAmount = reserves.mul(share).div(100);
