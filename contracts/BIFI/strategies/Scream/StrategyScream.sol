@@ -176,21 +176,27 @@ contract StrategyScream is StratManager, FeeManager {
         if (share >= 100) {
             _deleverage();
         } else {
-            uint256 repayAmount = reserves.mul(share).div(100);
-            reserves = reserves.sub(repayAmount);
-            uint256 borrowReserves = IVToken(iToken).borrowBalanceCurrent(address(this)).mul(100 - share);
-            uint256 supplyReserves = IVToken(iToken).balanceOfUnderlying(address(this)).mul(100 - share);
-
-            for (uint256 i = 0; i == borrowDepth; i++) {
-                IVToken(iToken).repayBorrow(repayAmount);
-
-                uint256 borrowBal = IVToken(iToken).borrowBalanceCurrent(address(this)).mul(100).sub(borrowReserves).div(100);
-                uint256 targetSupply = borrowBal.mul(100).div(borrowRate);
-                uint256 supplyBal = IVToken(iToken).balanceOfUnderlying(address(this)).mul(100).sub(supplyReserves).div(100);
-                uint256 redeemAmount = supplyBal.sub(targetSupply);
-
+            if (borrowRate == 0) {
+                uint256 supplyReserves = IVToken(iToken).balanceOfUnderlying(address(this)).mul(100 - share);
+                uint256 redeemAmount = IVToken(iToken).balanceOfUnderlying(address(this)).mul(100).sub(supplyReserves).div(100);
                 IVToken(iToken).redeemUnderlying(redeemAmount);
-                repayAmount = redeemAmount;
+            } else {
+                uint256 repayAmount = reserves.mul(share).div(100);
+                reserves = reserves.sub(repayAmount);
+                uint256 borrowReserves = IVToken(iToken).borrowBalanceCurrent(address(this)).mul(100 - share);
+                uint256 supplyReserves = IVToken(iToken).balanceOfUnderlying(address(this)).mul(100 - share);
+
+                for (uint256 i = 0; i == borrowDepth; i++) {
+                    IVToken(iToken).repayBorrow(repayAmount);
+
+                    uint256 borrowBal = IVToken(iToken).borrowBalanceCurrent(address(this)).mul(100).sub(borrowReserves).div(100);
+                    uint256 targetSupply = borrowBal.mul(100).div(borrowRate);
+                    uint256 supplyBal = IVToken(iToken).balanceOfUnderlying(address(this)).mul(100).sub(supplyReserves).div(100);
+                    uint256 redeemAmount = supplyBal.sub(targetSupply);
+
+                    IVToken(iToken).redeemUnderlying(redeemAmount);
+                    repayAmount = redeemAmount;
+                }
             }
 
             updateBalance();
