@@ -164,7 +164,39 @@ contract StrategyScream is StratManager, FeeManager {
         
         updateBalance();
     }
-    
+
+    /**
+     * @dev Incrementally alternates between paying a representative part of the debt and withdrawing part of the supplied
+     * collateral. Continues to do this until it extracts the required {want} from the system. 1-2% extra is extracted to
+     * ensure the withdrawal goes through
+     */
+    function _deleverageAmount(_amount) internal {
+        uint256 share = _amount.mul(100).div(balanceOf()).add(2);
+
+        if (share >= 100) {
+            _deleverage();
+        } else {
+            uint256 repayAmount = reserves.mul(share).div(100);
+            reserves = reserves.sub(repayAmount);
+            uint256 borrowReserves = IVToken(iToken).borrowBalanceCurrent(address(this)).mul(100 - share);
+            uint256 supplyReserves = IVToken(iToken).balanceOfUnderlying(address(this)).mul(100 - share);
+
+            for (uint256 i = 0; i == borrowDepth; i++) {
+                IVToken(iToken).repayBorrow(repayAmount);
+
+                uint256 borrowBal = IVToken(iToken).borrowBalanceCurrent(address(this)).mul(100).sub(borrowReserves).div(100);
+                uint256 targetSupply = borrowBal.mul(100).div(borrowRate);
+                uint256 supplyBal = IVToken(iToken).balanceOfUnderlying(address(this)).mul(100).sub(supplyReserves).div(100);
+                uint256 redeemAmount = supplyBal.sub(targetSupply);
+
+                IVToken(iToken).redeemUnderlying(redeemAmount);
+                repayAmount = redeemAmount;
+            }
+
+            updateBalance();
+        }
+    }
+
 
     /**
      * @dev Extra safety measure that allows us to manually unwind one level. In case we somehow get into
@@ -180,16 +212,16 @@ contract StrategyScream is StratManager, FeeManager {
 
         uint256 borrowBal = IVToken(iToken).borrowBalanceCurrent(address(this));
         uint256 targetSupply = borrowBal.mul(100).div(_borrowRate);
-        
+
         uint256 supplyBal = IVToken(iToken).balanceOfUnderlying(address(this));
         IVToken(iToken).redeemUnderlying(supplyBal.sub(targetSupply));
-        
+
         wantBal = IERC20(want).balanceOf(address(this));
         reserves = wantBal;
-        
+
         updateBalance();
     }
-    
+
 
 
     /**
@@ -260,8 +292,8 @@ contract StrategyScream is StratManager, FeeManager {
         uint256 wantBal = availableWant();
 
         if (wantBal < _amount) {
-            _deleverage();
-            wantBal = IERC20(want).balanceOf(address(this));
+            _deleverageAmount(_amount);
+            wantBal = availableWant();
         }
 
         if (wantBal > _amount) {
