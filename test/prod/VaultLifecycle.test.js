@@ -73,15 +73,20 @@ describe("VaultLifecycleTest", () => {
     const vaultBal = await vault.balance();
     const pricePerShare = await vault.getPricePerFullShare();
     await delay(5000);
+    const rewardsAvailableBeforeHarvest = await strategy.rewardsAvailable();
+    expect(rewardsAvailableBeforeHarvest).to.be.gt(0);
     await strategy.harvest({ gasPrice: 5000000 });
     const vaultBalAfterHarvest = await vault.balance();
     const pricePerShareAfterHarvest = await vault.getPricePerFullShare();
+    const rewardsAvailableAfterHarvest = await strategy.rewardsAvailable();
 
     await vault.withdrawAll();
     const wantBalFinal = await want.balanceOf(deployer.address);
 
     expect(vaultBalAfterHarvest).to.be.gt(vaultBal);
     expect(pricePerShareAfterHarvest).to.be.gt(pricePerShare);
+    expect(rewardsAvailableBeforeHarvest).to.be.gt(rewardsAvailableAfterHarvest);
+    
     expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
 
     const lastHarvest = await strategy.lastHarvest();
