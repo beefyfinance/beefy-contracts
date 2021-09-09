@@ -217,12 +217,7 @@ describe("VaultLifecycleTest", () => {
   }).timeout(TIMEOUT);
 
   it("has withdraw fee of 0 if harvest on deposit is true", async () => {
-    let harvestOnDeposit = false;
-    try {
-      harvestOnDeposit = await strategy.harvestOnDeposit();
-    } catch {
-      console.log("harvestOnDeposit call failed, strat must not have this function");
-    }
+    const harvestOnDeposit = await strategy.harvestOnDeposit();
 
     const withdrawalFee = await strategy.withdrawalFee();
     const actualWithdrawalFee = parseInt(withdrawalFee);
