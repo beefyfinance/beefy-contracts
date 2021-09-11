@@ -20,6 +20,7 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     // Tokens used
     address public native;
     address public output;
+    address public reward;
     address public want;
     address public lpToken0;
     address public lpToken1;
@@ -28,12 +29,13 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     address public chef;
     uint256 public poolId;
 
+    bool public harvestOnDeposit;
     uint256 public lastHarvest;
     bool public harvestOnDeposit;
 
     // Routes
     address[] public outputToNativeRoute;
-    address[] public nativeToOutputRoute;
+    address[] public rewardToOutputRoute;
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
 
@@ -52,6 +54,7 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
         address _strategist,
         address _beefyFeeRecipient,
         address[] memory _outputToNativeRoute,
+        address[] memory _rewardToOutputRoute,
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
@@ -75,11 +78,9 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
         require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1);
         outputToLp1Route = _outputToLp1Route;
 
-        nativeToOutputRoute = new address[](_outputToNativeRoute.length);
-        for (uint i = 0; i < _outputToNativeRoute.length; i++) {
-            uint idx = _outputToNativeRoute.length - 1 - i;
-            nativeToOutputRoute[i] = outputToNativeRoute[idx];
-        }
+        reward = _rewardToOutputRoute[0];
+        require(_rewardToOutputRoute[_rewardToOutputRoute.length - 1] == output, '_rewardToOutputRoute != output');
+        rewardToOutputRoute = _rewardToOutputRoute;
 
         _giveAllowances();
     }
@@ -133,24 +134,23 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     // compounds earnings and charges performance fee
     function _harvest() internal {
         IMiniChefV2(chef).harvest(poolId, address(this));
-
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        if (outputBal > 0) {
-        chargeFees();
-        addLiquidity();
-        deposit();
+        uint256 rewardBal = IERC20(reward).balanceOf(address(this));
+        if (outputBal > 0 || rewardBal > 0) {
+            chargeFees();
+            addLiquidity();
+            deposit();
+            lastHarvest = block.timestamp;
+            emit StratHarvest(msg.sender);
         }
-
-        lastHarvest = block.timestamp;
-        emit StratHarvest(msg.sender);
     }
 
     // performance fees
     function chargeFees() internal {
-        // v2 harvester rewards are in both output and native, convert native to output
-        uint256 toOutput = IERC20(native).balanceOf(address(this));
+        // v2 harvester rewards are in both output and reward, convert reward to output
+        uint256 toOutput = IERC20(reward).balanceOf(address(this));
         if (toOutput > 0) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, nativeToOutputRoute, address(this), block.timestamp);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, rewardToOutputRoute, address(this), block.timestamp);
         }
 
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
@@ -199,6 +199,16 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     function balanceOfPool() public view returns (uint256) {
         (uint256 _amount, ) = IMiniChefV2(chef).userInfo(poolId, address(this));
         return _amount;
+    }
+
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+
+        if (harvestOnDeposit) {
+            setWithdrawalFee(0);
+        } else {
+            setWithdrawalFee(10);
+        }
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
@@ -264,8 +274,7 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(chef, type(uint256).max);
         IERC20(output).safeApprove(unirouter, type(uint256).max);
-        // needed for v2 harvester
-        IERC20(native).safeApprove(unirouter, type(uint256).max);
+        IERC20(reward).safeApprove(unirouter, type(uint256).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, type(uint256).max);
@@ -277,7 +286,7 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
-        IERC20(native).safeApprove(unirouter, 0);
+        IERC20(reward).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }

@@ -1,14 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.6.12;
 
-interface IVault {
-
-    function strategy() external view returns (address);
-
-}
-
-pragma solidity ^0.8.4;
+import "../interfaces/beefy/IVault.sol";
 
 contract BeefyStrategyMulticall {
 
@@ -16,7 +10,7 @@ contract BeefyStrategyMulticall {
         address[] memory strategies = new address[](vaults.length);
 
         for (uint i = 0; i < vaults.length; i++) {
-            strategies[i] = IVault(vaults[i]).strategy();
+            strategies[i] = address(IVault(vaults[i]).strategy());
         }
 
         return strategies;

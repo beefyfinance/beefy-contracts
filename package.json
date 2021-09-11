@@ -6,6 +6,7 @@
     "@chainlink/contracts": "^0.2.1",
     "@nomiclabs/hardhat-etherscan": "^2.1.4",
     "@openzeppelin-2/contracts": "npm:@openzeppelin/contracts@2.5.1",
+    "@openzeppelin-4/contracts": "npm:@openzeppelin/contracts",
     "@openzeppelin/contracts": "^3.2.0",
     "@uniswap/lib": "^4.0.1-alpha",
     "bignumber.js": "^9.0.1",
