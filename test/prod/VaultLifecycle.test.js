@@ -4,16 +4,16 @@ const { addressBook } = require("blockchain-addressbook");
 const { zapNativeToToken, getVaultWant, unpauseIfPaused, getUnirouterData } = require("../../utils/testHelpers");
 const { delay } = require("../../utils/timeHelpers");
 
-const TIMEOUT = 10 * 60 * 1000;
+const TIMEOUT = 10 * 60 * 100000;
 
 const chainName = "avax";
 const chainData = addressBook[chainName];
 const { beefyfinance } = chainData.platforms;
 
 const config = {
-  vault: "0xa66DfCBdAfbe4B4D62535f64f1C2Fb50FF42E4C6",
+  vault: "0x282B11E65f0B49363D4505F91c7A44fBEe6bCc0b",
   vaultContract: "BeefyVaultV6",
-  strategyContract: "StrategyCommonRewardPoolLP",
+  strategyContract: "StrategyCommonChefLP",
   testAmount: ethers.utils.parseEther("5"),
   wnative: chainData.tokens.WNATIVE.address,
   keeper: beefyfinance.keeper,
@@ -204,7 +204,7 @@ describe("VaultLifecycleTest", () => {
 
     const expectedCallFeeMap = {
       bsc: 111,
-      avax: 11,
+      avax: 111,
       polygon: 11,
       heco: 11,
       fantom: 11

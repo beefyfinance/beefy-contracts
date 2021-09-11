@@ -4,35 +4,35 @@ const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const { getNetworkRpc } = require("../utils/getNetworkRpc");
 const { addressBook } = require("blockchain-addressbook")
-const { BUSD: { address: BUSD }, WBNB: { address: WBNB }, CAKE: { address: CAKE }, PHA: { address: PHA} } = addressBook.bsc.tokens;
-const { pancake, beefyfinance } = addressBook.bsc.platforms;
+const { WONE: { address: WONE }, SUSHI: { address: SUSHI }, USDC: { address: USDC}, USDT: {address: USDT } } = addressBook.one.tokens;
+const { sushi, beefyfinance } = addressBook.one.platforms;
 
 const ethers = hardhat.ethers;
 
-const want = web3.utils.toChecksumAddress("0x4ddd56e2f34338839BB5953515833950eA680aFb");
+const want = web3.utils.toChecksumAddress("0x2c7862b408bb3DBFF277110FFdE1B4EAa45C692a");
 
 const vaultParams = {
-  mooName: "Moo CakeV2 PHA-BUSD",
-  mooSymbol: "mooCakeV2PHA-BUSD",
+  mooName: "Moo Sushi USDT-ONE",
+  mooSymbol: "mooSushiUSDT-ONE",
   delay: 21600,
 }
 
 const strategyParams = {
   want: want,
-  poolId: 451,
-  chef: pancake.masterchef,
-  unirouter: pancake.router,
+  poolId: 2,
+  chef: sushi.minichef,
+  unirouter: sushi.router,
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
-  beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [ CAKE, WBNB ],
-  outputToLp0Route: [ CAKE, BUSD, PHA ],
-  outputToLp1Route: [ CAKE, BUSD ]
+  beefyFeeRecipient: "0xaDB9DDFA24E326dC9d337561f6c7ba2a6Ecec697",
+  outputToNativeRoute: [ SUSHI, WONE ],
+  outputToLp0Route: [ SUSHI, WONE, USDT ],
+  outputToLp1Route: [ SUSHI, WONE]
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonChefLPBsc"
+  strategy: "StrategyMiniChefLP"
 }
 
 async function main() {
@@ -51,7 +51,7 @@ async function main() {
 
   console.log("Deploying:", vaultParams.mooName);
 
-  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
+  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc: "https://api.s0.t.hmny.io/" });
 
   const vault = await Vault.deploy(predictedAddresses.strategy, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay);
   await vault.deployed();

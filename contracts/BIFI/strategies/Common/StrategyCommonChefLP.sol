@@ -185,6 +185,12 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         return _amount;
     }
 
+    // returns rewards unharvested
+    function rewardsAvailable() public view returns (uint256) {
+       (,uint256 _amount) = IMasterChef(chef).userInfo(poolId, address(this));
+        return _amount;
+    }
+
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
 

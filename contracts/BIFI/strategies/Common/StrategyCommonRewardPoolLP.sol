@@ -124,11 +124,13 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest() internal {
-        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
         IRewardPool(rewardPool).getReward();
-        chargeFees();
-        addLiquidity();
-        deposit();
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+            if (outputBal > 0) {
+                chargeFees();
+                addLiquidity();
+                deposit();
+            }
 
         lastHarvest = block.timestamp;
         emit StratHarvest(msg.sender);
@@ -181,6 +183,11 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
         return IRewardPool(rewardPool).balanceOf(address(this));
+    }
+
+     // returns rewards unharvested
+    function rewardsAvailable() public view returns (uint256) {
+       return IRewardPool(rewardPool).earned(address(this));
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.

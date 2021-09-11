@@ -40,6 +40,11 @@ const config: DeploymentConfig = {
       chainId: 250,
       accounts: deployerAccount,
     },
+    one: {
+      url: "https://api.s0.t.hmny.io/",
+      chainId: 1666600000,
+      accounts: deployerAccount,
+    },
     localhost: {
       url: "http://127.0.0.1:8545",
       timeout: 300000,

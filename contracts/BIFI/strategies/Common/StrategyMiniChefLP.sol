@@ -9,10 +9,11 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/sushi/IMiniChefV2.sol";
+import "../../interfaces/sushi/IRewarder.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyPolygonMiniChefLP is StratManager, FeeManager {
+contract StrategyMiniChefLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -28,6 +29,7 @@ contract StrategyPolygonMiniChefLP is StratManager, FeeManager {
     uint256 public poolId;
 
     uint256 public lastHarvest;
+    bool public harvestOnDeposit;
 
     // Routes
     address[] public outputToNativeRoute;
@@ -113,12 +115,31 @@ contract StrategyPolygonMiniChefLP is StratManager, FeeManager {
         }
     }
 
+    function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            require(msg.sender == vault, "!vault");
+            _harvest();
+        }
+    }
+
+    function harvest() external virtual whenNotPaused onlyEOA {
+        _harvest();
+    }
+
+    function managerHarvest() external onlyManager {
+        _harvest();
+    }
+
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function _harvest() internal {
         IMiniChefV2(chef).harvest(poolId, address(this));
+
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        if (outputBal > 0) {
         chargeFees();
         addLiquidity();
         deposit();
+        }
 
         lastHarvest = block.timestamp;
         emit StratHarvest(msg.sender);
@@ -188,6 +209,36 @@ contract StrategyPolygonMiniChefLP is StratManager, FeeManager {
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
+    }
+
+    // returns rewards unharvested
+    function rewardsAvailable() public view returns (uint256) {
+        return IMiniChefV2(chef).pendingSushi(poolId, address(this));
+    }
+
+    // native reward amount for calling harvest
+    function callReward() public view returns (uint256) {
+        uint256 outputBal = rewardsAvailable();
+        uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
+        uint256 nativeOut = amountOut[amountOut.length -1];
+
+        uint256 pendingNative;
+        address rewarder = IMiniChefV2(chef).rewarder(poolId);
+        if (rewarder != address(0)) {
+            pendingNative = IRewarder(rewarder).pendingToken(poolId, address(this));
+        } 
+
+        return pendingNative.add(nativeOut).mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
+
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+
+        if (harvestOnDeposit) {
+            setWithdrawalFee(0);
+        } else {
+            setWithdrawalFee(10);
+        }
     }
 
     // pauses deposits and withdraws all funds from third party systems.
