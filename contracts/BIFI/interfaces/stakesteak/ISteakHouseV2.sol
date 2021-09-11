@@ -1,20 +1,23 @@
-pragma solidity >=0.5.0 <0.8.0;
+// SPDX-License-Identifier: MIT
 
-struct SteakHouseV2.PoolInfo {
-  address stakingToken;
-  uint256 stakingTokenTotalAmount;
-  uint32 lastRewardTime;
-  uint256[] AccRewardsPerShare;
-  uint256[] AllocPoints;
-}
-
-struct SteakHouseV2.UserInfo {
-  uint256 amount;
-  uint256[] RewardDebt;
-  uint256[] RemainingRewards;
-}
+pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
 interface ISteakHouseV2 {
+  struct PoolInfo {
+    address stakingToken;
+    uint256 stakingTokenTotalAmount;
+    uint32 lastRewardTime;
+    uint256[] AccRewardsPerShare;
+    uint256[] AllocPoints;
+  }
+
+  struct UserInfo {
+    uint256 amount;
+    uint256[] RewardDebt;
+    uint256[] RemainingRewards;
+  }
+
   event Deposit( address indexed user,uint256 indexed pid,uint256 amount ) ;
   event EmergencyWithdraw( address indexed user,uint256 indexed pid,uint256 amount ) ;
   event FeeCollected( address indexed user,uint256 indexed pid,uint256 amount ) ;
@@ -31,8 +34,8 @@ interface ISteakHouseV2 {
   function emergencyWithdraw( uint256 _pid ) external   ;
   function endTime(  ) external view returns (uint32 ) ;
   function getMultiplier( uint256 _from,uint256 _to ) external view returns (uint256 ) ;
-  function getPoolInfo( uint256 _pid ) external view returns (SteakHouseV2.PoolInfo memory ) ;
-  function getUserInfo( uint256 _pid,address _user ) external view returns (SteakHouseV2.UserInfo memory ) ;
+  function getPoolInfo( uint256 _pid ) external view returns (PoolInfo memory ) ;
+  function getUserInfo( uint256 _pid,address _user ) external view returns (UserInfo memory ) ;
   function harvestFee(  ) external view returns (uint256 ) ;
   function harvestFeeReceiver(  ) external view returns (address ) ;
   function massUpdatePools(  ) external   ;

@@ -12,6 +12,10 @@ import "../../interfaces/stakesteak/ISteakHouseV2.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
+interface IERC20Extented is IERC20 {
+    function decimals() external view returns (uint8);
+}
+
 contract StrategyStakesteakStableLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -28,6 +32,7 @@ contract StrategyStakesteakStableLP is StratManager, FeeManager {
     uint256 public poolId;
 
     bool public harvestOnDeposit = false;
+    uint256 public lastHarvest;
 
     // Routes
     address[] public outputToNativeRoute;
@@ -121,6 +126,7 @@ contract StrategyStakesteakStableLP is StratManager, FeeManager {
         addLiquidity();
         deposit();
 
+        lastHarvest = block.timestamp;
         emit StratHarvest(msg.sender);
     }
 
@@ -145,8 +151,8 @@ contract StrategyStakesteakStableLP is StratManager, FeeManager {
     function addLiquidity() internal {
         uint256 outputAll = IERC20(output).balanceOf(address(this));
 
-        uint256 lp0Amount = IERC20(lpToken0).balanceOf(want) / IERC20(lpToken0).decimals();
-        uint256 lp1Amount = IERC20(lpToken1).balanceOf(want) / IERC20(lpToken1).decimals();
+        uint256 lp0Amount = IERC20(lpToken0).balanceOf(want) / IERC20Extented(lpToken0).decimals();
+        uint256 lp1Amount = IERC20(lpToken1).balanceOf(want) / IERC20Extented(lpToken1).decimals();
 
         // On sAMM pairs there is a bonus for providing liquidity with overappriciated token
         if (lpToken0 != output && lp0Amount < lp1Amount) {
@@ -174,18 +180,20 @@ contract StrategyStakesteakStableLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount) = ISteakHouseV2(chef).getUserInfo(poolId, address(this));
-        return _amount;
+        return ISteakHouseV2(chef).getUserInfo(poolId, address(this)).amount;
     }
 
-    function rewardsAvailable() public view returns (uint256) {
-        for (uint index=0; index < 5; index++) {
-            if (ISteakHouseV2(chef).RewardTokens(index) == output) {
+    function callReward() public view returns (uint256) {
+        uint8 rewardIndex = 0;
+        for (uint8 i=0; i < 5; i++) {
+            if (ISteakHouseV2(chef).RewardTokens(i) == output) {
+                rewardIndex = i;
                 break;
             }
         }
-        uint256[] _pendingRewards = ISteakHouseV2(chef).pendingRewards(poolId, address(this));
-        return _pendingRewards[index];
+        uint256[] memory _pendingRewards = ISteakHouseV2(chef).pendingRewards(poolId, address(this));
+        uint256[] memory amountsOut = IUniswapRouterETH(unirouter).getAmountsOut(_pendingRewards[rewardIndex], outputToNativeRoute);
+        return amountsOut[amountsOut.length - 1].mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
 
     function setHarvestOnDeposit(bool _harvest) external onlyManager {
