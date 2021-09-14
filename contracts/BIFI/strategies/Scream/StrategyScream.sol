@@ -314,6 +314,21 @@ contract StrategyScream is StratManager, FeeManager {
         return IERC20(want).balanceOf(address(this));
     }
 
+    // returns rewards unharvested
+    function rewardsAvailable() public view returns (uint256) {
+       uint256 rewards = IComptroller(comptroller).compAccrued(address(this));
+        return rewards;
+    }
+
+    // native reward amount for calling harvest
+    function callReward() public view returns (uint256) {
+        uint256 outputBal = rewardsAvailable();
+        uint256[] memory amountOut = IUniswapRouter(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
+        uint256 nativeOut = amountOut[amountOut.length -1];
+
+        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
+
     function setHarvestOnDeposit(bool _harvest) external onlyManager {
         harvestOnDeposit = _harvest;
 

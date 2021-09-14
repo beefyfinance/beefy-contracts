@@ -30,6 +30,7 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     uint256 public poolId;
 
     uint256 public lastHarvest;
+    bool public harvestOnDeposit;
 
     // Routes
     address[] public outputToNativeRoute;
@@ -227,6 +228,16 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
         } 
 
         return pendingNative.add(nativeOut).mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
+
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+
+        if (harvestOnDeposit) {
+            setWithdrawalFee(0);
+        } else {
+            setWithdrawalFee(10);
+        }
     }
 
     // pauses deposits and withdraws all funds from third party systems.
