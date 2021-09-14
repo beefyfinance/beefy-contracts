@@ -30,7 +30,6 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     uint256 public poolId;
 
     uint256 public lastHarvest;
-    bool public harvestOnDeposit;
 
     // Routes
     address[] public outputToNativeRoute;
@@ -198,16 +197,6 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     function balanceOfPool() public view returns (uint256) {
         (uint256 _amount, ) = IMiniChefV2(chef).userInfo(poolId, address(this));
         return _amount;
-    }
-
-    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
-        harvestOnDeposit = _harvestOnDeposit;
-
-        if (harvestOnDeposit) {
-            setWithdrawalFee(0);
-        } else {
-            setWithdrawalFee(10);
-        }
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
