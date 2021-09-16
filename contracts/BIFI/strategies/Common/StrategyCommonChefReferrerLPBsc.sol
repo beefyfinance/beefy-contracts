@@ -2,15 +2,16 @@
 
 pragma solidity ^0.6.0;
 
-import "../Common/StrategyCommonChefLP.sol";
+import "../Common/StrategyCommonChefReferrerLP.sol";
 import "../../utils/GasThrottler.sol";
 
-contract StrategyCommonChefLPBsc is StrategyCommonChefLP, GasThrottler {
+contract StrategyCommonChefReferrerLPBsc is StrategyCommonChefReferrerLP, GasThrottler {
 
     constructor(
         address _want,
         uint256 _poolId,
         address _chef,
+        address _referrer,
         address _vault,
         address _unirouter,
         address _keeper,
@@ -19,10 +20,11 @@ contract StrategyCommonChefLPBsc is StrategyCommonChefLP, GasThrottler {
         address[] memory _outputToNativeRoute,
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
-    ) StrategyCommonChefLP(
+    ) StrategyCommonChefReferrerLP(
         _want,
         _poolId,
         _chef,
+        _referrer,
         _vault,
         _unirouter,
         _keeper,

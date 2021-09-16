@@ -109,11 +109,12 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
-            harvest();
+            require(msg.sender == vault, "!vault");
+            _harvest();
         }
     }
 
-    function harvest() public whenNotPaused onlyEOA {
+    function harvest() external virtual whenNotPaused onlyEOA {
         _harvest();
     }
 
@@ -189,13 +190,28 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         return _amount;
     }
 
-    function setHarvestOnDeposit(bool _harvest) external onlyManager {
-        harvestOnDeposit = _harvest;
+    // returns rewards unharvested
+    function rewardsAvailable() public view returns (uint256) {
+       (,uint256 _amount) = IMasterChef(chef).userInfo(poolId, address(this));
+        return _amount;
+    }
 
-        if (harvestOnDeposit == true) {
-            super.setWithdrawalFee(0);
+    // native reward amount for calling harvest
+    function callReward() public view returns (uint256) {
+        uint256 outputBal = rewardsAvailable();
+        uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
+        uint256 nativeOut = amountOut[amountOut.length -1];
+
+        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
+
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+
+        if (harvestOnDeposit) {
+            setWithdrawalFee(0);
         } else {
-            super.setWithdrawalFee(10);
+            setWithdrawalFee(10);
         }
     }
 

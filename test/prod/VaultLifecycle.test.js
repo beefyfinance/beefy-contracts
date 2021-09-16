@@ -4,14 +4,14 @@ const { addressBook } = require("blockchain-addressbook");
 const { zapNativeToToken, getVaultWant, unpauseIfPaused, getUnirouterData } = require("../../utils/testHelpers");
 const { delay } = require("../../utils/timeHelpers");
 
-const TIMEOUT = 10 * 60 * 1000;
+const TIMEOUT = 10 * 60 * 100000;
 
-const chainName = "bsc";
+const chainName = "avax";
 const chainData = addressBook[chainName];
 const { beefyfinance } = chainData.platforms;
 
 const config = {
-  vault: "0x7f7d3734903341464a685809405ff3b5463FF379",
+  vault: "0x282B11E65f0B49363D4505F91c7A44fBEe6bCc0b",
   vaultContract: "BeefyVaultV6",
   strategyContract: "StrategyCommonChefLP",
   testAmount: ethers.utils.parseEther("5"),
@@ -73,15 +73,20 @@ describe("VaultLifecycleTest", () => {
     const vaultBal = await vault.balance();
     const pricePerShare = await vault.getPricePerFullShare();
     await delay(5000);
+    const callRewardBeforeHarvest = await strategy.callReward();
+    expect(callRewardBeforeHarvest).to.be.gt(0);
     await strategy.harvest({ gasPrice: 5000000 });
     const vaultBalAfterHarvest = await vault.balance();
     const pricePerShareAfterHarvest = await vault.getPricePerFullShare();
+    const callRewardAfterHarvest = await strategy.callReward();
 
     await vault.withdrawAll();
     const wantBalFinal = await want.balanceOf(deployer.address);
 
     expect(vaultBalAfterHarvest).to.be.gt(vaultBal);
     expect(pricePerShareAfterHarvest).to.be.gt(pricePerShare);
+    expect(callRewardBeforeHarvest).to.be.gt(callRewardAfterHarvest);
+    
     expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
 
     const lastHarvest = await strategy.lastHarvest();
@@ -204,7 +209,7 @@ describe("VaultLifecycleTest", () => {
 
     const expectedCallFeeMap = {
       bsc: 111,
-      avax: 11,
+      avax: 111,
       polygon: 11,
       heco: 11,
       fantom: 11
@@ -217,12 +222,7 @@ describe("VaultLifecycleTest", () => {
   }).timeout(TIMEOUT);
 
   it("has withdraw fee of 0 if harvest on deposit is true", async () => {
-    let harvestOnDeposit = false;
-    try {
-      harvestOnDeposit = await strategy.harvestOnDeposit();
-    } catch {
-      console.log("harvestOnDeposit call failed, strat must not have this function");
-    }
+    const harvestOnDeposit = await strategy.harvestOnDeposit();
 
     const withdrawalFee = await strategy.withdrawalFee();
     const actualWithdrawalFee = parseInt(withdrawalFee);

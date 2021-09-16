@@ -30,6 +30,9 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
     // Third party contracts
     address public rewardPool;
 
+    bool public harvestOnDeposit;
+    uint256 public lastHarvest;
+
     // Routes
     address[] public outputToNativeRoute; // since DFYN uses its own native, convert to common token, then convert that token to native beefy uses
     address[] public outputToLp0Route;
@@ -101,14 +104,32 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
             IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
         }
     }
+    function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            require(msg.sender == vault, "!vault");
+            _harvest();
+        }
+    }
+
+    function harvest() external virtual whenNotPaused onlyEOA {
+        _harvest();
+    }
+
+    function managerHarvest() external onlyManager {
+        _harvest();
+    }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function _harvest() internal {
         IStakingRewards(rewardPool).getReward();
-        chargeFees();
-        addLiquidity();
-        deposit();
+        uint outputBal = IERC20(output).balanceOf(address(this));
+            if (outputBal > 0) {
+                chargeFees();
+                addLiquidity();
+                deposit();
+            }
 
+        lastHarvest = block.timestamp;
         emit StratHarvest(msg.sender);
     }
 
@@ -160,6 +181,16 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
         return IStakingRewards(rewardPool).balanceOf(address(this));
+    }
+
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+
+        if (harvestOnDeposit == true) {
+            super.setWithdrawalFee(0);
+        } else {
+            super.setWithdrawalFee(10);
+        }
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
