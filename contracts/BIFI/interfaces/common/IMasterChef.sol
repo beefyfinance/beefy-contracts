@@ -9,4 +9,5 @@ interface IMasterChef {
     function leaveStaking(uint256 _amount) external;
     function userInfo(uint256 _pid, address _user) external view returns (uint256, uint256);
     function emergencyWithdraw(uint256 _pid) external;
+    function pendingCake(uint256 _pid, address _user) external view returns (uint256);
 }

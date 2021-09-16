@@ -49,10 +49,11 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient,
+        address _multiHarvester,
         address[] memory _outputToNativeRoute,
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient, _multiHarvester) public {
         want = _want;
         poolId = _poolId;
         chef = _chef;
@@ -112,15 +113,30 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         }
     }
 
-    // compounds earnings and charges performance fee
     function harvest() public whenNotPaused onlyEOA {
-        IMasterChef(chef).deposit(poolId, 0);
-        chargeFees();
-        addLiquidity();
-        deposit();
+        _harvest();
+    }
 
-        lastHarvest = block.timestamp;
-        emit StratHarvest(msg.sender);
+    function managerHarvest() external onlyManager {
+        _harvest();
+    }
+
+    function multiHarvest() external whenNotPaused onlyMultiHarvester {
+        _harvest();
+    }
+
+    // compounds earnings and charges performance fee
+    function _harvest() internal {
+        IMasterChef(chef).deposit(poolId, 0);
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        if (outputBal > 0) {
+            chargeFees();
+            addLiquidity();
+            deposit();
+
+            lastHarvest = block.timestamp;
+            emit StratHarvest(msg.sender);
+        }
     }
 
     // performance fees
@@ -241,5 +257,15 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     function outputToLp1() external view returns (address[] memory) {
         return outputToLp1Route;
+    }
+
+    function callReward() public view returns (uint256) {
+        uint256 outputBal = rewardsAvailable();
+        uint256[] memory amountsOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
+        return amountsOut[amountsOut.length - 1].mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
+
+    function rewardsAvailable() public view returns (uint256) {
+        return IMasterChef(chef).pendingCake(poolId, address(this));
     }
 }
