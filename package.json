@@ -10,7 +10,7 @@
     "@openzeppelin/contracts": "^3.2.0",
     "@uniswap/lib": "^4.0.1-alpha",
     "bignumber.js": "^9.0.1",
-    "blockchain-addressbook": "^0.3.3",
+    "blockchain-addressbook": "^0.3.12",
     "ganache-cli": "^6.12.2",
     "keccak": "^3.0.1",
     "rlp": "^2.2.6",
