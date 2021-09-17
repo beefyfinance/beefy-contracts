@@ -26,6 +26,7 @@
     "net:avax": "ganache-cli --fork ${AVAX_RPC} --account=\"${DEPLOYER_PK}, 1000000000000000000000000\" --account=\"${KEEPER_PK}, 1000000000000000000000000\"--account=\"${UPGRADER_PK}, 1000000000000000000000000\"",
     "net:polygon": "ganache-cli --fork ${POLYGON_RPC} --account=\"${DEPLOYER_PK}, 1000000000000000000000000\" --account=\"${KEEPER_PK}, 1000000000000000000000000\" --account=\"${UPGRADER_PK}, 1000000000000000000000000\"",
     "net:fantom": "ganache-cli --fork ${FANTOM_RPC} --account=\"${DEPLOYER_PK}, 1000000000000000000000000\"  --account=\"${KEEPER_PK}, 1000000000000000000000000\" --account=\"${UPGRADER_PK}, 1000000000000000000000000\"",
+    "net:arbitrum": "ganache-cli --fork ${ARBITRUM_RPC} --account=\"${DEPLOYER_PK}, 1000000000000000000000000\"  --account=\"${KEEPER_PK}, 1000000000000000000000000\" --account=\"${UPGRADER_PK}, 1000000000000000000000000\"",
     "compile": "hardhat compile",
     "all": "yarn clean && yarn compile && yarn net",
     "test": "hardhat test --network localhost",
