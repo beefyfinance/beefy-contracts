@@ -12,7 +12,7 @@ interface IRewardPool {
     function transferOwnership(address owner) external;
 }
 
-contract BeefyFeeBatchSimple is Ownable {
+contract BeefyFeeBatchSimpleV2 is Ownable {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -32,7 +32,7 @@ contract BeefyFeeBatchSimple is Ownable {
     ) public {
         treasury = _treasury;
         rewardPool = _rewardPool;
-        wNative  = _wNative ;
+        wNative  = _wNative;
     }
 
     // Main function. Divides Beefy's profits.
