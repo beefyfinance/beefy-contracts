@@ -109,7 +109,7 @@ contract StrategyCommonChefReferrerLP is StratManager, FeeManager {
         }
     }
 
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external virtual whenNotPaused onlyEOA {
         _harvest();
     }
 

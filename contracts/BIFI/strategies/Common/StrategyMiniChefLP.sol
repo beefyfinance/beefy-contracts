@@ -29,8 +29,8 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     address public chef;
     uint256 public poolId;
 
-    bool public harvestOnDeposit;
     uint256 public lastHarvest;
+    bool public harvestOnDeposit;
 
     // Routes
     address[] public outputToNativeRoute;

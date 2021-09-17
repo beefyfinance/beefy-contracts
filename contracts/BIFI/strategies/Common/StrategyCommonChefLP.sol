@@ -191,6 +191,15 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         return _amount;
     }
 
+    // native reward amount for calling harvest
+    function callReward() public view returns (uint256) {
+        uint256 outputBal = rewardsAvailable();
+        uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
+        uint256 nativeOut = amountOut[amountOut.length -1];
+
+        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
+
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
 

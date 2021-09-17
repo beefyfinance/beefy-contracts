@@ -45,6 +45,11 @@ const config: DeploymentConfig = {
       chainId: 1666600000,
       accounts: deployerAccount,
     },
+    arbitrum: {
+      url: "https://arb1.arbitrum.io/rpc",
+      chainId: 42161,
+      accounts: deployerAccount,
+    },
     localhost: {
       url: "http://127.0.0.1:8545",
       timeout: 300000,
