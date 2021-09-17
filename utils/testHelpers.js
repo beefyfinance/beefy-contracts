@@ -117,6 +117,11 @@ const getUnirouterData = address => {
         interface: "IUniswapRouterMATIC",
         swapSignature: "swapExactMATICForTokens",
       };
+    case "0xA63B831264183D755756ca9AE5190fF5183d65D6":
+      return {
+        interface: "IUniswapRouterBNB",
+        swapSignature: "swapExactBNBForTokens",
+      };
     default:
       return {
         interface: "IUniswapRouterETH",

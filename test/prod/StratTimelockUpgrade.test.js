@@ -6,19 +6,20 @@ const { delay } = require("../../utils/timeHelpers");
 
 const TIMEOUT = 10 * 60 * 1000;
 
-const chainName = "fantom";
+const chainName = "bsc";
 
 const config = {
-  vault: "0x15DD4398721733D8273FD4Ed9ac5eadC6c018866",
+  vault: "0x41a6CdA789316B2Fa5D824EF27E4223872E4cB34",
   testAmount: ethers.utils.parseEther("1"),
   wnative: addressBook[chainName].tokens.WNATIVE.address,
+  timelock: addressBook[chainName].platforms.beefyfinance.vaultOwner,
 };
 
 describe("StratUpgrade", () => {
-  let vault, strategy, candidate, unirouter, want, keeper, upgrader;
+  let timelock, vault, strategy, candidate, unirouter, want, keeper, upgrader, rewarder;
 
   before(async () => {
-    [deployer, keeper, upgrader] = await ethers.getSigners();
+    [deployer, keeper, upgrader, rewarder] = await ethers.getSigners();
 
     vault = await ethers.getContractAt("BeefyVaultV6", config.vault);
 
@@ -27,11 +28,15 @@ describe("StratUpgrade", () => {
 
     strategy = await ethers.getContractAt("IStrategyComplete", strategyAddr);
     candidate = await ethers.getContractAt("IStrategyComplete", stratCandidate.implementation);
+    timelock = await ethers.getContractAt(
+      "@openzeppelin-4/contracts/governance/TimelockController.sol:TimelockController",
+      config.timelock
+    );
 
     const unirouterAddr = await strategy.unirouter();
     const unirouterData = getUnirouterData(unirouterAddr);
     unirouter = await ethers.getContractAt(unirouterData.interface, unirouterAddr);
-
+    console.log(unirouterAddr, "addy");
     want = await getVaultWant(vault, config.wnative);
 
     await zapNativeToToken({
@@ -54,13 +59,19 @@ describe("StratUpgrade", () => {
   }).timeout(TIMEOUT);
 
   it("Upgrades correctly", async () => {
-    // check that balances are transfered correctly.
-    console.log("Checking Balances");
     const vaultBal = await vault.balance();
     const strategyBal = await strategy.balanceOf();
     const candidateBal = await candidate.balanceOf();
 
-    await vault.connect(upgrader).upgradeStrat();
+    await timelock
+      .connect(rewarder)
+      .execute(
+        config.vault,
+        0,
+        "0xe6685244",
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      );
 
     const vaultBalAfter = await vault.balance();
     const strategyBalAfter = await strategy.balanceOf();
@@ -71,9 +82,10 @@ describe("StratUpgrade", () => {
     expect(candidateBalAfter).to.be.within(strategyBal.mul(999).div(1000), strategyBal.mul(1001).div(1000));
     expect(candidateBal).not.to.equal(candidateBalAfter);
 
-    await delay(10000);
+    console.log(vaultBal.toString());
+    console.log(vaultBalAfter.toString());
+    await delay(100000);
     let tx = candidate.harvest();
-    await expect(tx).not.to.be.reverted;
 
     const balBeforePanic = await candidate.balanceOf();
     tx = candidate.connect(keeper).panic();
