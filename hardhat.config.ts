@@ -2,6 +2,7 @@ import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
+import './tasks';
 
 import { HardhatUserConfig } from "hardhat/src/types/config";
 import { HardhatUserConfig as WithEtherscanConfig } from "hardhat/config";
