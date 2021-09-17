@@ -49,11 +49,10 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient,
-        address _multiHarvester,
         address[] memory _outputToNativeRoute,
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient, _multiHarvester) public {
+    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         poolId = _poolId;
         chef = _chef;
@@ -119,10 +118,6 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     }
 
     function managerHarvest() external onlyManager {
-        _harvest();
-    }
-
-    function multiHarvest() external whenNotPaused onlyMultiHarvester {
         _harvest();
     }
 

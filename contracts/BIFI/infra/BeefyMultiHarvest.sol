@@ -1,22 +1,36 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.8.4;
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+
+pragma solidity >=0.6.0 <0.8.0;
 
 interface IStrategy {
-    function multiHarvest() external;
+    function harvest() external;
     function callReward() external view returns (uint256);
 }
 
-pragma solidity >=0.8.4;
+pragma solidity >=0.6.0 <0.8.0;
 
 contract BeefyMultiHarvest {
+    using SafeERC20 for IERC20;
+    using SafeMath for uint256;
+
+    address public native;
+
+    constructor (address _native) public {
+        native = _native;
+    }
 
     function harvest (address[] memory strategies) external {
-
-        require(msg.sender == tx.origin, "!EOA");
-
         for (uint256 i = 0; i < strategies.length; i++) {
-            try IStrategy(strategies[i]).multiHarvest() {} catch {}
+            try IStrategy(strategies[i]).harvest() {} catch {}
+        }
+
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        if (nativeBal > 0) {
+            IERC20(native).safeTransfer(tx.origin, nativeBal);
         }
     }
 

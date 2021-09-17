@@ -12,14 +12,12 @@ contract StratManager is Ownable, Pausable {
      * {strategist} - Address of the strategy author/deployer where strategist fee will go.
      * {vault} - Address of the vault that controls the strategy's funds.
      * {unirouter} - Address of exchange to execute swaps.
-     * {multiHarvester} - Address of the multi harvesting contract.
      */
     address public keeper;
     address public strategist;
     address public unirouter;
     address public vault;
     address public beefyFeeRecipient;
-    address public multiHarvester;
 
     /**
      * @dev Initializes the base strategy.
@@ -28,33 +26,24 @@ contract StratManager is Ownable, Pausable {
      * @param _unirouter router to use for swaps
      * @param _vault address of parent vault.
      * @param _beefyFeeRecipient address where to send Beefy's fees.
-     * @param _multiHarvester address of contract allowed to call harvests.
      */
     constructor(
         address _keeper,
         address _strategist,
         address _unirouter,
         address _vault,
-        address _beefyFeeRecipient,
-        address _multiHarvester
+        address _beefyFeeRecipient
     ) public {
         keeper = _keeper;
         strategist = _strategist;
         unirouter = _unirouter;
         vault = _vault;
         beefyFeeRecipient = _beefyFeeRecipient;
-        multiHarvester = _multiHarvester;
     }
 
     // checks that caller is either owner or keeper.
     modifier onlyManager() {
         require(msg.sender == owner() || msg.sender == keeper, "!manager");
-        _;
-    }
-
-    // checks that caller is the multiHarvester.
-    modifier onlyMultiHarvester() {
-        require(msg.sender == multiHarvester, "!multiHarvester");
         _;
     }
 
@@ -103,14 +92,6 @@ contract StratManager is Ownable, Pausable {
      */
     function setBeefyFeeRecipient(address _beefyFeeRecipient) external onlyOwner {
         beefyFeeRecipient = _beefyFeeRecipient;
-    }
-
-    /**
-     * @dev Updates multiHarvester address.
-     * @param _multiHarvester new multiHarvester address.
-     */
-    function setMultiHarvester(address _multiHarvester) external onlyOwner {
-        multiHarvester = _multiHarvester;
     }
 
     /**
