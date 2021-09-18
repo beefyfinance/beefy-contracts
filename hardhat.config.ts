@@ -14,7 +14,7 @@ const accounts = getPKs();
 const hardhatNetworkAccounts = buildHardhatNetworkAccounts(accounts);
 
 const config: DeploymentConfig = {
-  defaultNetwork: "localhost",
+  defaultNetwork: "hardhat",
   networks: {
     hardhat: {
       // accounts visible to hardhat network used by `hardhat node --fork` (yarn net <chainName>)
@@ -54,11 +54,6 @@ const config: DeploymentConfig = {
       url: "https://arb1.arbitrum.io/rpc",
       chainId: 42161,
       accounts: accounts,
-    },
-    localhost: {
-      url: "http://127.0.0.1:8545",
-      timeout: 300000,
-      accounts: "remote",
     },
     testnet: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
