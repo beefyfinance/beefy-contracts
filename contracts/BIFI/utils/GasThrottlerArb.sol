@@ -18,8 +18,8 @@ contract GasThrottlerArb {
         keeper = _keeper;
     }
 
-    modifier gasThrottle() {
-        require(gasprice != address(0) && tx.gasprice <= IGasPrice(gasprice).maxGasPrice(), "gas is too high!");
+    modifier gasThrottle(bool shouldCheckGasPrice) {
+        require(shouldCheckGasPrice && gasprice != address(0) && tx.gasprice <= IGasPrice(gasprice).maxGasPrice(), "gas is too high!");
         _;
     }
 
