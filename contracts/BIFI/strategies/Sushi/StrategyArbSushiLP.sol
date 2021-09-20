@@ -11,9 +11,9 @@ import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/sushi/IMiniChefV2.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
-import "../../utils/GasThrottlerArb.sol";
+import "../../utils/GasThrottler.sol";
 
-contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottlerArb {
+contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -30,7 +30,6 @@ contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottlerArb {
 
     uint256 public lastHarvest;
     bool public harvestOnDeposit;
-    bool public shouldGasThrottle;
 
     // Routes
     address[] public outputToNativeRoute;
@@ -75,6 +74,8 @@ contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottlerArb {
         require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1);
         outputToLp1Route = _outputToLp1Route;
 
+        shouldGasThrottle = false;
+
         _giveAllowances();
     }
 
@@ -116,7 +117,7 @@ contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottlerArb {
         }
     }
 
-    function harvest() external virtual whenNotPaused gasThrottle(shouldGasThrottle) {
+    function harvest() external virtual whenNotPaused gasThrottle {
         _harvest();
     }
 

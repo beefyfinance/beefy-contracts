@@ -6,10 +6,11 @@ import "./IGasPrice.sol";
 
 contract GasThrottler {
 
-    address public gasprice = address(0x16cD932c494Ac1B3452d6C8453fB7665aB49EC6b);
+    address public gasprice = address(0xA43509661141F254F54D9A326E8Ec851A0b95307);
+    bool public shouldGasThrottle = true;
 
     modifier gasThrottle() {
-        require(tx.gasprice <= IGasPrice(gasprice).maxGasPrice(), "gas is too high!");
+        require(shouldGasThrottle && tx.gasprice <= IGasPrice(gasprice).maxGasPrice(), "gas is too high!");
         _;
     }
 }
