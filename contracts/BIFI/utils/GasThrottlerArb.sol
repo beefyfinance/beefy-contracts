@@ -23,14 +23,14 @@ contract GasThrottlerArb {
         _;
     }
 
-    // checks that caller is either owner or keeper.
+    // checks that caller is keeper.
     modifier onlyKeeper() {
         require(msg.sender == keeper, "!keeper");
         _;
     }
 
     /**
-     * @dev Updates address of the strat keeper.
+     * @dev Updates address of the keeper.
      * @param _keeper new keeper address.
      */
     function setKeeper(address _keeper) external onlyKeeper {
