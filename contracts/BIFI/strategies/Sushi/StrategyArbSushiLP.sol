@@ -11,8 +11,9 @@ import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/sushi/IMiniChefV2.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
+import "../../utils/GasThrottlerArb.sol";
 
-contract StrategyArbSushiLP is StratManager, FeeManager {
+contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottlerArb {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -29,6 +30,7 @@ contract StrategyArbSushiLP is StratManager, FeeManager {
 
     uint256 public lastHarvest;
     bool public harvestOnDeposit;
+    bool public shouldGasThrottle;
 
     // Routes
     address[] public outputToNativeRoute;
@@ -114,7 +116,7 @@ contract StrategyArbSushiLP is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual whenNotPaused onlyEOA {
+    function harvest() external virtual whenNotPaused gasThrottle(shouldGasThrottle) {
         _harvest();
     }
 
@@ -217,6 +219,10 @@ contract StrategyArbSushiLP is StratManager, FeeManager {
         } else {
             setWithdrawalFee(10);
         }
+    }
+
+    function setShouldGasThrottle(bool _shouldGasThrottle) external onlyManager {
+        shouldGasThrottle = _shouldGasThrottle;
     }
 
     // pauses deposits and withdraws all funds from third party systems.
