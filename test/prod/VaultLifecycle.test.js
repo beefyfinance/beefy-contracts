@@ -212,7 +212,9 @@ describe("VaultLifecycleTest", () => {
       avax: 111,
       polygon: 11,
       heco: 11,
-      fantom: 11
+      fantom: 11,
+      harmony: 111,
+      arbitrum: 111,
     }
 
     const expectedCallFee = expectedCallFeeMap[chainName];

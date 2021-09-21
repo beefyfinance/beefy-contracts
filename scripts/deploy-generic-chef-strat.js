@@ -1,9 +1,9 @@
 const hardhat = require("hardhat");
 
+import { getNetworkRpc } from "../utils/getNetworkRpc";
+import { addressBook } from "blockchain-addressbook";
 const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
-const { getNetworkRpc } = require("../utils/getNetworkRpc");
-const { addressBook } = require("blockchain-addressbook")
 const { WONE: { address: WONE }, SUSHI: { address: SUSHI }, USDC: { address: USDC}, USDT: {address: USDT } } = addressBook.one.tokens;
 const { sushi, beefyfinance } = addressBook.one.platforms;
 
@@ -51,7 +51,7 @@ async function main() {
 
   console.log("Deploying:", vaultParams.mooName);
 
-  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc: "https://api.s0.t.hmny.io/" });
+  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
 
   const vault = await Vault.deploy(predictedAddresses.strategy, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay);
   await vault.deployed();
