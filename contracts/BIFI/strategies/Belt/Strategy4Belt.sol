@@ -8,28 +8,29 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/belt/IMasterBelt.sol";
-import "../../interfaces/belt/IBeltToken.sol";
+import "../../interfaces/belt/IBeltLP.sol";
 import "../../utils/GasThrottler.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyBeltToken is StratManager, FeeManager, GasThrottler {
+contract Strategy4Belt is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
     address constant public native = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
     address constant public output = address(0xE0e514c71282b6f4e823703a39374Cf58dc3eA4f); // BELT
-    address public want;
-    address public wantToken;
+    address constant public want = address(0x9cb73F20164e399958261c289Eb5F9846f4D1404); // 4BELT LP
+    address constant public depositToken = address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56); // BUSD
 
     // Third party contracts
     address constant public masterbelt = address(0xD4BbC80b9B102b77B21A06cb77E954049605E6c1);
-    uint256 public poolId;
+    uint256 constant public poolId = 3;
+    address constant public beltPool = address(0xF6e65B33370Ee6A49eB0dbCaA9f43839C1AC04d5);
 
     // Routes
     address[] public outputToNativeRoute = [output, native];
-    address[] public beltToWantTokenRoute;
+    address[] public outputToDepositTokenRoute = [output, native, depositToken];
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -40,24 +41,12 @@ contract StrategyBeltToken is StratManager, FeeManager, GasThrottler {
     event StratHarvest(address indexed harvester);
 
     constructor(
-        address _want,
-        uint256 _poolId,
         address _vault,
         address _unirouter,
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
-        want = _want;
-        wantToken = IBeltToken(want).token();
-        poolId = _poolId;
-
-        if (wantToken == native) {
-            beltToWantTokenRoute = [output, native];
-        } else {
-            beltToWantTokenRoute = [output, native, wantToken];
-        }
-
         _giveAllowances();
     }
 
@@ -143,10 +132,11 @@ contract StrategyBeltToken is StratManager, FeeManager, GasThrottler {
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
         uint256 beltBal = IERC20(output).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(beltBal, 0, beltToWantTokenRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(beltBal, 0, outputToDepositTokenRoute, address(this), now);
 
-        uint256 wantTokenBal = IERC20(wantToken).balanceOf(address(this));
-        IBeltToken(want).deposit(wantTokenBal, 0);
+        uint256 busdBal = IERC20(depositToken).balanceOf(address(this));
+        uint256[4] memory uamounts = [0, 0, 0, busdBal];
+        IBeltLP(beltPool).add_liquidity(uamounts, 0);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -220,12 +210,12 @@ contract StrategyBeltToken is StratManager, FeeManager, GasThrottler {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(masterbelt, uint(-1));
         IERC20(output).safeApprove(unirouter, uint(-1));
-        IERC20(wantToken).safeApprove(want, uint(-1));
+        IERC20(depositToken).safeApprove(beltPool, uint(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(masterbelt, 0);
         IERC20(output).safeApprove(unirouter, 0);
-        IERC20(wantToken).safeApprove(want, 0);
+        IERC20(depositToken).safeApprove(beltPool, 0);
     }
 }
