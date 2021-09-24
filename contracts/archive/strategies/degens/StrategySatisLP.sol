@@ -107,7 +107,7 @@ contract StrategySatisLP is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external whenNotPaused gasThrottle {
         IMasterChefReferrer(masterchef).deposit(poolId, 0, address(0));
         chargeFees();
         addLiquidity();

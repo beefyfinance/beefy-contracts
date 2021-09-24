@@ -183,7 +183,7 @@ contract StrategyAave is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         address[] memory assets = new address[](2);
         assets[0] = aToken;
         assets[1] = varDebtToken;

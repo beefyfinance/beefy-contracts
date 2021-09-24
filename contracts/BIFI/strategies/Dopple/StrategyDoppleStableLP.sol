@@ -92,7 +92,7 @@ contract StrategyDoppleStableLP is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external whenNotPaused gasThrottle {
         IDoppleMasterChef(masterchef).harvest(poolId);
         chargeFees();
         addLiquidity();

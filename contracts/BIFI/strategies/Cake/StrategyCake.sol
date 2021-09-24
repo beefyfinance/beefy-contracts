@@ -83,7 +83,7 @@
 //         }
 //     }
 
-//     function harvest() external whenNotPaused onlyEOA gasThrottle {
+//     function harvest() external whenNotPaused gasThrottle {
 //         IMasterChef(masterchef).leaveStaking(0);
 //         _chargeFees();
 //         deposit();

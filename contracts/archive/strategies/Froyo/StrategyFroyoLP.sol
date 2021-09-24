@@ -100,7 +100,7 @@ contract StrategyFroyoLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         uint256[] memory pids = new uint256[](1);
         pids[0] = poolId;
         ILpStaker(stakingPool).claim(pids);

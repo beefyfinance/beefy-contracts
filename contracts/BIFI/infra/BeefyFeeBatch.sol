@@ -51,13 +51,8 @@ contract BeefyFeeBatch is Ownable {
     event NewUnirouter(address oldUnirouter, address newUnirouter);
     event NewBifiRoute(address[] oldRoute, address[] newRoute);
 
-    modifier onlyEOA() {
-        require(msg.sender == tx.origin, "!EOA");
-        _;
-    }
-
     // Main function. Divides Beefy's profits.
-    function harvest() public onlyEOA {
+    function harvest() public {
         uint256 wNativeBal = IERC20(wNative).balanceOf(address(this));
 
         uint256 treasuryHalf = wNativeBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);

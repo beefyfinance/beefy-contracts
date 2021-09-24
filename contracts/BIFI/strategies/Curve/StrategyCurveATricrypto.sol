@@ -88,7 +88,7 @@ contract StrategyCurveATricrypto is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual whenNotPaused onlyEOA {
+    function harvest() external virtual whenNotPaused {
         _harvest();
     }
 

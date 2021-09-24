@@ -107,7 +107,7 @@ contract StrategyOpeanOceanRewardPoolLP is StratManager, FeeManager, GasThrottle
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external whenNotPaused gasThrottle {
         address[] memory users = new address[](1);
         users[0] = address(this);
         ISimpleStaking(rewardPool).claimReward(users);
