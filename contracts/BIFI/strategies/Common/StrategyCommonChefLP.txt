@@ -187,6 +187,11 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
+        // TODO: use respective pending<RewardTokenName>() that is used by the masterchef, till a generic solution using assembly is implemented here.
+        // In the meantime, adding a line below that won't compile to force devs to fix this before deploying.
+        // Probably should use a custom named contract for each masterchef, since we no longer have a working common contract.
+        FIX ME!!!
+
        (,uint256 _amount) = IMasterChef(chef).userInfo(poolId, address(this));
         return _amount;
     }
