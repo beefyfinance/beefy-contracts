@@ -1,17 +1,22 @@
 const hardhat = require("hardhat");
+const { getImplementationAddress } = require("@openzeppelin/upgrades-core");
+const { addressBook } = require("blockchain-addressbook");
 
 const ethers = hardhat.ethers;
 
 const config = {
-  treasury: "0x09EF0e7b555599A9F810789FfF68Db8DBF4c51a0",
-  rewardPool: "0xDeB0a777ba6f59C78c654B8c92F80238c8002DD2",
-  unirouter: "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff",
-  bifi: "0xFbdd194376de19a88118e84E279b977f165d01b8",
-  wNative: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+  bifi: "0x99c409e5f62e4bd2ac142f17cafb6810b8f0baae",
+  wNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+  treasury: "0xc3a4fdcba79DB04b4C3e352b1C467B3Ba909D84A",
+  rewardPool: "0x48F4634c8383aF01BF71AefBC125eb582eb3C74D",
+  unirouter: ethers.constants.AddressZero,
 };
 
 async function main() {
   await hardhat.run("compile");
+
+  const [signer] = await ethers.getSigners();
+  const provider = signer.provider;
 
   const BeefyFeeBatch = await ethers.getContractFactory("BeefyFeeBatchV2");
   const batcher = await upgrades.deployProxy(BeefyFeeBatch, [
@@ -24,7 +29,14 @@ async function main() {
 
   await batcher.deployed();
 
-  console.log("deployed", batcher.address);
+  const implementationAddr = await getImplementationAddress(provider, batcher.address);
+
+  console.log(`Deployed proxy at ${batcher.address}`);
+  console.log(`Deployed implementation at ${implementationAddr}`);
+
+  // await hardhat.run("verify:verify", {
+  //   address: implementationAddr,
+  // });
 }
 
 main()

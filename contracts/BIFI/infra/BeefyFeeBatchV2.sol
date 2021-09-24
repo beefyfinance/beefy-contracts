@@ -95,26 +95,26 @@ contract BeefyFeeBatchV2 is Initializable, OwnableUpgradeable {
     function setUnirouter(address _unirouter) external onlyOwner {
         emit NewUnirouter(unirouter, _unirouter);
 
-        IERC20Upgradeable(wNative).safeApprove(_unirouter, type(uint).max);
-        IERC20Upgradeable(wNative).safeApprove(unirouter, 0);
+        wNative.safeApprove(_unirouter, type(uint).max);
+        wNative.safeApprove(unirouter, 0);
 
         unirouter = _unirouter;
     }
 
     function setNativeToBifiRoute(address[] memory _route) external onlyOwner {
-        require(_route[0] == address(wNative));
-        require(_route[_route.length - 1] == address(bifi));
+        require(_route[0] == address(wNative), "!wNative");
+        require(_route[_route.length - 1] == address(bifi), "!bifi");
 
         emit NewBifiRoute(wNativeToBifiRoute, _route);
         wNativeToBifiRoute = _route;
     }
     
     // Rescue locked funds sent by mistake
-    function inCaseTokensGetStuck(address _token) external onlyOwner {
+    function inCaseTokensGetStuck(address _token, address _recipient) external onlyOwner {
         require(_token != address(wNative), "!safe");
 
         uint256 amount = IERC20Upgradeable(_token).balanceOf(address(this));
-        IERC20Upgradeable(_token).safeTransfer(msg.sender, amount);
+        IERC20Upgradeable(_token).safeTransfer(_recipient, amount);
     }
 
     function transferRewardPoolOwnership(address _newOwner) external onlyOwner {
