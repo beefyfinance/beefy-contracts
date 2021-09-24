@@ -201,7 +201,7 @@ contract StrategyLendhub is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         address[] memory markets = new address[](1);
         markets[0] = iToken;
         IComptroller(comptroller).claimComp(address(this), markets);

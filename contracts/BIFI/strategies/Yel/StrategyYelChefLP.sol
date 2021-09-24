@@ -115,7 +115,7 @@ contract StrategyYelChefLP is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function harvest() external virtual whenNotPaused onlyEOA gasThrottle {
+    function harvest() external virtual whenNotPaused gasThrottle {
         _harvest();
     }
 

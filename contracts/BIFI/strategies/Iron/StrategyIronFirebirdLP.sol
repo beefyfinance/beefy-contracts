@@ -106,7 +106,7 @@ contract StrategyIronFirebirdLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         IMiniChefV2(masterchef).harvest(poolId, address(this));
         chargeFees();
         addLiquidity();

@@ -99,7 +99,7 @@ contract StrategyMasterChefApeLP is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external whenNotPaused gasThrottle {
         IMasterChef(masterchef).deposit(poolId, 0);
         chargeFees();
         addLiquidity();

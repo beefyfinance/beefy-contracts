@@ -97,7 +97,7 @@ contract StrategyBifiMaxiV2 is StratManager {
         }
     }
 
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         _harvest();
     }
 

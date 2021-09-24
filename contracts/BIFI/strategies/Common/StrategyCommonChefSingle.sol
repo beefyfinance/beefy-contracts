@@ -104,7 +104,7 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
         }
     }
 
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         _harvest();
     }
 

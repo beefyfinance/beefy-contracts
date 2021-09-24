@@ -96,7 +96,7 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external whenNotPaused gasThrottle {
         IRewardPool(rewardPool).getReward();
         _chargeFees();
         _swapRewards();

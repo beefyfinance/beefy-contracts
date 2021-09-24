@@ -95,7 +95,7 @@ contract StrategyCakeWbnbLP is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external whenNotPaused gasThrottle {
         IMasterChef(masterchef).deposit(poolId, 0);
 
         uint256 toWbnb = IERC20(cake).balanceOf(address(this));

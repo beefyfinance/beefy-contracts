@@ -90,7 +90,7 @@ contract StrategyAaveSupplyOnly is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         address[] memory assets = new address[](1);
         assets[0] = aToken;
         IIncentivesController(incentivesController).claimRewards(assets, type(uint).max, address(this));

@@ -115,7 +115,7 @@ contract StrategySteakHouseLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() public whenNotPaused onlyEOA {
+    function harvest() public whenNotPaused {
         ISteakHouse(chef).deposit(poolId, 0);
         chargeFees();
         addLiquidity();

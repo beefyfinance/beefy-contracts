@@ -99,7 +99,7 @@ contract StrategyTenfiLP is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external whenNotPaused gasThrottle {
         IAutoFarmV2(masterchef).deposit(poolId, 0);
         chargeFees();
         addLiquidity();

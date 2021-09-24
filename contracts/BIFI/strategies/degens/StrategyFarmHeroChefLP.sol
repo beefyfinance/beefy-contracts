@@ -109,7 +109,7 @@ contract StrategyFarmHeroChefLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         IHeroFarmV3(chef).deposit(poolId, 0, referName);
         chargeFees();
         addLiquidity();

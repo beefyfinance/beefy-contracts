@@ -112,7 +112,7 @@ contract StrategyPolygonSushiLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         IMiniChefV2(chef).harvest(poolId, address(this));
         chargeFees();
         addLiquidity();

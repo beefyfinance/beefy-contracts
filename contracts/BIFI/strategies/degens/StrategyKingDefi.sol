@@ -83,7 +83,7 @@ contract StrategyKingDefi is StratManager, FeeManager, GasThrottler {
         _harvest();
     }
 
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external whenNotPaused gasThrottle {
         _harvest();
     }
 
