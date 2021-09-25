@@ -13,11 +13,13 @@ interface IStrategy {
     function balanceOf() external view returns (uint256);
     function balanceOfWant() external view returns (uint256);
     function balanceOfPool() external view returns (uint256);
-    function harvest() external;
+    function harvest() external returns (uint256);
     function retireStrat() external;
     function panic() external;
     function pause() external;
     function unpause() external;
     function paused() external view returns (bool);
     function unirouter() external view returns (address);
+    function performHarvestBeforeDeposit() external returns (uint256);
+    function native() external view returns (address);
 }

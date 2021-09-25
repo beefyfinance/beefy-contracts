@@ -108,49 +108,64 @@ contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function beforeDeposit() external override {
+    function beforeDeposit() external override {}
+
+    function performHarvestBeforeDeposit() external whenNotPaused returns (uint256) {
+        require(msg.sender == vault, "!vault");
+        
+        uint256 callFeeAmount = 0;
         if (harvestOnDeposit) {
-            require(msg.sender == vault, "!vault");
-            _harvest();
+            callFeeAmount = _harvest();
         }
+
+        return callFeeAmount;
     }
 
-    function harvest() external virtual whenNotPaused gasThrottle() {
-        _harvest();
+    function harvest() external virtual whenNotPaused gasThrottle() returns (uint256) {
+        return _harvest();
     }
 
-    function managerHarvest() external onlyManager {
-        _harvest();
+    function managerHarvest() external onlyManager returns (uint256) {
+        return _harvest();
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest() internal returns (uint256) {
         IMiniChefV2(chef).harvest(poolId, address(this));
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        if (outputBal > 0) {
-            chargeFees();
+        uint256 callFeeAmount = 0;
+
+        // using _computeCallRewardFromOutputBal should help protect more against low decimal coin (USDC, BTC) swaps returning 0.
+        // else can use _checkSwapAmountOut on coins with decimals < 18 as the condition to check against
+        if (_computeCallRewardFromOutputBal(outputBal) > 0) {
+            callFeeAmount = chargeFees();
             addLiquidity();
             deposit();
             lastHarvest = block.timestamp;
             emit StratHarvest(msg.sender);
         }
+
+        return callFeeAmount;
     }
 
     // performance fees
-    function chargeFees() internal {
+    function chargeFees() internal returns (uint256) {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
+        // use msg.sender so contracts can receive call reward.
+        IERC20(native).safeTransfer(msg.sender, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
         uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
         IERC20(native).safeTransfer(strategist, strategistFee);
+
+        return callFeeAmount;
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
@@ -201,13 +216,21 @@ contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottler {
         return IMiniChefV2(chef).pendingSushi(poolId, address(this));
     }
 
+    function _checkSwapAmountOut(uint256 input, address[] memory route) internal view returns (uint256) {
+        uint256[] memory amountsOut = IUniswapRouterETH(unirouter).getAmountsOut(input, route);
+        uint256 amountOut = amountsOut[amountsOut.length -1];
+        return amountOut;
+    }
+
+    function _computeCallRewardFromOutputBal(uint256 outputBal) internal view returns (uint256) {
+        uint256 nativeOut = _checkSwapAmountOut(outputBal, outputToNativeRoute);
+        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
+
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
         uint256 outputBal = rewardsAvailable();
-        uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
-        uint256 nativeOut = amountOut[amountOut.length -1];
-
-        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+        return _computeCallRewardFromOutputBal(outputBal);
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {

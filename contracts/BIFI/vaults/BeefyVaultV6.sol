@@ -102,6 +102,8 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
     function deposit(uint _amount) public nonReentrant {
         strategy.beforeDeposit();
 
+        uint256 callFeeAmount = strategy.performHarvestBeforeDeposit();
+
         uint256 _pool = balance();
         want().safeTransferFrom(msg.sender, address(this), _amount);
         earn();
@@ -114,6 +116,10 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
             shares = (_amount.mul(totalSupply())).div(_pool);
         }
         _mint(msg.sender, shares);
+        if (callFeeAmount > 0) {
+            // transfer call fee received from strategy.
+            IERC20(strategy.native()).safeTransfer(msg.sender, callFeeAmount);
+        }
     }
 
     /**
