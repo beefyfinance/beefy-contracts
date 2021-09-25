@@ -13,7 +13,7 @@ import "../../interfaces/sushi/IRewarder.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyMiniChefLP is StratManager, FeeManager {
+contract StrategyMiniChefLPGelato is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -31,6 +31,7 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
 
     uint256 public lastHarvest;
     bool public harvestOnDeposit;
+    address public multiHarvester;
 
     // Routes
     address[] public outputToNativeRoute;
@@ -81,6 +82,9 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
         require(_rewardToOutputRoute[_rewardToOutputRoute.length - 1] == output, '_rewardToOutputRoute != output');
         rewardToOutputRoute = _rewardToOutputRoute;
 
+        // set to beefyFeeRecipient until multiHarvester is set
+        multiHarvester = _beefyFeeRecipient;
+
         _giveAllowances();
     }
 
@@ -118,25 +122,30 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
-            _harvest();
+            _harvest(false);
         }
     }
 
     function harvest() external virtual whenNotPaused {
-        _harvest();
+        _harvest(false);
+    }
+
+    function multiHarvesterHarvest() external whenNotPaused {
+        // callFee goes to multiHarvester contract instead of tx.origin
+        _harvest(true);
     }
 
     function managerHarvest() external onlyManager {
-        _harvest();
+        _harvest(false);
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest(bool shouldPayMultiHarvest) internal {
         IMiniChefV2(chef).harvest(poolId, address(this));
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         uint256 rewardBal = IERC20(reward).balanceOf(address(this));
         if (outputBal > 0 || rewardBal > 0) {
-            chargeFees();
+            chargeFees(shouldPayMultiHarvest);
             addLiquidity();
             deposit();
             lastHarvest = block.timestamp;
@@ -145,7 +154,7 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     }
 
     // performance fees
-    function chargeFees() internal {
+    function chargeFees(bool shouldPayMultiHarvest) internal {
         // v2 harvester rewards are in both output and reward, convert reward to output
         uint256 toOutput = IERC20(reward).balanceOf(address(this));
         if (toOutput > 0) {
@@ -158,7 +167,12 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(msg.sender, callFeeAmount);
+
+        if (shouldPayMultiHarvest) {
+            IERC20(native).safeTransfer(multiHarvester, callFeeAmount);
+        } else {
+            IERC20(native).safeTransfer(tx.origin, callFeeAmount);
+        }
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
