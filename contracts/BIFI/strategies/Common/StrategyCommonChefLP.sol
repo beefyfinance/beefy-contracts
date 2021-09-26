@@ -193,7 +193,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        string memory signature = StringUtils.concat(pendingRewardsFunctionName, "(uint256, address)");
+        string memory signature = StringUtils.concat(pendingRewardsFunctionName, "(uint256,address)");
         bytes memory result = Address.functionStaticCall(
             chef, 
             abi.encodeWithSignature(
