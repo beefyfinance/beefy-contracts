@@ -2,8 +2,9 @@ const hardhat = require("hardhat");
 
 const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
-const { getNetworkRpc } = require("../utils/getNetworkRpc");
-const { addressBook } = require("blockchain-addressbook")
+import { getNetworkRpc } from "../utils/getNetworkRpc";
+import { addressBook } from "blockchain-addressbook";
+import { chainCallFeeMap } from "../utils/chainCallFeeMap";
 const { LHB: {address: LHB}, WHT: {address: WHT}, USDT: {address: USDT}  } = addressBook.heco.tokens;
 const { beefyfinance } = addressBook.heco.platforms;
 
@@ -46,11 +47,12 @@ async function main() {
   const Strategy = await ethers.getContractFactory(contractNames.strategy);
 
   const [deployer] = await ethers.getSigners();
-  const rpc = getNetworkRpc(hardhat.network.name);
+  const chainName = hardhat.network.name
+  const rpc = getNetworkRpc(chainName);
 
   console.log("Deploying:", vaultParams.mooName);
 
-  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc: "https://http-mainnet.hecochain.com" });
+  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
 
   const vault = await Vault.deploy(predictedAddresses.strategy, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay);
   await vault.deployed();
@@ -70,6 +72,13 @@ async function main() {
   );
   await strategy.deployed();
   await strategy.setPendingRewardsFunctionName(strategyParams.pendingRewardsFunctionName);
+
+  // set correct call fee if needed
+  const expectedCallFee = chainCallFeeMap[chainName];
+  const defaultCallFee = await strategy.callFee();
+  if (expectedCallFee !== defaultCallFee) {
+    await strategy.setCallFee(expectedCallFee);
+  }
   
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
