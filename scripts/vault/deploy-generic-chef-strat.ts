@@ -5,7 +5,7 @@ import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
 import { setPendingRewardsFunctionName } from "../../utils/setPendingRewardsFunctionName";
 import { verifyContracts } from "../../utils/verifyContracts";
 
-const registerSubsidy = require("../utils/registerSubsidy");
+const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
   USDC: { address: USDC },
@@ -14,7 +14,7 @@ const {
 } = addressBook.polygon.tokens;
 const { polywise, quickswap, beefyfinance } = addressBook.polygon.platforms;
 
-const shouldVerifyOnEtherscan = true;
+const shouldVerifyOnEtherscan = false;
 
 const want = web3.utils.toChecksumAddress("0x2F9209Ef6fA6C002bf6fC99124336e24F88B62D0");
 

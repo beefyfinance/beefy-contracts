@@ -4,7 +4,7 @@ import { predictAddresses } from "../../utils/predictAddresses";
 import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
 import { verifyContracts } from "../../utils/verifyContracts";
 
-const registerSubsidy = require("../utils/registerSubsidy");
+const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
   WMATIC_DFYN: { address: WMATIC_DFYN },
