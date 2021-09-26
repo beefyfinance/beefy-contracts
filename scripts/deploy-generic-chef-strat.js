@@ -1,41 +1,41 @@
 import hardhat, { web3 } from "hardhat";
 
-import { getNetworkRpc } from "../utils/getNetworkRpc";
 import { addressBook } from "blockchain-addressbook";
 import { setCorrectCallFee } from "../utils/setCorrectCallFee";
+import { predictAddresses } from "../utils/predictAddresses";
 
 const registerSubsidy = require("../utils/registerSubsidy");
-const predictAddresses = require("../utils/predictAddresses");
-const { WONE: { address: WONE }, SUSHI: { address: SUSHI }, USDC: { address: USDC}, USDT: {address: USDT } } = addressBook.one.tokens;
-const { sushi, beefyfinance } = addressBook.one.platforms;
+
+const { USDC: { address: USDC}, WMATIC: {address: WMATIC }, polyWISE: { address: polyWISE} } = addressBook.polygon.tokens;
+const { polywise, quickswap, beefyfinance } = addressBook.polygon.platforms;
 
 const ethers = hardhat.ethers;
 
-const want = web3.utils.toChecksumAddress("0x2c7862b408bb3DBFF277110FFdE1B4EAa45C692a");
+const want = web3.utils.toChecksumAddress("0x2F9209Ef6fA6C002bf6fC99124336e24F88B62D0");
 
 const vaultParams = {
-  mooName: "Moo Sushi USDT-ONE",
-  mooSymbol: "mooSushiUSDT-ONE",
+  mooName: "Moo Polywise Quick USDC-WISE",
+  mooSymbol: "mooPolywiseQuickUSDC-WISE",
   delay: 21600,
 }
 
 const strategyParams = {
   want: want,
-  poolId: 2,
-  chef: sushi.minichef,
-  unirouter: sushi.router,
+  poolId: 1,
+  chef: polywise.masterchef,
+  unirouter: quickswap.router,
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
-  beefyFeeRecipient: "0xaDB9DDFA24E326dC9d337561f6c7ba2a6Ecec697",
-  outputToNativeRoute: [ SUSHI, WONE ],
-  outputToLp0Route: [ SUSHI, WONE, USDT ],
-  outputToLp1Route: [ SUSHI, WONE],
+  beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
+  outputToNativeRoute: [ polyWISE, WMATIC ],
+  outputToLp0Route: [ polyWISE, USDC ],
+  outputToLp1Route: [ polyWISE ],
   pendingRewardsFunctionName: "pendingWise" // used for rewardsAvailable(), use correct function name from masterchef
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyMiniChefLP"
+  strategy: "StrategyCommonChefLP"
 }
 
 async function main() {
@@ -51,12 +51,9 @@ async function main() {
 
   const [deployer] = await ethers.getSigners();
   
-  const chainName = hardhat.network.name
-  const rpc = getNetworkRpc(chainName);
-
   console.log("Deploying:", vaultParams.mooName);
 
-  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
+  const predictedAddresses = await predictAddresses({ creator: deployer.address });
 
   const vault = await Vault.deploy(predictedAddresses.strategy, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay);
   await vault.deployed();
@@ -78,7 +75,7 @@ async function main() {
 
   // post deploy
   await strategy.setPendingRewardsFunctionName(strategyParams.pendingRewardsFunctionName);
-  await setCorrectCallFee(chainName, strategy);
+  await setCorrectCallFee(hardhat.network.name, strategy);
 
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
