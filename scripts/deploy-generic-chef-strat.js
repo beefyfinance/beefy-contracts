@@ -3,6 +3,7 @@ import hardhat, { web3 } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
 import { setCorrectCallFee } from "../utils/setCorrectCallFee";
 import { predictAddresses } from "../utils/predictAddresses";
+import { setPendingRewardsFunctionName } from "../utils/setPendingRewardsFunctionName";
 
 const registerSubsidy = require("../utils/registerSubsidy");
 
@@ -73,14 +74,19 @@ async function main() {
   );
   await strategy.deployed();
 
-  // post deploy
-  await strategy.setPendingRewardsFunctionName(strategyParams.pendingRewardsFunctionName);
-  await setCorrectCallFee(hardhat.network.name, strategy);
-
-  console.log("Vault deployed to:", vault.address);
-  console.log("Strategy deployed to:", strategy.address);
+  // copy paste this to PR
+  console.log()
+  console.log("Vault:", vault.address);
+  console.log("Strategy:", strategy.address);
+  console.log("PoolId:", strategyParams.poolId);
   console.log("Want:", strategyParams.want);
 
+  console.log()
+  console.log("Running post deployment")
+  await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
+  await setCorrectCallFee(strategy, hardhat.network.name);
+  console.log()
+  
   if (hardhat.network.name === "bsc") {
     await registerSubsidy(vault.address, deployer);
     await registerSubsidy(strategy.address, deployer);
