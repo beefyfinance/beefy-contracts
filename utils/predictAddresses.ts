@@ -1,17 +1,12 @@
-const rlp = require("rlp");
-const keccak = require("keccak");
-const Web3 = require("web3");
+import { web3 } from "hardhat";
+import * as rlp from "rlp";
+import keccak from "keccak";
 
-const predictAddresses = async (config) => {
-  let { creator, rpc } = config;
-
+export const predictAddresses = async ({ creator }: { creator: string }) => {
   creator = creator || "0x565EB5e5B21F97AE9200D121e77d2760FFf106cb";
-  rpc = rpc || "https://bsc-dataseed.binance.org/";
-
-  const web3 = new Web3(rpc);
 
   let currentNonce = await web3.eth.getTransactionCount(creator);
-  let currentNonceHex = `0x${parseInt(currentNonce).toString(16)}`;
+  let currentNonceHex = `0x${currentNonce.toString(16)}`;
   let currentInputArr = [creator, currentNonceHex];
   let currentRlpEncoded = rlp.encode(currentInputArr);
   let currentContractAddressLong = keccak("keccak256").update(currentRlpEncoded).digest("hex");
@@ -19,7 +14,7 @@ const predictAddresses = async (config) => {
   let currentContractAddressChecksum = web3.utils.toChecksumAddress(currentContractAddress);
 
   let nextNonce = currentNonce + 1;
-  let nextNonceHex = `0x${parseInt(nextNonce).toString(16)}`;
+  let nextNonceHex = `0x${nextNonce.toString(16)}`;
   let nextInputArr = [creator, nextNonceHex];
   let nextRlpEncoded = rlp.encode(nextInputArr);
   let nextContractAddressLong = keccak("keccak256").update(nextRlpEncoded).digest("hex");
@@ -31,5 +26,3 @@ const predictAddresses = async (config) => {
     strategy: nextContractAddressChecksum,
   };
 };
-
-module.exports = predictAddresses;
