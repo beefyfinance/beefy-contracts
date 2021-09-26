@@ -25,7 +25,8 @@ const strategyParams = {
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   outputToNativeRoute: [ LHB, WHT ],
   outputToLp0Route: [  ],
-  outputToLp1Route: [ LHB, USDT ]
+  outputToLp1Route: [ LHB, USDT ],
+  pendingRewardsFunctionName: "pendingWise" // used for rewardsAvailable(), use correct function name from masterchef
 };
 
 const contractNames = {
@@ -68,6 +69,7 @@ async function main() {
     strategyParams.outputToLp1Route
   );
   await strategy.deployed();
+  await strategy.setPendingRewardsFunctionName(strategyParams.pendingRewardsFunctionName);
   
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
