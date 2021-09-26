@@ -4,35 +4,36 @@ const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const { getNetworkRpc } = require("../utils/getNetworkRpc");
 const { addressBook } = require("blockchain-addressbook")
-const { WONE: { address: WONE }, SUSHI: { address: SUSHI }, USDC: { address: USDC}, USDT: {address: USDT } } = addressBook.one.tokens;
-const { sushi, beefyfinance } = addressBook.one.platforms;
+const { MIM: { address: MIM }, SUSHI: { address: SUSHI }, WETH: { address: WETH}, SPELL: {address: SPELL } } = addressBook.arbitrum.tokens;
+const { sushi, beefyfinance } = addressBook.arbitrum.platforms;
 
 const ethers = hardhat.ethers;
 
-const want = web3.utils.toChecksumAddress("0x2c7862b408bb3DBFF277110FFdE1B4EAa45C692a");
+const want = web3.utils.toChecksumAddress("0xb6DD51D5425861C808Fd60827Ab6CFBfFE604959");
 
 const vaultParams = {
-  mooName: "Moo Sushi USDT-ONE",
-  mooSymbol: "mooSushiUSDT-ONE",
+  mooName: "Moo Sushi MIM-WETH",
+  mooSymbol: "mooSushiMIM-WETH",
   delay: 21600,
 }
 
 const strategyParams = {
   want: want,
-  poolId: 2,
+  poolId: 9,
   chef: sushi.minichef,
   unirouter: sushi.router,
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
-  beefyFeeRecipient: "0xaDB9DDFA24E326dC9d337561f6c7ba2a6Ecec697",
-  outputToNativeRoute: [ SUSHI, WONE ],
-  outputToLp0Route: [ SUSHI, WONE, USDT ],
-  outputToLp1Route: [ SUSHI, WONE]
+  beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
+  outputToNativeRoute: [ SUSHI, WETH ],
+  rewardToOutputRoute: [ SPELL, WETH, SUSHI ],
+  outputToLp0Route: [ SUSHI, WETH ],
+  outputToLp1Route: [ SUSHI, WETH, MIM ]
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyMiniChefLP"
+  strategy: "StrategyArbSushiMimLP"
 }
 
 async function main() {
@@ -47,11 +48,11 @@ async function main() {
   const Strategy = await ethers.getContractFactory(contractNames.strategy);
 
   const [deployer] = await ethers.getSigners();
-  const rpc = getNetworkRpc(hardhat.network.name);
+//  const rpc = getNetworkRpc(hardhat.network.name);
 
   console.log("Deploying:", vaultParams.mooName);
 
-  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc: "https://api.s0.t.hmny.io/" });
+  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc: "https://arb1.arbitrum.io/rpc" });
 
   const vault = await Vault.deploy(predictedAddresses.strategy, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay);
   await vault.deployed();
@@ -66,6 +67,7 @@ async function main() {
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
     strategyParams.outputToNativeRoute,
+    strategyParams.rewardToOutputRoute,
     strategyParams.outputToLp0Route,
     strategyParams.outputToLp1Route
   );

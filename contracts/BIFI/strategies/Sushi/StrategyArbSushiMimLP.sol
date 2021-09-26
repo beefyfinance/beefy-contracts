@@ -9,17 +9,19 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/sushi/IMiniChefV2.sol";
+import "../../interfaces/sushi/IRewarder.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 import "../../utils/GasThrottler.sol";
 
-contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottler {
+contract StrategyArbSushiMimLP is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
     address public native;
     address public output;
+    address public reward;
     address public want;
     address public lpToken0;
     address public lpToken1;
@@ -33,6 +35,7 @@ contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottler {
 
     // Routes
     address[] public outputToNativeRoute;
+    address[] public rewardToOutputRoute;
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
 
@@ -51,6 +54,7 @@ contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottler {
         address _strategist,
         address _beefyFeeRecipient,
         address[] memory _outputToNativeRoute,
+        address[] memory _rewardToOutputRoute,
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
@@ -73,6 +77,10 @@ contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottler {
         require(_outputToLp1Route[0] == output);
         require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1);
         outputToLp1Route = _outputToLp1Route;
+
+        reward = _rewardToOutputRoute[0];
+        require(_rewardToOutputRoute[_rewardToOutputRoute.length - 1] == output, '_rewardToOutputRoute != output');
+        rewardToOutputRoute = _rewardToOutputRoute;
 
         _giveAllowances();
     }
@@ -127,7 +135,8 @@ contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottler {
     function _harvest() internal {
         IMiniChefV2(chef).harvest(poolId, address(this));
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        if (outputBal > 0) {
+        uint256 rewardBal = IERC20(reward).balanceOf(address(this));
+        if (outputBal > 0 || rewardBal > 0) {
             chargeFees();
             addLiquidity();
             deposit();
@@ -138,6 +147,11 @@ contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottler {
 
     // performance fees
     function chargeFees() internal {
+        uint256 toOutput = IERC20(reward).balanceOf(address(this));
+        if (toOutput > 0) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, rewardToOutputRoute, address(this), block.timestamp);
+        }
+
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
 
@@ -203,9 +217,21 @@ contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottler {
 
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
+        uint256 pendingSpell;
+        address rewarder = IMiniChefV2(chef).rewarder(poolId);
+        if (rewarder != address(0)) {
+            pendingSpell = IRewarder(rewarder).pendingToken(poolId, address(this));
+        } 
+
+        uint256[] memory rewardOut = IUniswapRouterETH(unirouter).getAmountsOut(pendingSpell, rewardToOutputRoute);
+        uint256 moreOutput = rewardOut[rewardOut.length -1];
+
         uint256 outputBal = rewardsAvailable();
-        uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
+        uint256 outputTotal = outputBal.add(moreOutput);
+        uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputTotal, outputToNativeRoute);
         uint256 nativeOut = amountOut[amountOut.length -1];
+
+       
 
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
@@ -246,6 +272,7 @@ contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottler {
 
     function _giveAllowances() internal {
         IERC20(want).safeApprove(chef, type(uint256).max);
+        IERC20(reward).safeApprove(unirouter, type(uint256).max);
         IERC20(output).safeApprove(unirouter, type(uint256).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
@@ -257,6 +284,7 @@ contract StrategyArbSushiLP is StratManager, FeeManager, GasThrottler {
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
+        IERC20(reward).safeApprove(unirouter, 0);
         IERC20(output).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
