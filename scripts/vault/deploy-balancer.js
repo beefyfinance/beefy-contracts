@@ -1,8 +1,8 @@
 const hardhat = require("hardhat");
 
-const registerSubsidy = require("../utils/registerSubsidy");
-const predictAddresses = require("../utils/predictAddresses");
-const { getNetworkRpc } = require("../utils/getNetworkRpc");
+const registerSubsidy = require("../../utils/registerSubsidy");
+const predictAddresses = require("../../utils/predictAddresses");
+const { getNetworkRpc } = require("../../utils/getNetworkRpc");
 
 const ethers = hardhat.ethers;
 

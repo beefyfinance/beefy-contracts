@@ -1,46 +1,46 @@
 import hardhat, { ethers, web3 } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
-import { predictAddresses } from "../utils/predictAddresses";
-import { setCorrectCallFee } from "../utils/setCorrectCallFee";
-import { setPendingRewardsFunctionName } from "../utils/setPendingRewardsFunctionName";
-import { verifyContracts } from "../utils/verifyContracts";
-
-const registerSubsidy = require("../utils/registerSubsidy");
+import { predictAddresses } from "../../utils/predictAddresses";
+import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
+import { verifyContracts } from "../../utils/verifyContracts";
 
 const {
-  USDC: { address: USDC },
-  WMATIC: { address: WMATIC },
-  polyWISE: { address: polyWISE },
-} = addressBook.polygon.tokens;
-const { polywise, quickswap, beefyfinance } = addressBook.polygon.platforms;
+  SCREAM: { address: SCREAM },
+  fUSDT: { address: fUSDT },
+  WFTM: { address: WFTM },
+  ETH: { address: ETH },
+  WBTC: { address: WBTC },
+  DAI: { address: DAI },
+} = addressBook.fantom.tokens;
+const { spookyswap, beefyfinance } = addressBook.fantom.platforms;
 
-const shouldVerifyOnEtherscan = true;
+const shouldVerifyOnEtherscan = false;
 
-const want = web3.utils.toChecksumAddress("0x2F9209Ef6fA6C002bf6fC99124336e24F88B62D0");
+const iToken = web3.utils.toChecksumAddress("0x4565DC3Ef685E4775cdF920129111DdF43B9d882");
 
 const vaultParams = {
-  mooName: "Moo Polywise Quick USDC-WISE",
-  mooSymbol: "mooPolywiseQuickUSDC-WISE",
+  mooName: "Moo Scream WBTC",
+  mooSymbol: "mooScreamWBTC",
   delay: 21600,
 };
 
 const strategyParams = {
-  want,
-  poolId: 1,
-  chef: polywise.masterchef,
-  unirouter: quickswap.router,
-  strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
+  markets: [iToken],
+  borrowRate: 72,
+  borrowRateMax: 75,
+  borrowDepth: 4,
+  minLeverage: 1,
+  outputToNativeRoute: [SCREAM, WFTM],
+  outputToWantRoute: [SCREAM, WFTM, WBTC],
+  unirouter: spookyswap.router,
   keeper: beefyfinance.keeper,
+  strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b",
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [polyWISE, WMATIC],
-  outputToLp0Route: [polyWISE, USDC],
-  outputToLp1Route: [polyWISE],
-  pendingRewardsFunctionName: "pendingWise", // used for rewardsAvailable(), use correct function name from masterchef
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonChefLP",
+  strategy: "StrategyScream",
 };
 
 async function main() {
@@ -74,17 +74,18 @@ async function main() {
   await vault.deployed();
 
   const strategyConstructorArguments = [
-    strategyParams.want,
-    strategyParams.poolId,
-    strategyParams.chef,
+    strategyParams.borrowRate,
+    strategyParams.borrowRateMax,
+    strategyParams.borrowDepth,
+    strategyParams.minLeverage,
+    strategyParams.outputToNativeRoute,
+    strategyParams.outputToWantRoute,
+    strategyParams.markets,
     vault.address,
     strategyParams.unirouter,
     strategyParams.keeper,
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
-    strategyParams.outputToNativeRoute,
-    strategyParams.outputToLp0Route,
-    strategyParams.outputToLp1Route,
   ];
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();
@@ -93,23 +94,16 @@ async function main() {
   console.log();
   console.log("Vault:", vault.address);
   console.log("Strategy:", strategy.address);
-  console.log("Want:", strategyParams.want);
-  console.log("PoolId:", strategyParams.poolId);
+  console.log("Want:", strategyParams.outputToWantRoute[strategyParams.outputToWantRoute.length - 1]);
 
   console.log();
   console.log("Running post deployment");
 
   if (shouldVerifyOnEtherscan) {
-    verifyContracts(vault, vaultConstructorArguments, strategy, strategyConstructorArguments);
+    await verifyContracts(vault, vaultConstructorArguments, strategy, strategyConstructorArguments);
   }
-  await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
   await setCorrectCallFee(strategy, hardhat.network.name);
   console.log();
-
-  if (hardhat.network.name === "bsc") {
-    await registerSubsidy(vault.address, deployer);
-    await registerSubsidy(strategy.address, deployer);
-  }
 }
 
 main()

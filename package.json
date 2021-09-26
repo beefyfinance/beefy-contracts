@@ -27,11 +27,9 @@
     "test": "hardhat test --network localhost",
     "test:vault": "hardhat test --network localhost test/prod/VaultLifecycle.test.js",
     
-    "deploy:chef": "hardhat run scripts/deploy-generic-chef-strat.ts --network",
-    "deploy:rewardPool": "hardhat run scripts/deploy-generic-rewardPool-strat.ts --network",
-    "deploy:lend": "hardhat run scripts/deploy-strat-lend.ts --network",
-    "deploy:pool": "hardhat run scripts/deploy-launchpad-pool.js --network",
-    "notify": "hardhat run scripts/notify-launchpools.js --network",
+    "deploy:chef": "hardhat run scripts/vault/deploy-generic-chef-strat.ts --network",
+    "deploy:rewardPool": "hardhat run scripts/vault/deploy-generic-rewardPool-strat.ts --network",
+    "deploy:lend": "hardhat run scripts/vault/deploy-strat-lend.ts --network",
 
     "flat-hardhat": "hardhat flatten contracts/BIFI/strategies/common/StrategyCommonRewardPoolSingle.sol > tmp/flattened.sol",
     "flat": "bin/flatten.sh",

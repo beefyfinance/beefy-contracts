@@ -1,46 +1,45 @@
 import hardhat, { ethers, web3 } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
-import { predictAddresses } from "../utils/predictAddresses";
-import { setCorrectCallFee } from "../utils/setCorrectCallFee";
-import { verifyContracts } from "../utils/verifyContracts";
+import { predictAddresses } from "../../utils/predictAddresses";
+import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
+import { verifyContracts } from "../../utils/verifyContracts";
+
+const registerSubsidy = require("../utils/registerSubsidy");
 
 const {
-  SCREAM: { address: SCREAM },
-  fUSDT: { address: fUSDT },
-  WFTM: { address: WFTM },
-  ETH: { address: ETH },
-  WBTC: { address: WBTC },
-  DAI: { address: DAI },
-} = addressBook.fantom.tokens;
-const { spookyswap, beefyfinance } = addressBook.fantom.platforms;
+  WMATIC_DFYN: { address: WMATIC_DFYN },
+  DFYN: { address: DFYN },
+  CRV: { address: CRV },
+  WMATIC: { address: WMATIC },
+} = addressBook.polygon.tokens;
+const { dfyn, beefyfinance } = addressBook.polygon.platforms;
 
 const shouldVerifyOnEtherscan = false;
 
-const iToken = web3.utils.toChecksumAddress("0x4565DC3Ef685E4775cdF920129111DdF43B9d882");
+const want = web3.utils.toChecksumAddress("0x4ea3e2cfc39fa51df85ebcfa366d7f0eed448a1c");
+const rewardPool = web3.utils.toChecksumAddress("0x098fdadCcde328e6CD1168125e1e7685eEa54342");
 
 const vaultParams = {
-  mooName: "Moo Scream WBTC",
-  mooSymbol: "mooScreamWBTC",
+  mooName: "Moo DFyn CRV-DFYN",
+  mooSymbol: "mooDFynCRV-DFYN",
   delay: 21600,
 };
 
 const strategyParams = {
-  markets: [iToken],
-  borrowRate: 72,
-  borrowRateMax: 75,
-  borrowDepth: 4,
-  minLeverage: 1,
-  outputToNativeRoute: [SCREAM, WFTM],
-  outputToWantRoute: [SCREAM, WFTM, WBTC],
-  unirouter: spookyswap.router,
+  want: want,
+  rewardPool: rewardPool,
+  unirouter: dfyn.router,
+  strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
-  strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b",
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
+  outputToNativeRoute: [DFYN, WMATIC_DFYN],
+  outputToLp0Route: [DFYN, CRV],
+  outputToLp1Route: [DFYN],
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyScream",
+  strategy: "StrategyDFYNRewardPoolLP",
 };
 
 async function main() {
@@ -74,18 +73,16 @@ async function main() {
   await vault.deployed();
 
   const strategyConstructorArguments = [
-    strategyParams.borrowRate,
-    strategyParams.borrowRateMax,
-    strategyParams.borrowDepth,
-    strategyParams.minLeverage,
-    strategyParams.outputToNativeRoute,
-    strategyParams.outputToWantRoute,
-    strategyParams.markets,
+    strategyParams.want,
+    strategyParams.rewardPool,
     vault.address,
     strategyParams.unirouter,
     strategyParams.keeper,
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
+    strategyParams.outputToNativeRoute,
+    strategyParams.outputToLp0Route,
+    strategyParams.outputToLp1Route,
   ];
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();
@@ -94,7 +91,8 @@ async function main() {
   console.log();
   console.log("Vault:", vault.address);
   console.log("Strategy:", strategy.address);
-  console.log("Want:", strategyParams.outputToWantRoute[strategyParams.outputToWantRoute.length - 1]);
+  console.log("Want:", strategyParams.want);
+  console.log("RewardPool:", strategyParams.rewardPool);
 
   console.log();
   console.log("Running post deployment");
@@ -104,6 +102,11 @@ async function main() {
   }
   await setCorrectCallFee(strategy, hardhat.network.name);
   console.log();
+
+  if (hardhat.network.name === "bsc") {
+    await registerSubsidy(vault.address, deployer);
+    await registerSubsidy(strategy.address, deployer);
+  }
 }
 
 main()

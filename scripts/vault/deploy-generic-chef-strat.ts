@@ -1,45 +1,46 @@
 import hardhat, { ethers, web3 } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
-import { predictAddresses } from "../utils/predictAddresses";
-import { setCorrectCallFee } from "../utils/setCorrectCallFee";
-import { verifyContracts } from "../utils/verifyContracts";
+import { predictAddresses } from "../../utils/predictAddresses";
+import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
+import { setPendingRewardsFunctionName } from "../../utils/setPendingRewardsFunctionName";
+import { verifyContracts } from "../../utils/verifyContracts";
 
 const registerSubsidy = require("../utils/registerSubsidy");
 
 const {
-  WMATIC_DFYN: { address: WMATIC_DFYN },
-  DFYN: { address: DFYN },
-  CRV: { address: CRV },
+  USDC: { address: USDC },
   WMATIC: { address: WMATIC },
+  polyWISE: { address: polyWISE },
 } = addressBook.polygon.tokens;
-const { dfyn, beefyfinance } = addressBook.polygon.platforms;
+const { polywise, quickswap, beefyfinance } = addressBook.polygon.platforms;
 
-const shouldVerifyOnEtherscan = false;
+const shouldVerifyOnEtherscan = true;
 
-const want = web3.utils.toChecksumAddress("0x4ea3e2cfc39fa51df85ebcfa366d7f0eed448a1c");
-const rewardPool = web3.utils.toChecksumAddress("0x098fdadCcde328e6CD1168125e1e7685eEa54342");
+const want = web3.utils.toChecksumAddress("0x2F9209Ef6fA6C002bf6fC99124336e24F88B62D0");
 
 const vaultParams = {
-  mooName: "Moo DFyn CRV-DFYN",
-  mooSymbol: "mooDFynCRV-DFYN",
+  mooName: "Moo Polywise Quick USDC-WISE",
+  mooSymbol: "mooPolywiseQuickUSDC-WISE",
   delay: 21600,
 };
 
 const strategyParams = {
-  want: want,
-  rewardPool: rewardPool,
-  unirouter: dfyn.router,
+  want,
+  poolId: 1,
+  chef: polywise.masterchef,
+  unirouter: quickswap.router,
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [DFYN, WMATIC_DFYN],
-  outputToLp0Route: [DFYN, CRV],
-  outputToLp1Route: [DFYN],
+  outputToNativeRoute: [polyWISE, WMATIC],
+  outputToLp0Route: [polyWISE, USDC],
+  outputToLp1Route: [polyWISE],
+  pendingRewardsFunctionName: "pendingWise", // used for rewardsAvailable(), use correct function name from masterchef
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyDFYNRewardPoolLP",
+  strategy: "StrategyCommonChefLP",
 };
 
 async function main() {
@@ -74,7 +75,8 @@ async function main() {
 
   const strategyConstructorArguments = [
     strategyParams.want,
-    strategyParams.rewardPool,
+    strategyParams.poolId,
+    strategyParams.chef,
     vault.address,
     strategyParams.unirouter,
     strategyParams.keeper,
@@ -92,14 +94,15 @@ async function main() {
   console.log("Vault:", vault.address);
   console.log("Strategy:", strategy.address);
   console.log("Want:", strategyParams.want);
-  console.log("RewardPool:", strategyParams.rewardPool);
+  console.log("PoolId:", strategyParams.poolId);
 
   console.log();
   console.log("Running post deployment");
 
   if (shouldVerifyOnEtherscan) {
-    await verifyContracts(vault, vaultConstructorArguments, strategy, strategyConstructorArguments);
+    verifyContracts(vault, vaultConstructorArguments, strategy, strategyConstructorArguments);
   }
+  await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
   await setCorrectCallFee(strategy, hardhat.network.name);
   console.log();
 
