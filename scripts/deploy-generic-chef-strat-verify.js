@@ -1,14 +1,16 @@
-const hardhat = require("hardhat");
+import hardhat, { web3 } from "hardhat";
 
-const registerSubsidy = require("../utils/registerSubsidy");
-const predictAddresses = require("../utils/predictAddresses");
 import { getNetworkRpc } from "../utils/getNetworkRpc";
 import { addressBook } from "blockchain-addressbook";
-import { chainCallFeeMap } from "../utils/chainCallFeeMap";
+import { setCorrectCallFee } from "../utils/setCorrectCallFee";
+const registerSubsidy = require("../utils/registerSubsidy");
+const predictAddresses = require("../utils/predictAddresses");
 const { LHB: {address: LHB}, WHT: {address: WHT}, USDT: {address: USDT}  } = addressBook.heco.tokens;
 const { beefyfinance } = addressBook.heco.platforms;
 
 const ethers = hardhat.ethers;
+
+const want = web3.utils.toChecksumAddress("0x2c7862b408bb3DBFF277110FFdE1B4EAa45C692a");
 
 const vaultParams = {
   mooName: "Moo Lendhub LHB-USDT",
@@ -17,7 +19,7 @@ const vaultParams = {
 }
 
 const strategyParams = {
-  want: "0x023f375a51Af8645D7446ba5942BAeDc53B0582D",
+  want,
   poolId: 1,
   chef: "0x00A5BF6ab1166bce027D9d4b0E829f92781ab1A7",
   unirouter: "0xED7d5F38C79115ca12fe6C0041abb22F0A06C300",
@@ -71,14 +73,10 @@ async function main() {
     strategyParams.outputToLp1Route
   );
   await strategy.deployed();
+  
+  // post deploy
   await strategy.setPendingRewardsFunctionName(strategyParams.pendingRewardsFunctionName);
-
-  // set correct call fee if needed
-  const expectedCallFee = chainCallFeeMap[chainName];
-  const defaultCallFee = await strategy.callFee();
-  if (expectedCallFee !== defaultCallFee) {
-    await strategy.setCallFee(expectedCallFee);
-  }
+  await setCorrectCallFee(chainName, strategy);
   
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);

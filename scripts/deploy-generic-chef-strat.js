@@ -1,8 +1,8 @@
-const hardhat = require("hardhat");
+import hardhat, { web3 } from "hardhat";
 
 import { getNetworkRpc } from "../utils/getNetworkRpc";
 import { addressBook } from "blockchain-addressbook";
-import { chainCallFeeMap } from "../utils/chainCallFeeMap";
+import { setCorrectCallFee } from "../utils/setCorrectCallFee";
 const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const { WONE: { address: WONE }, SUSHI: { address: SUSHI }, USDC: { address: USDC}, USDT: {address: USDT } } = addressBook.one.tokens;
@@ -73,14 +73,10 @@ async function main() {
     strategyParams.outputToLp1Route
   );
   await strategy.deployed();
-  await strategy.setPendingRewardsFunctionName(strategyParams.pendingRewardsFunctionName);
 
-  // set correct call fee if needed
-  const expectedCallFee = chainCallFeeMap[chainName];
-  const defaultCallFee = await strategy.callFee();
-  if (expectedCallFee !== defaultCallFee) {
-    await strategy.setCallFee(expectedCallFee);
-  }
+  // post deploy
+  await strategy.setPendingRewardsFunctionName(strategyParams.pendingRewardsFunctionName);
+  await setCorrectCallFee(chainName, strategy);
 
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
