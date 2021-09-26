@@ -11,6 +11,7 @@ import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/common/IMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
+import "../../utils/StringUtils.sol";
 
 contract StrategyCommonChefLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
@@ -29,6 +30,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
+    string public pendingRewardsFunctionName;
 
     // Routes
     address[] public outputToNativeRoute;
@@ -185,15 +187,22 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         return _amount;
     }
 
+    function setPendingRewardsFunctionName(string calldata _pendingRewardsFunctionName) external onlyManager {
+        pendingRewardsFunctionName = _pendingRewardsFunctionName;
+    }
+
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        // TODO: use respective pending<RewardTokenName>() that is used by the masterchef, till a generic solution using assembly is implemented here.
-        // In the meantime, adding a line below that won't compile to force devs to fix this before deploying.
-        // Probably should use a custom named contract for each masterchef, since we no longer have a working common contract.
-        FIX ME!!!
-
-       (,uint256 _amount) = IMasterChef(chef).userInfo(poolId, address(this));
-        return _amount;
+        string memory signature = StringUtils.concat(pendingRewardsFunctionName, "(uint256, address)");
+        bytes memory result = Address.functionStaticCall(
+            chef, 
+            abi.encodeWithSignature(
+                signature,
+                poolId,
+                address(this)
+            )
+        );  
+        return abi.decode(result, (uint256));
     }
 
     // native reward amount for calling harvest
