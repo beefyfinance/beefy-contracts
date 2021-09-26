@@ -1,7 +1,7 @@
-import hardhat, { web3, ethers } from "hardhat";
+import hardhat, { ethers, web3 } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
-import { setCorrectCallFee } from "../utils/setCorrectCallFee";
 import { predictAddresses } from "../utils/predictAddresses";
+import { setCorrectCallFee } from "../utils/setCorrectCallFee";
 import { setPendingRewardsFunctionName } from "../utils/setPendingRewardsFunctionName";
 
 const registerSubsidy = require("../utils/registerSubsidy");
@@ -73,12 +73,12 @@ async function main() {
   );
   await strategy.deployed();
 
-  // copy paste this to PR
+  // add this info to PR
   console.log()
   console.log("Vault:", vault.address);
   console.log("Strategy:", strategy.address);
-  console.log("PoolId:", strategyParams.poolId);
   console.log("Want:", strategyParams.want);
+  console.log("PoolId:", strategyParams.poolId);
 
   console.log()
   console.log("Running post deployment")
