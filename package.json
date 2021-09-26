@@ -10,8 +10,7 @@
     "@openzeppelin/contracts": "^3.2.0",
     "@uniswap/lib": "^4.0.1-alpha",
     "bignumber.js": "^9.0.1",
-    "blockchain-addressbook": "^0.3.26",
-    "ganache-cli": "^6.12.2",
+    "blockchain-addressbook": "^0.3.27",
     "keccak": "^3.0.1",
     "rlp": "^2.2.6",
     "ts-node": "^10.0.0",
@@ -20,14 +19,14 @@
   "scripts": {
     "net": "hardhat node --fork",
     "net:bsc": "yarn net bsc",
-    
+
     "compile": "hardhat compile",
     "clean": "rm -r artifacts cache",
     "all": "yarn clean && yarn compile && yarn net",
-    
+
     "test": "hardhat test --network localhost",
     "test:vault": "hardhat test --network localhost test/prod/VaultLifecycle.test.js",
-    
+
     "deploy:chef": "hardhat run scripts/vault/deploy-generic-chef-strat.ts --network",
     "deploy:rewardPool": "hardhat run scripts/vault/deploy-generic-rewardPool-strat.ts --network",
     "deploy:lend": "hardhat run scripts/vault/deploy-strat-lend.ts --network",
