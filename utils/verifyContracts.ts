@@ -1,11 +1,11 @@
 import hardhat from "hardhat";
 import { Contract } from "@ethersproject/contracts";
 
-export const verifyContract = async (
+export const verifyContracts = async (
   vault: Contract,
-  vaultConstructorArguments: string[],
+  vaultConstructorArguments: any[],
   strategy: Contract,
-  strategyConstructorArguments: string[]
+  strategyConstructorArguments: any[]
 ) => {
   await hardhat.run("verify:verify", {
     address: vault.address,
