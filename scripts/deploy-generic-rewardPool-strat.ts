@@ -2,10 +2,16 @@ import hardhat, { ethers, web3 } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
 import { predictAddresses } from "../utils/predictAddresses";
 import { setCorrectCallFee } from "../utils/setCorrectCallFee";
+import { verifyContracts } from "../utils/verifyContracts";
 
 const registerSubsidy = require("../utils/registerSubsidy");
 
-const { WMATIC_DFYN: { address: WMATIC_DFYN }, DFYN: { address: DFYN }, CRV: { address: CRV }, WMATIC: { address: WMATIC} } = addressBook.polygon.tokens;
+const {
+  WMATIC_DFYN: { address: WMATIC_DFYN },
+  DFYN: { address: DFYN },
+  CRV: { address: CRV },
+  WMATIC: { address: WMATIC },
+} = addressBook.polygon.tokens;
 const { dfyn, beefyfinance } = addressBook.polygon.platforms;
 
 const shouldVerifyOnEtherscan = false;
@@ -17,7 +23,7 @@ const vaultParams = {
   mooName: "Moo DFyn CRV-DFYN",
   mooSymbol: "mooDFynCRV-DFYN",
   delay: 21600,
-}
+};
 
 const strategyParams = {
   want: want,
@@ -26,18 +32,22 @@ const strategyParams = {
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [ DFYN, WMATIC_DFYN ],
-  outputToLp0Route: [ DFYN, CRV ],
-  outputToLp1Route: [ DFYN ]
+  outputToNativeRoute: [DFYN, WMATIC_DFYN],
+  outputToLp0Route: [DFYN, CRV],
+  outputToLp1Route: [DFYN],
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyDFYNRewardPoolLP"
-}
+  strategy: "StrategyDFYNRewardPoolLP",
+};
 
 async function main() {
- if (Object.values(vaultParams).some((v) => v === undefined) || Object.values(strategyParams).some((v) => v === undefined) || Object.values(contractNames).some((v) => v === undefined)) {
+  if (
+    Object.values(vaultParams).some(v => v === undefined) ||
+    Object.values(strategyParams).some(v => v === undefined) ||
+    Object.values(contractNames).some(v => v === undefined)
+  ) {
     console.error("one of config values undefined");
     return;
   }
@@ -53,10 +63,16 @@ async function main() {
 
   const predictedAddresses = await predictAddresses({ creator: deployer.address });
 
-  const vault = await Vault.deploy(predictedAddresses.strategy, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay);
+  const vaultConstructorArguments = [
+    predictedAddresses.strategy,
+    vaultParams.mooName,
+    vaultParams.mooSymbol,
+    vaultParams.delay,
+  ];
+  const vault = await Vault.deploy(...vaultConstructorArguments);
   await vault.deployed();
 
-  const strategy = await Strategy.deploy(
+  const strategyConstructorArguments = [
     strategyParams.want,
     strategyParams.rewardPool,
     vault.address,
@@ -66,47 +82,26 @@ async function main() {
     strategyParams.beefyFeeRecipient,
     strategyParams.outputToNativeRoute,
     strategyParams.outputToLp0Route,
-    strategyParams.outputToLp1Route
-  );
+    strategyParams.outputToLp1Route,
+  ];
+  const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();
 
   // add this info to PR
-  console.log()
+  console.log();
   console.log("Vault:", vault.address);
   console.log("Strategy:", strategy.address);
   console.log("Want:", strategyParams.want);
   console.log("RewardPool:", strategyParams.rewardPool);
 
-  console.log()
-  console.log("Running post deployment")
+  console.log();
+  console.log("Running post deployment");
 
   if (shouldVerifyOnEtherscan) {
-    await hardhat.run("verify:verify", {
-      address: vault.address,
-      constructorArguments: [
-        strategy.address, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay
-      ],
-    })
-    
-    await hardhat.run("verify:verify", {
-      address: strategy.address,
-      constructorArguments: [
-        strategyParams.want,
-        strategyParams.rewardPool,
-        vault.address,
-        strategyParams.unirouter,
-        strategyParams.keeper,
-        strategyParams.strategist,
-        strategyParams.beefyFeeRecipient,
-        strategyParams.outputToNativeRoute,
-        strategyParams.outputToLp0Route,
-        strategyParams.outputToLp1Route
-      ],
-    })
+    await verifyContracts(vault, vaultConstructorArguments, strategy, strategyConstructorArguments);
   }
-
   await setCorrectCallFee(strategy, hardhat.network.name);
-  console.log()
+  console.log();
 
   if (hardhat.network.name === "bsc") {
     await registerSubsidy(vault.address, deployer);
@@ -116,8 +111,7 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch((error) => {
+  .catch(error => {
     console.error(error);
     process.exit(1);
   });
-  
