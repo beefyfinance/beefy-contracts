@@ -19,18 +19,14 @@
   "scripts": {
     "net": "hardhat node --fork",
     "net:bsc": "yarn net bsc",
-
     "compile": "hardhat compile",
     "clean": "rm -r artifacts cache",
     "all": "yarn clean && yarn compile && yarn net",
-
     "test": "hardhat test --network localhost",
     "test:vault": "hardhat test --network localhost test/prod/VaultLifecycle.test.js",
-
     "deploy:chef": "hardhat run scripts/vault/deploy-generic-chef-strat.ts --network",
     "deploy:rewardPool": "hardhat run scripts/vault/deploy-generic-rewardPool-strat.ts --network",
     "deploy:lend": "hardhat run scripts/vault/deploy-strat-lend.ts --network",
-
     "flat-hardhat": "hardhat flatten contracts/BIFI/strategies/common/StrategyCommonRewardPoolSingle.sol > tmp/flattened.sol",
     "flat": "bin/flatten.sh",
     "abi-to-sol": "abi-to-sol"
