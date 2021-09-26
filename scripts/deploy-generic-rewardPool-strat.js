@@ -2,6 +2,7 @@ import hardhat, { web3 } from "hardhat";
 
 import { getNetworkRpc } from "../utils/getNetworkRpc";
 import { setCorrectCallFee } from "../utils/setCorrectCallFee";
+
 const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 

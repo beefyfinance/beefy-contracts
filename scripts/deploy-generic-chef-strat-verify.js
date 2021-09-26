@@ -3,6 +3,7 @@ import hardhat, { web3 } from "hardhat";
 import { getNetworkRpc } from "../utils/getNetworkRpc";
 import { addressBook } from "blockchain-addressbook";
 import { setCorrectCallFee } from "../utils/setCorrectCallFee";
+
 const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
 const { LHB: {address: LHB}, WHT: {address: WHT}, USDT: {address: USDT}  } = addressBook.heco.tokens;

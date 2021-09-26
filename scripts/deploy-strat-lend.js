@@ -1,8 +1,9 @@
-const hardhat = require("hardhat");
+import hardhat, { web3 } from "hardhat";
 
-const registerSubsidy = require("../utils/registerSubsidy");
+import { getNetworkRpc } from "../utils/getNetworkRpc";
+import { setCorrectCallFee } from "../utils/setCorrectCallFee";
+
 const predictAddresses = require("../utils/predictAddresses");
-const { getNetworkRpc } = require("../utils/getNetworkRpc");
 const { addressBook } = require("blockchain-addressbook")
 const { SCREAM: { address: SCREAM }, fUSDT: { address: fUSDT }, WFTM: { address: WFTM}, ETH: {address: ETH}, WBTC: {address: WBTC}, DAI: { address: DAI}  } = addressBook.fantom.tokens;
 const { spookyswap, beefyfinance } = addressBook.fantom.platforms;
@@ -42,11 +43,13 @@ async function main() {
   const Strategy = await ethers.getContractFactory(config.strategyName);
 
   const [deployer] = await ethers.getSigners();
-  const rpc = getNetworkRpc(hardhat.network.name);
+
+  const chainName = hardhat.network.name
+  const rpc = getNetworkRpc(chainName);
 
   console.log("Deploying:", config.mooName);
 
-  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc: "https://rpc.ftm.tools" });
+  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
 
   const vault = await Vault.deploy( predictedAddresses.strategy, config.mooName, config.mooSymbol, config.delay);
   await vault.deployed();
@@ -66,6 +69,9 @@ async function main() {
     config.beefyFeeRecipient
   );
   await strategy.deployed();
+
+  // post deploy
+  await setCorrectCallFee(chainName, strategy);
 
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);
