@@ -1,8 +1,9 @@
-const hardhat = require("hardhat");
+import hardhat, { web3 } from "hardhat";
 
+import { getNetworkRpc } from "../utils/getNetworkRpc";
+import { setCorrectCallFee } from "../utils/setCorrectCallFee";
 const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
-const { getNetworkRpc } = require("../utils/getNetworkRpc");
 
 const { addressBook } = require("blockchain-addressbook")
 const { WMATIC_DFYN: { address: WMATIC_DFYN }, DFYN: { address: DFYN }, CRV: { address: CRV }, WMATIC: { address: WMATIC} } = addressBook.polygon.tokens;
@@ -48,11 +49,13 @@ async function main() {
   const Strategy = await ethers.getContractFactory(contractNames.strategy);
 
   const [deployer] = await ethers.getSigners();
-  const rpc = getNetworkRpc(hardhat.network.name);
+
+  const chainName = hardhat.network.name
+  const rpc = getNetworkRpc(chainName);
 
   console.log("Deploying:", vaultParams.mooName);
 
-  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc: "https://rpc-mainnet.maticvigil.com/v1/de4204cef56aa2763bc505469cd11605e367e114" });
+  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
 
   const vault = await Vault.deploy(predictedAddresses.strategy, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay);
   await vault.deployed();
@@ -70,6 +73,9 @@ async function main() {
     strategyParams.outputToLp1Route
   );
   await strategy.deployed();
+
+  // post deploy
+  await setCorrectCallFee(chainName, strategy);
 
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);

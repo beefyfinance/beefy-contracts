@@ -49,6 +49,7 @@ async function main() {
   const Strategy = await ethers.getContractFactory(contractNames.strategy);
 
   const [deployer] = await ethers.getSigners();
+  
   const chainName = hardhat.network.name
   const rpc = getNetworkRpc(chainName);
 
