@@ -1,80 +1,116 @@
-import hardhat, { web3 } from "hardhat";
-
-import { getNetworkRpc } from "../utils/getNetworkRpc";
+import hardhat, { ethers, web3 } from "hardhat";
+import { addressBook } from "blockchain-addressbook";
+import { predictAddresses } from "../utils/predictAddresses";
 import { setCorrectCallFee } from "../utils/setCorrectCallFee";
 
-const predictAddresses = require("../utils/predictAddresses");
-const { addressBook } = require("blockchain-addressbook")
 const { SCREAM: { address: SCREAM }, fUSDT: { address: fUSDT }, WFTM: { address: WFTM}, ETH: {address: ETH}, WBTC: {address: WBTC}, DAI: { address: DAI}  } = addressBook.fantom.tokens;
 const { spookyswap, beefyfinance } = addressBook.fantom.platforms;
 
+const shouldVerifyOnEtherscan = false;
+
 const iToken = web3.utils.toChecksumAddress("0x4565DC3Ef685E4775cdF920129111DdF43B9d882");
 
-const ethers = hardhat.ethers;
-
-const config = {
-  strategyName: "StrategyScream",
+const vaultParams = {
   mooName: "Moo Scream WBTC",
   mooSymbol: "mooScreamWBTC",
   delay: 21600,
+}
+
+const strategyParams = {
+  markets: [iToken],
   borrowRate: 72,
   borrowRateMax: 75,
   borrowDepth: 4,
   minLeverage: 1,
   outputToNativeRoute: [SCREAM, WFTM],
   outputToWantRoute: [SCREAM, WFTM, WBTC],
-  markets: [iToken],
   unirouter: spookyswap.router,
   keeper: beefyfinance.keeper,
   strategist:"0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b",
   beefyFeeRecipient:beefyfinance.beefyFeeRecipient
-  };
+};
+
+const contractNames = {
+  vault: "BeefyVaultV6",
+  strategy: "StrategyScream"
+}
 
 
 async function main() {
-  if (Object.values(config).some((v) => v === undefined)) {
+  if (Object.values(vaultParams).some((v) => v === undefined) || Object.values(strategyParams).some((v) => v === undefined) || Object.values(contractNames).some((v) => v === undefined)) {
     console.error("one of config values undefined");
     return;
   }
 
   await hardhat.run("compile");
 
-  const Vault = await ethers.getContractFactory("BeefyVaultV6");
-  const Strategy = await ethers.getContractFactory(config.strategyName);
+  const Vault = await ethers.getContractFactory(contractNames.vault);
+  const Strategy = await ethers.getContractFactory(contractNames.strategy);
 
   const [deployer] = await ethers.getSigners();
 
-  const chainName = hardhat.network.name
-  const rpc = getNetworkRpc(chainName);
+  console.log("Deploying:", vaultParams.mooName);
 
-  console.log("Deploying:", config.mooName);
+  const predictedAddresses = await predictAddresses({ creator: deployer.address });
 
-  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
-
-  const vault = await Vault.deploy( predictedAddresses.strategy, config.mooName, config.mooSymbol, config.delay);
+  const vault = await Vault.deploy( predictedAddresses.strategy, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay);
   await vault.deployed();
 
   const strategy = await Strategy.deploy(
-    config.borrowRate,
-    config.borrowRateMax,
-    config.borrowDepth,
-    config.minLeverage,
-    config.outputToNativeRoute,
-    config.outputToWantRoute,
-    config.markets,
+    strategyParams.borrowRate,
+    strategyParams.borrowRateMax,
+    strategyParams.borrowDepth,
+    strategyParams.minLeverage,
+    strategyParams.outputToNativeRoute,
+    strategyParams.outputToWantRoute,
+    strategyParams.markets,
     vault.address,
-    config.unirouter,
-    config.keeper,
-    config.strategist,
-    config.beefyFeeRecipient
+    strategyParams.unirouter,
+    strategyParams.keeper,
+    strategyParams.strategist,
+    strategyParams.beefyFeeRecipient
   );
   await strategy.deployed();
 
-  // post deploy
-  await setCorrectCallFee(chainName, strategy);
+  // add this info to PR
+  console.log()
+  console.log("Vault:", vault.address);
+  console.log("Strategy:", strategy.address);
+  console.log("Want:", strategyParams.outputToWantRoute[strategyParams.outputToWantRoute.length-1]);
 
-  console.log("Vault deployed to:", vault.address);
-  console.log("Strategy deployed to:", strategy.address);
+  console.log()
+  console.log("Running post deployment")
+
+  if (shouldVerifyOnEtherscan) {
+    await hardhat.run("verify:verify", {
+      address: vault.address,
+      constructorArguments: [
+        strategy.address, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay
+      ],
+    })
+  
+    await hardhat.run("verify:verify", {
+      address: strategy.address,
+      constructorArguments: [
+        strategyParams.borrowRate,
+        strategyParams.borrowRateMax,
+        strategyParams.borrowDepth,
+        strategyParams.minLeverage,
+        strategyParams.outputToNativeRoute,
+        strategyParams.outputToWantRoute,
+        strategyParams.markets,
+        vault.address,
+        strategyParams.unirouter,
+        strategyParams.keeper,
+        strategyParams.strategist,
+        strategyParams.beefyFeeRecipient
+      ],
+    })
+  }
+
+  await setCorrectCallFee(strategy, hardhat.network.name);
+  console.log()
+
 }
 
 main()
