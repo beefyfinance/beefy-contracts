@@ -1,12 +1,9 @@
+import { web3 } from "hardhat";
 import * as rlp from "rlp";
 import keccak from "keccak";
-import Web3 from "web3";
 
-export const predictAddresses = async ({ creator, rpc }: { creator: string, rpc: string }) => {
+export const predictAddresses = async ({ creator }: { creator: string }) => {
   creator = creator || "0x565EB5e5B21F97AE9200D121e77d2760FFf106cb";
-  rpc = rpc || "https://bsc-dataseed.binance.org/";
-
-  const web3 = new Web3(rpc);
 
   let currentNonce = await web3.eth.getTransactionCount(creator);
   let currentNonceHex = `0x${currentNonce.toString(16)}`;
