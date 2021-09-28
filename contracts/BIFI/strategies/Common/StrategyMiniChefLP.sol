@@ -17,7 +17,7 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    address private nullAddress;
+    address constant nullAddress = address(0);
 
     // Tokens used
     address public native;
