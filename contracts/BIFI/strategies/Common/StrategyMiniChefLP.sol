@@ -17,7 +17,7 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    address private nullAddress;
+    address constant nullAddress = address(0);
 
     // Tokens used
     address public native;
@@ -233,7 +233,7 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
 
         uint256 pendingNative;
         address rewarder = IMiniChefV2(chef).rewarder(poolId);
-        if (rewarder != address(0)) {
+        if (rewarder != nullAddress) {
             pendingNative = IRewarder(rewarder).pendingToken(poolId, address(this));
         } 
 

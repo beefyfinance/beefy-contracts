@@ -7,8 +7,6 @@ import "../../utils/GasThrottler.sol";
 
 contract StrategyCommonChefLPBsc is StrategyCommonChefLP, GasThrottler {
 
-    address private nullAddress;
-
     constructor(
         address _want,
         uint256 _poolId,

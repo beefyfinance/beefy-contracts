@@ -19,7 +19,7 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    address private nullAddress;
+    address constant nullAddress = address(0);
 
     // Tokens used
     address public native;
@@ -284,7 +284,7 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
         IERC20(want).safeApprove(rewardPool, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
 
-        if (lpToken0 != address(0)) {
+        if (lpToken0 != nullAddress) {
             IERC20(lpToken0).safeApprove(unirouter, 0);
             IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
 
@@ -296,7 +296,7 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(rewardPool, 0);
         IERC20(output).safeApprove(unirouter, 0);
-        if (lpToken0 != address(0)) {
+        if (lpToken0 != nullAddress) {
             IERC20(lpToken0).safeApprove(unirouter, 0);
             IERC20(lpToken1).safeApprove(unirouter, 0);
         }
