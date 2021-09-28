@@ -142,7 +142,7 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         uint256 wmaticBal = IERC20(wmatic).balanceOf(address(this));
 
         uint256 callFeeAmount = wmaticBal.mul(callFee).div(MAX_FEE);
-        IERC20(wmatic).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(wmatic).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = wmaticBal.mul(beefyFee).div(MAX_FEE);
         IERC20(wmatic).safeTransfer(beefyFeeRecipient, beefyFeeAmount);

@@ -183,7 +183,7 @@ contract StrategyAutoCake is Ownable, Pausable {
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
         uint256 callFee = wbnbBal.mul(CALL_FEE).div(MAX_FEE);
-        IERC20(wbnb).safeTransfer(msg.sender, callFee);
+        IERC20(wbnb).safeTransfer(tx.origin, callFee);
 
         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);

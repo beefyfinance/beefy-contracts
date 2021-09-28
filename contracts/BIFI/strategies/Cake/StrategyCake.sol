@@ -97,7 +97,7 @@
 //         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
         
 //         uint256 callFeeAmount = wbnbBal.mul(callFee).div(MAX_FEE);
-//         IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
+//         IERC20(wbnb).safeTransfer(tx.origin, callFeeAmount);
         
 //         uint256 treasuryHalf = wbnbBal.mul(TREASURY_FEE).div(MAX_FEE).div(2);
 //         IERC20(wbnb).safeTransfer(treasury, treasuryHalf);
