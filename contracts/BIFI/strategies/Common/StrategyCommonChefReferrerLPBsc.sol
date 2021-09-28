@@ -7,6 +7,8 @@ import "../../utils/GasThrottler.sol";
 
 contract StrategyCommonChefReferrerLPBsc is StrategyCommonChefReferrerLP, GasThrottler {
 
+    address private nullAddress;
+
     constructor(
         address _want,
         uint256 _poolId,
@@ -36,6 +38,6 @@ contract StrategyCommonChefReferrerLPBsc is StrategyCommonChefReferrerLP, GasThr
     ) public {}
 
    function harvest() external override whenNotPaused gasThrottle {
-        _harvest();
+        _harvest(nullAddress);
     }
 }
