@@ -193,7 +193,7 @@ contract StrategyPangolinLP is Ownable, Pausable {
         IERC20(wavax).safeTransfer(treasury, treasuryFee);
 
         uint256 callFee = wavaxBal.mul(CALL_FEE).div(MAX_FEE);
-        IERC20(wavax).safeTransfer(msg.sender, callFee);
+        IERC20(wavax).safeTransfer(tx.origin, callFee);
 
         uint256 strategistFee = wavaxBal.mul(STRATEGIST_FEE).div(MAX_FEE);
         IERC20(wavax).safeTransfer(strategist, strategistFee);

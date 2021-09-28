@@ -119,7 +119,7 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
         }
 
         uint256 callFeeAmount = wbnbBal.mul(callFee).div(MAX_FEE);
-        IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(wbnb).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = wbnbBal.mul(beefyFee).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(beefyFeeRecipient, beefyFeeAmount);

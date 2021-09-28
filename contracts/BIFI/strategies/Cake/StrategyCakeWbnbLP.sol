@@ -113,7 +113,7 @@ contract StrategyCakeWbnbLP is StratManager, FeeManager, GasThrottler {
         uint256 wbnbFees = IERC20(wbnb).balanceOf(address(this)).mul(45).div(1000);
 
         uint256 callFeeAmount = wbnbFees.mul(callFee).div(MAX_FEE);
-        IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(wbnb).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = wbnbFees.mul(beefyFee).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
