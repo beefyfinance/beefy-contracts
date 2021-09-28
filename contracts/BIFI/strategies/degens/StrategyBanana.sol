@@ -95,7 +95,7 @@ contract StrategyBanana is StratManager, FeeManager {
         }
     }
 
-    function harvest() external {
+    function harvest() external virtual {
         _harvest();
     }
 

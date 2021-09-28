@@ -124,11 +124,11 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual whenNotPaused {
+    function harvest() external virtual {
         _harvest(nullAddress);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external whenNotPaused {
+    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -137,7 +137,7 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest(address callFeeRecipient) internal {
+    function _harvest(address callFeeRecipient) internal whenNotPaused {
         IMiniChefV2(chef).harvest(poolId, address(this));
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         uint256 rewardBal = IERC20(reward).balanceOf(address(this));

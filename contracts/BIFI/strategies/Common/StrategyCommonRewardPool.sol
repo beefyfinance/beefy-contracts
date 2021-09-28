@@ -120,11 +120,11 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function harvest() external whenNotPaused gasThrottle {
+    function harvest() external virtual gasThrottle {
         _harvest(nullAddress);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external whenNotPaused {
+    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -134,7 +134,7 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest(address callFeeRecipient) internal {
+    function _harvest(address callFeeRecipient) internal whenNotPaused {
         IRewardPool(rewardPool).getReward();
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {

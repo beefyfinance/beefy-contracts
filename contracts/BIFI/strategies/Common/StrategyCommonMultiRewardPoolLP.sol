@@ -107,11 +107,11 @@ contract StrategyCommonMultiRewardPoolLP is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual whenNotPaused {
+    function harvest() external virtual {
         _harvest(nullAddress);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external whenNotPaused {
+    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 

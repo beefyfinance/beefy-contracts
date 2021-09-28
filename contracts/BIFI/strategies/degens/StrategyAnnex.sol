@@ -113,7 +113,7 @@ contract StrategyAnnex is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function harvest() external virtual whenNotPaused gasThrottle {
+    function harvest() external virtual gasThrottle {
         _harvest();
     }
 

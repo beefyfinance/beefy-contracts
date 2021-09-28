@@ -106,11 +106,11 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
         }
     }
 
-    function harvest() external whenNotPaused {
+    function harvest() external virtual {
         _harvest(nullAddress);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external whenNotPaused {
+    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -119,7 +119,7 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest(address callFeeRecipient) internal {
+    function _harvest(address callFeeRecipient) internal whenNotPaused {
         require(tx.origin == msg.sender || msg.sender == vault, "!contract");
         IMasterChef(chef).deposit(poolId, 0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));

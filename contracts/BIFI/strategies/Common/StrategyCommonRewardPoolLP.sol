@@ -116,11 +116,11 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
         }
     }
 
-    function harvest() external whenNotPaused {
+    function harvest() external virtual {
         _harvest(nullAddress);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external whenNotPaused {
+    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -129,7 +129,7 @@ contract StrategyCommonRewardPoolLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest(address callFeeRecipient) internal {
+    function _harvest(address callFeeRecipient) internal whenNotPaused {
         IRewardPool(rewardPool).getReward();
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
