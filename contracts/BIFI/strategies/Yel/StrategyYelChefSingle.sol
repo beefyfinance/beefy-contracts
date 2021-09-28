@@ -104,7 +104,7 @@ contract StrategyYelChefSingle is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function harvest() external whenNotPaused gasThrottle {
+    function harvest() external gasThrottle {
         _harvest();
     }
 
@@ -113,7 +113,7 @@ contract StrategyYelChefSingle is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest() internal whenNotPaused {
         IYelChef(chef).deposit(poolId, 0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {

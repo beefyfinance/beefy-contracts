@@ -94,7 +94,7 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function harvest() external whenNotPaused gasThrottle {
+    function harvest() external gasThrottle {
         _harvest();
     }
 
@@ -103,7 +103,7 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest() internal whenNotPaused {
         IPera(pera).depositLPtoken(0);
         chargeFees();
         addLiquidity();

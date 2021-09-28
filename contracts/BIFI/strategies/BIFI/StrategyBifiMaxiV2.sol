@@ -97,7 +97,7 @@ contract StrategyBifiMaxiV2 is StratManager {
         }
     }
 
-    function harvest() external whenNotPaused {
+    function harvest() external  {
         _harvest();
     }
 
@@ -106,7 +106,7 @@ contract StrategyBifiMaxiV2 is StratManager {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest() internal whenNotPaused {
         IRewardPool(rewardPool).getReward();
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
