@@ -97,7 +97,7 @@ contract StrategyBifiMaxiV2 is StratManager {
         }
     }
 
-    function harvest() external  {
+    function harvest() external virtual {
         _harvest();
     }
 
@@ -110,12 +110,12 @@ contract StrategyBifiMaxiV2 is StratManager {
         IRewardPool(rewardPool).getReward();
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
-        swapReward();
-        deposit();
-        }
+            swapReward();
+            deposit();
 
-        lastHarvest = block.timestamp;
-        emit StratHarvest(msg.sender);
+            lastHarvest = block.timestamp;
+            emit StratHarvest(msg.sender);
+        }
     }
 
     // performance fees

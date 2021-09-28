@@ -83,7 +83,7 @@ contract StrategyKingDefi is StratManager, FeeManager, GasThrottler {
         _harvest();
     }
 
-    function harvest() external gasThrottle {
+    function harvest() external virtual gasThrottle {
         _harvest();
     }
 

@@ -105,7 +105,7 @@ contract StrategyAlpacaVault is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function harvest() external gasThrottle {
+    function harvest() external virtual gasThrottle {
         _harvest();
     }
 
