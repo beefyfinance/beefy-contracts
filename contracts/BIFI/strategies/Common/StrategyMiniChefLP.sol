@@ -164,7 +164,6 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-
         if (callFeeRecipient != nullAddress) {
             IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
         } else {

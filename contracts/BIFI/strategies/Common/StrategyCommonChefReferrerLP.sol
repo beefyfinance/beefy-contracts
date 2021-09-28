@@ -16,6 +16,8 @@ contract StrategyCommonChefReferrerLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
+    address private nullAddress;
+
     // Tokens used
     address public native;
     address public output;
@@ -110,33 +112,44 @@ contract StrategyCommonChefReferrerLP is StratManager, FeeManager {
     }
 
     function harvest() external virtual whenNotPaused {
-        _harvest();
+        _harvest(nullAddress);
+    }
+
+    function harvestWithCallFeeRecipient(address callFeeRecipient) external whenNotPaused {
+        _harvest(callFeeRecipient);
     }
 
     function managerHarvest() external onlyManager {
-        _harvest();
+        _harvest(nullAddress);
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
-        IMasterChefReferrer(chef).deposit(poolId, 0, address(0));
-        chargeFees();
-        addLiquidity();
-        deposit();
+    function _harvest(address callFeeRecipient) internal {
+        IMasterChefReferrer(chef).deposit(poolId, 0, nullAddress);
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        if (outputBal > 0) {
+            chargeFees(callFeeRecipient);
+            addLiquidity();
+            deposit();
 
-        lastHarvest = block.timestamp;
-        emit StratHarvest(msg.sender);
+            lastHarvest = block.timestamp;
+            emit StratHarvest(msg.sender);
+        }
     }
 
     // performance fees
-    function chargeFees() internal {
+    function chargeFees(address callFeeRecipient) internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(msg.sender, callFeeAmount);
+        if (callFeeRecipient != nullAddress) {
+            IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
+        } else {
+            IERC20(native).safeTransfer(tx.origin, callFeeAmount);
+        }
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
