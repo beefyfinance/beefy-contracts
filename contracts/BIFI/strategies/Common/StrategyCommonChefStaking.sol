@@ -93,7 +93,7 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
-            _harvest();
+            _harvest(nullAddress);
         }
     }
 
