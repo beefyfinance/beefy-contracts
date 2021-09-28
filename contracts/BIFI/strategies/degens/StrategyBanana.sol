@@ -95,7 +95,7 @@ contract StrategyBanana is StratManager, FeeManager {
         }
     }
 
-    function harvest() external whenNotPaused {
+    function harvest() external virtual {
         _harvest();
     }
 
@@ -104,7 +104,7 @@ contract StrategyBanana is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest() internal whenNotPaused {
         require(tx.origin == msg.sender || msg.sender == vault, "!contract");
         IMasterChef(chef).leaveStaking(0);
         uint256 wantBal = balanceOfWant();

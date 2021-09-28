@@ -99,7 +99,7 @@ contract StrategyBeltToken is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function harvest() external virtual whenNotPaused gasThrottle {
+    function harvest() external virtual gasThrottle {
         _harvest();
     }
 
@@ -108,7 +108,7 @@ contract StrategyBeltToken is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest() internal whenNotPaused {
         uint256 beforeBal = IERC20(output).balanceOf(address(this));
         IMasterBelt(masterbelt).deposit(poolId, 0);
         uint256 afterBal = IERC20(output).balanceOf(address(this));

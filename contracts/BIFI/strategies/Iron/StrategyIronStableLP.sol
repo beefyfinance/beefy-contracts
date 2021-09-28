@@ -111,7 +111,7 @@ contract StrategyIronStableLP is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual whenNotPaused {
+    function harvest() external virtual {
         _harvest();
     }
 
@@ -120,7 +120,7 @@ contract StrategyIronStableLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest() internal whenNotPaused {
         IMiniChefV2(masterchef).harvest(poolId, address(this));
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {

@@ -111,11 +111,11 @@ contract StrategyCommonChefReferrerLP is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual whenNotPaused {
+    function harvest() external virtual {
         _harvest(nullAddress);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external whenNotPaused {
+    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -124,7 +124,7 @@ contract StrategyCommonChefReferrerLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest(address callFeeRecipient) internal {
+    function _harvest(address callFeeRecipient) internal whenNotPaused {
         IMasterChefReferrer(chef).deposit(poolId, 0, nullAddress);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
