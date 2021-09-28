@@ -233,7 +233,7 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
 
         uint256 pendingNative;
         address rewarder = IMiniChefV2(chef).rewarder(poolId);
-        if (rewarder != address(0)) {
+        if (rewarder != nullAddress) {
             pendingNative = IRewarder(rewarder).pendingToken(poolId, address(this));
         } 
 
