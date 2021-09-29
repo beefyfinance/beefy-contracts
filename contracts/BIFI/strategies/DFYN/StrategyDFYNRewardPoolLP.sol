@@ -111,7 +111,7 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual whenNotPaused {
+    function harvest() external virtual {
         _harvest();
     }
 
@@ -120,7 +120,7 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest() internal whenNotPaused {
         IStakingRewards(rewardPool).getReward();
         uint outputBal = IERC20(output).balanceOf(address(this));
             if (outputBal > 0) {
@@ -142,7 +142,7 @@ contract StrategyDFYNRewardPoolLP is StratManager, FeeManager {
         uint256 wmaticBal = IERC20(wmatic).balanceOf(address(this));
 
         uint256 callFeeAmount = wmaticBal.mul(callFee).div(MAX_FEE);
-        IERC20(wmatic).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(wmatic).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = wmaticBal.mul(beefyFee).div(MAX_FEE);
         IERC20(wmatic).safeTransfer(beefyFeeRecipient, beefyFeeAmount);

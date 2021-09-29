@@ -105,7 +105,7 @@ contract StrategyAlpacaVault is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function harvest() external whenNotPaused gasThrottle {
+    function harvest() external virtual gasThrottle {
         _harvest();
     }
 
@@ -114,7 +114,7 @@ contract StrategyAlpacaVault is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest() internal whenNotPaused {
         if (balanceOfPool() > 0) {
             IFairLaunch(chef).harvest(poolId);
             chargeFees();

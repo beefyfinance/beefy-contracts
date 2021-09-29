@@ -227,7 +227,7 @@ contract StrategyLendhub is StratManager, FeeManager {
         uint256 whtBal = IERC20(wht).balanceOf(address(this));
 
         uint256 callFeeAmount = whtBal.mul(callFee).div(MAX_FEE);
-        IERC20(wht).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(wht).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = whtBal.mul(beefyFee).div(MAX_FEE);
         IERC20(wht).safeTransfer(beefyFeeRecipient, beefyFeeAmount);

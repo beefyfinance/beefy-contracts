@@ -36,6 +36,6 @@ contract StrategyCommonChefReferrerLPBsc is StrategyCommonChefReferrerLP, GasThr
     ) public {}
 
    function harvest() external override whenNotPaused gasThrottle {
-        _harvest();
+        _harvest(nullAddress);
     }
 }

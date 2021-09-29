@@ -115,7 +115,7 @@ contract StrategyYelChefLP is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function harvest() external virtual whenNotPaused gasThrottle {
+    function harvest() external virtual gasThrottle {
         _harvest();
     }
 
@@ -124,7 +124,7 @@ contract StrategyYelChefLP is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest() internal whenNotPaused {
         IYelChef(chef).deposit(poolId, 0);
         chargeFees();
         addLiquidity();

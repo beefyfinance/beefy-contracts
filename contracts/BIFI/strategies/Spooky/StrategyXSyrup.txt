@@ -1425,7 +1425,7 @@ contract StrategyXSyrup is StratManager, FeeManager {
         }
     }
 
-    function harvest() external whenNotPaused {
+    function harvest() external virtual {
         _harvest();
     }
 
@@ -1434,7 +1434,7 @@ contract StrategyXSyrup is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest() internal whenNotPaused {
         require(tx.origin == msg.sender || msg.sender == vault, "!contract");
         IXChef(xChef).deposit(pid, 0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
