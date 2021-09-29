@@ -6,4 +6,4 @@ const getNetworkRpc = (network: keyof typeof hardhatConfig.networks) => {
   return networkConfig.url;
 };
 
-module.exports = getNetworkRpc;
+export { getNetworkRpc };

@@ -11,7 +11,7 @@ const chainData = addressBook[chainName];
 const { beefyfinance } = chainData.platforms;
 
 const config = {
-  vault: "0x282B11E65f0B49363D4505F91c7A44fBEe6bCc0b",
+  vault: "0xea75ff4F580418A1430Bd3EBaF26B03C096D9489",
   vaultContract: "BeefyVaultV6",
   strategyContract: "StrategyCommonChefLP",
   testAmount: ethers.utils.parseEther("5"),
@@ -212,7 +212,9 @@ describe("VaultLifecycleTest", () => {
       avax: 111,
       polygon: 11,
       heco: 11,
-      fantom: 11
+      fantom: 11,
+      harmony: 111,
+      arbitrum: 111,
     }
 
     const expectedCallFee = expectedCallFeeMap[chainName];

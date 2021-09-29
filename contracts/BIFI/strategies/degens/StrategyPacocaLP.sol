@@ -6,32 +6,31 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/common/IUniswapRouter.sol";
+import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
+import "../../interfaces/auto/IAutoFarmV2.sol";
 import "../../utils/GasThrottler.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-interface IPera {
-    function userInfo(address _user) external view returns (uint256, uint256);
-    function depositLPtoken(uint256 _amount) external;
-    function withdraw(uint256 _amount) external;
-    function emergencyWithdraw(uint256 _exit) external;
+interface IPacocaFarm {
+    function pendingPACOCA(uint256 _pid, address _user) external view returns (uint256);
 }
 
-contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
+contract StrategyPacocaLP is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
     address constant public native = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
-    address constant public output = address(0xb9D8592E16A9c1a3AE6021CDDb324EaC1Cbc70d6);
-    address constant public want = address(0x59eA11cfe863A6D680F4D14Bb24343e852ABBbbb);
+    address constant public output = address(0x55671114d774ee99D653D6C12460c780a67f1D18); // PACOCA
+    address public want;
     address public lpToken0;
     address public lpToken1;
 
     // Third party contracts
-    address public pera = address(0xb9D8592E16A9c1a3AE6021CDDb324EaC1Cbc70d6);
+    address constant public farm = address(0x55410D946DFab292196462ca9BE9f3E4E4F337Dd);
+    uint256 public poolId;
 
     // Routes
     address[] public outputToNativeRoute = [output, native];
@@ -39,25 +38,43 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
     address[] public outputToLp1Route;
 
     /**
+     * @dev If rewards are locked in AutoFarm, retire() will use emergencyWithdraw.
+     */
+    bool public rewardsLocked = false;
+
+    bool public harvestOnDeposit;
+    uint256 public lastHarvest;
+
+    /**
      * @dev Event that is fired each time someone harvests the strat.
      */
     event StratHarvest(address indexed harvester);
 
     constructor(
+        address _want,
+        uint256 _poolId,
         address _vault,
         address _unirouter,
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+        want = _want;
+        poolId = _poolId;
+
         lpToken0 = IUniswapV2Pair(want).token0();
         lpToken1 = IUniswapV2Pair(want).token1();
-
-        if (lpToken0 != output) {
-            outputToLp0Route = [output, lpToken0];
+        
+        if (lpToken0 == native) {
+            outputToLp0Route = [output, native];
+        } else if (lpToken0 != output) {
+            outputToLp0Route = [output, native, lpToken0];
         }
-        if (lpToken1 != output) {
-            outputToLp1Route = [output, lpToken1];
+
+        if (lpToken1 == native) {
+            outputToLp1Route = [output, native];
+        } else if (lpToken1 != output) {
+            outputToLp1Route = [output, native, lpToken1];
         }
 
         _giveAllowances();
@@ -68,7 +85,7 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IPera(pera).depositLPtoken(wantBal);
+            IAutoFarmV2(farm).deposit(poolId, wantBal);
         }
     }
 
@@ -78,7 +95,7 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IPera(pera).withdraw(_amount.sub(wantBal));
+            IAutoFarmV2(farm).withdraw(poolId, _amount.sub(wantBal));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -94,7 +111,14 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function harvest() external whenNotPaused gasThrottle {
+    function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            require(msg.sender == vault, "!vault");
+            _harvest();
+        }
+    }
+
+    function harvest() external virtual whenNotPaused gasThrottle {
         _harvest();
     }
 
@@ -104,23 +128,29 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
 
     // compounds earnings and charges performance fee
     function _harvest() internal {
-        IPera(pera).depositLPtoken(0);
-        chargeFees();
-        addLiquidity();
-        deposit();
+        uint256 beforeBal = IERC20(output).balanceOf(address(this));
+        IAutoFarmV2(farm).deposit(poolId, 0);
+        uint256 afterBal = IERC20(output).balanceOf(address(this));
+        uint256 harvestedBal = afterBal.sub(beforeBal);
+        if (harvestedBal > 0) {
+            chargeFees();
+            addLiquidity();
+            deposit();
 
-        emit StratHarvest(msg.sender);
+            lastHarvest = block.timestamp;
+            emit StratHarvest(msg.sender);
+        }
     }
 
     // performance fees
     function chargeFees() internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -134,16 +164,16 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
         uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
 
         if (lpToken0 != output) {
-            IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(outputHalf, 0, outputToLp0Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), now);
         }
 
         if (lpToken1 != output) {
-            IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(outputHalf, 0, outputToLp1Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
+        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -158,15 +188,54 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IPera(pera).userInfo(address(this));
-        return _amount;
+        return IAutoFarmV2(farm).stakedWantTokens(poolId, address(this));
+    }
+
+    function rewardsAvailable() public view returns (uint256) {
+        return IPacocaFarm(farm).pendingPACOCA(poolId, address(this));
+    }
+
+    // native reward amount for calling harvest
+    function callReward() public view returns (uint256) {
+        uint256 outputBal = rewardsAvailable();
+        uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
+        uint256 nativeOut = amountOut[amountOut.length - 1];
+        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
+
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+
+        if (harvestOnDeposit) {
+            setWithdrawalFee(0);
+        } else {
+            setWithdrawalFee(10);
+        }
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
+        if (rewardsLocked) {
+            _retireStratEmergency();
+        } else {
+            _retireStrat();
+        }
+    }
 
-        IPera(pera).emergencyWithdraw(0);
+    function setRewardsLocked(bool _rewardsLocked) external onlyOwner {
+        rewardsLocked = _rewardsLocked;
+    }
+
+    function _retireStrat() internal {
+        IAutoFarmV2(farm).withdraw(poolId, uint(-1));
+
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        IERC20(want).transfer(vault, wantBal);
+    }
+
+    function _retireStratEmergency() internal {
+        IAutoFarmV2(farm).emergencyWithdraw(poolId);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -175,7 +244,13 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IPera(pera).emergencyWithdraw(0);
+        IAutoFarmV2(farm).withdraw(poolId, uint(-1));
+    }
+
+    // pauses deposits and withdraws all funds from third party systems.
+    function panicEmergency() public onlyManager {
+        pause();
+        IAutoFarmV2(farm).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {
@@ -193,8 +268,8 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(pera, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(farm, uint(-1));
+        IERC20(output).safeApprove(unirouter, uint(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
@@ -204,21 +279,9 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(pera, 0);
+        IERC20(want).safeApprove(farm, 0);
         IERC20(output).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
-    }
-
-    function outputToNative() external view returns(address[] memory) {
-        return outputToNativeRoute;
-    }
-
-    function outputToLp0() external view returns(address[] memory) {
-        return outputToLp0Route;
-    }
-
-    function outputToLp1() external view returns(address[] memory) {
-        return outputToLp1Route;
     }
 }

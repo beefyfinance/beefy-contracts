@@ -108,7 +108,7 @@ contract StrategyMultiRewardsPolygonLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         IRewardPool(rewardPool).getReward();
         chargeFees();
         addLiquidity();

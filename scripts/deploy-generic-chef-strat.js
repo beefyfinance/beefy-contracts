@@ -1,39 +1,39 @@
 const hardhat = require("hardhat");
 
+import { getNetworkRpc } from "../utils/getNetworkRpc";
+import { addressBook } from "blockchain-addressbook";
 const registerSubsidy = require("../utils/registerSubsidy");
 const predictAddresses = require("../utils/predictAddresses");
-const { getNetworkRpc } = require("../utils/getNetworkRpc");
-const { addressBook } = require("blockchain-addressbook")
-const { MIM: { address: MIM }, SUSHI: { address: SUSHI }, WETH: { address: WETH}, SPELL: {address: SPELL } } = addressBook.arbitrum.tokens;
-const { sushi, beefyfinance } = addressBook.arbitrum.platforms;
+const { WBNB: { address: WBNB }, CAKE: { address: CAKE }, NFT: { address: NFT} } = addressBook.bsc.tokens;
+const { pancake, beefyfinance } = addressBook.bsc.platforms;
 
 const ethers = hardhat.ethers;
 
-const want = web3.utils.toChecksumAddress("0xb6DD51D5425861C808Fd60827Ab6CFBfFE604959");
+const want = web3.utils.toChecksumAddress("0x0ecc84c9629317a494f12Bc56aA2522475bF32e8");
 
 const vaultParams = {
-  mooName: "Moo Sushi MIM-WETH",
-  mooSymbol: "mooSushiMIM-WETH",
+  mooName: "Moo CakeV2 NFT-BNB",
+  mooSymbol: "mooCakeV2NFT-BNB",
   delay: 21600,
 }
 
 const strategyParams = {
   want: want,
-  poolId: 9,
-  chef: sushi.minichef,
-  unirouter: sushi.router,
+  poolId: 457,
+  chef: pancake.masterchef,
+  unirouter: pancake.router,
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [ SUSHI, WETH ],
-  rewardToOutputRoute: [ SPELL, WETH, SUSHI ],
-  outputToLp0Route: [ SUSHI, WETH ],
-  outputToLp1Route: [ SUSHI, WETH, MIM ]
+  outputToNativeRoute: [ CAKE, WBNB ],
+  outputToLp0Route: [ CAKE, WBNB, NFT ],
+  outputToLp1Route: [ CAKE, WBNB ],
+  pendingRewardsFunctionName: "pendingCake" // used for rewardsAvailable(), use correct function name from masterchef
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyArbSushiMimLP"
+  strategy: "StrategyCommonChefLPBsc"
 }
 
 async function main() {
@@ -48,11 +48,11 @@ async function main() {
   const Strategy = await ethers.getContractFactory(contractNames.strategy);
 
   const [deployer] = await ethers.getSigners();
-//  const rpc = getNetworkRpc(hardhat.network.name);
+  const rpc = getNetworkRpc(hardhat.network.name);
 
   console.log("Deploying:", vaultParams.mooName);
 
-  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc: "https://arb1.arbitrum.io/rpc" });
+  const predictedAddresses = await predictAddresses({ creator: deployer.address, rpc });
 
   const vault = await Vault.deploy(predictedAddresses.strategy, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay);
   await vault.deployed();
@@ -67,11 +67,11 @@ async function main() {
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
     strategyParams.outputToNativeRoute,
-    strategyParams.rewardToOutputRoute,
     strategyParams.outputToLp0Route,
     strategyParams.outputToLp1Route
   );
   await strategy.deployed();
+  await strategy.setPendingRewardsFunctionName(strategyParams.pendingRewardsFunctionName);
 
   console.log("Vault deployed to:", vault.address);
   console.log("Strategy deployed to:", strategy.address);

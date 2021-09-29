@@ -106,7 +106,7 @@ contract StrategyDinoSwapSushiLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         IMasterChef(chef).deposit(poolId, 0);
         dinoToOutput();
         chargeFees();

@@ -97,7 +97,7 @@ contract StrategyEllipsisUsdn is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external whenNotPaused gasThrottle {
         uint256[] memory pids = new uint256[](1);
         pids[0] = poolId;
         ILpStaker(stakingPool).claim(pids);

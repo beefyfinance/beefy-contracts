@@ -71,7 +71,7 @@
 //         IERC20(cake).safeTransfer(vault, cakeBal); 
 //     }
 
-//     function harvest() external whenNotPaused onlyEOA gasThrottle {
+//     function harvest() external whenNotPaused gasThrottle {
 //         IBunnyVault(bunnyVault).getReward();
 //         _chargeFees();
 //         deposit();

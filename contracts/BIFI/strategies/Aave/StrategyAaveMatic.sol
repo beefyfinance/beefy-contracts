@@ -171,7 +171,7 @@ contract StrategyAaveMatic is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         uint _before = balanceOfWant();
 
         address[] memory assets = new address[](2);

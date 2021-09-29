@@ -6,35 +6,37 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/common/IUniswapRouter.sol";
+import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../utils/GasThrottler.sol";
+import "../../interfaces/common/IMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
+import "../../utils/GasThrottler.sol";
 
-interface IPera {
-    function userInfo(address _user) external view returns (uint256, uint256);
-    function depositLPtoken(uint256 _amount) external;
-    function withdraw(uint256 _amount) external;
-    function emergencyWithdraw(uint256 _exit) external;
-}
-
-contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
+contract StrategyAnnex is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
     address constant public native = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
-    address constant public output = address(0xb9D8592E16A9c1a3AE6021CDDb324EaC1Cbc70d6);
-    address constant public want = address(0x59eA11cfe863A6D680F4D14Bb24343e852ABBbbb);
+    address constant public output = address(0x98936Bde1CF1BFf1e7a8012Cee5e2583851f2067); // ANN
+    address constant public busd = address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
+    address public want;
     address public lpToken0;
     address public lpToken1;
 
     // Third party contracts
-    address public pera = address(0xb9D8592E16A9c1a3AE6021CDDb324EaC1Cbc70d6);
+    address constant public chef = address(0x9c821500eaBa9f9737fDAadF7984Dff03edc74d1);
+    uint256 public poolId;
+    address constant public _unirouter = address(0x299385325392F537Fc6B4281d2dbe31280833Dcb); // annex router
+    address constant public pcsRouter = address(0x10ED43C718714eb63d5aA57B78B54704E256024E);
+
+    bool public harvestOnDeposit;
+    uint256 public lastHarvest;
 
     // Routes
-    address[] public outputToNativeRoute = [output, native];
+    address[] public outputToBusdRoute = [output, busd];
+    address[] public busdNativeRoute = [busd, native];
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
 
@@ -44,20 +46,30 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
     event StratHarvest(address indexed harvester);
 
     constructor(
+        address _want,
+        uint256 _poolId,
         address _vault,
-        address _unirouter,
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
-        lpToken0 = IUniswapV2Pair(want).token0();
-        lpToken1 = IUniswapV2Pair(want).token1();
+        want = _want;
+        poolId = _poolId;
 
-        if (lpToken0 != output) {
-            outputToLp0Route = [output, lpToken0];
-        }
-        if (lpToken1 != output) {
-            outputToLp1Route = [output, lpToken1];
+        if (want != output) {
+            lpToken0 = IUniswapV2Pair(want).token0();
+            lpToken1 = IUniswapV2Pair(want).token1();
+
+            if (lpToken0 == busd) {
+                outputToLp0Route = [output, busd];
+            } else if (lpToken0 != output) {
+                outputToLp0Route = [output, busd, lpToken0];
+            }
+            if (lpToken1 == busd) {
+                outputToLp1Route = [output, busd];
+            } else if (lpToken1 != output) {
+                outputToLp1Route = [output, busd, lpToken1];
+            }
         }
 
         _giveAllowances();
@@ -68,7 +80,7 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IPera(pera).depositLPtoken(wantBal);
+            IMasterChef(chef).deposit(poolId, wantBal);
         }
     }
 
@@ -78,7 +90,7 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IPera(pera).withdraw(_amount.sub(wantBal));
+            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -94,7 +106,14 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function harvest() external whenNotPaused gasThrottle {
+    function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            require(msg.sender == vault, "!vault");
+            _harvest();
+        }
+    }
+
+    function harvest() external virtual whenNotPaused gasThrottle {
         _harvest();
     }
 
@@ -104,23 +123,32 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
 
     // compounds earnings and charges performance fee
     function _harvest() internal {
-        IPera(pera).depositLPtoken(0);
-        chargeFees();
-        addLiquidity();
-        deposit();
+        uint256 beforeBal = IERC20(output).balanceOf(address(this));
+        IMasterChef(chef).deposit(poolId, 0);
+        uint256 afterBal = IERC20(output).balanceOf(address(this));
+        uint256 harvestedBal = afterBal.sub(beforeBal);
+        if (harvestedBal > 0) {
+            chargeFees();
+            addLiquidity();
+            deposit();
 
-        emit StratHarvest(msg.sender);
+            lastHarvest = block.timestamp;
+            emit StratHarvest(msg.sender);
+        }
     }
 
     // performance fees
     function chargeFees() internal {
-        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        uint256 toBusd = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toBusd, 0, outputToBusdRoute, address(this), now);
+
+        uint256 toNative = IERC20(busd).balanceOf(address(this)).mul(45).div(1000);
+        IUniswapRouterETH(pcsRouter).swapExactTokensForTokens(toNative, 0, busdNativeRoute, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -131,19 +159,22 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
+        if (want == output) {
+            return;
+        }
         uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
 
         if (lpToken0 != output) {
-            IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(outputHalf, 0, outputToLp0Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), now);
         }
 
         if (lpToken1 != output) {
-            IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(outputHalf, 0, outputToLp1Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
+        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -158,15 +189,25 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IPera(pera).userInfo(address(this));
+        (uint256 _amount,) = IMasterChef(chef).userInfo(poolId, address(this));
         return _amount;
+    }
+
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+
+        if (harvestOnDeposit) {
+            setWithdrawalFee(0);
+        } else {
+            setWithdrawalFee(10);
+        }
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IPera(pera).emergencyWithdraw(0);
+        IMasterChef(chef).emergencyWithdraw(poolId);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -175,7 +216,7 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IPera(pera).emergencyWithdraw(0);
+        IMasterChef(chef).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {
@@ -193,32 +234,34 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(pera, uint256(-1));
+        IERC20(want).safeApprove(chef, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(busd).safeApprove(pcsRouter, uint256(-1));
 
-        IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
+        if (lpToken0 != address(0)) {
+            IERC20(lpToken0).safeApprove(unirouter, 0);
+            IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
 
-        IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint256(-1));
+            IERC20(lpToken1).safeApprove(unirouter, 0);
+            IERC20(lpToken1).safeApprove(unirouter, uint256(-1));
+        }
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(pera, 0);
+        IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, 0);
+        IERC20(busd).safeApprove(pcsRouter, 0);
+        if (lpToken0 != address(0)) {
+            IERC20(lpToken0).safeApprove(unirouter, 0);
+            IERC20(lpToken1).safeApprove(unirouter, 0);
+        }
     }
 
-    function outputToNative() external view returns(address[] memory) {
-        return outputToNativeRoute;
-    }
-
-    function outputToLp0() external view returns(address[] memory) {
+    function outputToLp0() external view returns (address[] memory) {
         return outputToLp0Route;
     }
 
-    function outputToLp1() external view returns(address[] memory) {
+    function outputToLp1() external view returns (address[] memory) {
         return outputToLp1Route;
     }
 }
