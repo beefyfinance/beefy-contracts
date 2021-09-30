@@ -225,21 +225,6 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
         return IMiniChefV2(chef).pendingSushi(poolId, address(this));
     }
 
-        function callReward() public view returns (uint256) {
-        uint256 outputBal = rewardsAvailable();
-        uint256 nativeOut;
-        if (outputBal > 0) {
-            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
-                returns (uint256[] memory amountOut) 
-            {
-                nativeOut = amountOut[amountOut.length -1];
-            }
-            catch {}
-        }
-
-        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
-    }
-
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
         uint256 outputBal = rewardsAvailable();
