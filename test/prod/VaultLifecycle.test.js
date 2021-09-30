@@ -1,17 +1,18 @@
 const { expect } = require("chai");
-const { addressBook } = require("blockchain-addressbook");
+import { addressBook } from "blockchain-addressbook";
+import { chainCallFeeMap } from "../../utils/chainCallFeeMap";
 
 const { zapNativeToToken, getVaultWant, unpauseIfPaused, getUnirouterData } = require("../../utils/testHelpers");
 const { delay } = require("../../utils/timeHelpers");
 
-const TIMEOUT = 10 * 60 * 1000;
+const TIMEOUT = 10 * 60 * 100000;
 
-const chainName = "bsc";
+const chainName = "avax";
 const chainData = addressBook[chainName];
 const { beefyfinance } = chainData.platforms;
 
 const config = {
-  vault: "0x13071d48A5FDe2735102657e15D1132F92eE8C83",
+  vault: "0x282B11E65f0B49363D4505F91c7A44fBEe6bCc0b",
   vaultContract: "BeefyVaultV6",
   strategyContract: "StrategyCommonChefLP",
   testAmount: ethers.utils.parseEther("5"),
@@ -73,16 +74,24 @@ describe("VaultLifecycleTest", () => {
     const vaultBal = await vault.balance();
     const pricePerShare = await vault.getPricePerFullShare();
     await delay(5000);
+    const callRewardBeforeHarvest = await strategy.callReward();
+    expect(callRewardBeforeHarvest).to.be.gt(0);
     await strategy.harvest({ gasPrice: 5000000 });
     const vaultBalAfterHarvest = await vault.balance();
     const pricePerShareAfterHarvest = await vault.getPricePerFullShare();
+    const callRewardAfterHarvest = await strategy.callReward();
 
     await vault.withdrawAll();
     const wantBalFinal = await want.balanceOf(deployer.address);
 
     expect(vaultBalAfterHarvest).to.be.gt(vaultBal);
     expect(pricePerShareAfterHarvest).to.be.gt(pricePerShare);
+    expect(callRewardBeforeHarvest).to.be.gt(callRewardAfterHarvest);
+    
     expect(wantBalFinal).to.be.gt(wantBalStart.mul(99).div(100));
+
+    const lastHarvest = await strategy.lastHarvest();
+    expect(lastHarvest).to.be.gt(0);
   }).timeout(TIMEOUT);
 
   it("Manager can panic.", async () => {
@@ -193,6 +202,27 @@ describe("VaultLifecycleTest", () => {
         }
         break;
       }
+    }
+  }).timeout(TIMEOUT);
+
+  it("Has correct call fee", async () => {
+    const callFee = await strategy.callFee();
+
+    const expectedCallFee = chainCallFeeMap[chainName];
+    const actualCallFee = parseInt(callFee)
+
+    expect(actualCallFee).to.equal(expectedCallFee);
+  }).timeout(TIMEOUT);
+
+  it("has withdraw fee of 0 if harvest on deposit is true", async () => {
+    const harvestOnDeposit = await strategy.harvestOnDeposit();
+
+    const withdrawalFee = await strategy.withdrawalFee();
+    const actualWithdrawalFee = parseInt(withdrawalFee);
+    if(harvestOnDeposit) {
+      expect(actualWithdrawalFee).to.equal(0);
+    } else {
+      expect(actualWithdrawalFee).not.to.equal(0);
     }
   }).timeout(TIMEOUT);
 });

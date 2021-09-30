@@ -16,6 +16,8 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
+    address constant nullAddress = address(0);
+
     // Tokens used
     address public native;
     address public want;
@@ -24,8 +26,12 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
     address public chef;
     uint256 constant public poolId = 0;
 
+    uint256 public lastHarvest;
+
     // Routes
     address[] public wantToNativeRoute;
+
+    bool public harvestOnDeposit = true;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -50,6 +56,7 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
         wantToNativeRoute = _wantToNativeRoute;
 
         _giveAllowances();
+        setWithdrawalFee(0);
     }
 
     // puts the funds to work
@@ -84,30 +91,51 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
     }
 
     function beforeDeposit() external override {
-        harvest();
+        if (harvestOnDeposit) {
+            require(msg.sender == vault, "!vault");
+            _harvest(nullAddress);
+        }
+    }
+
+    function harvest() external virtual {
+        _harvest(nullAddress);
+    }
+
+    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
+        _harvest(callFeeRecipient);
+    }
+
+    function managerHarvest() external onlyManager {
+        _harvest(nullAddress);
     }
 
     // compounds earnings and charges performance fee
-    function harvest() public whenNotPaused {
+    function _harvest(address callFeeRecipient) internal whenNotPaused {
         require(tx.origin == msg.sender || msg.sender == vault, "!contract");
         IMasterChef(chef).leaveStaking(0);
         uint256 wantBal = balanceOfWant();
         if (wantBal > 0) {
-            chargeFees();
+            chargeFees(callFeeRecipient);
             deposit();
+
+            lastHarvest = block.timestamp;
             emit StratHarvest(msg.sender);
         }
     }
 
     // performance fees
-    function chargeFees() internal {
+    function chargeFees(address callFeeRecipient) internal {
         uint256 toNative = balanceOfWant().mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, wantToNativeRoute, address(this), block.timestamp);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
+        if (callFeeRecipient != nullAddress) {
+            IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
+        } else {
+            IERC20(native).safeTransfer(tx.origin, callFeeAmount);
+        }
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -172,7 +200,11 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
         IERC20(want).safeApprove(unirouter, 0);
     }
 
-    function wantToNative() external view returns(address[] memory) {
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+    }
+
+    function wantToNative() external view returns (address[] memory) {
         return wantToNativeRoute;
     }
 }

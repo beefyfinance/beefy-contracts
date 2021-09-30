@@ -94,7 +94,7 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external virtual gasThrottle {
         _harvest();
     }
 
@@ -103,7 +103,7 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest() internal whenNotPaused {
         IPera(pera).depositLPtoken(0);
         chargeFees();
         addLiquidity();
@@ -120,7 +120,7 @@ contract StrategyPeraLP is StratManager, FeeManager, GasThrottler {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);

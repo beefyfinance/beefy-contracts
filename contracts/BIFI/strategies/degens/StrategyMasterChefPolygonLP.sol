@@ -99,7 +99,7 @@ contract StrategyMasterChefPolygonLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         IMasterChef(masterchef).deposit(poolId, 0);
         chargeFees();
         addLiquidity();
@@ -116,7 +116,7 @@ contract StrategyMasterChefPolygonLP is StratManager, FeeManager {
         uint256 wrappedBal = IERC20(wrapped).balanceOf(address(this));
 
         uint256 callFeeAmount = wrappedBal.mul(callFee).div(MAX_FEE);
-        IERC20(wrapped).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(wrapped).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = wrappedBal.mul(beefyFee).div(MAX_FEE);
         IERC20(wrapped).safeTransfer(beefyFeeRecipient, beefyFeeAmount);

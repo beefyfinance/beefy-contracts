@@ -17,7 +17,7 @@ import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
 
-// Lendhub Lending Strategy 
+//Lendhub Strategy 
 contract StrategyLendhub is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -201,7 +201,7 @@ contract StrategyLendhub is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         address[] memory markets = new address[](1);
         markets[0] = iToken;
         IComptroller(comptroller).claimComp(address(this), markets);
@@ -227,7 +227,7 @@ contract StrategyLendhub is StratManager, FeeManager {
         uint256 whtBal = IERC20(wht).balanceOf(address(this));
 
         uint256 callFeeAmount = whtBal.mul(callFee).div(MAX_FEE);
-        IERC20(wht).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(wht).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = whtBal.mul(beefyFee).div(MAX_FEE);
         IERC20(wht).safeTransfer(beefyFeeRecipient, beefyFeeAmount);

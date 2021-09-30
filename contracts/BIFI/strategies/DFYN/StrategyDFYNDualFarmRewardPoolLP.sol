@@ -20,6 +20,7 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
     using SafeMath for uint256;
 
     // Tokens used
+    address public immutable wmatic = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
     address public native;
     address public output;
     address public secondOutput;
@@ -29,6 +30,9 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
 
     // Third party contracts
     address public rewardPool;
+
+    bool public harvestOnDeposit;
+    uint256 public lastHarvest;
 
     // Routes
     address[] public outputToNativeRoute; // since DFYN uses its own native, convert to common token, then convert that token to native beefy uses
@@ -107,13 +111,32 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
         }
     }
 
-    // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
-        IStakingRewards(rewardPool).getReward();
-        chargeFees();
-        addLiquidity();
-        deposit();
+    function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            require(msg.sender == vault, "!vault");
+            _harvest();
+        }
+    }
 
+    function harvest() external virtual {
+        _harvest();
+    }
+
+    function managerHarvest() external onlyManager {
+        _harvest();
+    }
+
+    // compounds earnings and charges performance fee
+    function _harvest() internal whenNotPaused {
+        IStakingRewards(rewardPool).getReward();
+        uint outputBal = IERC20(output).balanceOf(address(this));
+            if (outputBal > 0) {
+                chargeFees();
+                addLiquidity();
+                deposit();
+            }
+
+        lastHarvest = block.timestamp;
         emit StratHarvest(msg.sender);
     }
 
@@ -126,18 +149,18 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
 
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForETH(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
-        IWrappedNative(native).deposit{value: address(this).balance}();
+        IWrappedNative(wmatic).deposit{value: address(this).balance}();
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        uint256 nativeBal = IERC20(wmatic).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
+        IERC20(wmatic).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
+        IERC20(wmatic).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
         uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        IERC20(wmatic).safeTransfer(strategist, strategistFee);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
@@ -170,6 +193,16 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
         return IStakingRewards(rewardPool).balanceOf(address(this));
+    }
+
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+
+        if (harvestOnDeposit == true) {
+            super.setWithdrawalFee(0);
+        } else {
+            super.setWithdrawalFee(10);
+        }
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
@@ -237,4 +270,5 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
+       receive () external payable {}
 }

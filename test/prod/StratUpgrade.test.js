@@ -6,11 +6,11 @@ const { delay } = require("../../utils/timeHelpers");
 
 const TIMEOUT = 10 * 60 * 1000;
 
-const chainName = "polygon";
+const chainName = "fantom";
 
 const config = {
-  vault: "0xAA7C2879DaF8034722A0977f13c343aF0883E92e",
-  testAmount: ethers.utils.parseEther("5"),
+  vault: "0x15DD4398721733D8273FD4Ed9ac5eadC6c018866",
+  testAmount: ethers.utils.parseEther("1"),
   wnative: addressBook[chainName].tokens.WNATIVE.address,
 };
 
@@ -34,17 +34,17 @@ describe("StratUpgrade", () => {
 
     want = await getVaultWant(vault, config.wnative);
 
-    // await zapNativeToToken({
-    //   amount: config.testAmount,
-    //   want,
-    //   nativeTokenAddr: config.wnative,
-    //   unirouter,
-    //   swapSignature: unirouterData.swapSignature,
-    //   recipient: deployer.address,
-    // });
+    await zapNativeToToken({
+      amount: config.testAmount,
+      want,
+      nativeTokenAddr: config.wnative,
+      unirouter,
+      swapSignature: unirouterData.swapSignature,
+      recipient: deployer.address,
+    });
 
-    // const wantBal = await want.balanceOf(deployer.address);
-    // await want.transfer(keeper.address, wantBal.div(2));
+    const wantBal = await want.balanceOf(deployer.address);
+    await want.transfer(keeper.address, wantBal.div(2));
   });
 
   it("New strat has the correct admin accounts", async () => {
@@ -66,11 +66,10 @@ describe("StratUpgrade", () => {
     const strategyBalAfter = await strategy.balanceOf();
     const candidateBalAfter = await candidate.balanceOf();
 
-    expect(vaultBal).to.equal(vaultBalAfter);
+    expect(vaultBalAfter).to.be.within(vaultBal.mul(999).div(1000), vaultBal.mul(1001).div(1000));
     expect(strategyBal).not.to.equal(strategyBalAfter);
-    expect(strategyBal).to.equal(candidateBalAfter);
+    expect(candidateBalAfter).to.be.within(strategyBal.mul(999).div(1000), strategyBal.mul(1001).div(1000));
     expect(candidateBal).not.to.equal(candidateBalAfter);
-    expect(candidateBal).to.equal(strategyBalAfter);
 
     await delay(10000);
     let tx = candidate.harvest();
@@ -120,7 +119,6 @@ describe("StratUpgrade", () => {
 
     await vault.withdrawAll();
     const wantBalFinal = await want.balanceOf(deployer.address);
-    expect(wantBalFinal).to.be.lte(wantBalStart);
-    expect(wantBalFinal).to.be.gt(wantBalStart.mul(95).div(100));
+    expect(wantBalFinal).to.be.within(wantBalStart.mul(99).div(100), wantBalStart.mul(101).div(100));
   }).timeout(TIMEOUT);
 });

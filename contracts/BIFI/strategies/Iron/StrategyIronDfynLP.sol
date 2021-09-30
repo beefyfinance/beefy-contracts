@@ -35,6 +35,9 @@ contract StrategyIronDfynLP is StratManager, FeeManager {
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
 
+    bool public harvestOnDeposit;
+    uint256 public lastHarvest;
+
     /**
      * @dev Event that is fired each time someone harvests the strat.
      */
@@ -103,14 +106,33 @@ contract StrategyIronDfynLP is StratManager, FeeManager {
         }
     }
 
-    // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
-        IMiniChefV2(masterchef).harvest(poolId, address(this));
-        chargeFees();
-        addLiquidity();
-        deposit();
+    function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            require(msg.sender == vault, "!vault");
+            _harvest();
+        }
+    }
 
-        emit StratHarvest(msg.sender);
+    function harvest() external virtual {
+        _harvest();
+    }
+
+    function managerHarvest() external onlyManager {
+        _harvest();
+    }
+
+    // compounds earnings and charges performance fee
+    function _harvest() internal whenNotPaused {
+        IMiniChefV2(masterchef).harvest(poolId, address(this));
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        if (outputBal > 0) {
+            chargeFees();
+            addLiquidity();
+            deposit();
+
+            lastHarvest = block.timestamp;
+            emit StratHarvest(msg.sender);
+        }
     }
 
     // performance fees
@@ -122,7 +144,7 @@ contract StrategyIronDfynLP is StratManager, FeeManager {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -162,6 +184,10 @@ contract StrategyIronDfynLP is StratManager, FeeManager {
     function balanceOfPool() public view returns (uint256) {
         (uint256 _amount,) = IMiniChefV2(masterchef).userInfo(poolId, address(this));
         return _amount;
+    }
+
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.

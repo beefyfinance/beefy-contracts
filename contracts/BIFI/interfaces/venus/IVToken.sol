@@ -13,4 +13,5 @@ interface IVToken is IERC20 {
     function repayBorrow(uint repayAmount) external returns (uint);
     function balanceOfUnderlying(address owner) external returns (uint);
     function borrowBalanceCurrent(address account) external returns (uint);
+    function comptroller() external returns (address);
 }

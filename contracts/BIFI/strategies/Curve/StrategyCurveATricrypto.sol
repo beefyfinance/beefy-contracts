@@ -20,17 +20,18 @@ contract StrategyCurveATricrypto is StratManager, FeeManager {
     address constant public wmatic = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
     address constant public crv = address(0x172370d5Cd63279eFa6d502DAB29171933a610AF);
     address constant public eth = address(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619);
-    address constant public want = address(0x8096ac61db23291252574D49f036f0f9ed8ab390);
+    address constant public want = address(0xdAD97F7713Ae9437fa9249920eC8507e5FbB23d3);
 
     // Third party contracts
-    address constant public swap = address(0x3FCD5De6A9fC8A99995c406c77DDa3eD7E406f81);
-    address constant public rewards = address(0xb0a366b987d77b5eD5803cBd95C80bB6DEaB48C0);
+    address constant public swap = address(0x1d8b86e3D88cDb2d34688e87E72F388Cb541B7C8);
+    address constant public rewards = address(0x3B6B158A76fd8ccc297538F454ce7B4787778c7C);
 
     // Routes
     address[] public wmaticToEthRoute = [wmatic, eth];
     address[] public crvToWmaticRoute = [crv, eth, wmatic];
 
-    bool public harvestOnDeposit = false;
+    bool public harvestOnDeposit;
+    uint256 public lastHarvest;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -45,6 +46,8 @@ contract StrategyCurveATricrypto is StratManager, FeeManager {
         address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         _giveAllowances();
+        setCallFee(11);
+        setWithdrawalFee(1);
     }
 
     // puts the funds to work
@@ -80,13 +83,21 @@ contract StrategyCurveATricrypto is StratManager, FeeManager {
 
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
-            harvest();
+            require(msg.sender == vault, "!vault");
+            _harvest();
         }
     }
 
+    function harvest() external virtual whenNotPaused {
+        _harvest();
+    }
+
+    function managerHarvest() external onlyManager {
+        _harvest();
+    }
+
     // compounds earnings and charges performance fee
-    function harvest() public whenNotPaused {
-        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
+    function _harvest() internal {
         IRewardsGauge(rewards).claim_rewards(address(this));
 
         uint256 crvBal = IERC20(crv).balanceOf(address(this));
@@ -95,6 +106,7 @@ contract StrategyCurveATricrypto is StratManager, FeeManager {
             chargeFees();
             addLiquidity();
             deposit();
+            lastHarvest = block.timestamp;
             emit StratHarvest(msg.sender);
         }
     }
@@ -143,8 +155,8 @@ contract StrategyCurveATricrypto is StratManager, FeeManager {
         return IRewardsGauge(rewards).balanceOf(address(this));
     }
 
-    function setHarvestOnDeposit(bool _harvest) external onlyManager {
-        harvestOnDeposit = _harvest;
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.

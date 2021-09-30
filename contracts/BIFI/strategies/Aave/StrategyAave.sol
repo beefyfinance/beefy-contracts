@@ -183,7 +183,7 @@ contract StrategyAave is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         address[] memory assets = new address[](2);
         assets[0] = aToken;
         assets[1] = varDebtToken;
@@ -201,7 +201,7 @@ contract StrategyAave is StratManager, FeeManager {
         uint256 wmaticFeeBal = IERC20(wmatic).balanceOf(address(this)).mul(45).div(1000);
 
         uint256 callFeeAmount = wmaticFeeBal.mul(callFee).div(MAX_FEE);
-        IERC20(wmatic).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(wmatic).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = wmaticFeeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(wmatic).safeTransfer(beefyFeeRecipient, beefyFeeAmount);

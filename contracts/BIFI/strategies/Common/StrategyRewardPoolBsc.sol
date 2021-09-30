@@ -24,6 +24,8 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
     // Third party contracts
     address public rewardPool;
 
+    uint256 public lastHarvest;
+
     // Routes
     address[] public outputToWantRoute;
     address[] public outputToWbnbRoute;
@@ -94,12 +96,13 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external whenNotPaused gasThrottle {
         IRewardPool(rewardPool).getReward();
         _chargeFees();
         _swapRewards();
         deposit();
 
+        lastHarvest = block.timestamp;
         emit StratHarvest(msg.sender);
     }
 
@@ -116,7 +119,7 @@ contract StrategyRewardPoolBsc is StratManager, FeeManager, GasThrottler {
         }
 
         uint256 callFeeAmount = wbnbBal.mul(callFee).div(MAX_FEE);
-        IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(wbnb).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = wbnbBal.mul(beefyFee).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(beefyFeeRecipient, beefyFeeAmount);

@@ -24,7 +24,7 @@ abstract contract FeeManager is StratManager {
         beefyFee = MAX_FEE - STRATEGIST_FEE - callFee;
     }
 
-    function setWithdrawalFee(uint256 _fee) external onlyManager {
+    function setWithdrawalFee(uint256 _fee) public onlyManager {
         require(_fee <= WITHDRAWAL_FEE_CAP, "!cap");
 
         withdrawalFee = _fee;
