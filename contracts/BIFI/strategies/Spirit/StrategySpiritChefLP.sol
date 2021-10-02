@@ -12,7 +12,7 @@ import "../../interfaces/spirit/IMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyCommonChefLP is StratManager, FeeManager {
+contract StrategySpiritChefLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
