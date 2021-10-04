@@ -67,13 +67,13 @@ contract StrategyPolygonQuickLP is StratManager, FeeManager {
 
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
-        require(_outputToLp0Route[0] == output);
-        require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0);
+        require(_outputToLp0Route[0] == output, "outputToLp0Route[0] != output");
+        require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0, "outputToLp0Route[last] != lpToken0");
         outputToLp0Route = _outputToLp0Route;
 
         lpToken1 = IUniswapV2Pair(want).token1();
-        require(_outputToLp1Route[0] == output);
-        require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1);
+        require(_outputToLp1Route[0] == output,  "outputToLp1Route[0] != output");
+        require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1, "outputToLp1Route[last] != lpToken1");
         outputToLp1Route = _outputToLp1Route;
 
         reward = _rewardToOutputRoute[0];
