@@ -33,9 +33,9 @@ contract StrategyPolygonQuickLP is StratManager, FeeManager {
 
     // Routes
     address[] public outputToNativeRoute;
-    address[] public rewardToOutputRoute;
-    address[] public outputToLp0Route;
-    address[] public outputToLp1Route;
+    address[] public rewardToNativeRoute;
+    address[] public nativeToLp0Route;
+    address[] public nativeToLp1Route;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -54,9 +54,9 @@ contract StrategyPolygonQuickLP is StratManager, FeeManager {
         address _strategist,
         address _beefyFeeRecipient,
         address[] memory _outputToNativeRoute,
-        address[] memory _rewardToOutputRoute,
-        address[] memory _outputToLp0Route,
-        address[] memory _outputToLp1Route
+        address[] memory _rewardToNativeRoute,
+        address[] memory _nativeToLp0Route,
+        address[] memory _nativeToLp1Route
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         rewardPool = _rewardPool;
@@ -67,18 +67,18 @@ contract StrategyPolygonQuickLP is StratManager, FeeManager {
 
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
-        require(_outputToLp0Route[0] == output, "outputToLp0Route[0] != output");
-        require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0, "outputToLp0Route[last] != lpToken0");
-        outputToLp0Route = _outputToLp0Route;
+        require(_nativeToLp0Route[0] == native, "outputToLp0Route[0] != output");
+        require(_nativeToLp0Route[_nativeToLp0Route.length - 1] == lpToken0, "nativeToLp0Route[last] != lpToken0");
+        nativeToLp0Route = _nativeToLp0Route;
 
         lpToken1 = IUniswapV2Pair(want).token1();
-        require(_outputToLp1Route[0] == output,  "outputToLp1Route[0] != output");
-        require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1, "outputToLp1Route[last] != lpToken1");
-        outputToLp1Route = _outputToLp1Route;
+        require(_nativeToLp1Route[0] == output,  "nativeToLp1Route[0] != output");
+        require(_nativeToLp1Route[_nativeToLp1Route.length - 1] == lpToken1, "nativeToLP1Route[last] != lpToken1");
+        nativeToLp1Route = _nativeToLp1Route;
 
-        reward = _rewardToOutputRoute[0];
-        require(_rewardToOutputRoute[_rewardToOutputRoute.length - 1] == output, '_rewardToOutputRoute != output');
-        rewardToOutputRoute = _rewardToOutputRoute;
+        reward = _rewardToNativeRoute[0];
+        require(_rewardToNativeRoute[_rewardToNativeRoute.length - 1] == native, '_rewardToNativeRoute != native');
+        rewardToNativeRoute = _rewardToNativeRoute;
 
         _giveAllowances();
     }
@@ -153,15 +153,17 @@ contract StrategyPolygonQuickLP is StratManager, FeeManager {
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
         // v2 harvester rewards are in both output and reward, convert reward to output
-        uint256 toOutput = IERC20(reward).balanceOf(address(this));
-        if (toOutput > 0) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, rewardToOutputRoute, address(this), block.timestamp);
+        uint256 rewardToNative = IERC20(reward).balanceOf(address(this));
+        if (rewardToNative > 0) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardToNative, 0, rewardToNativeRoute, address(this), block.timestamp);
         }
 
-        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        uint256 outputToNative = IERC20(output).balanceOf(address(this));
+        if (outputToNative > 0) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputToNative, 0, outputToNativeRoute, address(this), block.timestamp);
+        }
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        uint256 nativeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000); //4.5% of total native balance
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
         if (callFeeRecipient != nullAddress) {
@@ -179,14 +181,14 @@ contract StrategyPolygonQuickLP is StratManager, FeeManager {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
+        uint256 nativeHalf = IERC20(native).balanceOf(address(this)).div(2);
 
-        if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), now);
+        if (lpToken0 != native) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeHalf, 0, nativeToLp0Route, address(this), now);
         }
 
-        if (lpToken1 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), now);
+        if (lpToken1 != native) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeHalf, 0, nativeToLp1Route, address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
@@ -270,12 +272,12 @@ contract StrategyPolygonQuickLP is StratManager, FeeManager {
         deposit();
     }
 
-    function outputToLp0() public view returns (address[] memory) {
-        return outputToLp0Route;
+    function nativeToLp0() public view returns (address[] memory) {
+        return nativeToLp0Route;
     }
 
-    function outputToLp1() public view returns (address[] memory) {
-        return outputToLp1Route;
+    function nativeToLp1() public view returns (address[] memory) {
+        return nativeToLp1Route;
     }
 
     function outputToNative() public view returns (address[] memory) {
