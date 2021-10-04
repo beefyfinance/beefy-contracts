@@ -14,7 +14,7 @@ import "../../interfaces/common/IRewardPool.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyPolygonQuickLP is StratManager, FeeManager {
+contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -153,12 +153,12 @@ contract StrategyPolygonQuickLP is StratManager, FeeManager {
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
         uint256 rewardToNative = IERC20(reward).balanceOf(address(this));
-        if (rewardToNative > 0) {
+        if (rewardToNative > 0 && reward != native) {
             IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardToNative, 0, rewardToNativeRoute, address(this), block.timestamp);
         }
 
         uint256 outputToNative = IERC20(output).balanceOf(address(this));
-        if (outputToNative > 0) {
+        if (outputToNative > 0 && output != native) {
             IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputToNative, 0, outputToNativeRoute, address(this), block.timestamp);
         }
 
@@ -286,6 +286,7 @@ contract StrategyPolygonQuickLP is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(rewardPool, uint256(- 1));
         IERC20(output).safeApprove(unirouter, uint256(- 1));
+        IERC20(reward).safeApprove(unirouter, uint256(- 1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, uint256(- 1));
@@ -297,6 +298,7 @@ contract StrategyPolygonQuickLP is StratManager, FeeManager {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(rewardPool, 0);
         IERC20(output).safeApprove(unirouter, 0);
+        IERC20(reward).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
