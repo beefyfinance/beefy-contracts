@@ -227,9 +227,15 @@ contract StrategyArbSushiMimLP is StratManager, FeeManager, GasThrottler {
         uint256 moreOutput = rewardOut[rewardOut.length -1];
 
         uint256 outputBal = rewardsAvailable();
-        uint256 outputTotal = outputBal.add(moreOutput);
-        uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputTotal, outputToNativeRoute);
-        uint256 nativeOut = amountOut[amountOut.length -1];
+        uint256 nativeOut;
+        if (outputBal > 0) {
+            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
+                returns (uint256[] memory amountOut) 
+            {
+                nativeOut = amountOut[amountOut.length -1];
+            }
+            catch {}
+        }
 
        
 

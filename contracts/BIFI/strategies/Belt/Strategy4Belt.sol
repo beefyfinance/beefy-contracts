@@ -158,12 +158,21 @@ contract Strategy4Belt is StratManager, FeeManager, GasThrottler {
     function rewardsAvailable() public view returns (uint256) {
         return IMasterBelt(masterbelt).pendingBELT(poolId, address(this));
     }
+    
 
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
         uint256 outputBal = rewardsAvailable();
-        uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
-        uint256 nativeOut = amountOut[amountOut.length - 1];
+        uint256 nativeOut;
+        if (outputBal > 0) {
+            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
+                returns (uint256[] memory amountOut) 
+            {
+                nativeOut = amountOut[amountOut.length -1];
+            }
+            catch {}
+        }
+
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
 
