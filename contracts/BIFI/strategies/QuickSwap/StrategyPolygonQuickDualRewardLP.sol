@@ -152,7 +152,6 @@ contract StrategyPolygonQuickLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        // v2 harvester rewards are in both output and reward, convert reward to output
         uint256 rewardToNative = IERC20(reward).balanceOf(address(this));
         if (rewardToNative > 0) {
             IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardToNative, 0, rewardToNativeRoute, address(this), block.timestamp);
