@@ -11,11 +11,9 @@ interface Vault {
 
 contract VaultOwnerSplit is Ownable {
     address public keeper;
-    address public vault;
 
-    constructor(address _keeper, address _vault) {
+    constructor(address _keeper) {
         keeper = _keeper;
-        vault = _vault;
     }
 
     modifier onlyManager() {
@@ -23,12 +21,12 @@ contract VaultOwnerSplit is Ownable {
         _;
     }
 
-    function proposeStrat(address _candidate) external onlyOwner {
-        Vault(vault).proposeStrat(_candidate);
+    function proposeStrat(address _vault, address _candidate) external onlyOwner {
+        Vault(_vault).proposeStrat(_candidate);
     }
 
-    function upgradeStrat() external onlyManager {
-        Vault(vault).upgradeStrat();
+    function upgradeStrat(address _vault) external onlyManager {
+        Vault(_vault).upgradeStrat();
     }
 
     function setKeeper(address _keeper) external onlyOwner {
