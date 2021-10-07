@@ -2,11 +2,9 @@
 
 pragma solidity 0.8.2;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "hardhat/console.sol";
+import "@openzeppelin-4/contracts/access/Ownable.sol";
+import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IRewardPool {
     function notifyRewardAmount(uint256 amount) external;
@@ -23,11 +21,11 @@ interface IUniswapRouter {
     ) external returns (uint[] memory amounts);
 }
 
-contract BeefyFeeBatchV2 is Initializable, OwnableUpgradeable {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+contract BeefyFeeBatchV2 is Ownable {
+    using SafeERC20 for IERC20;
 
-    IERC20Upgradeable public wNative;
-    IERC20Upgradeable public bifi;
+    IERC20 public wNative;
+    IERC20 public bifi;
     address public treasury;
     address public rewardPool;
     address public unirouter;
@@ -46,17 +44,15 @@ contract BeefyFeeBatchV2 is Initializable, OwnableUpgradeable {
     event NewUnirouter(address oldUnirouter, address newUnirouter);
     event NewBifiRoute(address[] oldRoute, address[] newRoute);
 
-    function initialize(
+    constructor (
         address _bifi,
         address _wNative,
         address _treasury, 
         address _rewardPool, 
         address _unirouter 
-    ) public initializer {
-        __Ownable_init();
-
-        bifi = IERC20Upgradeable(_bifi);
-        wNative  = IERC20Upgradeable(_wNative);
+    ) public {
+        bifi = IERC20(_bifi);
+        wNative  = IERC20(_wNative);
         treasury = _treasury;
         rewardPool = _rewardPool;
 
@@ -129,8 +125,8 @@ contract BeefyFeeBatchV2 is Initializable, OwnableUpgradeable {
     function inCaseTokensGetStuck(address _token, address _recipient) external onlyOwner {
         require(_token != address(wNative), "!safe");
 
-        uint256 amount = IERC20Upgradeable(_token).balanceOf(address(this));
-        IERC20Upgradeable(_token).safeTransfer(_recipient, amount);
+        uint256 amount = IERC20(_token).balanceOf(address(this));
+        IERC20(_token).safeTransfer(_recipient, amount);
     }
 
     function transferRewardPoolOwnership(address _newOwner) external onlyOwner {

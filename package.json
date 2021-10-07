@@ -19,7 +19,7 @@
     "typescript": "^4.3.4"
   },
   "scripts": {
-    "flat-hardhat": "hardhat flatten contracts/BIFI/strategies/common/StrategyCommonRewardPoolSingle.sol > tmp/flattened.sol",
+    "flat-hardhat": "hardhat flatten contracts/BIFI/infra/BeefyFeeBatchV2.sol > tmp/flattened.sol",
     "flat": "bin/flatten.sh",
     "clean": "rm -r artifacts cache",
     "net": "hardhat node --fork",
@@ -49,7 +49,7 @@
     "dotenv": "^10.0.0",
     "ethereum-waffle": "^3.0.0",
     "ethers": "^5.0.31",
-    "hardhat": "^2.6.4",
+    "hardhat": "../../hardhat/packages/hardhat-core",
     "mocha": "^9.1.1",
     "truffle-flattener": "^1.5.0",
     "web3": "^1.3.0"
