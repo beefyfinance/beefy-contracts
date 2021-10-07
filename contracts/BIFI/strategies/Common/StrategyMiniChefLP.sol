@@ -17,6 +17,8 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
+    address constant nullAddress = address(0);
+
     // Tokens used
     address public native;
     address public output;
@@ -118,25 +120,29 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
-            _harvest();
+            _harvest(nullAddress);
         }
     }
 
-    function harvest() external virtual whenNotPaused onlyEOA {
-        _harvest();
+    function harvest() external virtual {
+        _harvest(nullAddress);
+    }
+
+    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
+        _harvest(callFeeRecipient);
     }
 
     function managerHarvest() external onlyManager {
-        _harvest();
+        _harvest(nullAddress);
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest(address callFeeRecipient) internal whenNotPaused {
         IMiniChefV2(chef).harvest(poolId, address(this));
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         uint256 rewardBal = IERC20(reward).balanceOf(address(this));
         if (outputBal > 0 || rewardBal > 0) {
-            chargeFees();
+            chargeFees(callFeeRecipient);
             addLiquidity();
             deposit();
             lastHarvest = block.timestamp;
@@ -145,7 +151,7 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     }
 
     // performance fees
-    function chargeFees() internal {
+    function chargeFees(address callFeeRecipient) internal {
         // v2 harvester rewards are in both output and reward, convert reward to output
         uint256 toOutput = IERC20(reward).balanceOf(address(this));
         if (toOutput > 0) {
@@ -158,7 +164,11 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(msg.sender, callFeeAmount);
+        if (callFeeRecipient != nullAddress) {
+            IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
+        } else {
+            IERC20(native).safeTransfer(tx.origin, callFeeAmount);
+        }
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -218,12 +228,19 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
         uint256 outputBal = rewardsAvailable();
-        uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
-        uint256 nativeOut = amountOut[amountOut.length -1];
+        uint256 nativeOut;
+         if (outputBal > 0) {
+            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
+                returns (uint256[] memory amountOut) 
+            {
+                nativeOut = amountOut[amountOut.length -1];
+            }
+            catch {}
+        }
 
         uint256 pendingNative;
         address rewarder = IMiniChefV2(chef).rewarder(poolId);
-        if (rewarder != address(0)) {
+        if (rewarder != nullAddress) {
             pendingNative = IRewarder(rewarder).pendingToken(poolId, address(this));
         } 
 

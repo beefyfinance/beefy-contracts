@@ -198,7 +198,7 @@ contract StrategyMdexLP is Ownable, Pausable {
         IERC20(wht).safeTransfer(treasury, treasuryFee);
 
         uint256 callFee = whtBal.mul(CALL_FEE).div(MAX_FEE);
-        IERC20(wht).safeTransfer(msg.sender, callFee);
+        IERC20(wht).safeTransfer(tx.origin, callFee);
 
         uint256 strategistFee = whtBal.mul(STRATEGIST_FEE).div(MAX_FEE);
         IERC20(wht).safeTransfer(strategist, strategistFee);

@@ -95,7 +95,7 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external whenNotPaused gasThrottle {
         IAutoFarmV2(autofarm).deposit(poolId, 0);
         chargeFees();
         addLiquidity();
@@ -112,7 +112,7 @@ contract StrategyAutoBeltToken is StratManager, FeeManager, GasThrottler {
         uint256 wbnbBal = IERC20(wbnb).balanceOf(address(this));
 
         uint256 callFeeAmount = wbnbBal.mul(callFee).div(MAX_FEE);
-        IERC20(wbnb).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(wbnb).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = wbnbBal.mul(beefyFee).div(MAX_FEE);
         IERC20(wbnb).safeTransfer(beefyFeeRecipient, beefyFeeAmount);

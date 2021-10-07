@@ -15,20 +15,22 @@ import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../Common/FeeManager.sol";
 import "../Common/StratManager.sol";
 
-contract StrategyAaveMatic is StratManager, FeeManager {
+contract StrategyAaveNative is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
-    address constant public wmatic = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
-    address constant public want = wmatic;
+    address public want;
     address public aToken;
     address public varDebtToken;
 
     // Third party contracts
-    address constant public dataProvider = address(0x7551b5D2763519d4e37e8B81929D336De671d46d);
-    address constant public lendingPool = address(0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf);
-    address constant public incentivesController = address(0x357D51124f59836DeD84c8a1730D72B749d8BC23);
+    address public dataProvider;
+    address public lendingPool;
+    address public incentivesController;
+
+    bool public harvestOnDeposit;
+    uint256 public lastHarvest;
 
     /**
      * @dev Variables that can be changed to config profitability and risk:
@@ -48,7 +50,7 @@ contract StrategyAaveMatic is StratManager, FeeManager {
 
     /**
      * @dev Helps to differentiate borrowed funds that shouldn't be used in functions like 'deposit()'
-     * as they're required to deleverage correctly.  
+     * as they're required to deleverage correctly.
      */
     uint256 public reserves = 0;
 
@@ -59,22 +61,31 @@ contract StrategyAaveMatic is StratManager, FeeManager {
     event StratRebalance(uint256 _borrowRate, uint256 _borrowDepth);
 
     constructor(
+        address _want,
         uint256 _borrowRate,
         uint256 _borrowRateMax,
         uint256 _borrowDepth,
         uint256 _minLeverage,
+        address _dataProvider,
+        address _lendingPool,
+        address _incentivesController,
         address _vault,
         address _unirouter,
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
-        (aToken,,varDebtToken) = IDataProvider(dataProvider).getReserveTokensAddresses(want);
+        want = _want;
 
         borrowRate = _borrowRate;
         borrowRateMax = _borrowRateMax;
         borrowDepth = _borrowDepth;
         minLeverage = _minLeverage;
+        dataProvider = _dataProvider;
+        lendingPool = _lendingPool;
+        incentivesController = _incentivesController;
+
+        (aToken,,varDebtToken) = IDataProvider(dataProvider).getReserveTokensAddresses(want);
 
         _giveAllowances();
     }
@@ -98,7 +109,9 @@ contract StrategyAaveMatic is StratManager, FeeManager {
         for (uint i = 0; i < borrowDepth; i++) {
             ILendingPool(lendingPool).deposit(want, _amount, address(this), 0);
             _amount = _amount.mul(borrowRate).div(100);
-            ILendingPool(lendingPool).borrow(want, _amount, INTEREST_RATE_MODE, 0, address(this));
+            if (_amount > 0) {
+                ILendingPool(lendingPool).borrow(want, _amount, INTEREST_RATE_MODE, 0, address(this));
+            }
         }
 
         reserves = reserves.add(_amount);
@@ -124,7 +137,9 @@ contract StrategyAaveMatic is StratManager, FeeManager {
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
-        ILendingPool(lendingPool).repay(want, uint256(-1), INTEREST_RATE_MODE, address(this));
+        if (borrowBal > 0) {
+            ILendingPool(lendingPool).repay(want, uint256(-1), INTEREST_RATE_MODE, address(this));
+        }
         ILendingPool(lendingPool).withdraw(want, type(uint).max, address(this));
 
         reserves = 0;
@@ -170,36 +185,56 @@ contract StrategyAaveMatic is StratManager, FeeManager {
         StratRebalance(_borrowRate, _borrowDepth);
     }
 
-    // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
-        uint _before = balanceOfWant();
+    function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            require(msg.sender == vault, "!vault");
+            _harvest(tx.origin);
+        }
+    }
 
+    function harvest() external virtual {
+        _harvest(tx.origin);
+    }
+
+    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
+        _harvest(callFeeRecipient);
+    }
+
+    function managerHarvest() external onlyManager {
+        _harvest(tx.origin);
+    }
+
+    // compounds earnings and charges performance fee
+    function _harvest(address callFeeRecipient) internal whenNotPaused {
+        uint256 beforeBal = IERC20(want).balanceOf(address(this));
         address[] memory assets = new address[](2);
         assets[0] = aToken;
         assets[1] = varDebtToken;
         IIncentivesController(incentivesController).claimRewards(assets, type(uint).max, address(this));
+        uint256 afterBal = IERC20(want).balanceOf(address(this));
 
-        uint _after = balanceOfWant();
-        uint harvestedBal = _after.sub(_before);
+        uint256 harvestedBal = afterBal.sub(beforeBal);
+        if (harvestedBal > 0) {
+            chargeFees(harvestedBal, callFeeRecipient);
+            deposit();
 
-        chargeFees(harvestedBal);
-        deposit();
-
-        emit StratHarvest(msg.sender);
+            lastHarvest = block.timestamp;
+            emit StratHarvest(msg.sender);
+        }
     }
 
     // performance fees
-    function chargeFees(uint harvestedBal) internal {
-        uint256 wmaticFeeBal = harvestedBal.mul(45).div(1000);
+    function chargeFees(uint256 harvestedBal, address callFeeRecipient) internal {
+        uint256 feeBal = harvestedBal.mul(45).div(1000);
 
-        uint256 callFeeAmount = wmaticFeeBal.mul(callFee).div(MAX_FEE);
-        IERC20(wmatic).safeTransfer(msg.sender, callFeeAmount);
+        uint256 callFeeAmount = feeBal.mul(callFee).div(MAX_FEE);
+        IERC20(want).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = wmaticFeeBal.mul(beefyFee).div(MAX_FEE);
-        IERC20(wmatic).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
+        uint256 beefyFeeAmount = feeBal.mul(beefyFee).div(MAX_FEE);
+        IERC20(want).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = wmaticFeeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(wmatic).safeTransfer(strategist, strategistFee);
+        uint256 strategistFee = feeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(want).safeTransfer(strategist, strategistFee);
     }
 
     /**
@@ -274,6 +309,28 @@ contract StrategyAaveMatic is StratManager, FeeManager {
     function balanceOfPool() public view returns (uint256) {
         (uint256 supplyBal, uint256 borrowBal) = userReserves();
         return supplyBal.sub(borrowBal);
+    }
+
+    // returns rewards unharvested
+    function rewardsAvailable() public view returns (uint256) {
+        address[] memory assets = new address[](2);
+        assets[0] = aToken;
+        assets[1] = varDebtToken;
+        return IIncentivesController(incentivesController).getRewardsBalance(assets, address(this));
+    }
+
+    // native reward amount for calling harvest
+    function callReward() public view returns (uint256) {
+        return rewardsAvailable().mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
+
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+        if (harvestOnDeposit) {
+            setWithdrawalFee(0);
+        } else {
+            setWithdrawalFee(10);
+        }
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.

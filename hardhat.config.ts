@@ -55,6 +55,11 @@ const config: DeploymentConfig = {
       chainId: 42161,
       accounts: accounts,
     },
+    localhost: {
+      url: "http://127.0.0.1:8545",
+      timeout: 300000,
+      accounts: "remote",
+    },
     testnet: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
       chainId: 97,

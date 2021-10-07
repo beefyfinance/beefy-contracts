@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/curve/IRewardsGauge.sol";
-import "../../interfaces/curve/ICurveCryptoSwap.sol";
+import "../../interfaces/curve/ICurveSwap.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
@@ -88,7 +88,7 @@ contract StrategyCurveATricrypto is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual whenNotPaused onlyEOA {
+    function harvest() external virtual whenNotPaused {
         _harvest();
     }
 
@@ -137,7 +137,7 @@ contract StrategyCurveATricrypto is StratManager, FeeManager {
 
         uint256 ethBal = IERC20(eth).balanceOf(address(this));
         uint256[5] memory amounts = [0, 0, 0, 0, ethBal];
-        ICurveCryptoSwap(swap).add_liquidity(amounts, 0);
+        ICurveSwap5(swap).add_liquidity(amounts, 0);
     }
 
     // calculate the total underlaying 'want' held by the strat.

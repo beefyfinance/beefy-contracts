@@ -112,7 +112,7 @@ contract StrategyTosdisStakeMasterLP is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function harvest() external virtual whenNotPaused onlyEOA gasThrottle {
+    function harvest() external virtual gasThrottle {
         _harvest();
     }
 
@@ -121,7 +121,7 @@ contract StrategyTosdisStakeMasterLP is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest() internal whenNotPaused {
         IStakingPool(pool).stakeTokens(0);
         chargeFees();
         addLiquidity();

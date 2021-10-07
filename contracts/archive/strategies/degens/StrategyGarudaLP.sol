@@ -104,7 +104,7 @@ contract StrategyGarudaLP is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external whenNotPaused gasThrottle {
         IMasterChefReferrer(masterchef).deposit(poolId, 0, address(0));
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {

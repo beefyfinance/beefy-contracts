@@ -1,5 +1,6 @@
 const { expect } = require("chai");
-const { addressBook } = require("blockchain-addressbook");
+import { addressBook } from "blockchain-addressbook";
+import { chainCallFeeMap } from "../../utils/chainCallFeeMap";
 
 const { zapNativeToToken, getVaultWant, unpauseIfPaused, getUnirouterData } = require("../../utils/testHelpers");
 const { delay } = require("../../utils/timeHelpers");
@@ -207,15 +208,7 @@ describe("VaultLifecycleTest", () => {
   it("Has correct call fee", async () => {
     const callFee = await strategy.callFee();
 
-    const expectedCallFeeMap = {
-      bsc: 111,
-      avax: 111,
-      polygon: 11,
-      heco: 11,
-      fantom: 11
-    }
-
-    const expectedCallFee = expectedCallFeeMap[chainName];
+    const expectedCallFee = chainCallFeeMap[chainName];
     const actualCallFee = parseInt(callFee)
 
     expect(actualCallFee).to.equal(expectedCallFee);

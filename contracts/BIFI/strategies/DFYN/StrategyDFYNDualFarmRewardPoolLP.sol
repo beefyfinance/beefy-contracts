@@ -118,7 +118,7 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual whenNotPaused onlyEOA {
+    function harvest() external virtual {
         _harvest();
     }
 
@@ -127,7 +127,7 @@ contract StrategyDFYNDualFarmRewardPoolLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest() internal whenNotPaused {
         IStakingRewards(rewardPool).getReward();
         uint outputBal = IERC20(output).balanceOf(address(this));
             if (outputBal > 0) {

@@ -16,6 +16,8 @@ contract StrategyWexPolyLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
+    address constant nullAddress = address(0);
+
     // Tokens used
     address public native;
     address public output;
@@ -31,6 +33,9 @@ contract StrategyWexPolyLP is StratManager, FeeManager {
     address[] public outputToNativeRoute;
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
+
+    bool public harvestOnDeposit;
+    uint256 public lastHarvest;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -66,12 +71,11 @@ contract StrategyWexPolyLP is StratManager, FeeManager {
         outputToLp1Route = _outputToLp1Route;
 
         _giveAllowances();
-        callFee = 11;
     }
 
     // puts the funds to work
     function deposit() public whenNotPaused {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal > 0) {
             IWaultMasterChef(chef).deposit(poolId, wantBal, false);
@@ -81,11 +85,11 @@ contract StrategyWexPolyLP is StratManager, FeeManager {
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal < _amount) {
             IWaultMasterChef(chef).withdraw(poolId, _amount.sub(wantBal), false);
-            wantBal = IERC20(want).balanceOf(address(this));
+            wantBal = balanceOfWant();
         }
 
         if (wantBal > _amount) {
@@ -100,25 +104,52 @@ contract StrategyWexPolyLP is StratManager, FeeManager {
         }
     }
 
-    // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
-        IWaultMasterChef(chef).claim(poolId);
-        chargeFees();
-        addLiquidity();
-        deposit();
+    function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            require(msg.sender == vault, "!vault");
+            _harvest(nullAddress);
+        }
+    }
 
-        emit StratHarvest(msg.sender);
+    function harvest() external virtual {
+        _harvest(nullAddress);
+    }
+
+    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
+        _harvest(callFeeRecipient);
+    }
+
+    function managerHarvest() external onlyManager {
+        _harvest(nullAddress);
+    }
+
+    // compounds earnings and charges performance fee
+    function _harvest(address callFeeRecipient) internal whenNotPaused {
+        IWaultMasterChef(chef).claim(poolId);
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        if (outputBal > 0) {
+            chargeFees(callFeeRecipient);
+            addLiquidity();
+            deposit();
+
+            lastHarvest = block.timestamp;
+            emit StratHarvest(msg.sender);
+        }
     }
 
     // performance fees
-    function chargeFees() internal {
+    function chargeFees(address callFeeRecipient) internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(msg.sender, callFeeAmount);
+        if (callFeeRecipient != nullAddress) {
+            IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
+        } else {
+            IERC20(native).safeTransfer(tx.origin, callFeeAmount);
+        }
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -160,16 +191,25 @@ contract StrategyWexPolyLP is StratManager, FeeManager {
         return _amount;
     }
 
-    function outputToNative() external view returns(address[] memory) {
-        return outputToNativeRoute;
+    // returns rewards unharvested
+    function rewardsAvailable() public view returns (uint256) {
+        return IWaultMasterChef(chef).pendingWex(poolId, address(this));
     }
 
-    function outputToLp0() external view returns(address[] memory) {
-        return outputToLp0Route;
-    }
+    // returns native reward for calling harvest
+    function callReward() public view returns (uint256) {
+        uint256 outputBal = rewardsAvailable();
+        uint256 nativeOut;
+        if (outputBal > 0) {
+            try IUniswapRouter(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
+                returns (uint256[] memory amountOut)
+            {
+                nativeOut = amountOut[amountOut.length -1];
+            }
+            catch {}
+        }
 
-    function outputToLp1() external view returns(address[] memory) {
-        return outputToLp1Route;
+        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
@@ -178,8 +218,18 @@ contract StrategyWexPolyLP is StratManager, FeeManager {
 
         IWaultMasterChef(chef).emergencyWithdraw(poolId);
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
         IERC20(want).transfer(vault, wantBal);
+    }
+
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+
+        if (harvestOnDeposit == true) {
+            super.setWithdrawalFee(0);
+        } else {
+            super.setWithdrawalFee(10);
+        }
     }
 
     // pauses deposits and withdraws all funds from third party systems.
@@ -200,6 +250,18 @@ contract StrategyWexPolyLP is StratManager, FeeManager {
         _giveAllowances();
 
         deposit();
+    }
+
+    function outputToNative() external view returns(address[] memory) {
+        return outputToNativeRoute;
+    }
+
+    function outputToLp0() external view returns(address[] memory) {
+        return outputToLp0Route;
+    }
+
+    function outputToLp1() external view returns(address[] memory) {
+        return outputToLp1Route;
     }
 
     function _giveAllowances() internal {

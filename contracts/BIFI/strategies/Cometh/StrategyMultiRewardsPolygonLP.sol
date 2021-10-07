@@ -108,7 +108,7 @@ contract StrategyMultiRewardsPolygonLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         IRewardPool(rewardPool).getReward();
         chargeFees();
         addLiquidity();
@@ -128,7 +128,7 @@ contract StrategyMultiRewardsPolygonLP is StratManager, FeeManager {
         uint256 maticBal = IERC20(matic).balanceOf(address(this));
 
         uint256 callFeeAmount = maticBal.mul(callFee).div(MAX_FEE);
-        IERC20(matic).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(matic).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = maticBal.mul(beefyFee).div(MAX_FEE);
         IERC20(matic).safeTransfer(beefyFeeRecipient, beefyFeeAmount);

@@ -11,8 +11,9 @@ import "../../interfaces/curve/IRewardsGauge.sol";
 import "../../interfaces/curve/ICurveSwap.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
+import "../../utils/GasThrottler.sol";
 
-contract StrategyCurveLP is StratManager, FeeManager {
+contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -25,14 +26,16 @@ contract StrategyCurveLP is StratManager, FeeManager {
     // Third party contracts
     address public rewardsGauge;
     address public pool;
-    uint public poolSize;
+    uint public immutable poolSize;
     uint public depositIndex;
+    bool public useUnderlying;
 
     // Routes
     address[] public crvToNativeRoute;
     address[] public nativeToDepositRoute;
 
-    bool public harvestOnDeposit = true;
+    bool public harvestOnDeposit;
+    uint256 public lastHarvest;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -45,6 +48,7 @@ contract StrategyCurveLP is StratManager, FeeManager {
         address _pool,
         uint _poolSize,
         uint _depositIndex,
+        bool _useUnderlying,
         address[] memory _crvToNativeRoute,
         address[] memory _nativeToDepositRoute,
         address _vault,
@@ -58,6 +62,7 @@ contract StrategyCurveLP is StratManager, FeeManager {
         pool = _pool;
         poolSize = _poolSize;
         depositIndex = _depositIndex;
+        useUnderlying = _useUnderlying;
 
         crv = _crvToNativeRoute[0];
         native = _crvToNativeRoute[_crvToNativeRoute.length - 1];
@@ -103,21 +108,29 @@ contract StrategyCurveLP is StratManager, FeeManager {
 
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
-            harvest();
+            require(msg.sender == vault, "!vault");
+            _harvest();
         }
     }
 
-    // compounds earnings and charges performance fee
-    function harvest() public whenNotPaused {
-        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
-        IRewardsGauge(rewardsGauge).claim_rewards(address(this));
+    function harvest() external virtual whenNotPaused gasThrottle {
+        _harvest();
+    }
 
+    function managerHarvest() external onlyManager {
+        _harvest();
+    }
+
+    // compounds earnings and charges performance fee
+    function _harvest() internal {
+        IRewardsGauge(rewardsGauge).claim_rewards(address(this));
         uint256 crvBal = IERC20(crv).balanceOf(address(this));
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
         if (nativeBal > 0 || crvBal > 0) {
             chargeFees();
             addLiquidity();
             deposit();
+            lastHarvest = block.timestamp;
             emit StratHarvest(msg.sender);
         }
     }
@@ -144,18 +157,22 @@ contract StrategyCurveLP is StratManager, FeeManager {
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeBal, 0, nativeToDepositRoute, address(this), block.timestamp);
+        if (depositToken != native) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeBal, 0, nativeToDepositRoute, address(this), block.timestamp);
+        }
 
         uint256 depositBal = IERC20(depositToken).balanceOf(address(this));
 
         if (poolSize == 2) {
             uint256[2] memory amounts;
             amounts[depositIndex] = depositBal;
-            ICurveSwap2(pool).add_liquidity(amounts, 0);
+            if (useUnderlying) ICurveSwap2(pool).add_liquidity(amounts, 0, true);
+            else ICurveSwap2(pool).add_liquidity(amounts, 0);
         } else if (poolSize == 3) {
             uint256[3] memory amounts;
             amounts[depositIndex] = depositBal;
-            ICurveSwap3(pool).add_liquidity(amounts, 0);
+            if (useUnderlying) ICurveSwap3(pool).add_liquidity(amounts, 0, true);
+            else ICurveSwap3(pool).add_liquidity(amounts, 0);
         } else if (poolSize == 4) {
             uint256[4] memory amounts;
             amounts[depositIndex] = depositBal;
@@ -190,8 +207,26 @@ contract StrategyCurveLP is StratManager, FeeManager {
         return nativeToDepositRoute;
     }
 
-    function setHarvestOnDeposit(bool _harvest) external onlyManager {
-        harvestOnDeposit = _harvest;
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+    }
+
+    // returns rewards unharvested
+    function rewardsAvailable() public view returns (uint256) {
+        return IRewardsGauge(rewardsGauge).claimable_reward(address(this), crv);
+    }
+
+    // native reward amount for calling harvest
+    function callReward() public view returns (uint256) {
+        uint256 outputBal = rewardsAvailable();
+        uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, crvToNativeRoute);
+        uint256 nativeOut = amountOut[amountOut.length -1];
+
+        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
+
+    function setShouldGasThrottle(bool _shouldGasThrottle) external onlyManager {
+        shouldGasThrottle = _shouldGasThrottle;
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
