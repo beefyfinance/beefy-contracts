@@ -26,8 +26,9 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
     // Third party contracts
     address public rewardsGauge;
     address public pool;
-    uint public poolSize;
+    uint public immutable poolSize;
     uint public depositIndex;
+    bool public useUnderlying;
 
     // Routes
     address[] public crvToNativeRoute;
@@ -47,6 +48,7 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
         address _pool,
         uint _poolSize,
         uint _depositIndex,
+        bool _useUnderlying,
         address[] memory _crvToNativeRoute,
         address[] memory _nativeToDepositRoute,
         address _vault,
@@ -60,6 +62,7 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
         pool = _pool;
         poolSize = _poolSize;
         depositIndex = _depositIndex;
+        useUnderlying = _useUnderlying;
 
         crv = _crvToNativeRoute[0];
         native = _crvToNativeRoute[_crvToNativeRoute.length - 1];
@@ -163,11 +166,13 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
         if (poolSize == 2) {
             uint256[2] memory amounts;
             amounts[depositIndex] = depositBal;
-            ICurveSwap2(pool).add_liquidity(amounts, 0);
+            if (useUnderlying) ICurveSwap2(pool).add_liquidity(amounts, 0, true);
+            else ICurveSwap2(pool).add_liquidity(amounts, 0);
         } else if (poolSize == 3) {
             uint256[3] memory amounts;
             amounts[depositIndex] = depositBal;
-            ICurveSwap3(pool).add_liquidity(amounts, 0);
+            if (useUnderlying) ICurveSwap3(pool).add_liquidity(amounts, 0, true);
+            else ICurveSwap3(pool).add_liquidity(amounts, 0);
         } else if (poolSize == 4) {
             uint256[4] memory amounts;
             amounts[depositIndex] = depositBal;
