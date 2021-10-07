@@ -39,6 +39,7 @@ const config: DeploymentConfig = {
       url: "https://polygon-rpc.com/",
       chainId: 137,
       accounts: accounts,
+      gasPrice: 30000000000,
     },
     fantom: {
       url: "https://rpc.ftm.tools",
@@ -74,7 +75,7 @@ const config: DeploymentConfig = {
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: "",
+    apiKey: process.env.ETHERSCAN_API_KEY,
   },
   solidity: {
     compilers: [
