@@ -9,7 +9,7 @@ const {
     vaultParams,
     strategyParams,
     shouldVerifyOnEtherscan
-} = require('./vault-configs/nexo-eth');
+} = require('./vault-configs/watch-quick');
 
 const contractNames = {
     vault: "BeefyVaultV6",

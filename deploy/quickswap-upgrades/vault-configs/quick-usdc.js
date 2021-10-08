@@ -3,21 +3,20 @@ const {web3} = require("hardhat");
 
 const {
     QUICK: {address: QUICK},
-    DAI: {address: DAI},
     ETH: {address: ETH},
     USDC: {address: USDC},
     WMATIC: {address: WMATIC},
 } = addressBook.polygon.tokens;
 const {quickswap, beefyfinance} = addressBook.polygon.platforms;
 
-const shouldVerifyOnEtherscan = true;
+const shouldVerifyOnEtherscan = false;
 
-const want = web3.utils.toChecksumAddress("0xf04adBF75cDFc5eD26eeA4bbbb991DB002036Bdd");
-const rewardPool = web3.utils.toChecksumAddress("0xacb9eb5b52f495f09ba98ac96d8e61257f3dae14"); //TODO: needs to be the new one
+const want = web3.utils.toChecksumAddress("0x1f1e4c845183ef6d50e9609f16f6f9cae43bc9cb");
+const rewardPool = web3.utils.toChecksumAddress("0x939290ed45514e82900ba767bbcfa38ee1067039");
 
 const vaultParams = {
-    mooName: "Moo Quick USDC-DAI",
-    mooSymbol: "mooQuickUSDC-DAI",
+    mooName: "Moo Quick QUICK-USDC",
+    mooSymbol: "mooQuickQUICK-USDC",
     delay: 21600,
 };
 
@@ -29,8 +28,8 @@ const strategyParams = {
     keeper: beefyfinance.keeper,
     beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
     outputToNativeRoute: [QUICK, WMATIC],
-    outputToLp0Route: [QUICK, ETH, USDC],
-    outputToLp1Route: [QUICK, WMATIC, ETH, DAI],
+    outputToLp0Route: [QUICK, USDC], //USDC
+    outputToLp1Route: [QUICK], //QUICK
 };
 
 module.exports = {
