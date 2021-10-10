@@ -1,10 +1,15 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.0;
 
 interface IStrategy {
     function lastHarvest() external view returns (uint256);
 
     function callReward() external view returns (uint256);
+
+    function paused() external view returns (bool);
+    
+    function harvest(address callFeeRecipient) external;
 }
 
 interface IVaultRegistry {
