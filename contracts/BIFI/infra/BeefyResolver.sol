@@ -8,8 +8,8 @@ interface IStrategy {
     function callReward() external view returns (uint256);
 
     function paused() external view returns (bool);
-    
-    function harvest(address callFeeRecipient) external;
+
+    function harvest(address callFeeRecipient) external view; // can be view as will only be executed off chain
 }
 
 interface IVaultRegistry {
@@ -44,39 +44,42 @@ contract BeefyAutoHarvester {
     }
 
     function checker() external view returns (bool, bytes memory execPayload) {
+        function (address) view returns (bool) harvestCondition = _willHarvestStrat;
+        
+        uint256 numberOfStratsToHarvest;
         address[] memory vaults = vaultRegistry.allVaultAddresses();
 
-        uint256 nrOfStratsToHarvest;
+        // count the number of strategies to harvest.
+        for (uint256 index; index < vaults.length; index++) {
+            address vaultAddress = vaults[index];
+            IVault vault = IVault(vaultAddress);
 
-        // count number of strategies to harvest.
-        for (uint256 x; x < vaults.length; x++) {
-            IVault vault = IVault(vaults[x]);
+            address strategyAddress = vault.strategy();
 
-            address strategy = vault.strategy();
-
-            if (_shouldHarvestStrat(strategy)) nrOfStratsToHarvest += 1;
+            if (harvestCondition(strategyAddress)) numberOfStratsToHarvest += 1;
         }
 
-        if (nrOfStratsToHarvest == 0)
+        if (numberOfStratsToHarvest == 0)
             return (false, bytes("BeefyAutoHarvester: No strats to harvest"));
 
-        uint256 pos;
+        uint256 strategyPositionInArray;
         address[] memory strategiesToHarvest = new address[](
-            nrOfStratsToHarvest
+            numberOfStratsToHarvest
         );
 
+
         // create array of strategies to harvest.
-        for (uint256 x; x < vaults.length; x++) {
-            IVault vault = IVault(vaults[x]);
+        for (uint256 index; index < vaults.length; index++) {
+            IVault vault = IVault(vaults[index]);
 
             address strategy = vault.strategy();
 
-            if (_shouldHarvestStrat(strategy)) {
-                strategiesToHarvest[pos] = address(strategy);
-                pos += 1;
+            if (harvestCondition(strategy)) {
+                strategiesToHarvest[strategyPositionInArray] = address(strategy);
+                strategyPositionInArray += 1;
             }
 
-            if (pos == nrOfStratsToHarvest - 1) break;
+            if (strategyPositionInArray == numberOfStratsToHarvest - 1) break;
         }
 
         execPayload = abi.encodeWithSelector(
@@ -87,6 +90,44 @@ contract BeefyAutoHarvester {
         return (true, execPayload);
     }
 
+    function _willHarvestStrat(address _strategy) 
+        internal
+        view
+        returns (bool)
+    {
+        return _canHarvestStrat(_strategy) && _shouldHarvestStrat(_strategy);
+    }
+
+    function _canHarvestStrat(address _strategy) 
+        internal
+        view
+        returns (bool)
+    {
+        IStrategy strategy = IStrategy(_strategy);
+
+        bool isPaused = strategy.paused();
+
+        bool canHarvest = false;
+
+        if (isPaused) 
+        {
+            canHarvest = false;
+        }
+        else 
+        {
+            try strategy.harvest(address(this))
+            {
+                canHarvest = true;
+            }
+            catch
+            {
+                canHarvest = false;
+            }
+        }
+
+        return canHarvest;
+    }
+
     function _shouldHarvestStrat(address _strategy)
         internal
         view
@@ -94,9 +135,9 @@ contract BeefyAutoHarvester {
     {
         IStrategy strategy = IStrategy(_strategy);
 
-        uint256 callRewardAmount = strategy.callReward();
-
         bool hasBeenHarvestedToday = strategy.lastHarvest() < 1 days;
+
+        uint256 callRewardAmount = strategy.callReward();
 
         bool isProfitableHarvest = callRewardAmount >= taskTreasury.maxFee();
 
