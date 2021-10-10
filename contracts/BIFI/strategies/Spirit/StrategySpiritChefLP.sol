@@ -8,14 +8,15 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IMasterChef.sol";
+import "../../interfaces/spirit/IMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
-import "../../utils/StringUtils.sol";
 
-contract StrategyCommonChefLP is StratManager, FeeManager {
+contract StrategySpiritChefLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
+
+    address constant nullAddress = address(0);
 
     // Tokens used
     address public native;
@@ -30,7 +31,6 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
-    string public pendingRewardsFunctionName;
 
     // Routes
     address[] public outputToNativeRoute;
@@ -79,6 +79,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // puts the funds to work
     function deposit() public whenNotPaused {
+        require(depositFee() == 0, 'Deposit Fee Enabled');
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
@@ -111,20 +112,20 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
-            _harvest(tx.origin);
+            _harvest(nullAddress);
         }
     }
 
     function harvest() external virtual {
-        _harvest(tx.origin);
+        _harvest(nullAddress);
     }
 
-    function harvest(address callFeeRecipient) external virtual {
+    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 
     function managerHarvest() external onlyManager {
-        _harvest(tx.origin);
+        _harvest(nullAddress);
     }
 
     // compounds earnings and charges performance fee
@@ -149,7 +150,11 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
+        if (callFeeRecipient != nullAddress) {
+            IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
+        } else {
+            IERC20(native).safeTransfer(tx.origin, callFeeAmount);
+        }
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -191,22 +196,9 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         return _amount;
     }
 
-    function setPendingRewardsFunctionName(string calldata _pendingRewardsFunctionName) external onlyManager {
-        pendingRewardsFunctionName = _pendingRewardsFunctionName;
-    }
-
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        string memory signature = StringUtils.concat(pendingRewardsFunctionName, "(uint256,address)");
-        bytes memory result = Address.functionStaticCall(
-            chef, 
-            abi.encodeWithSignature(
-                signature,
-                poolId,
-                address(this)
-            )
-        );  
-        return abi.decode(result, (uint256));
+        return IMasterChef(chef).pendingSpirit(poolId, address(this));
     }
 
     // native reward amount for calling harvest
@@ -215,7 +207,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         uint256 nativeOut;
         if (outputBal > 0) {
             try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
-                returns (uint256[] memory amountOut) 
+                returns (uint256[] memory amountOut)
             {
                 nativeOut = amountOut[amountOut.length -1];
             }
@@ -223,6 +215,12 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         }
 
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
+
+    // deposit fee for underlying farm
+    function depositFee() public view returns (uint256) {
+        (,,,,uint256 _depositFee) = IMasterChef(chef).poolInfo(poolId);
+        return _depositFee;
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {

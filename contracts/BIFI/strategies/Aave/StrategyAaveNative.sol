@@ -15,12 +15,11 @@ import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../Common/FeeManager.sol";
 import "../Common/StratManager.sol";
 
-contract StrategyAave is StratManager, FeeManager {
+contract StrategyAaveNative is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
-    address public native;
     address public want;
     address public aToken;
     address public varDebtToken;
@@ -29,9 +28,6 @@ contract StrategyAave is StratManager, FeeManager {
     address public dataProvider;
     address public lendingPool;
     address public incentivesController;
-
-    // Routes
-    address[] public nativeToWantRoute;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -66,7 +62,6 @@ contract StrategyAave is StratManager, FeeManager {
 
     constructor(
         address _want,
-        address _native,
         uint256 _borrowRate,
         uint256 _borrowRateMax,
         uint256 _borrowDepth,
@@ -81,7 +76,6 @@ contract StrategyAave is StratManager, FeeManager {
         address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
-        native = _native;
 
         borrowRate = _borrowRate;
         borrowRateMax = _borrowRateMax;
@@ -92,8 +86,6 @@ contract StrategyAave is StratManager, FeeManager {
         incentivesController = _incentivesController;
 
         (aToken,,varDebtToken) = IDataProvider(dataProvider).getReserveTokensAddresses(want);
-
-        nativeToWantRoute = [native, want];
 
         _giveAllowances();
     }
@@ -208,22 +200,22 @@ contract StrategyAave is StratManager, FeeManager {
         _harvest(callFeeRecipient);
     }
 
-
     function managerHarvest() external onlyManager {
         _harvest(tx.origin);
     }
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
+        uint256 beforeBal = IERC20(want).balanceOf(address(this));
         address[] memory assets = new address[](2);
         assets[0] = aToken;
         assets[1] = varDebtToken;
         IIncentivesController(incentivesController).claimRewards(assets, type(uint).max, address(this));
+        uint256 afterBal = IERC20(want).balanceOf(address(this));
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
-        if (nativeBal > 0) {
-            chargeFees(callFeeRecipient);
-            swapRewards();
+        uint256 harvestedBal = afterBal.sub(beforeBal);
+        if (harvestedBal > 0) {
+            chargeFees(harvestedBal, callFeeRecipient);
             deposit();
 
             lastHarvest = block.timestamp;
@@ -232,23 +224,17 @@ contract StrategyAave is StratManager, FeeManager {
     }
 
     // performance fees
-    function chargeFees(address callFeeRecipient) internal {
-        uint256 nativeFeeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000);
+    function chargeFees(uint256 harvestedBal, address callFeeRecipient) internal {
+        uint256 feeBal = harvestedBal.mul(45).div(1000);
 
-        uint256 callFeeAmount = nativeFeeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
+        uint256 callFeeAmount = feeBal.mul(callFee).div(MAX_FEE);
+        IERC20(want).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeFeeBal.mul(beefyFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
+        uint256 beefyFeeAmount = feeBal.mul(beefyFee).div(MAX_FEE);
+        IERC20(want).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeFeeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
-    }
-
-    // swap rewards to {want}
-    function swapRewards() internal {
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeBal, 0, nativeToWantRoute, address(this), now);
+        uint256 strategistFee = feeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(want).safeTransfer(strategist, strategistFee);
     }
 
     /**
@@ -325,10 +311,6 @@ contract StrategyAave is StratManager, FeeManager {
         return supplyBal.sub(borrowBal);
     }
 
-    function nativeToWant() public view returns (address[] memory) {
-        return nativeToWantRoute;
-    }
-
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
         address[] memory assets = new address[](2);
@@ -383,11 +365,9 @@ contract StrategyAave is StratManager, FeeManager {
 
     function _giveAllowances() internal {
         IERC20(want).safeApprove(lendingPool, uint256(-1));
-        IERC20(native).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(lendingPool, 0);
-        IERC20(native).safeApprove(unirouter, 0);
     }
-}
+} 

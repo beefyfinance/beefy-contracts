@@ -8,12 +8,21 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IMasterChef.sol";
+import "../../interfaces/common/IMultiFeeDistribution.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 import "../../utils/StringUtils.sol";
 
-contract StrategyCommonChefLP is StratManager, FeeManager {
+interface IGeistMasterChef {
+    function deposit(address _token, uint256 _amount) external;
+    function withdraw(address _token, uint256 _amount) external;
+    function claim(address _user, address[] calldata _tokens) external;
+    function emergencyWithdraw(address _token) external;
+    function userInfo(address _token, address _user) external view returns (uint256, uint256);
+    function claimableReward(address _user, address[] calldata _tokens) external view returns (uint256[] memory);
+}
+
+contract StrategyGeistChefLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -25,12 +34,11 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     address public lpToken1;
 
     // Third party contracts
-    address public chef;
-    uint256 public poolId;
+    address constant public chef = address(0xE40b7FA6F5F7FB0Dc7d56f433814227AAaE020B5);
+    address constant public feeDistribution = address(0x49c93a95dbcc9A6A4D8f77E59c038ce5020e82f8);
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
-    string public pendingRewardsFunctionName;
 
     // Routes
     address[] public outputToNativeRoute;
@@ -44,8 +52,6 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     constructor(
         address _want,
-        uint256 _poolId,
-        address _chef,
         address _vault,
         address _unirouter,
         address _keeper,
@@ -56,8 +62,6 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         address[] memory _outputToLp1Route
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
-        poolId = _poolId;
-        chef = _chef;
 
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
@@ -82,7 +86,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IMasterChef(chef).deposit(poolId, wantBal);
+            IGeistMasterChef(chef).deposit(want, wantBal);
         }
     }
 
@@ -92,7 +96,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            IGeistMasterChef(chef).withdraw(want, _amount.sub(wantBal));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -129,7 +133,11 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        IMasterChef(chef).deposit(poolId, 0);
+        address[] memory tokens = new address[](1);
+        tokens[0] = want;
+        IGeistMasterChef(chef).claim(address(this), tokens);
+        IMultiFeeDistribution(feeDistribution).exit();
+
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
             chargeFees(callFeeRecipient);
@@ -187,26 +195,15 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount,) = IMasterChef(chef).userInfo(poolId, address(this));
+        (uint256 _amount,) = IGeistMasterChef(chef).userInfo(want, address(this));
         return _amount;
-    }
-
-    function setPendingRewardsFunctionName(string calldata _pendingRewardsFunctionName) external onlyManager {
-        pendingRewardsFunctionName = _pendingRewardsFunctionName;
     }
 
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        string memory signature = StringUtils.concat(pendingRewardsFunctionName, "(uint256,address)");
-        bytes memory result = Address.functionStaticCall(
-            chef, 
-            abi.encodeWithSignature(
-                signature,
-                poolId,
-                address(this)
-            )
-        );  
-        return abi.decode(result, (uint256));
+        address[] memory tokens = new address[](1);
+        tokens[0] = want;
+        return IGeistMasterChef(chef).claimableReward(address(this), tokens)[0].div(2);
     }
 
     // native reward amount for calling harvest
@@ -239,7 +236,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IGeistMasterChef(chef).emergencyWithdraw(want);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -248,7 +245,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IGeistMasterChef(chef).emergencyWithdraw(want);
     }
 
     function pause() public onlyManager {

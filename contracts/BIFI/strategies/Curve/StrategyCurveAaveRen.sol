@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/curve/IRewardsGauge.sol";
-import "../../interfaces/curve/IStableSwapAave.sol";
+import "../../interfaces/curve/ICurveSwap.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
@@ -126,7 +126,7 @@ contract StrategyCurveAaveRen is StratManager, FeeManager {
 
         uint256 btcBal = IERC20(btc).balanceOf(address(this));
         uint256[2] memory amounts = [btcBal, 0];
-        IStableSwapAave2(swapToken).add_liquidity(amounts, 0, true);
+        ICurveSwap2(swapToken).add_liquidity(amounts, 0, true);
     }
 
     // calculate the total underlaying 'want' held by the strat.
