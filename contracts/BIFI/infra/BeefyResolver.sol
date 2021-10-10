@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.0;
+pragma solidity ^0.8.0;
 
 interface IStrategy {
     function lastHarvest() external view returns (uint256);
@@ -38,8 +38,6 @@ contract BeefyAutoHarvester {
         multiHarvest = IMultiHarvest(_multiHarvest);
     }
 
-    //solhint-disable code-complexity
-    //solhint-disable function-max-lines
     function checker() external view returns (bool, bytes memory execPayload) {
         address[] memory vaults = vaultRegistry.allVaultAddresses();
 
