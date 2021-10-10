@@ -33,6 +33,8 @@ contract BeefyAutoHarvester {
     ITaskTreasury public immutable taskTreasury;
     IMultiHarvest public immutable multiHarvest;
 
+    address public immutable callFeeRecipient = address(this);
+
     constructor(
         address _taskTreasury,
         address _vaultRegistry,
@@ -115,7 +117,7 @@ contract BeefyAutoHarvester {
         }
         else 
         {
-            try strategy.harvest(address(this))
+            try strategy.harvest(callFeeRecipient)
             {
                 canHarvest = true;
             }
