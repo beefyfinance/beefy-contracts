@@ -34,6 +34,10 @@ contract StrategyCommonChefLPBsc is StrategyCommonChefLP, GasThrottler {
     ) public {}
 
    function harvest() external override whenNotPaused gasThrottle {
-        _harvest(nullAddress);
+        _harvest(tx.origin);
+   }
+
+    function harvest(address callFeeRecipient) external override gasThrottle {
+        _harvest(callFeeRecipient);
     }
 }
