@@ -24,7 +24,6 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
     address public native;
     address public output;
     address public want;
-    address public reward;
     address public lpToken0;
     address public lpToken1;
 
@@ -132,7 +131,7 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
         IRewardPool(rewardPool).getReward();
 
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        uint256 rewardBal = IERC20(reward).balanceOf(address(this));
+        uint256 rewardBal = IERC20(native).balanceOf(address(this));
 
         if (outputBal > 0 || rewardBal > 0) {
             chargeFees(callFeeRecipient);
