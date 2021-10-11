@@ -38,7 +38,7 @@ contract StrategyChefCurveLP is StratManager, FeeManager, GasThrottler {
 
     // Routes
     address[] public outputToNativeRoute;
-    address[] public nativeToDepositRoute;
+    address[] public outputToDepositRoute;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -53,7 +53,7 @@ contract StrategyChefCurveLP is StratManager, FeeManager, GasThrottler {
         uint _poolSize,
         uint _depositIndex,
         address[] memory _outputToNativeRoute,
-        address[] memory _nativeToDepositRoute,
+        address[] memory _outputToDepositRoute,
         address _vault,
         address _unirouter,
         address _keeper,
@@ -71,9 +71,9 @@ contract StrategyChefCurveLP is StratManager, FeeManager, GasThrottler {
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
 
-        require(_nativeToDepositRoute[0] == native, '_nativeToDepositRoute[0] != native');
-        depositToken = _nativeToDepositRoute[_nativeToDepositRoute.length - 1];
-        nativeToDepositRoute = _nativeToDepositRoute;
+        require(_outputToDepositRoute[0] == output, '_outputToDepositRoute[0] != output');
+        depositToken = _outputToDepositRoute[_outputToDepositRoute.length - 1];
+        outputToDepositRoute = _outputToDepositRoute;
 
         _giveAllowances();
     }
@@ -144,10 +144,10 @@ contract StrategyChefCurveLP is StratManager, FeeManager, GasThrottler {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        uint256 toNative = IERC20(output).balanceOf(address(this));
+        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000);
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
@@ -161,9 +161,9 @@ contract StrategyChefCurveLP is StratManager, FeeManager, GasThrottler {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
-        if (depositToken != native) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeBal, 0, nativeToDepositRoute, address(this), block.timestamp);
+        if (depositToken != output) {
+            uint256 outputBal = IERC20(output).balanceOf(address(this));
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToDepositRoute, address(this), block.timestamp);
         }
 
         uint256 depositBal = IERC20(depositToken).balanceOf(address(this));
@@ -284,14 +284,12 @@ contract StrategyChefCurveLP is StratManager, FeeManager, GasThrottler {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(chef, type(uint).max);
         IERC20(output).safeApprove(unirouter, type(uint).max);
-        IERC20(native).safeApprove(unirouter, type(uint).max);
         IERC20(depositToken).safeApprove(pool, type(uint).max);
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
-        IERC20(native).safeApprove(unirouter, 0);
         IERC20(depositToken).safeApprove(pool, 0);
     }
 
@@ -299,7 +297,7 @@ contract StrategyChefCurveLP is StratManager, FeeManager, GasThrottler {
         return outputToNativeRoute;
     }
 
-    function nativeToDeposit() external view returns (address[] memory) {
-        return nativeToDepositRoute;
+    function outputToDeposit() external view returns (address[] memory) {
+        return outputToDepositRoute;
     }
 }
