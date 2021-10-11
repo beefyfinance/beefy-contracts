@@ -33,7 +33,6 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
 
     // Routes
     address[] public outputToNativeRoute;
-    address[] public rewardToNativeRoute;
     address[] public nativeToLp0Route;
     address[] public nativeToLp1Route;
 
@@ -54,7 +53,6 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
         address _strategist,
         address _beefyFeeRecipient,
         address[] memory _outputToNativeRoute,
-        address[] memory _rewardToNativeRoute,
         address[] memory _nativeToLp0Route,
         address[] memory _nativeToLp1Route
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
@@ -75,10 +73,6 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
         require(_nativeToLp1Route[0] == output,  "nativeToLp1Route[0] != output");
         require(_nativeToLp1Route[_nativeToLp1Route.length - 1] == lpToken1, "nativeToLP1Route[last] != lpToken1");
         nativeToLp1Route = _nativeToLp1Route;
-
-        reward = _rewardToNativeRoute[0];
-        require(_rewardToNativeRoute[_rewardToNativeRoute.length - 1] == native, '_rewardToNativeRoute != native');
-        rewardToNativeRoute = _rewardToNativeRoute;
 
         _giveAllowances();
     }
@@ -152,13 +146,8 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        uint256 rewardToNative = IERC20(reward).balanceOf(address(this));
-        if (rewardToNative > 0 && reward != native) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardToNative, 0, rewardToNativeRoute, address(this), block.timestamp);
-        }
-
         uint256 outputToNative = IERC20(output).balanceOf(address(this));
-        if (outputToNative > 0 && output != native) {
+        if (outputToNative > 0) {
             IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputToNative, 0, outputToNativeRoute, address(this), block.timestamp);
         }
 
@@ -286,7 +275,6 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(rewardPool, uint256(- 1));
         IERC20(output).safeApprove(unirouter, uint256(- 1));
-        IERC20(reward).safeApprove(unirouter, uint256(- 1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, uint256(- 1));
@@ -298,7 +286,6 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(rewardPool, 0);
         IERC20(output).safeApprove(unirouter, 0);
-        IERC20(reward).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
