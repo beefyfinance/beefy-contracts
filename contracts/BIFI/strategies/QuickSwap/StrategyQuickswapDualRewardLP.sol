@@ -9,7 +9,8 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../interfaces/common/IERC20Extended.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IRewardPool.sol";
+import "../../interfaces/common/IStakingDualRewards.sol";
+import "../../interfaces/quick/IDragonsLair.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
@@ -26,6 +27,7 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
 
     // Third party contracts
     address public rewardPool;
+    address constant public dragonsLair = address(0xf28164A485B0B2C90639E47b0f377b4a438a16B1);
 
     // Routes
     address[] public outputToNativeRoute;
@@ -81,7 +83,7 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
         uint256 wantBal = balanceOfWant();
 
         if (wantBal > 0) {
-            IRewardPool(rewardPool).stake(wantBal);
+            IStakingDualRewards(rewardPool).stake(wantBal);
         }
         emit Deposit(balanceOf());
     }
@@ -92,7 +94,7 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
         uint256 wantBal = balanceOfWant();
 
         if (wantBal < _amount) {
-            IRewardPool(rewardPool).withdraw(_amount.sub(wantBal));
+            IStakingDualRewards(rewardPool).withdraw(_amount.sub(wantBal));
             wantBal = balanceOfWant();
         }
 
@@ -131,7 +133,9 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        IRewardPool(rewardPool).getReward();
+        IStakingDualRewards(rewardPool).getReward();
+        uint256 lairBal = IERC20(dragonsLair).balanceOf(address(this));
+        IDragonsLair(dragonsLair).leave(lairBal);
 
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         uint256 rewardBal = IERC20(native).balanceOf(address(this));
@@ -195,17 +199,20 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        return IRewardPool(rewardPool).balanceOf(address(this));
+        return IStakingDualRewards(rewardPool).balanceOf(address(this));
     }
 
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        return IRewardPool(rewardPool).earned(address(this));
+        uint256 lairReward = IStakingDualRewards(rewardPool).earnedA(address(this));
+        return IDragonsLair(dragonsLair).dQUICKForQUICK(lairReward);
     }
 
     // returns native reward for calling harvest
     function callReward() public view returns (uint256) {
         uint256 outputBal = rewardsAvailable();
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+
         uint256 nativeOut;
         if (outputBal > 0) {
             try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
@@ -216,6 +223,8 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
             catch {}
         }
 
+        nativeOut = nativeOut.add(nativeBal);
+
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
 
@@ -223,7 +232,7 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IRewardPool(rewardPool).withdraw(balanceOfPool());
+        IStakingDualRewards(rewardPool).withdraw(balanceOfPool());
 
         uint256 wantBal = balanceOfWant();
         IERC20(want).transfer(vault, wantBal);
@@ -242,7 +251,7 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IRewardPool(rewardPool).withdraw(balanceOfPool());
+        IStakingDualRewards(rewardPool).withdraw(balanceOfPool());
     }
 
     function pause() public onlyManager {
