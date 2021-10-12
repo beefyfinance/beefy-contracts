@@ -41,7 +41,10 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
     /**
      * @dev Event that is fired each time someone harvests the strat.
      */
-    event StratHarvest(address indexed harvester);
+    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
+    event Deposit(uint256 tvl);
+    event Withdraw(uint256 tvl);
+
 
     constructor(
         address _want,
@@ -83,6 +86,7 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
         if (wantBal > 0) {
             IRewardPool(rewardPool).stake(wantBal);
         }
+        emit Deposit(balanceOf());
     }
 
     function withdraw(uint256 _amount) external {
