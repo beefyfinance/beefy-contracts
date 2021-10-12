@@ -203,15 +203,20 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
     }
 
     // returns rewards unharvested
-    function rewardsAvailable() public view returns (uint256) {
+    function rewardsAAvailable() public view returns (uint256) {
         uint256 lairReward = IStakingDualRewards(rewardPool).earnedA(address(this));
         return IDragonsLair(dragonsLair).dQUICKForQUICK(lairReward);
     }
 
+    // returns rewards unharvested
+    function rewardsBAvailable() public view returns (uint256) {
+       return IStakingDualRewards(rewardPool).earnedB(address(this));
+    }
+
     // returns native reward for calling harvest
     function callReward() public view returns (uint256) {
-        uint256 outputBal = rewardsAvailable();
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        uint256 outputBal = rewardsAAvailable();
+        uint256 nativeBal = rewardsBAvailable();
 
         uint256 nativeOut;
         if (outputBal > 0) {
