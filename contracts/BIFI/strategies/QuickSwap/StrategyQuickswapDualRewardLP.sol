@@ -106,6 +106,8 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
             uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
             IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
         }
+
+        emit Withdraw(balanceOf());
     }
 
     function beforeDeposit() external override {
@@ -137,10 +139,11 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
         if (outputBal > 0 || rewardBal > 0) {
             chargeFees(callFeeRecipient);
             addLiquidity();
+            uint256 wantHarvested = balanceOfWant();
             deposit();
 
             lastHarvest = block.timestamp;
-            emit StratHarvest(msg.sender);
+            emit StratHarvest(msg.sender, wantHarvested, balanceOf());
         }
     }
 
