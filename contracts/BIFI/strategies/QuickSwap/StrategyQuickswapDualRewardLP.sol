@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
-pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -17,8 +16,6 @@ import "../Common/FeeManager.sol";
 contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
-
-    address constant nullAddress = address(0);
 
     // Tokens used
     address public native;
@@ -114,20 +111,20 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
-            _harvest(nullAddress);
+            _harvest(tx.origin);
         }
     }
 
     function harvest() external virtual {
-        _harvest(nullAddress);
+        _harvest(tx.origin);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 
     function managerHarvest() external onlyManager {
-        _harvest(nullAddress);
+        _harvest(tx.origin);
     }
 
     // compounds earnings and charges performance fee
@@ -157,11 +154,7 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
         uint256 nativeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000); //4.5% of total native balance
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        if (callFeeRecipient != nullAddress) {
-            IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
-        } else {
-            IERC20(native).safeTransfer(tx.origin, callFeeAmount);
-        }
+        IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -276,19 +269,21 @@ contract StrategyQuickswapDualRewardLP is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(rewardPool, uint256(- 1));
-        IERC20(output).safeApprove(unirouter, uint256(- 1));
+        IERC20(want).safeApprove(rewardPool, uint256(-1));
+        IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(native).safeApprove(unirouter, uint256(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint256(- 1));
+        IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint256(- 1));
+        IERC20(lpToken1).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(rewardPool, 0);
         IERC20(output).safeApprove(unirouter, 0);
+        IERC20(native).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
