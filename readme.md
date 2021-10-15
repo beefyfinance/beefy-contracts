@@ -38,7 +38,7 @@ Check for more addresses at https://github.com/beefyfinance/address-book
 This is required so that we can review everything before the vault is actually live on the app and manage it after its live.
 
 ### 4.  Update App
-The only file you really need to touch on the app is [pools.js](https://github.com/beefyfinance/beefy-app/blob/master/src/features/configure/pools.js). This is the config file with all the live pools.  Just copy one of the other pools as template, paste it at the top (Below the BIFI Maxi) and fill it out with your data. `earnedTokenAddress`and `earnedContractAddress`should both be the address of the vault contract. These addresses must be checksummed. 
+The only file you really need to touch on the app is respective pools.js located in the [vault](https://github.com/beefyfinance/beefy-app/tree/master/src/features/configure/vault) folder. This is the config file with all the live pools.  Just copy one of the other pools as template, paste it at the top (Below the BIFI Maxi) and fill it out with your data. `earnedTokenAddress`and `earnedContractAddress`should both be the address of the vault contract. These addresses must be checksummed. 
 
 You will also need to update the addressBook to the current version in package.json in order for Zap to work. 
 
