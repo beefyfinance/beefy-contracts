@@ -102,8 +102,10 @@ async function main() {
   const verifyContractsPromises: Promise<any>[] = [];
   if (shouldVerifyOnEtherscan) {
     // skip await as this is a long running operation, and you can do other stuff to prepare vault while this finishes
-    verifyContract(vault, vaultConstructorArguments)
-    verifyContract(strategy, strategyConstructorArguments);
+    verifyContractsPromises.push(
+      verifyContract(vault, vaultConstructorArguments),
+      verifyContract(strategy, strategyConstructorArguments)
+    );
   }
   await setCorrectCallFee(strategy, hardhat.network.name);
   console.log();
