@@ -1,4 +1,5 @@
-import hardhat, { ethers } from "hardhat";
+import hardhat from "hardhat";
+import { DeployFunction, DeployOptions, DeployResult } from "hardhat-deploy/types";
 import { addressBook } from "blockchain-addressbook";
 import { verifyContract } from "../../utils/verifyContract";
 
@@ -8,7 +9,7 @@ const {
 } = addressBook.fantom.tokens;
 const { spookyswap } = addressBook.fantom.platforms;
 
-const shouldVerifyOnEtherscan = true;
+const shouldVerifyOnEtherscan = false;
 
 const params = {
   bifiMaxiVaultAddress: "0xbF07093ccd6adFC3dEB259C557b61E94c1F66945",
@@ -20,7 +21,7 @@ const contractNames = {
   strategistBuyback: "StrategistBuyback",
 };
 
-const deployStrategistBuyback = async () => {
+const deployStrategistBuyback: DeployFunction = async hardhatEnv => {
   if (Object.values(params).some(v => v === undefined) || Object.values(contractNames).some(v => v === undefined)) {
     console.error("one of config values undefined");
     return;
@@ -28,16 +29,21 @@ const deployStrategistBuyback = async () => {
 
   await hardhat.run("compile");
 
-  const StrategistBuyback = await ethers.getContractFactory(contractNames.strategistBuyback);
+  const [deployer] = await hardhatEnv.getUnnamedAccounts();
+  console.log(`Deploying ${contractNames.strategistBuyback} using deployer: ${deployer}`);
 
-  console.log("Deploying:", contractNames.strategistBuyback);
-
-  const constructorArguments = [params.bifiMaxiVaultAddress, params.unirouter, params.nativeToNativeRoute];
-  const strategistBuyback = await StrategistBuyback.deploy(...constructorArguments);
-  await strategistBuyback.deployed();
+  const deployOptions: DeployOptions = {
+    from: deployer,
+    proxy: true,
+    args: [params.bifiMaxiVaultAddress, params.unirouter, params.nativeToNativeRoute],
+  };
+  const strategistBuyback: DeployResult = await hardhatEnv.deployments.deploy(
+    contractNames.strategistBuyback,
+    deployOptions
+  );
 
   console.log();
-  console.log("StrategistBuyback:", strategistBuyback.address);
+  console.log(`StrategistBuyback: ${strategistBuyback.address}`);
 
   console.log();
   console.log("Running post deployment");
@@ -45,14 +51,14 @@ const deployStrategistBuyback = async () => {
   const verifyContractsPromises: Promise<any>[] = [];
   if (shouldVerifyOnEtherscan) {
     console.log(`Verifying ${contractNames.strategistBuyback}`);
-    verifyContractsPromises.push(verifyContract(strategistBuyback, constructorArguments));
+    verifyContractsPromises.push(verifyContract(strategistBuyback.address, deployOptions.args));
   }
   console.log();
 
   await Promise.all(verifyContractsPromises);
 };
 
-deployStrategistBuyback()
+deployStrategistBuyback(hardhat)
   .then(() => process.exit(0))
   .catch(error => {
     console.error(error);
