@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -16,44 +16,50 @@ contract StrategistBuyback is Ownable {
     using SafeMath for uint256;
 
     // Tokens used
-    address public input;
-    address public output;
+    address public native;
+    address public want;
 
     address public bifiMaxi;
     address public unirouter;
 
-    address[] public inputToOutputRoute;
+    address[] public nativeToWantRoute;
+
+    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 mooTokenBalance);
+    event WithdrawToken(address indexed token, uint256 amount);
 
     constructor(
         address _bifiMaxi,
         address _unirouter, 
-        address[] memory _inputToOutputRoute
+        address[] memory _nativeToWantRoute
     ) public {
-        unirouter = _unirouter;
         bifiMaxi = _bifiMaxi;
+        unirouter = _unirouter;
 
-        _setInputToOutputRoute(_inputToOutputRoute);
+        _setNativeToWantRoute(_nativeToWantRoute);
 
-        IERC20(input).safeApprove(unirouter, uint256(-1));
+        IERC20(native).safeApprove(unirouter, uint256(-1));
         // approve spending by bifiMaxi
-        IERC20(input).safeApprove(bifiMaxi, uint256(-1));
-        IERC20(output).safeApprove(bifiMaxi, uint256(-1));
+        IERC20(native).safeApprove(bifiMaxi, uint256(-1));
+        IERC20(want).safeApprove(bifiMaxi, uint256(-1));
     }
 
-    function depositAllIntoBifiMaxi() external onlyOwner {
-        _depositAllIntoBifiMaxi();
+    function depositVaultWantIntoBifiMaxi() external onlyOwner {
+        _depositVaultWantIntoBifiMaxi();
     }
 
-    function withdrawAllFromBifiMaxi() external onlyOwner {
-        _withdrawAllFromBifiMaxi();
+    function withdrawVaultWantFromBifiMaxi() external onlyOwner {
+        _withdrawVaultWantFromBifiMaxi();
     }
 
     // Convert and send to beefy maxi
     function harvest() public {
-        uint256 inputBal = IERC20(input).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(inputBal, 0, inputToOutputRoute, address(this), now);
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeBal, 0, nativeToWantRoute, address(this), now);
 
-        _depositAllIntoBifiMaxi();
+        uint256 wantHarvested = balanceOfWant();
+        _depositVaultWantIntoBifiMaxi();
+
+        emit StratHarvest(msg.sender, wantHarvested, balanceOfMooTokens());
     }
 
     function setVaultStrategist(address _vault, address _newStrategist) external onlyOwner {
@@ -64,32 +70,42 @@ contract StrategistBuyback is Ownable {
     }
 
     function setUnirouter(address _unirouter) external onlyOwner {
-        IERC20(input).safeApprove(_unirouter, uint256(-1));
-        IERC20(input).safeApprove(unirouter, 0);
+        IERC20(native).safeApprove(_unirouter, uint256(-1));
+        IERC20(native).safeApprove(unirouter, 0);
 
         unirouter = _unirouter;
     }
 
-    function setInputToOutputRoute(address[] memory _route) external onlyOwner {
-        _setInputToOutputRoute(_route);
+    function setNativeToWantRoute(address[] memory _route) external onlyOwner {
+        _setNativeToWantRoute(_route);
     }
     
     function withdrawToken(address _token) external onlyOwner {
         uint256 amount = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransfer(msg.sender, amount);
+
+        emit WithdrawToken(_token, amount);
     }
 
-    function _depositAllIntoBifiMaxi() internal {
+    function _depositVaultWantIntoBifiMaxi() internal {
         IVault(bifiMaxi).depositAll();
     }
 
-    function _withdrawAllFromBifiMaxi() internal {
+    function _withdrawVaultWantFromBifiMaxi() internal {
         IVault(bifiMaxi).withdrawAll();
     }
 
-    function _setInputToOutputRoute(address[] memory _route) internal {
-        input = _route[0];
-        output = _route[_route.length - 1];
-        inputToOutputRoute = _route;
+    function _setNativeToWantRoute(address[] memory _route) internal {
+        native = _route[0];
+        want = _route[_route.length - 1];
+        nativeToWantRoute = _route;
+    }
+
+    function balanceOfWant() public view returns (uint256) {
+        return IERC20(want).balanceOf(address(this));
+    }
+
+    function balanceOfMooTokens() public view returns (uint256) {
+        return IERC20(bifiMaxi).balanceOf(address(this));
     }
 }
