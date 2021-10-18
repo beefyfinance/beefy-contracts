@@ -11,24 +11,24 @@ const {
   USDC: { address: USDC },
   WMATIC: { address: WMATIC },
   polyWISE: { address: polyWISE },
-} = addressBook.polygon.tokens;
-const { polywise, quickswap, beefyfinance } = addressBook.polygon.platforms;
+} = addressBook.fantom.tokens;
+const { spookyswap, beefyfinance } = addressBook.fantom.platforms;
 
-const shouldVerifyOnEtherscan = false;
+const shouldVerifyOnEtherscan = true;
 
-const want = web3.utils.toChecksumAddress("0x2F9209Ef6fA6C002bf6fC99124336e24F88B62D0");
+const want = web3.utils.toChecksumAddress("0xEc454EdA10accdD66209C57aF8C12924556F3aBD");
 
 const vaultParams = {
-  mooName: "Moo Polywise Quick USDC-WISE",
-  mooSymbol: "mooPolywiseQuickUSDC-WISE",
+  mooName: "Moo Boo BTC-ETH",
+  mooSymbol: "mooBooBTC-ETH",
   delay: 21600,
 };
 
 const strategyParams = {
   want,
-  poolId: 1,
-  chef: polywise.masterchef,
-  unirouter: quickswap.router,
+  poolId: 35,
+  chef: spookyswap.masterchef,
+  unirouter: spookyswap.router,
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
