@@ -32,8 +32,8 @@ contract StrategistBuyback is Ownable {
         address _unirouter, 
         address[] memory _nativeToWantRoute
     ) public {
-        unirouter = _unirouter;
         bifiMaxi = _bifiMaxi;
+        unirouter = _unirouter;
 
         _setNativeToWantRoute(_nativeToWantRoute);
 
