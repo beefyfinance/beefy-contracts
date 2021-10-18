@@ -3,7 +3,7 @@ import { addressBook } from "blockchain-addressbook";
 import { predictAddresses } from "../../utils/predictAddresses";
 import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
 import { setPendingRewardsFunctionName } from "../../utils/setPendingRewardsFunctionName";
-import { verifyContracts } from "../../utils/verifyContracts";
+import { verifyContract } from "../../utils/verifyContract";
 
 const registerSubsidy = require("../../utils/registerSubsidy");
 
@@ -99,12 +99,17 @@ async function main() {
   console.log();
   console.log("Running post deployment");
 
+  const verifyContractsPromises: Promise<any>[] = [];
   if (shouldVerifyOnEtherscan) {
-    verifyContracts(vault, vaultConstructorArguments, strategy, strategyConstructorArguments);
+    // skip await as this is a long running operation, and you can do other stuff to prepare vault while this finishes
+    verifyContract(vault, vaultConstructorArguments)
+    verifyContract(strategy, strategyConstructorArguments);
   }
   await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
   await setCorrectCallFee(strategy, hardhat.network.name);
   console.log();
+
+  await Promise.all(verifyContractsPromises);
 
   if (hardhat.network.name === "bsc") {
     await registerSubsidy(vault.address, deployer);

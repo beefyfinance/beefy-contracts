@@ -2,7 +2,7 @@ import hardhat, { ethers, web3 } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
 import { predictAddresses } from "../../utils/predictAddresses";
 import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
-import { verifyContracts } from "../../utils/verifyContracts";
+import { verifyContract } from "../../utils/verifyContract";
 
 const {
   SCREAM: { address: SCREAM },
@@ -99,11 +99,16 @@ async function main() {
   console.log();
   console.log("Running post deployment");
 
+  const verifyContractsPromises: Promise<any>[] = [];
   if (shouldVerifyOnEtherscan) {
-    await verifyContracts(vault, vaultConstructorArguments, strategy, strategyConstructorArguments);
+    // skip await as this is a long running operation, and you can do other stuff to prepare vault while this finishes
+    verifyContract(vault, vaultConstructorArguments)
+    verifyContract(strategy, strategyConstructorArguments);
   }
   await setCorrectCallFee(strategy, hardhat.network.name);
   console.log();
+
+  await Promise.all(verifyContractsPromises);
 }
 
 main()
