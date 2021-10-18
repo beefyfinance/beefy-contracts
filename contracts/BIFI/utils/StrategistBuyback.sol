@@ -24,8 +24,12 @@ contract StrategistBuyback is Ownable {
 
     address[] public nativeToWantRoute;
 
+    address[] public trackedVaults;
+
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 mooTokenBalance);
     event WithdrawToken(address indexed token, uint256 amount);
+    event TrackingVault(address indexed vaultAddress);
+    event UntrackingVault(address indexed vaultAddress);
 
     constructor(
         address _bifiMaxi,
@@ -107,5 +111,34 @@ contract StrategistBuyback is Ownable {
 
     function balanceOfMooTokens() public view returns (uint256) {
         return IERC20(bifiMaxi).balanceOf(address(this));
+    }
+
+    function trackVault(address _vaultAddress) external onlyOwner {
+        trackedVaults.push(_vaultAddress);
+        emit TrackingVault(_vaultAddress);
+    }
+
+    function untrackVault(address _vaultAddress) external onlyOwner {
+        require(trackedVaults.length > 0, "No vaults are being tracked.");
+        uint256 foundVaultIndex;
+        bool didFindVault;
+
+        // find vault
+        for (uint256 index; index < trackedVaults.length; ++index) {
+            if (trackedVaults[index] == _vaultAddress) {
+                didFindVault = true;
+                foundVaultIndex = index;
+                break;
+            }
+        }
+
+        require(didFindVault == true, "Vault is not being tracked.");
+
+        // make address at found index the address at last index, then pop last index.
+        uint256 lastVaultIndex = trackedVaults.length - 1;
+        trackedVaults[foundVaultIndex] = trackedVaults[lastVaultIndex];
+        trackedVaults.pop();
+
+        emit UntrackingVault(_vaultAddress);
     }
 }
