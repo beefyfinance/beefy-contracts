@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -40,12 +40,12 @@ contract StrategistBuyback is Ownable {
         IERC20(output).safeApprove(bifiMaxi, uint256(-1));
     }
 
-    function depositAllIntoBifiMaxi() external onlyOwner {
-        _depositAllIntoBifiMaxi();
+    function depositVaultWantIntoBifiMaxi() external onlyOwner {
+        _depositVaultWantIntoBifiMaxi();
     }
 
-    function withdrawAllFromBifiMaxi() external onlyOwner {
-        _withdrawAllFromBifiMaxi();
+    function withdrawVaultWantFromBifiMaxi() external onlyOwner {
+        _withdrawVaultWantFromBifiMaxi();
     }
 
     // Convert and send to beefy maxi
@@ -53,7 +53,7 @@ contract StrategistBuyback is Ownable {
         uint256 inputBal = IERC20(input).balanceOf(address(this));
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(inputBal, 0, inputToOutputRoute, address(this), now);
 
-        _depositAllIntoBifiMaxi();
+        _depositVaultWantIntoBifiMaxi();
     }
 
     function setVaultStrategist(address _vault, address _newStrategist) external onlyOwner {
@@ -79,11 +79,11 @@ contract StrategistBuyback is Ownable {
         IERC20(_token).safeTransfer(msg.sender, amount);
     }
 
-    function _depositAllIntoBifiMaxi() internal {
+    function _depositVaultWantIntoBifiMaxi() internal {
         IVault(bifiMaxi).depositAll();
     }
 
-    function _withdrawAllFromBifiMaxi() internal {
+    function _withdrawVaultWantFromBifiMaxi() internal {
         IVault(bifiMaxi).withdrawAll();
     }
 
