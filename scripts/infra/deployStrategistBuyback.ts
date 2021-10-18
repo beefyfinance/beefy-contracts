@@ -45,6 +45,7 @@ const deployStrategistBuyback = async () => {
   const verifyContractsPromises: Promise<any>[] = [];
   if (shouldVerifyOnEtherscan) {
     // skip await as this is a long running operation, and you can do other stuff to prepare vault while this finishes
+    console.log(`Verifying ${contractNames.strategistBuyback}`);
     verifyContractsPromises.push(verifyContract(strategistBuyback, constructorArguments));
   }
   console.log();
