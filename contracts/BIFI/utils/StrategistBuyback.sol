@@ -24,7 +24,7 @@ contract StrategistBuyback is Ownable {
 
     address[] public nativeToWantRoute;
 
-    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
+    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 mooTokenBalance);
     event WithdrawToken(address indexed token, uint256 amount);
 
     constructor(
@@ -59,7 +59,7 @@ contract StrategistBuyback is Ownable {
         uint256 wantHarvested = balanceOfWant();
         _depositVaultWantIntoBifiMaxi();
 
-        emit StratHarvest(msg.sender, wantHarvested, balanceOf());
+        emit StratHarvest(msg.sender, wantHarvested, balanceOfMooTokens());
     }
 
     function setVaultStrategist(address _vault, address _newStrategist) external onlyOwner {
@@ -103,5 +103,9 @@ contract StrategistBuyback is Ownable {
 
     function balanceOfWant() public view returns (uint256) {
         return IERC20(want).balanceOf(address(this));
+    }
+
+    function balanceOfMooTokens() public view returns (uint256) {
+        return IERC20(bifiMaxi).balanceOf(address(this));
     }
 }
