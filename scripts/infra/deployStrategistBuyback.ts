@@ -1,4 +1,4 @@
-import hardhat, { ethers } from "hardhat";
+import hardhat, { ethers, upgrades } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
 import { verifyContract } from "../../utils/verifyContract";
 
@@ -33,7 +33,7 @@ const deployStrategistBuyback = async () => {
   console.log("Deploying:", contractNames.strategistBuyback);
 
   const constructorArguments = [params.bifiMaxiVaultAddress, params.unirouter, params.nativeToNativeRoute];
-  const strategistBuyback = await StrategistBuyback.deploy(...constructorArguments);
+  const strategistBuyback = await upgrades.deployProxy(StrategistBuyback, constructorArguments);
   await strategistBuyback.deployed();
 
   console.log();
