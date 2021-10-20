@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../interfaces/common/IUniswapRouterETH.sol";
 import "../interfaces/beefy/IVault.sol";
 import "../interfaces/beefy/IStrategyComplete.sol";
 
-contract StrategistBuyback is Ownable {
+contract StrategistBuyback is OwnableUpgradeable {
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
 
     // Tokens used
     address public native;
@@ -31,11 +29,13 @@ contract StrategistBuyback is Ownable {
     event TrackingVault(address indexed vaultAddress);
     event UntrackingVault(address indexed vaultAddress);
 
-    constructor(
+    function initialize(
         address _bifiMaxi,
         address _unirouter, 
         address[] memory _nativeToWantRoute
-    ) public {
+    ) public initializer {
+        __Ownable_init();
+
         bifiMaxi = _bifiMaxi;
         unirouter = _unirouter;
 
