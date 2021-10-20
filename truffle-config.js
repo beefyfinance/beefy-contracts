@@ -7,3 +7,5 @@ module.exports = {
     },
   },
 };
+
+// This file is needed for truffle-flattener, do not remove!
