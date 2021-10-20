@@ -100,7 +100,7 @@ contract StrategyIronPolygonQuickLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA {
+    function harvest() external whenNotPaused {
         IMasterChef(masterchef).deposit(poolId, 0);
         chargeFees();
         addLiquidity();

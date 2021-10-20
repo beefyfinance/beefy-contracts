@@ -111,7 +111,7 @@ contract StrategyTosdisStakeMasterLPFTM is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual whenNotPaused onlyEOA {
+    function harvest() external virtual {
         _harvest();
     }
 
@@ -120,7 +120,7 @@ contract StrategyTosdisStakeMasterLPFTM is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest() internal whenNotPaused {
         IStakingPool(pool).stakeTokens(0);
         chargeFees();
         addLiquidity();

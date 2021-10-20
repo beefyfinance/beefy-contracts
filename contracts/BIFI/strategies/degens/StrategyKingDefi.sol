@@ -83,7 +83,7 @@ contract StrategyKingDefi is StratManager, FeeManager, GasThrottler {
         _harvest();
     }
 
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external virtual gasThrottle {
         _harvest();
     }
 
@@ -91,7 +91,7 @@ contract StrategyKingDefi is StratManager, FeeManager, GasThrottler {
         _harvest();
     }
 
-    function _harvest() internal {
+    function _harvest() internal whenNotPaused {
         IKrownMaster(chef).claim(poolId);
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         if (wantBal > 0) {

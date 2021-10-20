@@ -37,7 +37,9 @@ contract StrategyBeltToken is StratManager, FeeManager, GasThrottler {
     /**
      * @dev Event that is fired each time someone harvests the strat.
      */
-    event StratHarvest(address indexed harvester);
+    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
+    event Deposit(uint256 tvl);
+    event Withdraw(uint256 tvl);
 
     constructor(
         address _want,
@@ -67,6 +69,7 @@ contract StrategyBeltToken is StratManager, FeeManager, GasThrottler {
 
         if (wantBal > 0) {
             IMasterBelt(masterbelt).deposit(poolId, wantBal);
+            emit Deposit(balanceOf());
         }
     }
 
@@ -90,48 +93,55 @@ contract StrategyBeltToken is StratManager, FeeManager, GasThrottler {
             uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
             IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
         }
+
+        emit Withdraw(balanceOf());
     }
 
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
-            _harvest();
+            _harvest(tx.origin);
         }
     }
 
-    function harvest() external virtual whenNotPaused gasThrottle {
-        _harvest();
+    function harvest() external virtual gasThrottle {
+        _harvest(tx.origin);
+    }
+
+    function harvest(address callFeeRecipient) external virtual gasThrottle {
+        _harvest(callFeeRecipient);
     }
 
     function managerHarvest() external onlyManager {
-        _harvest();
+        _harvest(tx.origin);
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest(address callFeeRecipient) internal whenNotPaused {
         uint256 beforeBal = IERC20(output).balanceOf(address(this));
         IMasterBelt(masterbelt).deposit(poolId, 0);
         uint256 afterBal = IERC20(output).balanceOf(address(this));
         uint256 harvestedBal = afterBal.sub(beforeBal);
         if (harvestedBal > 0) {
-            chargeFees();
+            chargeFees(callFeeRecipient);
             addLiquidity();
+            uint256 wantHarvested = balanceOfWant();
             deposit();
 
             lastHarvest = block.timestamp;
-            emit StratHarvest(msg.sender);
+            emit StratHarvest(msg.sender, wantHarvested, balanceOf());
         }
     }
 
     // performance fees
-    function chargeFees() internal {
+    function chargeFees(address callFeeRecipient) internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
+        IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -172,8 +182,16 @@ contract StrategyBeltToken is StratManager, FeeManager, GasThrottler {
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
         uint256 outputBal = rewardsAvailable();
-        uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
-        uint256 nativeOut = amountOut[amountOut.length - 1];
+        uint256 nativeOut;
+        if (outputBal > 0) {
+            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
+                returns (uint256[] memory amountOut) 
+            {
+                nativeOut = amountOut[amountOut.length -1];
+            }
+            catch {}
+        }
+
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
 

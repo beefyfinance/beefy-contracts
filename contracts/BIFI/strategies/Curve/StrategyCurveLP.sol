@@ -26,12 +26,17 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
     // Third party contracts
     address public rewardsGauge;
     address public pool;
-    uint public poolSize;
+    uint public immutable poolSize;
     uint public depositIndex;
+    bool public useUnderlying;
 
     // Routes
     address[] public crvToNativeRoute;
     address[] public nativeToDepositRoute;
+
+    // if no CRV rewards yet, can enable later with custom router
+    bool public crvEnabled = true;
+    address public crvRouter;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -47,6 +52,7 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
         address _pool,
         uint _poolSize,
         uint _depositIndex,
+        bool _useUnderlying,
         address[] memory _crvToNativeRoute,
         address[] memory _nativeToDepositRoute,
         address _vault,
@@ -60,10 +66,12 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
         pool = _pool;
         poolSize = _poolSize;
         depositIndex = _depositIndex;
+        useUnderlying = _useUnderlying;
 
         crv = _crvToNativeRoute[0];
         native = _crvToNativeRoute[_crvToNativeRoute.length - 1];
         crvToNativeRoute = _crvToNativeRoute;
+        crvRouter = unirouter;
 
         require(_nativeToDepositRoute[0] == native, '_nativeToDepositRoute[0] != native');
         depositToken = _nativeToDepositRoute[_nativeToDepositRoute.length - 1];
@@ -135,8 +143,8 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
     // performance fees
     function chargeFees() internal {
         uint256 crvBal = IERC20(crv).balanceOf(address(this));
-        if (crvBal > 0) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(crvBal, 0, crvToNativeRoute, address(this), block.timestamp);
+        if (crvEnabled && crvBal > 0) {
+            IUniswapRouterETH(crvRouter).swapExactTokensForTokens(crvBal, 0, crvToNativeRoute, address(this), block.timestamp);
         }
 
         uint256 nativeFeeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000);
@@ -163,11 +171,13 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
         if (poolSize == 2) {
             uint256[2] memory amounts;
             amounts[depositIndex] = depositBal;
-            ICurveSwap2(pool).add_liquidity(amounts, 0);
+            if (useUnderlying) ICurveSwap2(pool).add_liquidity(amounts, 0, true);
+            else ICurveSwap2(pool).add_liquidity(amounts, 0);
         } else if (poolSize == 3) {
             uint256[3] memory amounts;
             amounts[depositIndex] = depositBal;
-            ICurveSwap3(pool).add_liquidity(amounts, 0);
+            if (useUnderlying) ICurveSwap3(pool).add_liquidity(amounts, 0, true);
+            else ICurveSwap3(pool).add_liquidity(amounts, 0);
         } else if (poolSize == 4) {
             uint256[4] memory amounts;
             amounts[depositIndex] = depositBal;
@@ -200,6 +210,20 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
 
     function nativeToDeposit() external view returns(address[] memory) {
         return nativeToDepositRoute;
+    }
+
+    function setCrvEnabled(bool _enabled) external onlyManager {
+        crvEnabled = _enabled;
+    }
+
+    function setCrvRoute(address _router, address[] memory _crvToNative) external onlyManager {
+        require(_crvToNative[0] == crv, '!crv');
+        require(_crvToNative[_crvToNative.length - 1] == native, '!native');
+
+        _removeAllowances();
+        crvToNativeRoute = _crvToNative;
+        crvRouter = _router;
+        _giveAllowances();
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
@@ -257,14 +281,14 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(rewardsGauge, type(uint).max);
         IERC20(native).safeApprove(unirouter, type(uint).max);
-        IERC20(crv).safeApprove(unirouter, type(uint).max);
+        IERC20(crv).safeApprove(crvRouter, type(uint).max);
         IERC20(depositToken).safeApprove(pool, type(uint).max);
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(rewardsGauge, 0);
         IERC20(native).safeApprove(unirouter, 0);
-        IERC20(crv).safeApprove(unirouter, 0);
+        IERC20(crv).safeApprove(crvRouter, 0);
         IERC20(depositToken).safeApprove(pool, 0);
     }
 }

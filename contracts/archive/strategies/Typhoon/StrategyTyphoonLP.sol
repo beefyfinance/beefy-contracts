@@ -94,7 +94,7 @@ contract StrategyTyphoonLP is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external whenNotPaused gasThrottle {
         ILPStaking(masterchef).claim();
         chargeFees();
         addLiquidity();

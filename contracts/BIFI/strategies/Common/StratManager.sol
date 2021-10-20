@@ -47,12 +47,6 @@ contract StratManager is Ownable, Pausable {
         _;
     }
 
-    // verifies that the caller is not a contract.
-    modifier onlyEOA() {
-        require(msg.sender == tx.origin, "!EOA");
-        _;
-    }
-
     /**
      * @dev Updates address of the strat keeper.
      * @param _keeper new keeper address.

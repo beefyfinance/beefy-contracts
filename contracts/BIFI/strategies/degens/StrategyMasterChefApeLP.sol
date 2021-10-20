@@ -99,7 +99,7 @@ contract StrategyMasterChefApeLP is StratManager, FeeManager, GasThrottler {
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused onlyEOA gasThrottle {
+    function harvest() external whenNotPaused gasThrottle {
         IMasterChef(masterchef).deposit(poolId, 0);
         chargeFees();
         addLiquidity();
@@ -116,7 +116,7 @@ contract StrategyMasterChefApeLP is StratManager, FeeManager, GasThrottler {
         uint256 wrappedBal = IERC20(wrapped).balanceOf(address(this));
 
         uint256 callFeeAmount = wrappedBal.mul(callFee).div(MAX_FEE);
-        IERC20(wrapped).safeTransfer(msg.sender, callFeeAmount);
+        IERC20(wrapped).safeTransfer(tx.origin, callFeeAmount);
 
         uint256 beefyFeeAmount = wrappedBal.mul(beefyFee).div(MAX_FEE);
         IERC20(wrapped).safeTransfer(beefyFeeRecipient, beefyFeeAmount);

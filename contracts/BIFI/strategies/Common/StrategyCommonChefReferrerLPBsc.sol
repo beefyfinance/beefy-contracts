@@ -35,7 +35,7 @@ contract StrategyCommonChefReferrerLPBsc is StrategyCommonChefReferrerLP, GasThr
         _outputToLp1Route
     ) public {}
 
-   function harvest() external override whenNotPaused onlyEOA gasThrottle {
-        _harvest();
+   function harvest() external override whenNotPaused gasThrottle {
+        _harvest(nullAddress);
     }
 }
