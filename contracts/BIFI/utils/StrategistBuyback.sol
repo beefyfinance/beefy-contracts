@@ -3,12 +3,20 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../interfaces/common/IUniswapRouterETH.sol";
-import "../interfaces/beefy/IVault.sol";
-import "../interfaces/beefy/IStrategyComplete.sol";
+
+interface IStrategy_StrategistBuyback {
+    function strategist() external view returns (address);
+    function setStrategist(address) external;
+}
+
+interface IVault_StrategistBuyback {
+    function depositAll() external;
+    function withdrawAll() external;
+    function strategy() external view returns (address);
+}
 
 contract StrategistBuyback is OwnableUpgradeable {
     using SafeERC20 for IERC20;
@@ -41,10 +49,10 @@ contract StrategistBuyback is OwnableUpgradeable {
 
         _setNativeToWantRoute(_nativeToWantRoute);
 
-        IERC20(native).safeApprove(unirouter, uint256(-1));
+        IERC20(native).safeApprove(unirouter, type(uint256).max);
         // approve spending by bifiMaxi
-        IERC20(native).safeApprove(bifiMaxi, uint256(-1));
-        IERC20(want).safeApprove(bifiMaxi, uint256(-1));
+        IERC20(native).safeApprove(bifiMaxi, type(uint256).max);
+        IERC20(want).safeApprove(bifiMaxi, type(uint256).max);
     }
 
     function depositVaultWantIntoBifiMaxi() external onlyOwner {
@@ -58,7 +66,7 @@ contract StrategistBuyback is OwnableUpgradeable {
     // Convert and send to beefy maxi
     function harvest() public {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeBal, 0, nativeToWantRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeBal, 0, nativeToWantRoute, address(this), block.timestamp);
 
         uint256 wantHarvested = balanceOfWant();
         _depositVaultWantIntoBifiMaxi();
@@ -67,14 +75,14 @@ contract StrategistBuyback is OwnableUpgradeable {
     }
 
     function setVaultStrategist(address _vault, address _newStrategist) external onlyOwner {
-        address strategy = address(IVault(_vault).strategy());
-        address strategist = IStrategyComplete(strategy).strategist();
+        address strategy = address(IVault_StrategistBuyback(_vault).strategy());
+        address strategist = IStrategy_StrategistBuyback(strategy).strategist();
         require(strategist == address(this), "Strategist buyback is not the strategist for the target vault");
-        IStrategyComplete(strategy).setStrategist(_newStrategist);
+        IStrategy_StrategistBuyback(strategy).setStrategist(_newStrategist);
     }
 
     function setUnirouter(address _unirouter) external onlyOwner {
-        IERC20(native).safeApprove(_unirouter, uint256(-1));
+        IERC20(native).safeApprove(_unirouter, type(uint256).max);
         IERC20(native).safeApprove(unirouter, 0);
 
         unirouter = _unirouter;
@@ -92,11 +100,11 @@ contract StrategistBuyback is OwnableUpgradeable {
     }
 
     function _depositVaultWantIntoBifiMaxi() internal {
-        IVault(bifiMaxi).depositAll();
+        IVault_StrategistBuyback(bifiMaxi).depositAll();
     }
 
     function _withdrawVaultWantFromBifiMaxi() internal {
-        IVault(bifiMaxi).withdrawAll();
+        IVault_StrategistBuyback(bifiMaxi).withdrawAll();
     }
 
     function _setNativeToWantRoute(address[] memory _route) internal {
