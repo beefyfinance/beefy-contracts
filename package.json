@@ -27,6 +27,7 @@
     "deploy:chef": "hardhat run scripts/vault/deploy-generic-chef-strat.ts --network",
     "deploy:rewardPool": "hardhat run scripts/vault/deploy-generic-rewardPool-strat.ts --network",
     "deploy:lend": "hardhat run scripts/vault/deploy-strat-lend.ts --network",
+    "deploy:timelock": "hardhat run scripts/infra/deployTimelockController.js --network",
     "flat-hardhat": "hardhat flatten contracts/BIFI/strategies/common/StrategyCommonRewardPoolSingle.sol > tmp/flattened.sol",
     "flat": "bin/flatten.sh",
     "abi-to-sol": "abi-to-sol"
