@@ -33,9 +33,9 @@ contract BeefyFeeBatchV2 is Initializable, OwnableUpgradeable {
     address public unirouter;
 
     // Fee constants
-    uint constant public TREASURY_FEE = 140;
-    uint constant public REWARD_POOL_FEE = 860;
     uint constant public MAX_FEE = 1000;
+    uint public treasuryFee = 140;
+    uint public rewardPoolFee = MAX_FEE - treasuryFee;
 
     address[] public wNativeToBifiRoute;
 
@@ -123,6 +123,13 @@ contract BeefyFeeBatchV2 is Initializable, OwnableUpgradeable {
 
         emit NewBifiRoute(wNativeToBifiRoute, _route);
         wNativeToBifiRoute = _route;
+    }
+
+    function setTreasuryFee(uint256 _fee) public onlyOwner {
+        require(_fee <= MAX_FEE, "!cap");
+
+        treasuryFee = _fee;
+        rewardPoolFee = MAX_FEE - treasuryFee;
     }
     
     // Rescue locked funds sent by mistake

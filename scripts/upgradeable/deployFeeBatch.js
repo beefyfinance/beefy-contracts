@@ -9,7 +9,7 @@ const config = {
   wNative: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
   treasury: "0xc3a4fdcba79DB04b4C3e352b1C467B3Ba909D84A",
   rewardPool: "0x48F4634c8383aF01BF71AefBC125eb582eb3C74D",
-  unirouter: "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff",
+  unirouter: ethers.constants.AddressZero,
 };
 
 async function main() {
