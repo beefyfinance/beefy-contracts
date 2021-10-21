@@ -30,7 +30,8 @@ contract StrategistBuyback is OwnableUpgradeable {
 
     address[] public nativeToWantRoute;
 
-    address[] public trackedVaults;
+    address[] public trackedVaults; // 1 indexed due to mapping having default value of 0.
+    mapping(address => uint256) public trackedVaultsArrayIndex; // there will be dummy vault at index 0
 
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 mooTokenBalance);
     event WithdrawToken(address indexed token, uint256 amount);
@@ -53,6 +54,8 @@ contract StrategistBuyback is OwnableUpgradeable {
         // approve spending by bifiMaxi
         IERC20(native).safeApprove(bifiMaxi, type(uint256).max);
         IERC20(want).safeApprove(bifiMaxi, type(uint256).max);
+
+        trackVault(address(0)); // dummy vault to overcome issue where mapping values are defaulted to 0;
     }
 
     function depositVaultWantIntoBifiMaxi() external onlyOwner {
@@ -121,30 +124,28 @@ contract StrategistBuyback is OwnableUpgradeable {
         return IERC20(bifiMaxi).balanceOf(address(this));
     }
 
-    function trackVault(address _vaultAddress) external onlyOwner {
+    function trackVault(address _vaultAddress) public onlyOwner {
         trackedVaults.push(_vaultAddress);
+        trackedVaultsArrayIndex[_vaultAddress] = trackedVaults.length - 1; // new vault will have last index of 
         emit TrackingVault(_vaultAddress);
     }
 
     function untrackVault(address _vaultAddress) external onlyOwner {
-        require(trackedVaults.length > 0, "No vaults are being tracked.");
-        uint256 foundVaultIndex;
-        bool didFindVault;
+        require(trackedVaults.length > 1, "No vaults are being tracked.");
+        uint256 foundVaultIndex = trackedVaultsArrayIndex[_vaultAddress];
 
-        // find vault
-        for (uint256 index; index < trackedVaults.length; ++index) {
-            if (trackedVaults[index] == _vaultAddress) {
-                didFindVault = true;
-                foundVaultIndex = index;
-                break;
-            }
-        }
-
-        require(didFindVault == true, "Vault is not being tracked.");
+        require(foundVaultIndex > 0, "Vault is not being tracked.");
 
         // make address at found index the address at last index, then pop last index.
         uint256 lastVaultIndex = trackedVaults.length - 1;
-        trackedVaults[foundVaultIndex] = trackedVaults[lastVaultIndex];
+
+        address lastVaultAddress = trackedVaults[lastVaultIndex];
+        // make vault to untrack point to 0 index (not tracked).
+        trackedVaultsArrayIndex[_vaultAddress] = 0;
+        // fix mapping so that the address of last vault index to now points to removed vault index.
+        trackedVaultsArrayIndex[lastVaultAddress] = foundVaultIndex;
+        // make remove vault index point to the last vault, as its taken its spot.
+        trackedVaults[foundVaultIndex] = lastVaultAddress;
         trackedVaults.pop();
 
         emit UntrackingVault(_vaultAddress);
