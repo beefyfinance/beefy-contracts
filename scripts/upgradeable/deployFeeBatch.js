@@ -5,10 +5,10 @@ const { addressBook } = require("blockchain-addressbook");
 const ethers = hardhat.ethers;
 
 const config = {
-  bifi: "0xFbdd194376de19a88118e84E279b977f165d01b8",
-  wNative: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
-  treasury: "0xc3a4fdcba79DB04b4C3e352b1C467B3Ba909D84A",
-  rewardPool: "0x48F4634c8383aF01BF71AefBC125eb582eb3C74D",
+  bifi: "0x639A647fbe20b6c8ac19E48E2de44ea792c62c5C",
+  wNative: "0x471EcE3750Da237f93B8E339c536989b8978a438",
+  treasury: "0xd9F2Da642FAA1307e4F70a5E3aC31b9bfe920eAF",
+  rewardPool: "0x2D250016E3621CfC50A0ff7e5f6E34bbC6bfE50E",
   unirouter: ethers.constants.AddressZero,
 };
 

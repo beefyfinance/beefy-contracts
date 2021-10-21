@@ -6,7 +6,6 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "hardhat/console.sol";
 
 interface IRewardPool {
     function notifyRewardAmount(uint256 amount) external;
@@ -34,8 +33,8 @@ contract BeefyFeeBatchV2 is Initializable, OwnableUpgradeable {
 
     // Fee constants
     uint constant public MAX_FEE = 1000;
-    uint public treasuryFee = 140;
-    uint public rewardPoolFee = MAX_FEE - treasuryFee;
+    uint public treasuryFee;
+    uint public rewardPoolFee;
 
     address[] public wNativeToBifiRoute;
 
@@ -60,6 +59,9 @@ contract BeefyFeeBatchV2 is Initializable, OwnableUpgradeable {
         treasury = _treasury;
         rewardPool = _rewardPool;
 
+        treasuryFee = 140;
+        rewardPoolFee = MAX_FEE - treasuryFee;
+
         if (unirouter != address(0x0)) {
             _initRouter(_unirouter);
         }
@@ -72,15 +74,15 @@ contract BeefyFeeBatchV2 is Initializable, OwnableUpgradeable {
         uint256 wNativeBal = wNative.balanceOf(address(this));
 
         if (routerInitialized) {
-            uint256 treasuryHalf = wNativeBal * TREASURY_FEE / MAX_FEE / 2;
+            uint256 treasuryHalf = wNativeBal * treasuryFee / MAX_FEE / 2;
             wNative.safeTransfer(treasury, treasuryHalf);
             IUniswapRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wNativeToBifiRoute, treasury, block.timestamp);
         } else {
-            uint256 treasuryAmount = wNativeBal * TREASURY_FEE / MAX_FEE;
+            uint256 treasuryAmount = wNativeBal * treasuryFee / MAX_FEE;
             wNative.safeTransfer(treasury, treasuryAmount);
         }
 
-        uint256 rewardPoolAmount = wNativeBal * REWARD_POOL_FEE / MAX_FEE;
+        uint256 rewardPoolAmount = wNativeBal * rewardPoolFee / MAX_FEE;
         wNative.safeTransfer(rewardPool, rewardPoolAmount);
         IRewardPool(rewardPool).notifyRewardAmount(rewardPoolAmount);
     }
