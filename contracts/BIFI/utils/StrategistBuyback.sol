@@ -3,8 +3,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
-
 import "../interfaces/common/IUniswapRouterETH.sol";
 
 interface IStrategy_StrategistBuyback {
@@ -18,9 +16,16 @@ interface IVault_StrategistBuyback {
     function strategy() external view returns (address);
 }
 
-contract StrategistBuyback is OwnableUpgradeable {
-    using SafeERC20 for IERC20;
+interface IERC20_StrategistBuyback {
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+}
 
+
+contract StrategistBuyback is OwnableUpgradeable {
     // Tokens used
     address public native;
     address public want;
@@ -50,10 +55,10 @@ contract StrategistBuyback is OwnableUpgradeable {
 
         _setNativeToWantRoute(_nativeToWantRoute);
 
-        IERC20(native).safeApprove(unirouter, type(uint256).max);
+        IERC20_StrategistBuyback(native).approve(unirouter, type(uint256).max);
         // approve spending by bifiMaxi
-        IERC20(native).safeApprove(bifiMaxi, type(uint256).max);
-        IERC20(want).safeApprove(bifiMaxi, type(uint256).max);
+        IERC20_StrategistBuyback(native).approve(bifiMaxi, type(uint256).max);
+        IERC20_StrategistBuyback(want).approve(bifiMaxi, type(uint256).max);
 
         trackVault(address(0)); // dummy vault to overcome issue where mapping values are defaulted to 0;
     }
@@ -68,7 +73,7 @@ contract StrategistBuyback is OwnableUpgradeable {
 
     // Convert and send to beefy maxi
     function harvest() public {
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        uint256 nativeBal = IERC20_StrategistBuyback(native).balanceOf(address(this));
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeBal, 0, nativeToWantRoute, address(this), block.timestamp);
 
         uint256 wantHarvested = balanceOfWant();
@@ -85,8 +90,8 @@ contract StrategistBuyback is OwnableUpgradeable {
     }
 
     function setUnirouter(address _unirouter) external onlyOwner {
-        IERC20(native).safeApprove(_unirouter, type(uint256).max);
-        IERC20(native).safeApprove(unirouter, 0);
+        IERC20_StrategistBuyback(native).approve(_unirouter, type(uint256).max);
+        IERC20_StrategistBuyback(native).approve(unirouter, 0);
 
         unirouter = _unirouter;
     }
@@ -96,8 +101,8 @@ contract StrategistBuyback is OwnableUpgradeable {
     }
     
     function withdrawToken(address _token) external onlyOwner {
-        uint256 amount = IERC20(_token).balanceOf(address(this));
-        IERC20(_token).safeTransfer(msg.sender, amount);
+        uint256 amount = IERC20_StrategistBuyback(_token).balanceOf(address(this));
+        IERC20_StrategistBuyback(_token).transfer(msg.sender, amount);
 
         emit WithdrawToken(_token, amount);
     }
@@ -117,11 +122,11 @@ contract StrategistBuyback is OwnableUpgradeable {
     }
 
     function balanceOfWant() public view returns (uint256) {
-        return IERC20(want).balanceOf(address(this));
+        return IERC20_StrategistBuyback(want).balanceOf(address(this));
     }
 
     function balanceOfMooTokens() public view returns (uint256) {
-        return IERC20(bifiMaxi).balanceOf(address(this));
+        return IERC20_StrategistBuyback(bifiMaxi).balanceOf(address(this));
     }
 
     function trackVault(address _vaultAddress) public onlyOwner {
