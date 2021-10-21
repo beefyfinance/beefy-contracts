@@ -20,8 +20,11 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
 
     // Tokens used
     address public native;
-    address public output;
     address public want;
+
+    address public rewardA; // Tel
+    address public rewardB; // dQuick
+
     address public lpToken0;
     address public lpToken1;
 
@@ -30,16 +33,16 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
     address constant public dragonsLair = address(0xf28164A485B0B2C90639E47b0f377b4a438a16B1);
 
     // Routes
-    address[] public outputToNativeRoute;
+    address[] public rewardAToNativeRoute;
+    address[] public rewardBToNativeRoute;
+    
     address[] public nativeToLp0Route;
     address[] public nativeToLp1Route;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
 
-    /**
-     * @dev Event that is fired each time someone harvests the strat.
-     */
+
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
@@ -53,16 +56,21 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient,
-        address[] memory _outputToNativeRoute,
+        address[] memory _rewardAToNativeRoute,
+        address[] memory _rewardBToNativeRoute,
         address[] memory _nativeToLp0Route,
         address[] memory _nativeToLp1Route
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         rewardPool = _rewardPool;
 
-        output = _outputToNativeRoute[0];
-        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
-        outputToNativeRoute = _outputToNativeRoute;
+        rewardA = _rewardAToNativeRoute[0];
+        native = _rewardAToNativeRoute[_rewardAToNativeRoute.length - 1];
+        rewardAToNativeRoute = _rewardAToNativeRoute;
+
+        rewardB = _rewardBToNativeRoute[0];
+        require(_rewardBToNativeRoute[_rewardBToNativeRoute.length - 1] == native, "_rewardBToNativeRoute[_rewardBToNativeRoute.length-1] != native");
+        rewardBToNativeRoute = _rewardBToNativeRoute;
 
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
@@ -137,10 +145,10 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
         uint256 lairBal = IERC20(dragonsLair).balanceOf(address(this));
         IDragonsLair(dragonsLair).leave(lairBal);
 
-        uint256 outputBal = IERC20(output).balanceOf(address(this));
-        uint256 rewardBal = IERC20(native).balanceOf(address(this));
+        uint256 rewardABal = IERC20(rewardA).balanceOf(address(this));
+        uint256 rewardBBal = IERC20(rewardB).balanceOf(address(this));
 
-        if (outputBal > 0 || rewardBal > 0) {
+        if (rewardABal > 0 || rewardBBal > 0) {
             chargeFees(callFeeRecipient);
             addLiquidity();
             uint256 wantHarvested = balanceOfWant();
@@ -153,12 +161,16 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        uint256 outputToNative = IERC20(output).balanceOf(address(this));
-        if (outputToNative > 0) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputToNative, 0, outputToNativeRoute, address(this), block.timestamp);
+        uint256 rewardAToNative = IERC20(rewardA).balanceOf(address(this));
+        if (rewardAToNative > 0) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardAToNative, 0, rewardAToNativeRoute, address(this), block.timestamp);
+        }
+        uint256 rewardBToNative = IERC20(rewardA).balanceOf(address(this));
+        if (rewardBToNative > 0) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardBToNative, 0, rewardBToNativeRoute, address(this), block.timestamp);
         }
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000); //4.5% of total native balance
+        uint256 nativeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000); // 4.5% of total native balance
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
@@ -215,20 +227,28 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
 
     // returns native reward for calling harvest
     function callReward() public view returns (uint256) {
-        uint256 outputBal = rewardsAAvailable();
-        uint256 nativeBal = rewardsBAvailable();
+        uint256 rewardABal = rewardsAAvailable();
+        uint256 rewardBBal = rewardsBAvailable();
 
         uint256 nativeOut;
-        if (outputBal > 0) {
-            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
+
+        if (rewardABal > 0) {
+            try IUniswapRouterETH(unirouter).getAmountsOut(rewardABal, rewardAToNativeRoute)
             returns (uint256[] memory amountOut)
             {
-                nativeOut = amountOut[amountOut.length - 1];
+                nativeOut += amountOut[amountOut.length - 1];
             }
             catch {}
         }
 
-        nativeOut = nativeOut.add(nativeBal);
+        if (rewardBBal > 0) {
+            try IUniswapRouterETH(unirouter).getAmountsOut(rewardBBal, rewardBToNativeRoute)
+            returns (uint256[] memory amountOut)
+            {
+                nativeOut += amountOut[amountOut.length - 1];
+            }
+            catch {}
+        }
 
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
@@ -273,6 +293,14 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
         deposit();
     }
 
+    function rewardAToNative() public view returns (address[] memory) {
+        return rewardAToNativeRoute;
+    }
+
+    function rewardBToNative() public view returns (address[] memory) {
+        return rewardBToNativeRoute;
+    }
+
     function nativeToLp0() public view returns (address[] memory) {
         return nativeToLp0Route;
     }
@@ -281,14 +309,12 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
         return nativeToLp1Route;
     }
 
-    function outputToNative() public view returns (address[] memory) {
-        return outputToNativeRoute;
-    }
-
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(rewardPool, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
         IERC20(native).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(rewardPool, uint256(-1));
+
+        IERC20(rewardA).safeApprove(unirouter, uint256(-1));
+        IERC20(rewardB).safeApprove(unirouter, uint256(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
@@ -298,9 +324,12 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(rewardPool, 0);
-        IERC20(output).safeApprove(unirouter, 0);
         IERC20(native).safeApprove(unirouter, 0);
+        IERC20(want).safeApprove(rewardPool, 0);
+
+        IERC20(rewardA).safeApprove(unirouter, 0);
+        IERC20(rewardB).safeApprove(unirouter, 0);
+
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
