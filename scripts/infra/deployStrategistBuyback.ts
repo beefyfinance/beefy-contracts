@@ -20,6 +20,8 @@ const contractNames = {
   strategistBuyback: "StrategistBuyback",
 };
 
+const implementationConstructorArguments = []; // proxy implementations cannot have constructors
+
 const deployStrategistBuyback = async () => {
   if (Object.values(params).some(v => v === undefined) || Object.values(contractNames).some(v => v === undefined)) {
     console.error("one of config values undefined");
@@ -33,11 +35,14 @@ const deployStrategistBuyback = async () => {
   console.log("Deploying:", contractNames.strategistBuyback);
 
   const constructorArguments = [params.bifiMaxiVaultAddress, params.unirouter, params.nativeToNativeRoute];
-  const strategistBuyback = await upgrades.deployProxy(StrategistBuyback, constructorArguments);
-  await strategistBuyback.deployed();
+  const transparentUpgradableProxy = await upgrades.deployProxy(StrategistBuyback, constructorArguments);
+  await transparentUpgradableProxy.deployed();
+
+  const implementationAddress = await upgrades.erc1967.getImplementationAddress(transparentUpgradableProxy.address);
 
   console.log();
-  console.log("StrategistBuyback:", strategistBuyback.address);
+  console.log("TransparentUpgradableProxy:", transparentUpgradableProxy.address);
+  console.log(`Implementation address (${contractNames.strategistBuyback}):`, implementationAddress);
 
   console.log();
   console.log("Running post deployment");
@@ -45,7 +50,7 @@ const deployStrategistBuyback = async () => {
   const verifyContractsPromises: Promise<any>[] = [];
   if (shouldVerifyOnEtherscan) {
     console.log(`Verifying ${contractNames.strategistBuyback}`);
-    verifyContractsPromises.push(verifyContract(strategistBuyback, constructorArguments));
+    verifyContractsPromises.push(verifyContract(implementationAddress, implementationConstructorArguments));
   }
   console.log();
 
