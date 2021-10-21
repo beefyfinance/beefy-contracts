@@ -2,7 +2,7 @@ import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
-import '@openzeppelin/hardhat-upgrades';
+import "@openzeppelin/hardhat-upgrades";
 import "./tasks";
 
 import { HardhatUserConfig } from "hardhat/src/types/config";
@@ -80,12 +80,21 @@ const config: DeploymentConfig = {
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: "",
+    apiKey: "XQXJK85W9YES73NHC596I8QITEKA5IHDZ9",
   },
   solidity: {
     compilers: [
       {
         version: "0.8.4",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+      {
+        version: "0.8.2",
         settings: {
           optimizer: {
             enabled: true,
