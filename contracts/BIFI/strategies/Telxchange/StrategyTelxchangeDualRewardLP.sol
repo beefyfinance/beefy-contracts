@@ -34,10 +34,10 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
 
     // Routes
     address[] public rewardAToNativeRoute;
-    address[] public rewardBToNativeRoute;
+    address[] public rewardBToRewardARoute;
     
-    address[] public nativeToLp0Route;
-    address[] public nativeToLp1Route;
+    address[] public rewardAToLp0Route;
+    address[] public rewardAToLp1Route;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -57,9 +57,9 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
         address _strategist,
         address _beefyFeeRecipient,
         address[] memory _rewardAToNativeRoute,
-        address[] memory _rewardBToNativeRoute,
-        address[] memory _nativeToLp0Route,
-        address[] memory _nativeToLp1Route
+        address[] memory _rewardBToRewardARoute,
+        address[] memory _rewardAToLp0Route,
+        address[] memory _rewardAToLp1Route
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         rewardPool = _rewardPool;
@@ -68,20 +68,20 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
         native = _rewardAToNativeRoute[_rewardAToNativeRoute.length - 1];
         rewardAToNativeRoute = _rewardAToNativeRoute;
 
-        rewardB = _rewardBToNativeRoute[0];
-        require(_rewardBToNativeRoute[_rewardBToNativeRoute.length - 1] == native, "_rewardBToNativeRoute[_rewardBToNativeRoute.length-1] != native");
-        rewardBToNativeRoute = _rewardBToNativeRoute;
+        rewardB = _rewardBToRewardARoute[0];
+        require(_rewardBToRewardARoute[_rewardBToRewardARoute.length - 1] == rewardA, "_rewardBToRewardARoute[_rewardBToRewardARoute.length - 1] == rewardA");
+        rewardBToRewardARoute = _rewardBToRewardARoute;
 
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
-        require(_nativeToLp0Route[0] == native, "nativeToLp0Route[0] != native");
-        require(_nativeToLp0Route[_nativeToLp0Route.length - 1] == lpToken0, "nativeToLp0Route[last] != lpToken0");
-        nativeToLp0Route = _nativeToLp0Route;
+        require(_rewardAToLp0Route[0] == rewardA, "rewardAToLp0Route[0] != rewardA");
+        require(_rewardAToLp0Route[_rewardAToLp0Route.length - 1] == lpToken0, "rewardAToLp0Route[last] != lpToken0");
+        rewardAToLp0Route = _rewardAToLp0Route;
 
         lpToken1 = IUniswapV2Pair(want).token1();
-        require(_nativeToLp1Route[0] == native,  "nativeToLp1Route[0] != native");
-        require(_nativeToLp1Route[_nativeToLp1Route.length - 1] == lpToken1, "nativeToLP1Route[last] != lpToken1");
-        nativeToLp1Route = _nativeToLp1Route;
+        require(_rewardAToLp1Route[0] == rewardA,  "rewardAToLp1Route[0] != rewardA");
+        require(_rewardAToLp1Route[_rewardAToLp1Route.length - 1] == lpToken1, "nativeToLP1Route[last] != lpToken1");
+        rewardAToLp1Route = _rewardAToLp1Route;
 
         _giveAllowances();
     }
@@ -161,16 +161,15 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        uint256 rewardAToNative = IERC20(rewardA).balanceOf(address(this));
-        if (rewardAToNative > 0) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardAToNative, 0, rewardAToNativeRoute, address(this), block.timestamp);
-        }
-        uint256 rewardBToNative = IERC20(rewardA).balanceOf(address(this));
-        if (rewardBToNative > 0) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardBToNative, 0, rewardBToNativeRoute, address(this), block.timestamp);
+        uint256 rewardBToRewardA = IERC20(rewardB).balanceOf(address(this));
+        if (rewardBToRewardA > 0) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardBToRewardA, 0, rewardBToRewardARoute, address(this), block.timestamp);
         }
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000); // 4.5% of total native balance
+        uint256 rewardAToNative = IERC20(rewardA).balanceOf(address(this)).mul(45).div(1000);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardAToNative, 0, rewardAToNativeRoute, address(this), now);
+
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
@@ -187,11 +186,11 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
         uint256 nativeHalf = IERC20(native).balanceOf(address(this)).div(2);
 
         if (lpToken0 != native) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeHalf, 0, nativeToLp0Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeHalf, 0, rewardAToLp0Route, address(this), now);
         }
 
         if (lpToken1 != native) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeHalf, 0, nativeToLp1Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeHalf, 0, rewardAToLp1Route, address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
@@ -232,17 +231,17 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
 
         uint256 nativeOut;
 
-        if (rewardABal > 0) {
-            try IUniswapRouterETH(unirouter).getAmountsOut(rewardABal, rewardAToNativeRoute)
+        if (rewardBBal > 0) {
+            try IUniswapRouterETH(unirouter).getAmountsOut(rewardBBal, rewardBToRewardARoute)
             returns (uint256[] memory amountOut)
             {
-                nativeOut += amountOut[amountOut.length - 1];
+                rewardABal += amountOut[amountOut.length - 1];
             }
             catch {}
         }
 
-        if (rewardBBal > 0) {
-            try IUniswapRouterETH(unirouter).getAmountsOut(rewardBBal, rewardBToNativeRoute)
+        if (rewardABal > 0) {
+            try IUniswapRouterETH(unirouter).getAmountsOut(rewardABal, rewardAToNativeRoute)
             returns (uint256[] memory amountOut)
             {
                 nativeOut += amountOut[amountOut.length - 1];
@@ -297,16 +296,16 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
         return rewardAToNativeRoute;
     }
 
-    function rewardBToNative() public view returns (address[] memory) {
-        return rewardBToNativeRoute;
+    function rewardBToRewardA() public view returns (address[] memory) {
+        return rewardBToRewardARoute;
     }
 
-    function nativeToLp0() public view returns (address[] memory) {
-        return nativeToLp0Route;
+    function rewardAToLp0() public view returns (address[] memory) {
+        return rewardAToLp0Route;
     }
 
-    function nativeToLp1() public view returns (address[] memory) {
-        return nativeToLp1Route;
+    function rewardAToLp1() public view returns (address[] memory) {
+        return rewardAToLp1Route;
     }
 
     function _giveAllowances() internal {
