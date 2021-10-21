@@ -204,13 +204,13 @@ contract StrategyTelxchangeDualRewardLP is StratManager, FeeManager {
 
     // returns rewards unharvested
     function rewardsAAvailable() public view returns (uint256) {
-        uint256 lairReward = IStakingDualRewards(rewardPool).earnedA(address(this));
-        return IDragonsLair(dragonsLair).dQUICKForQUICK(lairReward);
+        return IStakingDualRewards(rewardPool).earnedA(address(this));
     }
 
     // returns rewards unharvested
     function rewardsBAvailable() public view returns (uint256) {
-       return IStakingDualRewards(rewardPool).earnedB(address(this));
+        uint256 lairReward = IStakingDualRewards(rewardPool).earnedB(address(this));
+        return IDragonsLair(dragonsLair).dQUICKForQUICK(lairReward);
     }
 
     // returns native reward for calling harvest
