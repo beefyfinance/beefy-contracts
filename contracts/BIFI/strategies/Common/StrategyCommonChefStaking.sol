@@ -11,12 +11,11 @@ import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/common/IMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
+import "../../utils/StringUtils.sol";
 
 contract StrategyCommonChefStaking is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
-
-    address constant nullAddress = address(0);
 
     // Tokens used
     address public native;
@@ -32,6 +31,7 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
     address[] public wantToNativeRoute;
 
     bool public harvestOnDeposit = true;
+    string public pendingRewardsFunctionName;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -93,25 +93,24 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
-            _harvest(nullAddress);
+            _harvest(tx.origin);
         }
     }
 
     function harvest() external virtual {
-        _harvest(nullAddress);
+        _harvest(tx.origin);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 
     function managerHarvest() external onlyManager {
-        _harvest(nullAddress);
+        _harvest(tx.origin);
     }
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
         IMasterChef(chef).leaveStaking(0);
         uint256 wantBal = balanceOfWant();
         if (wantBal > 0) {
@@ -131,11 +130,7 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        if (callFeeRecipient != nullAddress) {
-            IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
-        } else {
-            IERC20(native).safeTransfer(tx.origin, callFeeAmount);
-        }
+        IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -158,6 +153,50 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
     function balanceOfPool() public view returns (uint256) {
         (uint256 _amount, ) = IMasterChef(chef).userInfo(poolId, address(this));
         return _amount;
+    }
+
+    function setPendingRewardsFunctionName(string calldata _pendingRewardsFunctionName) external onlyManager {
+        pendingRewardsFunctionName = _pendingRewardsFunctionName;
+    }
+
+    // returns rewards unharvested
+    function rewardsAvailable() public view returns (uint256) {
+        string memory signature = StringUtils.concat(pendingRewardsFunctionName, "(uint256,address)");
+        bytes memory result = Address.functionStaticCall(
+            chef,
+            abi.encodeWithSignature(
+                signature,
+                poolId,
+                address(this)
+            )
+        );
+        return abi.decode(result, (uint256));
+    }
+
+    // native reward amount for calling harvest
+    function callReward() public view returns (uint256) {
+        uint256 outputBal = rewardsAvailable();
+        uint256 nativeOut;
+        if (outputBal > 0) {
+            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, wantToNativeRoute)
+                returns (uint256[] memory amountOut)
+            {
+                nativeOut = amountOut[amountOut.length -1];
+            }
+            catch {}
+        }
+
+        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
+
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+
+        if (harvestOnDeposit) {
+            setWithdrawalFee(0);
+        } else {
+            setWithdrawalFee(10);
+        }
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
@@ -198,10 +237,6 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(want).safeApprove(unirouter, 0);
-    }
-
-    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
-        harvestOnDeposit = _harvestOnDeposit;
     }
 
     function wantToNative() external view returns (address[] memory) {

@@ -36,6 +36,7 @@ contract StrategyScream is StratManager, FeeManager {
     address[] public markets;
 
     bool public harvestOnDeposit;
+    uint256 public lastHarvest;
 
     /**
      * @dev Variables that can be changed to config profitability and risk:
@@ -54,16 +55,18 @@ contract StrategyScream is StratManager, FeeManager {
 
     /**
      * @dev Helps to differentiate borrowed funds that shouldn't be used in functions like 'deposit()'
-     * as they're required to deleverage correctly.  
+     * as they're required to deleverage correctly.
      */
     uint256 public reserves;
-    
+
     uint256 public balanceOfPool;
 
     /**
      * @dev Events that the contract emits
      */
-    event StratHarvest(address indexed harvester);
+    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
+    event Deposit(uint256 tvl);
+    event Withdraw(uint256 tvl);
     event StratRebalance(uint256 _borrowRate, uint256 _borrowDepth);
 
     constructor(
@@ -97,7 +100,7 @@ contract StrategyScream is StratManager, FeeManager {
         require(_outputToWantRoute[_outputToWantRoute.length - 1] == want, "outputToNativeRoute[last] != want");
         outputToWantRoute = _outputToWantRoute;
 
-      
+
 
         _giveAllowances();
 
@@ -112,8 +115,9 @@ contract StrategyScream is StratManager, FeeManager {
 
         if (wantBal > 0) {
             _leverage(wantBal);
+            emit Deposit(balanceOf());
         }
-        
+
     }
 
     /**
@@ -130,7 +134,7 @@ contract StrategyScream is StratManager, FeeManager {
         }
 
         reserves = reserves.add(_amount);
-        
+
         updateBalance();
     }
 
@@ -149,22 +153,22 @@ contract StrategyScream is StratManager, FeeManager {
 
             borrowBal = IVToken(iToken).borrowBalanceCurrent(address(this));
             uint256 targetSupply = borrowBal.mul(100).div(borrowRate);
-        
+
             uint256 supplyBal = IVToken(iToken).balanceOfUnderlying(address(this));
             IVToken(iToken).redeemUnderlying(supplyBal.sub(targetSupply));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
         IVToken(iToken).repayBorrow(uint256(-1));
-        
+
         uint256 iTokenBal = IERC20(iToken).balanceOf(address(this));
         IVToken(iToken).redeem(iTokenBal);
 
         reserves = 0;
-        
+
         updateBalance();
     }
-    
+
 
     /**
      * @dev Extra safety measure that allows us to manually unwind one level. In case we somehow get into
@@ -180,16 +184,15 @@ contract StrategyScream is StratManager, FeeManager {
 
         uint256 borrowBal = IVToken(iToken).borrowBalanceCurrent(address(this));
         uint256 targetSupply = borrowBal.mul(100).div(_borrowRate);
-        
+
         uint256 supplyBal = IVToken(iToken).balanceOfUnderlying(address(this));
         IVToken(iToken).redeemUnderlying(supplyBal.sub(targetSupply));
-        
+
         wantBal = IERC20(want).balanceOf(address(this));
         reserves = wantBal;
-        
+
         updateBalance();
     }
-    
 
 
     /**
@@ -211,30 +214,55 @@ contract StrategyScream is StratManager, FeeManager {
         StratRebalance(_borrowRate, _borrowDepth);
     }
 
+    function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            require(msg.sender == vault, "!vault");
+            _harvest(tx.origin);
+        }
+        updateBalance();
+    }
+
+    function harvest() external virtual {
+        _harvest(tx.origin);
+    }
+
+    function harvest(address callFeeRecipient) external virtual {
+        _harvest(callFeeRecipient);
+    }
+
+    function managerHarvest() external onlyManager {
+        _harvest(tx.origin);
+    }
+
     // compounds earnings and charges performance fee
-    function harvest() public whenNotPaused {
-        require(tx.origin == msg.sender || msg.sender == vault, "!contract");
+    function _harvest(address callFeeRecipient) internal whenNotPaused {
         if (IComptroller(comptroller).pendingComptrollerImplementation() == address(0)) {
+            uint256 beforeBal = availableWant();
             IComptroller(comptroller).claimComp(address(this), markets);
-            chargeFees();
-            swapRewards();
-            deposit();
+            uint256 outputBal = IERC20(output).balanceOf(address(this));
+            if (outputBal > 0) {
+                chargeFees(callFeeRecipient);
+                swapRewards();
+                uint256 wantHarvested = availableWant().sub(beforeBal);
+                deposit();
+
+                lastHarvest = block.timestamp;
+                emit StratHarvest(msg.sender, wantHarvested, balanceOf());
+            }
         } else {
             panic();
         }
-
-        emit StratHarvest(msg.sender);
     }
 
     // performance fees
-    function chargeFees() internal {
+    function chargeFees(address callFeeRecipient) internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
+        IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -268,12 +296,13 @@ contract StrategyScream is StratManager, FeeManager {
             wantBal = _amount;
         }
 
-        if (tx.origin == owner() || paused()) {
-            IERC20(want).safeTransfer(vault, wantBal);
-        } else {
+        if (tx.origin != owner() && !paused()) {
             uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
+            wantBal = wantBal.sub(withdrawalFeeAmount);
         }
+
+        IERC20(want).safeTransfer(vault, wantBal);
+        emit Withdraw(balanceOf());
 
         if (!paused()) {
             _leverage(availableWant());
@@ -289,13 +318,6 @@ contract StrategyScream is StratManager, FeeManager {
         return wantBal.sub(reserves);
     }
 
-    function beforeDeposit() external override {
-        if (harvestOnDeposit) {
-            harvest();
-        }
-        updateBalance();
-    }
-    
     // return supply and borrow balance
     function updateBalance() public {
         uint256 supplyBal = IVToken(iToken).balanceOfUnderlying(address(this));
@@ -315,22 +337,29 @@ contract StrategyScream is StratManager, FeeManager {
     }
 
     // returns rewards unharvested
-    function rewardsAvailable() public view returns (uint256) {
-       uint256 rewards = IComptroller(comptroller).compAccrued(address(this));
-        return rewards;
+    function rewardsAvailable() public returns (uint256) {
+        IComptroller(comptroller).claimComp(address(this), markets);
+        return IERC20(output).balanceOf(address(this));
     }
 
     // native reward amount for calling harvest
-    function callReward() public view returns (uint256) {
+    function callReward() public returns (uint256) {
         uint256 outputBal = rewardsAvailable();
-        uint256[] memory amountOut = IUniswapRouter(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
-        uint256 nativeOut = amountOut[amountOut.length -1];
+        uint256 nativeOut;
+        if (outputBal > 0) {
+            try IUniswapRouter(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
+                returns (uint256[] memory amountOut)
+            {
+                nativeOut = amountOut[amountOut.length -1];
+            }
+            catch {}
+        }
 
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
 
-    function setHarvestOnDeposit(bool _harvest) external onlyManager {
-        harvestOnDeposit = _harvest;
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
 
         if (harvestOnDeposit == true) {
             super.setWithdrawalFee(0);

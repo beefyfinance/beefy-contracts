@@ -6,49 +6,67 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/common/IUniswapRouterETH.sol";
-import "../../interfaces/belt/IMasterBelt.sol";
-import "../../interfaces/belt/IBeltLP.sol";
-import "../../utils/GasThrottler.sol";
+import "../../interfaces/beethovenx/IBalancerVault.sol";
+import "../../interfaces/beethovenx/IBeethovenxChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract Strategy4Belt is StratManager, FeeManager, GasThrottler {
+contract StrategyBeethovenx is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
-    address constant public native = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
-    address constant public output = address(0xE0e514c71282b6f4e823703a39374Cf58dc3eA4f); // BELT
-    address constant public want = address(0x9cb73F20164e399958261c289Eb5F9846f4D1404); // 4BELT LP
-    address constant public depositToken = address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56); // BUSD
+    address public want;
+    address public output;
+    address public native;
+    address public input;
+    address[] public lpTokens;
 
     // Third party contracts
-    address constant public masterbelt = address(0xD4BbC80b9B102b77B21A06cb77E954049605E6c1);
-    uint256 constant public poolId = 3;
-    address constant public beltPool = address(0xF6e65B33370Ee6A49eB0dbCaA9f43839C1AC04d5);
+    address public chef;
+    uint256 public chefPoolId;
+    bytes32 public wantPoolId;
+    bytes32 public nativeSwapPoolId;
+    bytes32 public inputSwapPoolId;
 
-    // Routes
-    address[] public outputToNativeRoute = [output, native];
-    address[] public outputToDepositTokenRoute = [output, native, depositToken];
+    IBalancerVault.SwapKind public swapKind;
+    IBalancerVault.FundManagement public funds;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
 
-    /**
-     * @dev Event that is fired each time someone harvests the strat.
-     */
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
 
     constructor(
+        bytes32[] memory _balancerPoolIds,
+        uint256 _chefPoolId,
+        address _chef,
+        address _output,
+        address _native,
+        address _input,
         address _vault,
         address _unirouter,
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+        wantPoolId = _balancerPoolIds[0];
+        nativeSwapPoolId = _balancerPoolIds[1];
+        inputSwapPoolId = _balancerPoolIds[2];
+        chefPoolId = _chefPoolId;
+        chef = _chef;
+
+        (want,) = IBalancerVault(unirouter).getPool(wantPoolId);
+        output = _output;
+        native = _native;
+        input = _input;
+
+        (lpTokens,,) = IBalancerVault(unirouter).getPoolTokens(wantPoolId);
+        swapKind = IBalancerVault.SwapKind.GIVEN_IN;
+        funds = IBalancerVault.FundManagement(address(this), false, payable(address(this)), false);
+
         _giveAllowances();
     }
 
@@ -57,7 +75,7 @@ contract Strategy4Belt is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IMasterBelt(masterbelt).deposit(poolId, wantBal);
+            IBeethovenxChef(chef).deposit(chefPoolId, wantBal, address(this));
             emit Deposit(balanceOf());
         }
     }
@@ -68,7 +86,7 @@ contract Strategy4Belt is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterBelt(masterbelt).withdraw(poolId, _amount.sub(wantBal));
+            IBeethovenxChef(chef).withdrawAndHarvest(chefPoolId, _amount.sub(wantBal), address(this));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -76,12 +94,12 @@ contract Strategy4Belt is StratManager, FeeManager, GasThrottler {
             wantBal = _amount;
         }
 
-        if (tx.origin == owner() || paused()) {
-            IERC20(want).safeTransfer(vault, wantBal);
-        } else {
+        if (tx.origin != owner() && !paused()) {
             uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
+            wantBal = wantBal.sub(withdrawalFeeAmount);
         }
+
+        IERC20(want).safeTransfer(vault, wantBal);
 
         emit Withdraw(balanceOf());
     }
@@ -93,11 +111,11 @@ contract Strategy4Belt is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function harvest() external virtual gasThrottle {
+    function harvest() external virtual {
         _harvest(tx.origin);
     }
 
-    function harvest(address callFeeRecipient) external virtual gasThrottle {
+    function harvest(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -107,11 +125,9 @@ contract Strategy4Belt is StratManager, FeeManager, GasThrottler {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        uint256 beforeBal = IERC20(output).balanceOf(address(this));
-        IMasterBelt(masterbelt).deposit(poolId, 0);
-        uint256 afterBal = IERC20(output).balanceOf(address(this));
-        uint256 harvestedBal = afterBal.sub(beforeBal);
-        if (harvestedBal > 0) {
+        IBeethovenxChef(chef).harvest(chefPoolId, address(this));
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        if (outputBal > 0) {
             chargeFees(callFeeRecipient);
             addLiquidity();
             uint256 wantHarvested = balanceOfWant();
@@ -124,10 +140,17 @@ contract Strategy4Belt is StratManager, FeeManager, GasThrottler {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        uint256 toNative = IERC20(output).balanceOf(address(this));
+        if (input != native) {
+            toNative = toNative.mul(45).div(1000);
+        }
+
+        balancerSwap(nativeSwapPoolId, output, native, toNative);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        if (input == native) {
+            nativeBal = nativeBal.mul(45).div(1000);
+        }
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
@@ -141,12 +164,29 @@ contract Strategy4Belt is StratManager, FeeManager, GasThrottler {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 beltBal = IERC20(output).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(beltBal, 0, outputToDepositTokenRoute, address(this), now);
+        if (input != output && input != native) {
+            uint256 outputBal = IERC20(output).balanceOf(address(this));
+            balancerSwap(inputSwapPoolId, output, input, outputBal);
+        }
 
-        uint256 busdBal = IERC20(depositToken).balanceOf(address(this));
-        uint256[4] memory uamounts = [0, 0, 0, busdBal];
-        IBeltLP(beltPool).add_liquidity(uamounts, 0);
+        uint256 inputBal = IERC20(input).balanceOf(address(this));
+        balancerJoin(wantPoolId, input, inputBal);
+    }
+
+    function balancerSwap(bytes32 _poolId, address _tokenIn, address _tokenOut, uint256 _amountIn) internal returns (uint256) {
+        IBalancerVault.SingleSwap memory singleSwap = IBalancerVault.SingleSwap(_poolId, swapKind, _tokenIn, _tokenOut, _amountIn, "");
+        return IBalancerVault(unirouter).swap(singleSwap, funds, 1, now);
+    }
+
+    function balancerJoin(bytes32 _poolId, address _tokenIn, uint256 _amountIn) internal {
+        uint256[] memory amounts = new uint256[](lpTokens.length);
+        for (uint256 i = 0; i < amounts.length; i++) {
+            amounts[i] = lpTokens[i] == _tokenIn ? _amountIn : 0;
+        }
+        bytes memory userData = abi.encode(1, amounts, 1);
+
+        IBalancerVault.JoinPoolRequest memory request = IBalancerVault.JoinPoolRequest(lpTokens, amounts, userData, false);
+        IBalancerVault(unirouter).joinPool(_poolId, address(this), address(this), request);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -161,25 +201,22 @@ contract Strategy4Belt is StratManager, FeeManager, GasThrottler {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        return IMasterBelt(masterbelt).stakedWantTokens(poolId, address(this));
+        (uint256 _amount,) = IBeethovenxChef(chef).userInfo(chefPoolId, address(this));
+        return _amount;
     }
 
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        return IMasterBelt(masterbelt).pendingBELT(poolId, address(this));
+        return IBeethovenxChef(chef).pendingBeets(chefPoolId, address(this));
     }
 
     // native reward amount for calling harvest
-    function callReward() public view returns (uint256) {
-        uint256 outputBal = rewardsAvailable();
+    function callReward() public returns (uint256) {
+        IBeethovenxChef(chef).harvest(chefPoolId, address(this));
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
         uint256 nativeOut;
         if (outputBal > 0) {
-            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
-                returns (uint256[] memory amountOut) 
-            {
-                nativeOut = amountOut[amountOut.length -1];
-            }
-            catch {}
+            nativeOut = balancerSwap(nativeSwapPoolId, output, native, outputBal);
         }
 
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
@@ -199,7 +236,7 @@ contract Strategy4Belt is StratManager, FeeManager, GasThrottler {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterBelt(masterbelt).emergencyWithdraw(poolId);
+        IBeethovenxChef(chef).emergencyWithdraw(chefPoolId, address(this));
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -208,7 +245,7 @@ contract Strategy4Belt is StratManager, FeeManager, GasThrottler {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMasterBelt(masterbelt).emergencyWithdraw(poolId);
+        IBeethovenxChef(chef).emergencyWithdraw(chefPoolId, address(this));
     }
 
     function pause() public onlyManager {
@@ -226,14 +263,24 @@ contract Strategy4Belt is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(masterbelt, uint(-1));
-        IERC20(output).safeApprove(unirouter, uint(-1));
-        IERC20(depositToken).safeApprove(beltPool, uint(-1));
+        IERC20(want).safeApprove(chef, uint256(-1));
+        IERC20(output).safeApprove(unirouter, uint256(-1));
+
+        IERC20(input).safeApprove(unirouter, 0);
+        IERC20(input).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(masterbelt, 0);
+        IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
-        IERC20(depositToken).safeApprove(beltPool, 0);
+        IERC20(input).safeApprove(unirouter, 0);
+    }
+
+    function nativeSwapPool() external view returns (bytes32) {
+        return nativeSwapPoolId;
+    }
+
+    function inputSwapPool() external view returns (bytes32) {
+        return inputSwapPoolId;
     }
 }
