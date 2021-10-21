@@ -25,37 +25,42 @@ const config: DeploymentConfig = {
     bsc: {
       url: "https://bsc-dataseed2.defibit.io/",
       chainId: 56,
-      accounts: accounts,
+      accounts,
     },
     heco: {
       url: "https://http-mainnet-node.huobichain.com",
       chainId: 128,
-      accounts: accounts,
+      accounts,
     },
     avax: {
       url: "https://api.avax.network/ext/bc/C/rpc",
       chainId: 43114,
-      accounts: accounts,
+      accounts,
     },
     polygon: {
       url: "https://polygon-rpc.com/",
       chainId: 137,
-      accounts: accounts,
+      accounts,
     },
     fantom: {
       url: "https://rpc.ftm.tools",
       chainId: 250,
-      accounts: accounts,
+      accounts,
     },
     one: {
       url: "https://api.s0.t.hmny.io/",
       chainId: 1666600000,
-      accounts: accounts,
+      accounts,
     },
     arbitrum: {
       url: "https://arb1.arbitrum.io/rpc",
       chainId: 42161,
-      accounts: accounts,
+      accounts,
+    },
+    celo: {
+      url: "https://forno.celo.org",
+      chainId: 42220,
+      accounts,
     },
     localhost: {
       url: "http://127.0.0.1:8545",
@@ -65,12 +70,12 @@ const config: DeploymentConfig = {
     testnet: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
       chainId: 97,
-      accounts: accounts,
+      accounts,
     },
     kovan: {
       url: "https://kovan.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
       chainId: 42,
-      accounts: accounts,
+      accounts,
     },
   },
   etherscan: {
