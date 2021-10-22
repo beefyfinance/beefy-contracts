@@ -62,7 +62,7 @@ contract BeefyFeeBatchV2 is Initializable, OwnableUpgradeable {
         treasuryFee = 140;
         rewardPoolFee = MAX_FEE - treasuryFee;
 
-        if (unirouter != address(0x0)) {
+        if (_unirouter != address(0x0)) {
             _initRouter(_unirouter);
         }
         

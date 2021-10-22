@@ -4,12 +4,15 @@ const { addressBook } = require("blockchain-addressbook");
 
 const ethers = hardhat.ethers;
 
+const chain = "fantom";
+const a = addressBook[chain].platforms.beefyfinance.beefyFeeRecipient;
+
 const config = {
-  bifi: "0x639A647fbe20b6c8ac19E48E2de44ea792c62c5C",
-  wNative: "0x471EcE3750Da237f93B8E339c536989b8978a438",
-  treasury: "0xd9F2Da642FAA1307e4F70a5E3aC31b9bfe920eAF",
-  rewardPool: "0x2D250016E3621CfC50A0ff7e5f6E34bbC6bfE50E",
-  unirouter: ethers.constants.AddressZero,
+  bifi: addressBook[chain].tokens.BIFI.address,
+  wNative: addressBook[chain].tokens.WNATIVE.address,
+  treasury: addressBook[chain].platforms.beefyfinance.treasury,
+  rewardPool: addressBook[chain].platforms.beefyfinance.rewardPool,
+  unirouter: "0xF491e7B69E4244ad4002BC14e878a34207E38c29",
 };
 
 async function main() {
