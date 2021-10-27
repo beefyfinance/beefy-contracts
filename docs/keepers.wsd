@@ -10,21 +10,25 @@ Upkeep->Upkeep: adds harvestable vaults from to array until gas limit is hit (~8
 note left
 vault list obtained from vault registry
 (Vault registry omitted from diagram for simplicity)
-end note
-note left 
-Upkeep stores a variable called startIndex, which will be the index in the vault array to start checking for harvestable vaults. 
-This ensures after harvesting the first batch of vaults, we move on to check the next batch of ~10
+
+Upkeep stores a variable called startIndex, 
+which is starting point in vault array
+to check for harvestable vaults. 
+This ensures after harvesting the first batch of vaults, 
+we move on to check the next batch of ~10.
 end note
 note right
 harvest condition checks for 
-canHarvest (!paused && harvestSimulationSuccess == true) and 
-shouldHarvest (isProfitableHarvest || (!hasBeenHarvestedToday && callRewardAmount > 0))
+canHarvest -> (!paused && harvestSimulationSuccess == true) and 
+shouldHarvest -> (isProfitableHarvest || (!hasBeenHarvestedToday && callRewardAmount > 0))
 end note
 alt Upkeep returns true
-    Keepers->Upkeep: call PerformUpkeep on-chain, with calldata = array of vaults to harvest + new startIndex to store in upkeep for next batch
+    Keepers->Upkeep: call PerformUpkeep on-chain
+    note left: calldata = array of vaults to harvest + new startIndex to store in upkeep for next batch
     loop ~10 times
         Upkeep->BeefyVaults: try catch harvest, emit event in catch event
-    Upkeep->Upkeep: updata index
+    Upkeep->Upkeep: update index
 else Upkeep returns false
     note left: do nothing
+end
 @enduml
