@@ -227,8 +227,12 @@ contract BeefyAutoHarvester is KeeperCompatibleInterface {
     function performUpkeep(
         bytes calldata performData
     ) external {
-        
+        // TODO: implement
 
     }
+
+    // TODO: implement setters
+    // TODO: add natspec docs
+    // TODO: add prettier-plugin-solidity to clean this formatting up
     
 }
