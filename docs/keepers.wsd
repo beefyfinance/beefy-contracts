@@ -2,13 +2,15 @@
 title Batched AutoHarvesting using Keepers
 
 actor Keepers
-participant VaultRegistry
 participant UpkeepMultiHarvest as Upkeep
 collections BeefyVaults
 
 Keepers->Upkeep: call CheckUpkeep using eth_call
-Upkeep->VaultRegistry: Get all vaults on chain
-Upkeep->Upkeep: adds harvestable vaults to array until gas limit is hit (~8-10 vaults). Returns true if any vaults are harvestable
+Upkeep->Upkeep: adds harvestable vaults from to array until gas limit is hit (~8-10 vaults). Returns true if any vaults are harvestable
+note left
+vault list obtained from vault registry
+(Vault registry omitted from diagram for simplicity)
+end note
 note left 
 Upkeep stores a variable called startIndex, which will be the index in the vault array to start checking for harvestable vaults. 
 This ensures after harvesting the first batch of vaults, we move on to check the next batch of ~10
