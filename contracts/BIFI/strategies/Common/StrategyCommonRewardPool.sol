@@ -116,21 +116,21 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
-            _harvest(nullAddress);
+            _harvest(tx.origin);
         }
     }
 
     function harvest() external virtual gasThrottle {
-        _harvest(nullAddress);
+        _harvest(tx.origin);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external virtual gasThrottle {
         _harvest(callFeeRecipient);
     }
 
 
     function managerHarvest() external onlyManager {
-        _harvest(nullAddress);
+        _harvest(tx.origin);
     }
 
     // compounds earnings and charges performance fee
@@ -155,11 +155,7 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        if (callFeeRecipient != nullAddress) {
-            IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
-        } else {
-            IERC20(native).safeTransfer(tx.origin, callFeeAmount);
-        }
+        IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
