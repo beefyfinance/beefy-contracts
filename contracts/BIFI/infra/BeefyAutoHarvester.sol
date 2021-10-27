@@ -66,6 +66,7 @@ contract BeefyAutoHarvester is KeeperCompatibleInterface {
         ( , int256 answer, , , ) = gasFeed.latestRoundData();
         if (answer < 0) 
             return (false, bytes("Gas price is negative"));
+        uint256 gasPrice = uint256(answer); // TODO: is this in wei or gwei
 
         // count vaults to harvest that will fit within block limit
         uint256 numberOfStrategiesToHarvest = _countStrategiesToHarvest(vaults, harvestCondition);
