@@ -56,13 +56,15 @@ contract BeefyAutoHarvester is KeeperCompatibleInterface {
   function checkUpkeep(
     bytes calldata checkData // unused
   )
-    external
+    external view
     returns (
       bool upkeepNeeded,
       bytes memory performData // array of vaults + 
     ) {
+        checkData; // dummy reference to get rid of unused parameter warning 
+
         // save harvest condition in variable as it will be reused in count and build
-        function (address) view returns (bool) harvestCondition = _willHarvestVault;
+        function (address, uint256) view returns (bool, uint256) harvestCondition = _willHarvestVault;
         // get vaults to iterate over
         address[] memory vaults = vaultRegistry.allVaultAddresses();
         
@@ -73,81 +75,97 @@ contract BeefyAutoHarvester is KeeperCompatibleInterface {
         uint256 gasPrice = uint256(answer); // TODO: is this in wei or gwei
 
         // count vaults to harvest that will fit within block limit
-        uint256 numberOfStrategiesToHarvest = _countVaultsToHarvest(vaults, gasPrice, harvestCondition);
-        if (numberOfStrategiesToHarvest == 0)
-            return (false, bytes("BeefyAutoHarvester: No strats to harvest"));
+        (uint256 numberOfVaultsToHarvest, uint256 newStartIndex) = _countVaultsToHarvest(vaults, gasPrice, harvestCondition);
+        if (numberOfVaultsToHarvest == 0)
+            return (false, bytes("BeefyAutoHarvester: No vaults to harvest"));
 
-        address[] memory strategiesToHarvest = _buildStrategiesToHarvest(vaults, harvestCondition, numberOfStrategiesToHarvest);
+        // need to return strategies rather than vaults to harvest to avoid looking up strategy address on chain
+        address[] memory vaultsToHarvest = _buildVaultsToHarvest(vaults, gasPrice, harvestCondition, numberOfVaultsToHarvest);
 
-        execPayload = abi.encodeWithSelector(
-            IMultiHarvest.harvest.selector,
-            strategiesToHarvest
-        );
+        performData = abi.encode(
+            vaultsToHarvest,
+            newStartIndex
+        ); // how to decode this correctly later?
 
-        return (true, execPayload);
+        return (true, performData);
     }
 
-    function _buildStrategiesToHarvest(address[] memory _vaults, function (address) view returns (bool) _harvestCondition, uint256 numberOfStrategiesToHarvest)
+    function _buildVaultsToHarvest(address[] memory _vaults, uint256 _gasPrice, function (address, uint256) view returns (bool, uint256) _harvestCondition, uint256 numberOfVaultsToHarvest)
         internal
         view
         returns (address[] memory)
     {
-        uint256 strategyPositionInArray;
+        uint256 vaultPositionInArray;
         address[] memory strategiesToHarvest = new address[](
-            numberOfStrategiesToHarvest
+            numberOfVaultsToHarvest
         );
 
-        // create array of strategies to harvest.
-        for (uint256 index; index < _vaults.length; index++) {
-            IVault vault = IVault(_vaults[index]);
+        // create array of strategies to harvest. Could reduce code duplication from _countVaultsToHarvest via a another function parameter called _loopPostProcess
+        for (uint256 offset; offset < _vaults.length; ++offset) {
+            uint256 vaultIndexToCheck = getCircularIndex(startIndex, offset, _vaults.length);
+            address vaultAddress = _vaults[vaultIndexToCheck];
 
-            address strategy = vault.strategy();
+            // don't need to check gasLeft here as we know the exact number of vaults that will be harvested, and they will be linearly ordered in the array.
+            (bool willHarvest, ) = _harvestCondition(vaultAddress, _gasPrice);
 
-            if (_harvestCondition(strategy)) {
-                strategiesToHarvest[strategyPositionInArray] = address(strategy);
-                strategyPositionInArray += 1;
+            if (willHarvest) {
+                strategiesToHarvest[vaultPositionInArray] = address(IVault(vaultAddress).strategy()); // TODO: rename functions to strategy* as this will be returning strategies rather than vaults
+                vaultPositionInArray += 1;
             }
 
-            if (strategyPositionInArray == numberOfStrategiesToHarvest - 1) break;
+            // no need to keep going if we've found our last vault to harvest
+            if (vaultPositionInArray == numberOfVaultsToHarvest - 1) break;
         }
 
         return strategiesToHarvest;
     }
 
-    function _countVaultsToHarvest(address[] memory _vaults, uint256 _gasPrice, function (address) view returns (bool) _harvestCondition)
+    function _countVaultsToHarvest(address[] memory _vaults, uint256 _gasPrice, function (address, uint256) view returns (bool, uint256) _harvestCondition)
         internal
         view
-        returns (uint256 numberOfVaultsToHarvest, uint256 newStartIndex)
+        returns (uint256, uint256)
     {
         uint256 gasLeft = block.gaslimit - blockGasLimitBuffer; // does block.gaslimit change when its an eth_call?
-        uint256 latestIndexOfVaultToHarvest; // will be used to set newStartIndex 
+        uint256 latestIndexOfVaultToHarvest; // will be used to set newStartIndex
+        uint256 numberOfVaultsToHarvest; // used to create fixed size array in _buildVaultsToHarvest
 
-        // count the number of strategies to harvest.
+        // count the number of vaults to harvest.
         for (uint256 offset; offset < _vaults.length; ++offset) {
             // startIndex is where to start in the vaultRegistry array, offset is position from start index (in other words, number of vaults we've checked so far), 
             // then modulo to wrap around to the start of the array, until we've checked all vaults, or break early due to hitting gas limit
-            uint256 vaultIndexToCheck = (startIndex + offset) % _vaults.length;
-
+            // this logic is contained in getCircularIndex()
+            uint256 vaultIndexToCheck = getCircularIndex(startIndex, offset, _vaults.length);
             address vaultAddress = _vaults[vaultIndexToCheck];
-            (bool willHarvest, uint256 gasUsed) = _harvestCondition(vaultAddress, _gasPrice);
-            if (willHarvest && gasLeft >= gasUsed) {
-                gasLeft -= gasUsed;
+
+            (bool willHarvest, uint256 gasNeeded) = _harvestCondition(vaultAddress, _gasPrice);
+
+            if (willHarvest && gasLeft >= gasNeeded) {
+                gasLeft -= gasNeeded;
                 numberOfVaultsToHarvest += 1;
                 latestIndexOfVaultToHarvest = vaultIndexToCheck;
             }
         }
 
-        newStartIndex = latestIndexOfVaultToHarvest + 1 %  _vaults.length;
+        uint256 newStartIndex = getCircularIndex(latestIndexOfVaultToHarvest, 1, _vaults.length);
 
         return (numberOfVaultsToHarvest, newStartIndex); // unnecessary return but return statements are always preferred even with named returns
+    }
+
+    // function used to iterate on an array in a circular way
+    function getCircularIndex(uint256 index, uint256 offset, uint256 bufferLength) private pure returns (uint256) {
+        return (index + offset) % bufferLength;
     }
 
     function _willHarvestVault(address _vaultAddress, uint256 _gasPrice) 
         internal
         view
-        returns (bool willHarvest, uint256 gasLeft)
+        returns (bool, uint256)
     {
-        return _canHarvestVault(_vaultAddress) && _shouldHarvestVault(_vaultAddress);
+        (bool shouldHarvestVault, uint256 gasNeeded) = _shouldHarvestVault(_vaultAddress, _gasPrice);
+        
+        bool willHarvestVault = _canHarvestVault(_vaultAddress) && shouldHarvestVault;
+        
+        return (willHarvestVault, gasNeeded);
     }
 
     function _canHarvestVault(address _vaultAddress) 
@@ -185,7 +203,7 @@ contract BeefyAutoHarvester is KeeperCompatibleInterface {
     function _shouldHarvestVault(address _vaultAddress, uint256 _gasPrice)
         internal
         view
-        returns (bool)
+        returns (bool, uint256)
     {
         IVault vault = IVault(_vaultAddress);
         IStrategy strategy = IStrategy(vault.strategy());
@@ -195,12 +213,13 @@ contract BeefyAutoHarvester is KeeperCompatibleInterface {
 
         uint256 callRewardAmount = strategy.callReward();
 
-        bool isProfitableHarvest = callRewardAmount >= _gasPrice * harvestGasLimit;
+        uint256 gasNeeded = _gasPrice * harvestGasLimit;
+        bool isProfitableHarvest = callRewardAmount >= gasNeeded;
 
-        bool shouldHarvestStrategy = isProfitableHarvest ||
+        bool shouldHarvest = isProfitableHarvest ||
             (!hasBeenHarvestedToday && callRewardAmount > 0);
 
-        return shouldHarvestStrategy;
+        return (shouldHarvest, gasNeeded);
     }
 
     // PERFORM UPKEEP SECTION
