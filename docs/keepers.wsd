@@ -6,7 +6,7 @@ participant UpkeepMultiHarvest as Upkeep
 collections BeefyVaults
 
 Keepers->Upkeep: call CheckUpkeep using eth_call
-Upkeep->Upkeep: adds harvestable vaults from to array until gas limit is hit (~8-10 vaults). Returns true if any vaults are harvestable
+Upkeep->Upkeep: adds harvestable vaults to output array until gas limit is hit (~8-10 vaults)
 note left
 vault list obtained from vault registry
 (Vault registry omitted from diagram for simplicity)
