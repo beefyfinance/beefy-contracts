@@ -103,8 +103,8 @@ async function main() {
   if (shouldVerifyOnEtherscan) {
     // skip await as this is a long running operation, and you can do other stuff to prepare vault while this finishes
     verifyContractsPromises.push(
-      verifyContract(vault, vaultConstructorArguments),
-      verifyContract(strategy, strategyConstructorArguments)
+      verifyContract(vault.address, vaultConstructorArguments),
+      verifyContract(strategy.address, strategyConstructorArguments)
     );
   }
   await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);

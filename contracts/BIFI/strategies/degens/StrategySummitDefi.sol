@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
-pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -10,12 +9,27 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../interfaces/common/IERC20Extended.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IRewardPool.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 import "../../utils/GasThrottler.sol";
 
-contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
+interface ISummitCartographer {
+    function deposit(uint16 _pid, uint256 _amount, uint256 _expedSummitLpAmount, uint8 _totem) external;
+    function withdraw(uint16 _pid, uint256 _amount, uint256 _expedSummitLpAmount) external;
+    function rewards(uint16 _pid, address _userAdd) external view returns (uint256, uint256, uint256, uint256);
+}
+
+interface ISummitCartographerOasis {
+    function userInfo(uint16 _pid, address _user) external view returns (uint256 debt, uint256 staked);
+}
+
+interface ISummitReferrals {
+    function createReferral(address referrerAddress) external;
+    function getPendingReferralRewards(address user) external view returns (uint256);
+    function redeemReferralRewards() external;
+}
+
+contract StrategySummitDefi is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -29,7 +43,12 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
     address public lpToken1;
 
     // Third party contracts
-    address public rewardPool;
+    address public cartographer;
+    ISummitCartographerOasis public cartographerOasis;
+    ISummitReferrals public referrals;
+    uint16 public poolId;
+    uint8 public constant totem = 0;
+    bool referralsEnabled = true;
 
     // Routes
     address[] public outputToNativeRoute;
@@ -37,7 +56,7 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
 
-    bool public harvestOnDeposit;
+    bool public harvestOnDeposit = true;
     uint256 public lastHarvest;
 
     /**
@@ -47,7 +66,11 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
 
     constructor(
         address _want,
-        address _rewardPool,
+        uint16 _poolId,
+        address _cartographer,
+        address _cartographerOasis,
+        address _referrals,
+        address _referrer,
         address _vault,
         address _unirouter,
         address _keeper,
@@ -59,7 +82,12 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
         address[] memory _outputToLp1Route
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
-        rewardPool = _rewardPool;
+        poolId = _poolId;
+
+        cartographer = _cartographer;
+        cartographerOasis = ISummitCartographerOasis(_cartographerOasis);
+        referrals = ISummitReferrals(_referrals);
+        referrals.createReferral(_referrer);
 
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
@@ -87,7 +115,7 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = balanceOfWant();
 
         if (wantBal > 0) {
-            IRewardPool(rewardPool).stake(wantBal);
+            ISummitCartographer(cartographer).deposit(poolId, wantBal, 0, totem);
         }
     }
 
@@ -97,7 +125,7 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = balanceOfWant();
 
         if (wantBal < _amount) {
-            IRewardPool(rewardPool).withdraw(_amount.sub(wantBal));
+            ISummitCartographer(cartographer).withdraw(poolId, _amount.sub(wantBal), 0);
             wantBal = balanceOfWant();
         }
 
@@ -135,7 +163,8 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        IRewardPool(rewardPool).getReward();
+        ISummitCartographer(cartographer).deposit(poolId, 0, 0, totem);
+        claimReferrals();
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
             chargeFees(callFeeRecipient);
@@ -193,6 +222,16 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
         IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
     }
 
+    function claimReferrals() public {
+        if (referralsEnabled && referrals.getPendingReferralRewards(address(this)) > 0) {
+            referrals.redeemReferralRewards();
+        }
+    }
+
+    function setReferralsEnabled(bool _enabled) external onlyManager {
+        referralsEnabled = _enabled;
+    }
+
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
         return balanceOfWant().add(balanceOfPool());
@@ -205,12 +244,14 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        return IRewardPool(rewardPool).balanceOf(address(this));
+        (,uint256 staked) = cartographerOasis.userInfo(poolId, address(this));
+        return staked;
     }
 
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        return IRewardPool(rewardPool).earned(address(this));
+        (uint256 rewards,,,) = ISummitCartographer(cartographer).rewards(poolId, address(this));
+        return rewards;
     }
 
     // native reward amount for calling harvest
@@ -258,7 +299,7 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IRewardPool(rewardPool).withdraw(balanceOfPool());
+        ISummitCartographer(cartographer).withdraw(poolId, balanceOfPool(), 0);
 
         uint256 wantBal = balanceOfWant();
         IERC20(want).transfer(vault, wantBal);
@@ -267,7 +308,7 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IRewardPool(rewardPool).withdraw(balanceOfPool());
+        ISummitCartographer(cartographer).withdraw(poolId, balanceOfPool(), 0);
     }
 
     function pause() public onlyManager {
@@ -285,7 +326,7 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(rewardPool, uint256(-1));
+        IERC20(want).safeApprove(cartographer, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
 
         if (lpToken0 != nullAddress) {
@@ -298,7 +339,7 @@ contract StrategyCommonRewardPool is StratManager, FeeManager, GasThrottler {
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(rewardPool, 0);
+        IERC20(want).safeApprove(cartographer, 0);
         IERC20(output).safeApprove(unirouter, 0);
         if (lpToken0 != nullAddress) {
             IERC20(lpToken0).safeApprove(unirouter, 0);

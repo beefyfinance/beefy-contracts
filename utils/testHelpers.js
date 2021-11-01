@@ -80,7 +80,7 @@ const logTokenBalance = async (token, wallet) => {
   console.log(`Balance: ${ethers.utils.formatEther(balance.toString())}`);
 };
 
-const getVaultWant = async vault => {
+const getVaultWant = async (vault, wnative) => {
   let wantAddr;
 
   try {
@@ -89,7 +89,7 @@ const getVaultWant = async vault => {
     try {
       wantAddr = await vault.want();
     } catch (e) {
-      wantAddr = config.nativeTokenAddr;
+      wantAddr = wnative;
     }
   }
 
@@ -108,6 +108,7 @@ const unpauseIfPaused = async (strat, keeper) => {
 const getUnirouterData = address => {
   switch (address) {
     case "0xA52aBE4676dbfd04Df42eF7755F01A3c41f28D27":
+    case "0x60aE616a2155Ee3d9A68541Ba4544862310933d4":
       return {
         interface: "IUniswapRouterAVAX",
         swapSignature: "swapExactAVAXForTokens",
