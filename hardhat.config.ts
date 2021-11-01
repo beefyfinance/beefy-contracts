@@ -56,6 +56,11 @@ const config: DeploymentConfig = {
       chainId: 42161,
       accounts,
     },
+    moonriver: {
+      url: "https://moonriver.api.onfinality.io/public",
+      chainId: 1285,
+      accounts,
+    },
     celo: {
       url: "https://forno.celo.org",
       chainId: 42220,
