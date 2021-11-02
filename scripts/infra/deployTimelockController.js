@@ -17,6 +17,11 @@ async function main() {
   await controller.deployed();
 
   console.log(`Deployed to: ${controller.address}`);
+
+  // await hardhat.run("verify:verify", {
+  //   address: controller.address,
+  //   constructorArguments: Object.values(config),
+  // });
 }
 
 main()
