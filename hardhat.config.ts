@@ -57,7 +57,7 @@ const config: DeploymentConfig = {
       accounts,
     },
     moonriver: {
-      url: "https://moonriver.api.onfinality.io/public",
+      url: "https://rpc.moonriver.moonbeam.network",
       chainId: 1285,
       accounts,
     },
