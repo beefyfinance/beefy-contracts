@@ -9,10 +9,11 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/sushi/IMiniChefV2.sol";
+import "../../interfaces/sushi/IRewarder.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyMiniChefLP is StratManager, FeeManager {
+contract StrategyMrSushiLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -25,23 +26,20 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
     address public want;
     address public lpToken0;
     address public lpToken1;
-    address public stable;
 
     // Third party contracts
     address public chef;
+    address public unirouter2; // needed for wrapping native due to different wnative being used for performance fees
     uint256 public poolId;
 
     uint256 public lastHarvest;
     bool public harvestOnDeposit;
 
     // Routes
-    address[] public outputToStableRoute;
-    address[] public stableToNativeRoute;
-    address[] public outputToDummyNativeRoute;
+    address[] public outputToNativeRoute;
     address[] public rewardToOutputRoute;
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
-    address public unirouter2;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -56,13 +54,11 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
         address _chef,
         address _vault,
         address _unirouter,
-        address _unirouter2,
+        address _unirouter2, //
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient,
-        address[] memory _outputToStableRoute,
-        address[] memory _stableToNativeRoute,
-        address[] memory _outputToDummyNativeRoute,
+        address[] memory _outputToNativeRoute,
         address[] memory _rewardToOutputRoute,
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
@@ -71,13 +67,10 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
         poolId = _poolId;
         chef = _chef;
 
-        require(_outputToStableRoute.length >= 2);
-        output = _outputToStableRoute[0];
-        stable = _stableToNativeRoute[0];
-        native = _stableToNativeRoute[_stableToNativeRoute.length - 1];
-        outputToStableRoute = _outputToStableRoute;
-        stableToNativeRoute = _stableToNativeRoute;
-        outputToDummyNativeRoute = _outputToDummyNativeRoute;
+        require(_outputToNativeRoute.length >= 2);
+        output = _outputToNativeRoute[0];
+        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
+        outputToNativeRoute = _outputToNativeRoute;
         unirouter2 = _unirouter2;
 
         // setup lp routing
@@ -175,9 +168,7 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
         }
 
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToStableRoute, address(this), block.timestamp);
-        toNative = IERC20(stable).balanceOf(address(this));
-        IUniswapRouterETH(unirouter2).swapExactTokensForTokens(toNative, 0, stableToNativeRoute, address(this), block.timestamp);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
@@ -244,8 +235,8 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
         uint256 outputBal = rewardsAvailable();
         uint256 nativeOut;
          if (outputBal > 0) {
-            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToDummyNativeRoute)
-                returns (uint256[] memory amountOut)
+            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
+                returns (uint256[] memory amountOut) 
             {
                 nativeOut = amountOut[amountOut.length -1];
             }
@@ -301,9 +292,6 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, type(uint256).max);
-
-        IERC20(stable).safeApprove(unirouter2, 0);
-        IERC20(stable).safeApprove(unirouter2, type(uint256).max);
     }
 
     function _removeAllowances() internal {
@@ -312,19 +300,10 @@ contract StrategyMiniChefLP is StratManager, FeeManager {
         IERC20(reward).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(stable).safeApprove(unirouter2, 0);
     }
 
     function outputToNative() external view returns (address[] memory) {
-        return outputToStableRoute;
-    }
-
-    function stableToNative() external view returns (address[] memory) {
-        return stableToNativeRoute;
-    }
-
-    function outputToDummyNative() external view returns (address[] memory) {
-        return outputToDummyNativeRoute;
+        return outputToNativeRoute;
     }
 
     function rewardToOutput() external view returns (address[] memory) {
