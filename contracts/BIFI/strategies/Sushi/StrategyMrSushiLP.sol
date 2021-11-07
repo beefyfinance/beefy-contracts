@@ -61,7 +61,6 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
         address[] memory _outputToSushiNativeRoute,
         address[] memory _sushiNativeToLp0Route,
         address[] memory _sushiNativeToLp1Route,
-        address _unirouter2,
         address _sushiNative
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
@@ -84,7 +83,6 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
         require(_sushiNativeToLp1Route[_sushiNativeToLp1Route.length - 1] == lpToken1);
         sushiNativeToLp1Route = _sushiNativeToLp1Route;
 
-        unirouter2 = _unirouter2;
         sushiNative = _sushiNative;
 
         _giveAllowances();
