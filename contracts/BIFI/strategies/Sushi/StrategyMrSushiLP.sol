@@ -185,14 +185,14 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
+        uint256 sushiNativeHalf = IERC20(sushiNative).balanceOf(address(this)).div(2);
 
-        if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, sushiNativeToLp0Route, address(this), block.timestamp);
+        if (lpToken0 != sushiNative) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(sushiNativeHalf, 0, sushiNativeToLp0Route, address(this), block.timestamp);
         }
 
-        if (lpToken1 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, sushiNativeToLp1Route, address(this), block.timestamp);
+        if (lpToken1 != sushiNative) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(sushiNativeHalf, 0, sushiNativeToLp1Route, address(this), block.timestamp);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
