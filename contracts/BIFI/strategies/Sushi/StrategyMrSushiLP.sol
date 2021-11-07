@@ -10,6 +10,7 @@ import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/sushi/IMiniChefV2.sol";
 import "../../interfaces/sushi/IRewarder.sol";
+import "../../interfaces/common/IWrappedNative.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
@@ -36,10 +37,10 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
     bool public harvestOnDeposit;
 
     // Routes
-    address[] public outputToNativeRoute;
+    address[] public outputToSushiNativeRoute;
     address[] public rewardToOutputRoute;
-    address[] public outputToLp0Route;
-    address[] public outputToLp1Route;
+    address[] public sushiNativeToLp0Route;
+    address[] public sushiNativeToLp1Route;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -54,39 +55,37 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
         address _chef,
         address _vault,
         address _unirouter,
-        address _unirouter2,
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient,
-        address[] memory _outputToNativeRoute,
-        address[] memory _rewardToOutputRoute,
-        address[] memory _outputToLp0Route,
-        address[] memory _outputToLp1Route
+        address[] memory _outputToSushiNativeRoute,
+        address[] memory _sushiNativeToLp0Route,
+        address[] memory _sushiNativeToLp1Route,
+        address _unirouter2,
+        address _sushiNative
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         poolId = _poolId;
         chef = _chef;
 
-        require(_outputToNativeRoute.length >= 2);
-        output = _outputToNativeRoute[0];
-        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
-        outputToNativeRoute = _outputToNativeRoute;
-        unirouter2 = _unirouter2;
+        require(_outputToSushiNativeRoute.length >= 2);
+        output = _outputToSushiNativeRoute[0];
+        sushiNative = _outputToSushiNativeRoute[_outputToSushiNativeRoute.length - 1];
+        outputToSushiNativeRoute = _outputToSushiNativeRoute;
 
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
-        require(_outputToLp0Route[0] == output);
-        require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0);
-        outputToLp0Route = _outputToLp0Route;
+        require(_sushiNativeToLp0Route[0] == output);
+        require(_sushiNativeToLp0Route[_sushiNativeToLp0Route.length - 1] == lpToken0);
+        sushiNativeToLp0Route = _sushiNativeToLp0Route;
 
         lpToken1 = IUniswapV2Pair(want).token1();
-        require(_outputToLp1Route[0] == output);
-        require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1);
-        outputToLp1Route = _outputToLp1Route;
+        require(_sushiNativeToLp1Route[0] == output);
+        require(_sushiNativeToLp1Route[_sushiNativeToLp1Route.length - 1] == lpToken1);
+        sushiNativeToLp1Route = _sushiNativeToLp1Route;
 
-        reward = _rewardToOutputRoute[0];
-        require(_rewardToOutputRoute[_rewardToOutputRoute.length - 1] == output, '_rewardToOutputRoute != output');
-        rewardToOutputRoute = _rewardToOutputRoute;
+        unirouter2 = _unirouter2;
+        sushiNative = _sushiNative;
 
         _giveAllowances();
     }
@@ -148,8 +147,8 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
     function _harvest(address callFeeRecipient) internal whenNotPaused {
         IMiniChefV2(chef).harvest(poolId, address(this));
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        uint256 rewardBal = IERC20(reward).balanceOf(address(this));
-        if (outputBal > 0 || rewardBal > 0) {
+        uint256 sushiNativeBal = IERC20(sushiNative).balanceOf(address(this));
+        if (outputBal > 0 || sushiNativeBal > 0) {
             chargeFees(callFeeRecipient);
             addLiquidity();
             uint256 wantHarvested = balanceOfWant();
@@ -161,25 +160,27 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        // rewards are in sushi and native, convert all to native
-        uint256 toOutput = IERC20(reward).balanceOf(address(this));
-        if (toOutput > 0) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, rewardToOutputRoute, address(this), block.timestamp);
+        // rewards are in sushi and sushiNative, convert all to sushiNative 
+        uint256 toSushiNative = IERC20(output).balanceOf(address(this));
+        if (toSushiNative > 0) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toSushiNative, 0, outputToSushiNativeRoute, address(this), block.timestamp);
         }
 
-        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
+        // unwrap fees in sushiNative to native gas
+        IWrappedNative(sushiNative).withdraw(IERC20(sushiNative).balanceOf(address(this)).mul(45).div(1000));
+        // wrap fees to solarNative
+        IWrappedNative(solarNative).deposit{value: address(this).balance}();
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        uint256 solarNativeBal = IERC20(solarNative).balanceOf(address(this));
 
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
+        uint256 callFeeAmount = solarNativeBal.mul(callFee).div(MAX_FEE);
+        IERC20(solarNative).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
+        uint256 beefyFeeAmount = solarNativeBal.mul(beefyFee).div(MAX_FEE);
+        IERC20(solarNative).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        uint256 strategistFee = solarNativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(solarNative).safeTransfer(strategist, strategistFee);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
@@ -187,11 +188,11 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
         uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
 
         if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), block.timestamp);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, sushiNativeToLp0Route, address(this), block.timestamp);
         }
 
         if (lpToken1 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), block.timestamp);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, sushiNativeToLp1Route, address(this), block.timestamp);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
@@ -235,7 +236,7 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
         uint256 outputBal = rewardsAvailable();
         uint256 nativeOut;
          if (outputBal > 0) {
-            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
+            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToSushiNativeRoute)
                 returns (uint256[] memory amountOut) 
             {
                 nativeOut = amountOut[amountOut.length -1];
@@ -285,7 +286,7 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(chef, type(uint256).max);
         IERC20(output).safeApprove(unirouter, type(uint256).max);
-        IERC20(reward).safeApprove(unirouter, type(uint256).max);
+        IERC20(sushiNative).safeApprove(unirouter, type(uint256).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, type(uint256).max);
@@ -297,24 +298,24 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
-        IERC20(reward).safeApprove(unirouter, 0);
+        IERC20(sushiNative).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
 
     function outputToNative() external view returns (address[] memory) {
-        return outputToNativeRoute;
+        return outputToSushiNativeRoute;
     }
 
     function rewardToOutput() external view returns (address[] memory) {
         return rewardToOutputRoute;
     }
 
-    function outputToLp0() external view returns (address[] memory) {
-        return outputToLp0Route;
+    function sushiNativeToLp0() external view returns (address[] memory) {
+        return sushiNativeToLp0Route;
     }
 
-    function outputToLp1() external view returns (address[] memory) {
-        return outputToLp1Route;
+    function sushiNativeToLp1() external view returns (address[] memory) {
+        return sushiNativeToLp1Route;
     }
 }
