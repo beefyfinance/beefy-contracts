@@ -60,7 +60,7 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
         address _beefyFeeRecipient,
         address[] memory _outputToSushiNativeRoute,
         address[] memory _sushiNativeToLp0Route,
-        address[] memory _sushiNativeToLp1Route,
+        address[] memory _sushiNativeToLp1Route
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         poolId = _poolId;
