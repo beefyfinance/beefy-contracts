@@ -38,7 +38,6 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
 
     // Routes
     address[] public outputToSushiNativeRoute;
-    address[] public rewardToOutputRoute;
     address[] public sushiNativeToLp0Route;
     address[] public sushiNativeToLp1Route;
 
@@ -300,10 +299,6 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
 
     function outputToNative() external view returns (address[] memory) {
         return outputToSushiNativeRoute;
-    }
-
-    function rewardToOutput() external view returns (address[] memory) {
-        return rewardToOutputRoute;
     }
 
     function sushiNativeToLp0() external view returns (address[] memory) {
