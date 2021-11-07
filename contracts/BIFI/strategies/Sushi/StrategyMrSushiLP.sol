@@ -20,9 +20,9 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
     address constant nullAddress = address(0);
 
     // Tokens used
-    address public native;
+    address public solarNative;
+    address public sushiNative;
     address public output;
-    address public reward;
     address public want;
     address public lpToken0;
     address public lpToken1;
@@ -54,7 +54,7 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
         address _chef,
         address _vault,
         address _unirouter,
-        address _unirouter2, //
+        address _unirouter2,
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient,
@@ -161,7 +161,7 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        // v2 harvester rewards are in both output and reward, convert reward to output
+        // rewards are in sushi and native, convert all to native
         uint256 toOutput = IERC20(reward).balanceOf(address(this));
         if (toOutput > 0) {
             IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, rewardToOutputRoute, address(this), block.timestamp);
