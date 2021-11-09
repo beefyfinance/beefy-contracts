@@ -7,8 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/common/IUniswapRouterETH.sol";
-import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/beethovenx/IBeethovenxChef.sol";
 import "../../interfaces/beethovenx/IBalancerVault.sol";
 import "../Common/StratManager.sol";
