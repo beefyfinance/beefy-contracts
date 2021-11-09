@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/beethovenx/IBalancerVault.sol";
+import "../../interfaces/common/IUniswapRouterETH.sol";
+import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/beethovenx/IBeethovenxChef.sol";
+import "../../interfaces/beethovenx/IBalancerVault.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
@@ -17,8 +20,8 @@ contract StrategyBeethovenx is StratManager, FeeManager {
 
     // Tokens used
     address public want;
-    address public output;
-    address public native;
+    address public output = address(0xF24Bcf4d1e507740041C9cFd2DddB29585aDCe1e);
+    address public native = address(0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83);
     address public input;
     address[] public lpTokens;
 
@@ -43,8 +46,6 @@ contract StrategyBeethovenx is StratManager, FeeManager {
         bytes32[] memory _balancerPoolIds,
         uint256 _chefPoolId,
         address _chef,
-        address _output,
-        address _native,
         address _input,
         address _vault,
         address _unirouter,
@@ -59,8 +60,6 @@ contract StrategyBeethovenx is StratManager, FeeManager {
         chef = _chef;
 
         (want,) = IBalancerVault(unirouter).getPool(wantPoolId);
-        output = _output;
-        native = _native;
         input = _input;
 
         (lpTokens,,) = IBalancerVault(unirouter).getPoolTokens(wantPoolId);
