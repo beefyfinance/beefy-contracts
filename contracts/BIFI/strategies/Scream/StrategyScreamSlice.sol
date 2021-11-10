@@ -174,8 +174,7 @@ contract StrategyScreamSlice is StratManager, FeeManager {
 
      /**
      * @dev Incrementally alternates between paying a representative part of the debt and withdrawing part of the supplied
-     * collateral. Continues to do this until it extracts the required {want} from the system. 1-2% extra is extracted to
-     * ensure the withdrawal goes through
+     * collateral. Continues to do this until it extracts the required {want} from the system.
      */
     function _deleverageAmount(uint256 _amount) internal {
         uint256 share = _amount.mul(1e18).div(balanceOfPool);
