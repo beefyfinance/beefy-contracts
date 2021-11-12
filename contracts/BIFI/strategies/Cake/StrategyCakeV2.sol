@@ -9,8 +9,8 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/pancake/IMasterChef.sol";
-import "../Common/FeeManagerCake.sol";
-import "../Common/StratManagerCake.sol";
+import "./FeeManagerCake.sol";
+import "./StratManagerCake.sol";
 
 contract StrategyCakeV2 is StratManagerCake, FeeManagerCake {
     using SafeERC20 for IERC20;
