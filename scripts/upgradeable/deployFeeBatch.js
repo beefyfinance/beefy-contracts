@@ -5,7 +5,6 @@ const { addressBook } = require("blockchain-addressbook");
 const ethers = hardhat.ethers;
 
 const chain = "fantom";
-const a = addressBook[chain].platforms.beefyfinance.beefyFeeRecipient;
 
 const config = {
   bifi: addressBook[chain].tokens.BIFI.address,
