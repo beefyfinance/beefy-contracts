@@ -4,14 +4,14 @@ const { addressBook } = require("blockchain-addressbook");
 
 const ethers = hardhat.ethers;
 
-const chain = "fantom";
+const chain = "cronos";
 
 const config = {
   bifi: addressBook[chain].tokens.BIFI.address,
   wNative: addressBook[chain].tokens.WNATIVE.address,
   treasury: addressBook[chain].platforms.beefyfinance.treasury,
   rewardPool: addressBook[chain].platforms.beefyfinance.rewardPool,
-  unirouter: "0xF491e7B69E4244ad4002BC14e878a34207E38c29",
+  unirouter: "0x0000000000000000000000000000000000000000",
 };
 
 async function main() {
