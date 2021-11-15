@@ -66,6 +66,11 @@ const config: DeploymentConfig = {
       chainId: 42220,
       accounts,
     },
+    cronos: {
+      url: "https://evm-cronos.crypto.org",
+      chainId: 25,
+      accounts,
+    },
     localhost: {
       url: "http://127.0.0.1:8545",
       timeout: 300000,
