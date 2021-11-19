@@ -11,7 +11,7 @@ const config = {
   wNative: addressBook[chain].tokens.WNATIVE.address,
   treasury: addressBook[chain].platforms.beefyfinance.treasury,
   rewardPool: addressBook[chain].platforms.beefyfinance.rewardPool,
-  unirouter: "0x0000000000000000000000000000000000000000",
+  unirouter: ethers.constants.AddressZero,
 };
 
 async function main() {
