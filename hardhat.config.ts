@@ -61,6 +61,11 @@ const config: DeploymentConfig = {
       chainId: 42220,
       accounts,
     },
+    moonriver: {
+      url: "https://rpc.moonriver.moonbeam.network",
+      chainId: 1285,
+      accounts,
+    },
     localhost: {
       url: "http://127.0.0.1:8545",
       timeout: 300000,

@@ -8,39 +8,40 @@ import { verifyContract } from "../../utils/verifyContract";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  USDC: { address: USDC },
-  WMATIC: { address: WMATIC },
-  polyWISE: { address: polyWISE },
-} = addressBook.polygon.tokens;
-const { polywise, quickswap, beefyfinance } = addressBook.polygon.platforms;
+  WBNB: { address: WBNB },
+  LAZIO: { address: LAZIO },
+  DKT: { address: DKT },
+  CAKE: { address: CAKE },
+} = addressBook.bsc.tokens;
+const { pancake, beefyfinance } = addressBook.bsc.platforms;
 
 const shouldVerifyOnEtherscan = false;
 
-const want = web3.utils.toChecksumAddress("0x2F9209Ef6fA6C002bf6fC99124336e24F88B62D0");
+const want = web3.utils.toChecksumAddress("0x11c0b2BB4fbB430825d07507A9E24e4c32f7704D");
 
 const vaultParams = {
-  mooName: "Moo Polywise Quick USDC-WISE",
-  mooSymbol: "mooPolywiseQuickUSDC-WISE",
+  mooName: "Moo CakeV2 LAZIO-BNB",
+  mooSymbol: "mooCakeV2LAZIO-BNB",
   delay: 21600,
 };
 
 const strategyParams = {
   want,
-  poolId: 1,
-  chef: polywise.masterchef,
-  unirouter: quickswap.router,
+  poolId: 464,
+  chef: pancake.masterchef,
+  unirouter: pancake.router,
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [polyWISE, WMATIC],
-  outputToLp0Route: [polyWISE, USDC],
-  outputToLp1Route: [polyWISE],
-  pendingRewardsFunctionName: "pendingWise", // used for rewardsAvailable(), use correct function name from masterchef
+  outputToNativeRoute: [CAKE, WBNB],
+  outputToLp0Route: [CAKE, WBNB, LAZIO],
+  outputToLp1Route: [CAKE, WBNB],
+  pendingRewardsFunctionName: "pendingCake", // used for rewardsAvailable(), use correct function name from masterchef
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonChefLP",
+  strategy: "StrategyCommonChefLPBsc",
 };
 
 async function main() {

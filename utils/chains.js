@@ -27,6 +27,10 @@ export const chains = {
     blockGasLimit: null,
     safeGasPrice: null,
   },
+  moonriver: {
+    blockGasLimit: null,
+    safeGasPrice: null,
+  },
   localhost: {
     blockGasLimit: null,
     safeGasPrice: null,
