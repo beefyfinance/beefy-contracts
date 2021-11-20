@@ -56,14 +56,19 @@ const config: DeploymentConfig = {
       chainId: 42161,
       accounts,
     },
+    moonriver: {
+      url: "https://rpc.moonriver.moonbeam.network",
+      chainId: 1285,
+      accounts,
+    },
     celo: {
       url: "https://forno.celo.org",
       chainId: 42220,
       accounts,
     },
-    moonriver: {
-      url: "https://rpc.moonriver.moonbeam.network",
-      chainId: 1285,
+    cronos: {
+      url: "https://evm-cronos.crypto.org",
+      chainId: 25,
       accounts,
     },
     localhost: {
