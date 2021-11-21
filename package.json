@@ -35,8 +35,10 @@
     "deploy:rewardPool": "hardhat run scripts/vault/deploy-generic-rewardPool-strat.ts --network",
     "deploy:lend": "hardhat run scripts/vault/deploy-strat-lend.ts --network",
     "deploy:timelock": "hardhat run scripts/infra/deployTimelockController.js --network",
+    "deploy:chain": "npx hardhat run scripts/infra/deployChain.js --network",
     "flat-hardhat": "hardhat flatten contracts/BIFI/strategies/common/StrategyCommonRewardPoolSingle.sol > tmp/flattened.sol",
     "flat": "bin/flatten.sh",
+    "flat:chain": "bin/flattenChainContracts.sh",
     "abi-to-sol": "abi-to-sol"
   },
   "devDependencies": {
