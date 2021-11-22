@@ -37,7 +37,9 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     address[] public outputToNativeRoute;
     address[] public outputToStableRoute;
     address[] public rewardToStableRoute;
+
     address[] public stablecoins;
+    mapping (address => uint256) stablecoinIndex;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -298,5 +300,9 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
 
     function viewStablecoins() external view returns (address[] memory) {
         return stablecoins;
+    }
+
+    function buildStablecoins(address[] memory _stablecoins) public onlyManager() {
+        // wipe existing stablecoins
     }
 }
