@@ -70,8 +70,9 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
 
-        stablecoins = _stablecoins;
+        _buildStablecoins(_stablecoins);
 
+        require(stablecoinIndex[_stable] != 0, 'Stable not found.');
         stable = _stable;
         require(_outputToStableRoute[0] == output, 'first != output');
         require(_outputToStableRoute[_outputToStableRoute.length - 1] == stable, 'last != stable');
@@ -303,6 +304,10 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     }
 
     function buildStablecoins(address[] memory _stablecoins) public onlyManager {
+        _buildStablecoins(_stablecoins);
+    }
+
+    function _buildStablecoins(address[] memory _stablecoins) internal {
         // wipe existing stablecoin mapping
         for (uint256 i = 0; i < stablecoins.length; ++i) {
             delete stablecoinIndex[stablecoins[i]];
