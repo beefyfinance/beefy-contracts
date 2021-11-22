@@ -24,8 +24,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     address public output;
     address public reward;
     address public want;
-    address public lpToken0;
-    address public lpToken1;
+    address public stable;
 
     // Third party contracts
     address public chef;
@@ -36,9 +35,9 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
 
     // Routes
     address[] public outputToNativeRoute;
-    address[] public rewardToOutputRoute;
-    address[] public outputToLp0Route;
-    address[] public outputToLp1Route;
+    address[] public outputToStableRoute;
+    address[] public rewardToStableRoute;
+    address[] public stablecoins;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -55,9 +54,10 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         address _strategist,
         address _beefyFeeRecipient,
         address[] memory _outputToNativeRoute,
-        address[] memory _rewardToOutputRoute,
-        address[] memory _outputToLp0Route,
-        address[] memory _outputToLp1Route
+        address[] memory _outputToStableRoute,
+        address[] memory _rewardToStableRoute,
+        address[] memory _stablecoins,
+        address[] memory _stable
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         poolId = _poolId;
@@ -68,20 +68,16 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
 
-        // setup lp routing
-        lpToken0 = IUniswapV2Pair(want).token0();
-        require(_outputToLp0Route[0] == output);
-        require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0);
-        outputToLp0Route = _outputToLp0Route;
+        stablecoins = _stablecoins;
 
-        lpToken1 = IUniswapV2Pair(want).token1();
-        require(_outputToLp1Route[0] == output);
-        require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1);
-        outputToLp1Route = _outputToLp1Route;
+        stable = _stable;
+        require(_outputToStableRoute[0] == output, 'first != output');
+        require(_outputToStableRoute[_outputToStableRoute.length - 1] == stable, 'last != stable');
+        outputToStableRoute = _outputToStableRoute;
 
-        reward = _rewardToOutputRoute[0];
-        require(_rewardToOutputRoute[_rewardToOutputRoute.length - 1] == output, '_rewardToOutputRoute != output');
-        rewardToOutputRoute = _rewardToOutputRoute;
+        reward = _rewardToStableRoute[0];
+        require(_rewardToStableRoute[_rewardToStableRoute.length - 1] == stable, 'last != stable');
+        rewardToStableRoute = _rewardToStableRoute;
 
         _giveAllowances();
     }
@@ -154,11 +150,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        // v2 harvester rewards are in both output and reward, convert reward to output
-        uint256 toOutput = IERC20(reward).balanceOf(address(this));
-        if (toOutput > 0) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, rewardToOutputRoute, address(this), block.timestamp);
-        }
+        IMiniChefV2(_chef).rewarder(_poolId);
 
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
