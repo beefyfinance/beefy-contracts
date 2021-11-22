@@ -302,7 +302,48 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         return stablecoins;
     }
 
-    function buildStablecoins(address[] memory _stablecoins) public onlyManager() {
-        // wipe existing stablecoins
+    function buildStablecoins(address[] memory _stablecoins) public onlyManager {
+        // wipe existing stablecoin mapping
+        for (uint256 i = 0; i < stablecoins.length; ++i) {
+            delete stablecoinIndex[stablecoins[i]];
+        }
+
+        // overwrite stablecoin array
+        stablecoins = _stablecoins;
+        // create dummy at start of array by pushing first elt to end
+        stablecoins.push(stablecoins[0]);
+        // set dummy to 0x0
+        stablecoins[0] = address(0); 
+
+        // build new mapping, skipping dummy
+        for (uint256 i = 1; i < stablecoins.length; ++i) {
+            stablecoinIndex[stablecoins[i]] = i;
+        }
+    }
+
+    function addStablecoin(address _stable) public onlyManager {
+        // add address to end of array
+        stablecoins.push(_stable);
+        // map added stable to last index in array 
+        stablecoinIndex[_stable] = stablecoins.length-1;
+    }
+
+    function removeStablecoin(address _stable) public onlyManager {
+        require(stablecoins.length > 2, 'Must be at least one stablecoin.');
+        require(_stable != stable, 'Cannot remove stable in use.');
+
+        // get index for stable
+        uint256 stableIndex = stablecoinIndex[_stable];
+        require(stableIndex != 0, 'Stable not found.');
+
+        // swap last element with index to delete
+        uint256 lastElement = stablecoins[stablecoins.length-1];
+        stablecoins[stableIndex] = lastElement;
+        stablecoins.pop();
+
+        // remove mapping of removed stable to index
+        delete stablecoinIndex[_stable];
+        // update mapping of last element to index of stable removed
+        stablecoinIndex[lastElement] = stableIndex;
     }
 }
