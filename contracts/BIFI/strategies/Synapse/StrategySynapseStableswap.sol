@@ -27,6 +27,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     address public stable;
 
     // Third party contracts
+    address public swap; // for adding liquidity
     address public chef;
     uint256 public poolId;
 
@@ -59,7 +60,8 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         address[] memory _outputToStableRoute,
         address[] memory _rewardToStableRoute,
         address[] memory _stablecoins,
-        address[] memory _stable
+        address[] memory _stable,
+        address _swap
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         poolId = _poolId;
