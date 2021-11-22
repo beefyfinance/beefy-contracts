@@ -66,6 +66,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         want = _want;
         poolId = _poolId;
         chef = _chef;
+        swap = _swap;
 
         require(_outputToNativeRoute.length >= 2);
         output = _outputToNativeRoute[0];
