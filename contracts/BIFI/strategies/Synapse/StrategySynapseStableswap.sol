@@ -272,34 +272,31 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         IERC20(output).safeApprove(unirouter, type(uint256).max);
         IERC20(reward).safeApprove(unirouter, type(uint256).max);
 
-        IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, type(uint256).max);
-
-        IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, type(uint256).max);
+        IERC20(stable).safeApprove(unirouter, 0);
+        IERC20(stable).safeApprove(unirouter, type(uint256).max);
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
         IERC20(reward).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, 0);
+        IERC20(stable).safeApprove(unirouter, 0);
+        IERC20(stable).safeApprove(unirouter, 0);
     }
 
     function outputToNative() external view returns (address[] memory) {
         return outputToNativeRoute;
     }
 
-    function rewardToOutput() external view returns (address[] memory) {
-        return rewardToOutputRoute;
+    function outputToStable() external view returns (address[] memory) {
+        return outputToStableRoute;
     }
 
-    function outputToLp0() external view returns (address[] memory) {
-        return outputToLp0Route;
+    function rewardToStable() external view returns (address[] memory) {
+        return rewardToStableRoute;
     }
 
-    function outputToLp1() external view returns (address[] memory) {
-        return outputToLp1Route;
+    function viewStablecoins() external view returns (address[] memory) {
+        return stablecoins;
     }
 }
