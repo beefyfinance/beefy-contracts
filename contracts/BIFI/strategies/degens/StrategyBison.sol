@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -8,13 +7,16 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
+import "../../interfaces/bison/IBisonRewardPool.sol";
+import "../../utils/GasThrottler.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
-import "./IBlizz.sol";
 
-contract StrategyBlizzChefLP is StratManager, FeeManager {
+contract StrategyBison is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
+
+    address constant nullAddress = address(0);
 
     // Tokens used
     address public native;
@@ -24,58 +26,67 @@ contract StrategyBlizzChefLP is StratManager, FeeManager {
     address public lpToken1;
 
     // Third party contracts
-    address constant public chef = address(0x514E0B2Ad01E44A7f1d31a83A662E42C2b585849);
-    address constant public feeDistribution = address(0xA867c1acA4B5F1E0a66cf7b1FE33525D57608854);
+    address public rewardPool;
+
+    // Routes
+    address[] public outputToNativeRoute;
+    address[] public outputToWantRoute; // if want is not LP
+    address[] public outputToLp0Route;
+    address[] public outputToLp1Route;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
 
-    // Routes
-    address[] public outputToNativeRoute;
-    address[] public outputToLp0Route;
-    address[] public outputToLp1Route;
-
+    /**
+     * @dev Event that is fired each time someone harvests the strat.
+     */
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
 
     constructor(
         address _want,
+        address _rewardPool,
         address _vault,
         address _unirouter,
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient,
         address[] memory _outputToNativeRoute,
+        address[] memory _outputToWantRoute,
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
+        rewardPool = _rewardPool;
 
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
 
-        // setup lp routing
-        lpToken0 = IUniswapV2Pair(want).token0();
-        require(_outputToLp0Route[0] == output, "outputToLp0Route[0] != output");
-        require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0, "outputToLp0Route[last] != lpToken0");
-        outputToLp0Route = _outputToLp0Route;
+        if (_outputToWantRoute.length > 0) {
+            require(_outputToWantRoute[0] == output, "outputToWantRoute[0] != output");
+            require(_outputToWantRoute[_outputToWantRoute.length - 1] == want, "outputToWantRoute[last] != want");
+            outputToWantRoute = _outputToWantRoute;
+        } else {
+            lpToken0 = IUniswapV2Pair(want).token0();
+            require(_outputToLp0Route[0] == output, "outputToLp0Route[0] != output");
+            outputToLp0Route = _outputToLp0Route;
 
-        lpToken1 = IUniswapV2Pair(want).token1();
-        require(_outputToLp1Route[0] == output, "outputToLp1Route[0] != output");
-        require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1, "outputToLp1Route[last] != lpToken1");
-        outputToLp1Route = _outputToLp1Route;
+            lpToken1 = IUniswapV2Pair(want).token1();
+            require(_outputToLp1Route[0] == output, "outputToLp1Route[0] != output");
+            outputToLp1Route = _outputToLp1Route;
+        }
 
         _giveAllowances();
     }
 
     // puts the funds to work
     function deposit() public whenNotPaused {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal > 0) {
-            IBlizzMasterChef(chef).deposit(want, wantBal);
+            IBisonRewardPool(rewardPool).deposit(wantBal);
             emit Deposit(balanceOf());
         }
     }
@@ -83,23 +94,24 @@ contract StrategyBlizzChefLP is StratManager, FeeManager {
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal < _amount) {
-            IBlizzMasterChef(chef).withdraw(want, _amount.sub(wantBal));
-            wantBal = IERC20(want).balanceOf(address(this));
+            IBisonRewardPool(rewardPool).withdraw(_amount.sub(wantBal));
+            wantBal = balanceOfWant();
         }
 
         if (wantBal > _amount) {
             wantBal = _amount;
         }
 
-        if (tx.origin == owner() || paused()) {
-            IERC20(want).safeTransfer(vault, wantBal);
-        } else {
+        if (tx.origin != owner() && !paused()) {
             uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
+            wantBal = wantBal.sub(withdrawalFeeAmount);
         }
+
+        IERC20(want).safeTransfer(vault, wantBal);
+
         emit Withdraw(balanceOf());
     }
 
@@ -110,11 +122,11 @@ contract StrategyBlizzChefLP is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual {
+    function harvest() external virtual gasThrottle {
         _harvest(tx.origin);
     }
 
-    function harvest(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external virtual gasThrottle {
         _harvest(callFeeRecipient);
     }
 
@@ -124,15 +136,11 @@ contract StrategyBlizzChefLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        address[] memory tokens = new address[](1);
-        tokens[0] = want;
-        IBlizzMasterChef(chef).claim(address(this), tokens);
-        IBlizzMultiFeeDistribution(feeDistribution).exit(true);
-
+        IBisonRewardPool(rewardPool).deposit(0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
             chargeFees(callFeeRecipient);
-            addLiquidity();
+            swapRewards();
             uint256 wantHarvested = balanceOfWant();
             deposit();
 
@@ -156,6 +164,18 @@ contract StrategyBlizzChefLP is StratManager, FeeManager {
 
         uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
         IERC20(native).safeTransfer(strategist, strategistFee);
+    }
+
+    // Swaps rewards and adds liquidity if needed
+    function swapRewards() internal {
+        if (output == want) {
+            // do nothing
+        } else if (outputToWantRoute.length > 1) {
+            uint256 outputBal = IERC20(output).balanceOf(address(this));
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), now);
+        } else {
+            addLiquidity();
+        }
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
@@ -187,15 +207,13 @@ contract StrategyBlizzChefLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount,) = IBlizzMasterChef(chef).userInfo(want, address(this));
-        return _amount;
+        (uint256 balance,) = IBisonRewardPool(rewardPool).userInfo(address(this));
+        return balance;
     }
 
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        address[] memory tokens = new address[](1);
-        tokens[0] = want;
-        return IBlizzMasterChef(chef).claimableReward(address(this), tokens)[0].div(2);
+        return IBisonRewardPool(rewardPool).pendingReward(address(this));
     }
 
     // native reward amount for calling harvest
@@ -204,9 +222,9 @@ contract StrategyBlizzChefLP is StratManager, FeeManager {
         uint256 nativeOut;
         if (outputBal > 0) {
             try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
-                returns (uint256[] memory amountOut) 
+                returns (uint256[] memory amountOut)
             {
-                nativeOut = amountOut[amountOut.length -1];
+                nativeOut = amountOut[amountOut.length - 1];
             }
             catch {}
         }
@@ -214,10 +232,25 @@ contract StrategyBlizzChefLP is StratManager, FeeManager {
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
 
+    function outputToLp0() public view returns (address[] memory) {
+        return outputToLp0Route;
+    }
+
+    function outputToLp1() public view returns (address[] memory) {
+        return outputToLp1Route;
+    }
+
+    function outputToNative() public view returns (address[] memory) {
+        return outputToNativeRoute;
+    }
+
+    function outputToWant() public view returns (address[] memory) {
+        return outputToWantRoute;
+    }
+
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
-
-        if (harvestOnDeposit) {
+        if (harvestOnDeposit == true) {
             setWithdrawalFee(0);
         } else {
             setWithdrawalFee(10);
@@ -228,16 +261,16 @@ contract StrategyBlizzChefLP is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IBlizzMasterChef(chef).emergencyWithdraw(want);
+        IBisonRewardPool(rewardPool).withdraw(balanceOfPool());
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
         IERC20(want).transfer(vault, wantBal);
     }
 
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IBlizzMasterChef(chef).emergencyWithdraw(want);
+        IBisonRewardPool(rewardPool).withdraw(balanceOfPool());
     }
 
     function pause() public onlyManager {
@@ -255,32 +288,24 @@ contract StrategyBlizzChefLP is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, uint256(-1));
+        IERC20(want).safeApprove(rewardPool, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
 
-        IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
+        if (lpToken0 != nullAddress) {
+            IERC20(lpToken0).safeApprove(unirouter, 0);
+            IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
 
-        IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint256(-1));
+            IERC20(lpToken1).safeApprove(unirouter, 0);
+            IERC20(lpToken1).safeApprove(unirouter, uint256(-1));
+        }
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(chef, 0);
+        IERC20(want).safeApprove(rewardPool, 0);
         IERC20(output).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, 0);
-    }
-
-    function outputToNative() external view returns (address[] memory) {
-        return outputToNativeRoute;
-    }
-
-    function outputToLp0() external view returns (address[] memory) {
-        return outputToLp0Route;
-    }
-
-    function outputToLp1() external view returns (address[] memory) {
-        return outputToLp1Route;
+        if (lpToken0 != nullAddress) {
+            IERC20(lpToken0).safeApprove(unirouter, 0);
+            IERC20(lpToken1).safeApprove(unirouter, 0);
+        }
     }
 }

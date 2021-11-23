@@ -8,11 +8,13 @@ import { verifyContract } from "../../utils/verifyContract";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  USDC: { address: USDC },
-  WMATIC: { address: WMATIC },
-  polyWISE: { address: polyWISE },
-} = addressBook.polygon.tokens;
-const { polywise, quickswap, beefyfinance } = addressBook.polygon.platforms;
+  platforms: { polywise, quickswap, beefyfinance },
+  tokens: {
+    USDC: { address: USDC },
+    WMATIC: { address: WMATIC },
+    polyWISE: { address: polyWISE },
+  },
+} = addressBook.polygon;
 
 const shouldVerifyOnEtherscan = false;
 
