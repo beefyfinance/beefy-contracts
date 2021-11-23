@@ -30,7 +30,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     ISwapFlashLoan public swap; // for adding liquidity
     uint256 public poolTokenCount = 4;
     uint8 public depositIndex;
-    address public chef;
+    IMiniChefV2 public chef;
     uint256 public poolId;
 
     uint256 public lastHarvest;
@@ -62,7 +62,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         poolId = _poolId;
-        chef = _chef;
+        chef = IMiniChefV2(_chef);
         swap = ISwapFlashLoan(_swap);
 
         require(_outputToNativeRoute.length >= 2);
@@ -80,7 +80,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IMiniChefV2(chef).deposit(poolId, wantBal, address(this));
+            chef.deposit(poolId, wantBal, address(this));
             emit Deposit(balanceOf());
         }
     }
@@ -91,7 +91,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMiniChefV2(chef).withdraw(poolId, _amount.sub(wantBal), address(this));
+            chef.withdraw(poolId, _amount.sub(wantBal), address(this));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -130,7 +130,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        IMiniChefV2(chef).harvest(poolId, address(this));
+        chef.harvest(poolId, address(this));
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
             chargeFees(callFeeRecipient);
@@ -183,7 +183,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount, ) = IMiniChefV2(chef).userInfo(poolId, address(this));
+        (uint256 _amount, ) = chef.userInfo(poolId, address(this));
         return _amount;
     }
 
@@ -191,7 +191,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMiniChefV2(chef).emergencyWithdraw(poolId, address(this));
+        chef.emergencyWithdraw(poolId, address(this));
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -199,7 +199,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
 
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        return IMiniChefV2(chef).pendingSynapse(poolId, address(this));
+        return chef.pendingSynapse(poolId, address(this));
     }
 
     // native reward amount for calling harvest
@@ -216,7 +216,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         }
 
         uint256 pendingNative;
-        address rewarder = IMiniChefV2(chef).rewarder(poolId);
+        address rewarder = chef.rewarder(poolId);
         if (rewarder != nullAddress) {
             pendingNative = IRewarder(rewarder).pendingToken(poolId, address(this));
         } 
@@ -237,7 +237,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMiniChefV2(chef).emergencyWithdraw(poolId, address(this));
+        chef.emergencyWithdraw(poolId, address(this));
     }
 
     function pause() public onlyManager {
@@ -255,7 +255,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, type(uint256).max);
+        IERC20(want).safeApprove(address(chef), type(uint256).max);
         IERC20(output).safeApprove(unirouter, type(uint256).max);
 
         IERC20(stable).safeApprove(unirouter, 0);
@@ -263,7 +263,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(chef, 0);
+        IERC20(want).safeApprove(address(chef), 0);
         IERC20(output).safeApprove(unirouter, 0);
 
         IERC20(stable).safeApprove(unirouter, 0);
