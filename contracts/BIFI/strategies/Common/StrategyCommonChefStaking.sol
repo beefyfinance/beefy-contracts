@@ -36,7 +36,9 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
     /**
      * @dev Event that is fired each time someone harvests the strat.
      */
-    event StratHarvest(address indexed harvester);
+    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
+    event Deposit(uint256 tvl);
+    event Withdraw(uint256 tvl);
 
     constructor(
         address _want,
@@ -65,6 +67,7 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
 
         if (wantBal > 0) {
             IMasterChef(chef).enterStaking(wantBal);
+            emit Deposit(balanceOf());
         }
     }
 
@@ -82,12 +85,14 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
             wantBal = _amount;
         }
 
-        if (tx.origin == owner() || paused()) {
-            IERC20(want).safeTransfer(vault, wantBal);
-        } else {
+        if (tx.origin != owner() && !paused()) {
             uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
+            wantBal = wantBal.sub(withdrawalFeeAmount);
         }
+
+        IERC20(want).safeTransfer(vault, wantBal);
+
+        emit Withdraw(balanceOf());
     }
 
     function beforeDeposit() external override {
@@ -115,10 +120,11 @@ contract StrategyCommonChefStaking is StratManager, FeeManager {
         uint256 wantBal = balanceOfWant();
         if (wantBal > 0) {
             chargeFees(callFeeRecipient);
+            uint256 wantHarvested = balanceOfWant();
             deposit();
 
             lastHarvest = block.timestamp;
-            emit StratHarvest(msg.sender);
+            emit StratHarvest(msg.sender, wantHarvested, balanceOf());
         }
     }
 
