@@ -8,41 +8,40 @@ import { verifyContract } from "../../utils/verifyContract";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: { polywise, quickswap, beefyfinance },
+  platforms: { synapse, beefyfinance },
   tokens: {
-    USDC: { address: USDC },
-    WMATIC: { address: WMATIC },
-    polyWISE: { address: polyWISE },
+    SYN,
+    WNATIVE,
+    USDCe,
   },
-} = addressBook.polygon;
+} = addressBook.avax;
 
-const shouldVerifyOnEtherscan = false;
+const shouldVerifyOnEtherscan = true;
 
-const want = web3.utils.toChecksumAddress("0x2F9209Ef6fA6C002bf6fC99124336e24F88B62D0");
+const want = web3.utils.toChecksumAddress("0xCA87BF3ec55372D9540437d7a86a7750B42C02f4");
 
 const vaultParams = {
-  mooName: "Moo Polywise Quick USDC-WISE",
-  mooSymbol: "mooPolywiseQuickUSDC-WISE",
+  mooName: "Moo Synapse nUSD-LP",
+  mooSymbol: "mooSynapsenUSD-LP",
   delay: 21600,
 };
 
 const strategyParams = {
   want,
   poolId: 1,
-  chef: polywise.masterchef,
-  unirouter: quickswap.router,
-  strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
+  chef: synapse.chef,
+  unirouter: "0x60aE616a2155Ee3d9A68541Ba4544862310933d4",
+  strategist: "0x2C6bd2d42AaA713642ee7c6e83291Ca9F94832C6", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [polyWISE, WMATIC],
-  outputToLp0Route: [polyWISE, USDC],
-  outputToLp1Route: [polyWISE],
-  pendingRewardsFunctionName: "pendingWise", // used for rewardsAvailable(), use correct function name from masterchef
+  outputToNativeRoute: [SYN, WNATIVE],
+  outputToStableRoute: [SYN, WNATIVE, USDCe],
+  swap: "0xED2a7edd7413021d440b09D654f3b87712abAB66"
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonChefLP",
+  strategy: "StrategySynapseStableswap",
 };
 
 async function main() {
@@ -85,8 +84,8 @@ async function main() {
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
     strategyParams.outputToNativeRoute,
-    strategyParams.outputToLp0Route,
-    strategyParams.outputToLp1Route,
+    strategyParams.outputToStableRoute,
+    strategyParams.swap,
   ];
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();
@@ -109,7 +108,6 @@ async function main() {
       verifyContract(strategy.address, strategyConstructorArguments)
     );
   }
-  await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
   await setCorrectCallFee(strategy, hardhat.network.name);
   console.log();
 
