@@ -8,8 +8,9 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/sushi/IMiniChefV2.sol";
 import "../../interfaces/sushi/IRewarder.sol";
+import "../../interfaces/synapse/IMiniChefV2.sol";
+import "../../interfaces/synapse/ISwapFlashLoan.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
@@ -22,12 +23,11 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     // Tokens used
     address public native;
     address public output;
-    address public reward;
     address public want;
     address public stable;
 
     // Third party contracts
-    address public swap; // for adding liquidity
+    ISwapFlashLoan public swap; // for adding liquidity
     address public chef;
     uint256 public poolId;
 
@@ -37,15 +37,13 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     // Routes
     address[] public outputToNativeRoute;
     address[] public outputToStableRoute;
-    address[] public rewardToStableRoute;
-
-    address[] public stablecoins;
-    mapping (address => uint256) stablecoinIndex;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
      */
-    event StratHarvest(address indexed harvester);
+    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
+    event Deposit(uint256 tvl);
+    event Withdraw(uint256 tvl);
 
     constructor(
         address _want,
@@ -58,32 +56,19 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         address _beefyFeeRecipient,
         address[] memory _outputToNativeRoute,
         address[] memory _outputToStableRoute,
-        address[] memory _rewardToStableRoute,
-        address[] memory _stablecoins,
-        address[] memory _stable,
         address _swap
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         poolId = _poolId;
         chef = _chef;
-        swap = _swap;
+        swap = ISwapFlashLoan(_swap);
 
         require(_outputToNativeRoute.length >= 2);
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
-
-        _buildStablecoins(_stablecoins);
-
-        require(stablecoinIndex[_stable] != 0, 'Stable not found.');
-        stable = _stable;
-        require(_outputToStableRoute[0] == output, 'first != output');
-        require(_outputToStableRoute[_outputToStableRoute.length - 1] == stable, 'last != stable');
-        outputToStableRoute = _outputToStableRoute;
-
-        reward = _rewardToStableRoute[0];
-        require(_rewardToStableRoute[_rewardToStableRoute.length - 1] == stable, 'last != stable');
-        rewardToStableRoute = _rewardToStableRoute;
+        
+        _setOutputToStableRoute(_outputToStableRoute);
 
         _giveAllowances();
     }
@@ -94,6 +79,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
 
         if (wantBal > 0) {
             IMiniChefV2(chef).deposit(poolId, wantBal, address(this));
+            emit Deposit(balanceOf());
         }
     }
 
@@ -111,17 +97,19 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
             wantBal = _amount;
         }
 
-        if (tx.origin == owner() || paused()) {
-            IERC20(want).safeTransfer(vault, wantBal);
-        } else {
+        if (tx.origin != owner() && !paused()) {
             uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
+            wantBal = wantBal.sub(withdrawalFeeAmount);
         }
+
+        IERC20(want).safeTransfer(vault, wantBal);
+
+        emit Withdraw(balanceOf());
     }
 
     function beforeDeposit() external override {
+        require(msg.sender == vault, "!vault");
         if (harvestOnDeposit) {
-            require(msg.sender == vault, "!vault");
             _harvest(tx.origin);
         }
     }
@@ -142,8 +130,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     function _harvest(address callFeeRecipient) internal whenNotPaused {
         IMiniChefV2(chef).harvest(poolId, address(this));
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        uint256 rewardBal = IERC20(reward).balanceOf(address(this));
-        if (outputBal > 0 || rewardBal > 0) {
+        if (outputBal > 0) {
             chargeFees(callFeeRecipient);
             addLiquidity();
             uint256 wantHarvested = balanceOfWant();
@@ -156,8 +143,6 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        IMiniChefV2(_chef).rewarder(_poolId);
-
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
 
@@ -175,19 +160,11 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
+        uint256 toStable = IERC20(output).balanceOf(address(this));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toStable, 0, outputToStableRoute, address(this), block.timestamp);
 
-        if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), block.timestamp);
-        }
 
-        if (lpToken1 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), block.timestamp);
-        }
-
-        uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
-        uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp);
+        
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -218,7 +195,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
 
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        return IMiniChefV2(chef).pendingSushi(poolId, address(this));
+        return IMiniChefV2(chef).pendingSynapse(poolId, address(this));
     }
 
     // native reward amount for calling harvest
@@ -276,7 +253,6 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(chef, type(uint256).max);
         IERC20(output).safeApprove(unirouter, type(uint256).max);
-        IERC20(reward).safeApprove(unirouter, type(uint256).max);
 
         IERC20(stable).safeApprove(unirouter, 0);
         IERC20(stable).safeApprove(unirouter, type(uint256).max);
@@ -285,7 +261,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
-        IERC20(reward).safeApprove(unirouter, 0);
+
         IERC20(stable).safeApprove(unirouter, 0);
         IERC20(stable).safeApprove(unirouter, 0);
     }
@@ -298,60 +274,21 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         return outputToStableRoute;
     }
 
-    function rewardToStable() external view returns (address[] memory) {
-        return rewardToStableRoute;
+    function setOutputToStableRoute(address[] memory _outputToStableRoute) external onlyManager {
+        IERC20(stable).safeApprove(unirouter, 0);
+        IERC20(stable).safeApprove(unirouter, 0);
+
+        _setOutputToStableRoute(_outputToStableRoute);
+
+        IERC20(stable).safeApprove(unirouter, 0);
+        IERC20(stable).safeApprove(unirouter, type(uint256).max);
     }
 
-    function viewStablecoins() external view returns (address[] memory) {
-        return stablecoins;
-    }
-
-    function buildStablecoins(address[] memory _stablecoins) public onlyManager {
-        _buildStablecoins(_stablecoins);
-    }
-
-    function _buildStablecoins(address[] memory _stablecoins) internal {
-        // wipe existing stablecoin mapping
-        for (uint256 i = 0; i < stablecoins.length; ++i) {
-            delete stablecoinIndex[stablecoins[i]];
-        }
-
-        // overwrite stablecoin array
-        stablecoins = _stablecoins;
-        // create dummy at start of array by pushing first elt to end
-        stablecoins.push(stablecoins[0]);
-        // set dummy to 0x0
-        stablecoins[0] = address(0); 
-
-        // build new mapping, skipping dummy
-        for (uint256 i = 1; i < stablecoins.length; ++i) {
-            stablecoinIndex[stablecoins[i]] = i;
-        }
-    }
-
-    function addStablecoin(address _stable) public onlyManager {
-        // add address to end of array
-        stablecoins.push(_stable);
-        // map added stable to last index in array 
-        stablecoinIndex[_stable] = stablecoins.length-1;
-    }
-
-    function removeStablecoin(address _stable) public onlyManager {
-        require(stablecoins.length > 2, 'Must be at least one stablecoin.');
-        require(_stable != stable, 'Cannot remove stable in use.');
-
-        // get index for stable
-        uint256 stableIndex = stablecoinIndex[_stable];
-        require(stableIndex != 0, 'Stable not found.');
-
-        // swap last element with index to delete
-        uint256 lastElement = stablecoins[stablecoins.length-1];
-        stablecoins[stableIndex] = lastElement;
-        stablecoins.pop();
-
-        // remove mapping of removed stable to index
-        delete stablecoinIndex[_stable];
-        // update mapping of last element to index of stable removed
-        stablecoinIndex[lastElement] = stableIndex;
+    // to allow switching of stable to use for adding liquidity
+    function _setOutputToStableRoute(address[] memory _outputToStableRoute) internal {
+        require(_outputToStableRoute[0] == output, 'first != output');
+        stable = _outputToStableRoute[_outputToStableRoute.length - 1];
+        uint256 index = swap.getTokenIndex(stable); // will revert if doesn't exist
+        outputToStableRoute = _outputToStableRoute;       
     }
 }
