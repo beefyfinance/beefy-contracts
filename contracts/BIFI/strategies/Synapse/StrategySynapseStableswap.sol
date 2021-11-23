@@ -21,10 +21,10 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     address constant nullAddress = address(0);
 
     // Tokens used
-    address public native;
-    address public output;
-    address public want;
-    address public stable;
+    IERC20 public native;
+    IERC20 public output;
+    IERC20 public want;
+    IERC20 public stable;
 
     // Third party contracts
     ISwapFlashLoan public swap; // for adding liquidity
@@ -60,14 +60,14 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         address[] memory _outputToStableRoute,
         address _swap
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
-        want = _want;
+        want = IERC20(_want);
         poolId = _poolId;
         chef = IMiniChefV2(_chef);
         swap = ISwapFlashLoan(_swap);
 
         require(_outputToNativeRoute.length >= 2);
-        output = _outputToNativeRoute[0];
-        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
+        output = IERC20(_outputToNativeRoute[0]);
+        native = IERC20(_outputToNativeRoute[_outputToNativeRoute.length - 1]);
         outputToNativeRoute = _outputToNativeRoute;
         
         _setOutputToStableRoute(_outputToStableRoute);
@@ -77,7 +77,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
 
     // puts the funds to work
     function deposit() public whenNotPaused {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = want.balanceOf(address(this));
 
         if (wantBal > 0) {
             chef.deposit(poolId, wantBal, address(this));
@@ -88,11 +88,11 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = want.balanceOf(address(this));
 
         if (wantBal < _amount) {
             chef.withdraw(poolId, _amount.sub(wantBal), address(this));
-            wantBal = IERC20(want).balanceOf(address(this));
+            wantBal = want.balanceOf(address(this));
         }
 
         if (wantBal > _amount) {
@@ -104,7 +104,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
             wantBal = wantBal.sub(withdrawalFeeAmount);
         }
 
-        IERC20(want).safeTransfer(vault, wantBal);
+        want.safeTransfer(vault, wantBal);
 
         emit Withdraw(balanceOf());
     }
@@ -131,7 +131,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
         chef.harvest(poolId, address(this));
-        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        uint256 outputBal = output.balanceOf(address(this));
         if (outputBal > 0) {
             chargeFees(callFeeRecipient);
             addLiquidity();
@@ -145,27 +145,27 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
+        uint256 toNative = output.balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        uint256 nativeBal = native.balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
+        native.safeTransfer(callFeeRecipient, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
+        native.safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
         uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        native.safeTransfer(strategist, strategistFee);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 toStable = IERC20(output).balanceOf(address(this));
+        uint256 toStable = output.balanceOf(address(this));
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toStable, 0, outputToStableRoute, address(this), block.timestamp);
 
-        uint256 stableBalance = IERC20(stable).balanceOf(address(this));
+        uint256 stableBalance = stable.balanceOf(address(this));
         uint256[] memory amounts = new uint256[](poolTokenCount);
         amounts[depositIndex] = stableBalance;
         swap.addLiquidity(amounts, 0, block.timestamp);
@@ -178,7 +178,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
 
     // it calculates how much 'want' this contract holds.
     function balanceOfWant() public view returns (uint256) {
-        return IERC20(want).balanceOf(address(this));
+        return want.balanceOf(address(this));
     }
 
     // it calculates how much 'want' the strategy has working in the farm.
@@ -193,8 +193,8 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
 
         chef.emergencyWithdraw(poolId, address(this));
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
-        IERC20(want).transfer(vault, wantBal);
+        uint256 wantBal = want.balanceOf(address(this));
+        want.transfer(vault, wantBal);
     }
 
     // returns rewards unharvested
@@ -255,19 +255,19 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(address(chef), type(uint256).max);
-        IERC20(output).safeApprove(unirouter, type(uint256).max);
+        want.safeApprove(address(chef), type(uint256).max);
+        output.safeApprove(unirouter, type(uint256).max);
 
-        IERC20(stable).safeApprove(unirouter, 0);
-        IERC20(stable).safeApprove(unirouter, type(uint256).max);
+        stable.safeApprove(unirouter, 0);
+        stable.safeApprove(unirouter, type(uint256).max);
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(address(chef), 0);
-        IERC20(output).safeApprove(unirouter, 0);
+        want.safeApprove(address(chef), 0);
+        output.safeApprove(unirouter, 0);
 
-        IERC20(stable).safeApprove(unirouter, 0);
-        IERC20(stable).safeApprove(unirouter, 0);
+        stable.safeApprove(unirouter, 0);
+        stable.safeApprove(unirouter, 0);
     }
 
     function outputToNative() external view returns (address[] memory) {
@@ -279,20 +279,20 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     }
 
     function setOutputToStableRoute(address[] memory _outputToStableRoute) external onlyManager {
-        IERC20(stable).safeApprove(unirouter, 0);
-        IERC20(stable).safeApprove(unirouter, 0);
+        stable.safeApprove(unirouter, 0);
+        stable.safeApprove(unirouter, 0);
 
         _setOutputToStableRoute(_outputToStableRoute);
 
-        IERC20(stable).safeApprove(unirouter, 0);
-        IERC20(stable).safeApprove(unirouter, type(uint256).max);
+        stable.safeApprove(unirouter, 0);
+        stable.safeApprove(unirouter, type(uint256).max);
     }
 
     // to allow switching of stable to use for adding liquidity
     function _setOutputToStableRoute(address[] memory _outputToStableRoute) internal {
-        require(_outputToStableRoute[0] == output, 'first != output');
-        stable = _outputToStableRoute[_outputToStableRoute.length - 1];
-        depositIndex = swap.getTokenIndex(stable); // will revert if doesn't exist
+        require(_outputToStableRoute[0] == address(output), 'first != output');
+        stable = IERC20(_outputToStableRoute[_outputToStableRoute.length - 1]);
+        depositIndex = swap.getTokenIndex(address(stable)); // will revert if doesn't exist
         outputToStableRoute = _outputToStableRoute;
     }
 }
