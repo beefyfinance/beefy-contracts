@@ -48,9 +48,9 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     event Withdraw(uint256 tvl);
 
     constructor(
-        address _want,
+        IERC20 _want,
         uint256 _poolId,
-        address _chef,
+        IMiniChefV2 _chef,
         address _vault,
         address _unirouter,
         address _keeper,
@@ -58,12 +58,12 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         address _beefyFeeRecipient,
         address[] memory _outputToNativeRoute,
         address[] memory _outputToStableRoute,
-        address _swap
+        ISwapFlashLoan _swap
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
-        want = IERC20(_want);
+        want = _want;
         poolId = _poolId;
-        chef = IMiniChefV2(_chef);
-        swap = ISwapFlashLoan(_swap);
+        chef = _chef;
+        swap = _swap;
 
         require(_outputToNativeRoute.length >= 2);
         output = IERC20(_outputToNativeRoute[0]);
