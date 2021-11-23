@@ -5,14 +5,16 @@ import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
 import { verifyContract } from "../../utils/verifyContract";
 
 const {
-  SCREAM: { address: SCREAM },
-  fUSDT: { address: fUSDT },
-  WFTM: { address: WFTM },
-  ETH: { address: ETH },
-  WBTC: { address: WBTC },
-  DAI: { address: DAI },
-} = addressBook.fantom.tokens;
-const { spookyswap, beefyfinance } = addressBook.fantom.platforms;
+  platforms: { spookyswap, beefyfinance },
+  tokens: {
+    SCREAM: { address: SCREAM },
+    fUSDT: { address: fUSDT },
+    WFTM: { address: WFTM },
+    ETH: { address: ETH },
+    WBTC: { address: WBTC },
+    DAI: { address: DAI },
+  },
+} = addressBook.fantom;
 
 const shouldVerifyOnEtherscan = false;
 
