@@ -28,6 +28,8 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
 
     // Third party contracts
     ISwapFlashLoan public swap; // for adding liquidity
+    uint256 public poolTokenCount = 4;
+    uint8 public depositIndex;
     address public chef;
     uint256 public poolId;
 
@@ -149,7 +151,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-            IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
+        IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -163,8 +165,10 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
         uint256 toStable = IERC20(output).balanceOf(address(this));
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toStable, 0, outputToStableRoute, address(this), block.timestamp);
 
-
-        
+        uint256 stableBalance = IERC20(stable).balanceOf(address(this));
+        uint256[] memory amounts = new uint256[](poolTokenCount);
+        amounts[depositIndex] = stableBalance;
+        swap.addLiquidity(amounts, 0, block.timestamp);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -288,7 +292,7 @@ contract StrategySynapseStableswap is StratManager, FeeManager {
     function _setOutputToStableRoute(address[] memory _outputToStableRoute) internal {
         require(_outputToStableRoute[0] == output, 'first != output');
         stable = _outputToStableRoute[_outputToStableRoute.length - 1];
-        uint256 index = swap.getTokenIndex(stable); // will revert if doesn't exist
-        outputToStableRoute = _outputToStableRoute;       
+        depositIndex = swap.getTokenIndex(stable); // will revert if doesn't exist
+        outputToStableRoute = _outputToStableRoute;
     }
 }
