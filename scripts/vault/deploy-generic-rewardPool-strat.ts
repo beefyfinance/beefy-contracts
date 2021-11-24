@@ -7,12 +7,14 @@ import { verifyContract } from "../../utils/verifyContract";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  WMATIC_DFYN: { address: WMATIC_DFYN },
-  DFYN: { address: DFYN },
-  CRV: { address: CRV },
-  WMATIC: { address: WMATIC },
-} = addressBook.polygon.tokens;
-const { dfyn, beefyfinance } = addressBook.polygon.platforms;
+  platforms: { dfyn, beefyfinance },
+  tokens: {
+    WMATIC_DFYN: { address: WMATIC_DFYN },
+    DFYN: { address: DFYN },
+    CRV: { address: CRV },
+    WMATIC: { address: WMATIC },
+  },
+} = addressBook.polygon;
 
 const shouldVerifyOnEtherscan = false;
 

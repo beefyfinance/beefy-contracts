@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/solar/IUniswapRouterETH.sol";
+import "../../interfaces/solar/ISolarRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/solar/IMasterChef.sol";
 import "../Common/StratManager.sol";
@@ -153,13 +153,13 @@ contract StrategySolarbeamV2 is StratManager, FeeManager {
             for (uint i; i < rewardToOutputRoute.length; i++) {
                 uint256 rewardBal = IERC20(rewardToOutputRoute[i][0]).balanceOf(address(this));
                 if (rewardBal > 0) {
-                    IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardBal, 0, rewardToOutputRoute[i], address(this), now);
+                    ISolarRouter(unirouter).swapExactTokensForTokens(rewardBal, 0, rewardToOutputRoute[i], address(this), now);
                 }
             }
         }
 
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        ISolarRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
@@ -178,16 +178,16 @@ contract StrategySolarbeamV2 is StratManager, FeeManager {
         uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
 
         if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), now);
+            ISolarRouter(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), now);
         }
 
         if (lpToken1 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), now);
+            ISolarRouter(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
+        ISolarRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -214,7 +214,7 @@ contract StrategySolarbeamV2 is StratManager, FeeManager {
     function callReward() public view returns (uint256) {
         uint256[] memory rewardBal = rewardsAvailable();
         uint256 nativeBal;
-        try IUniswapRouterETH(unirouter).getAmountsOut(rewardBal[0], outputToNativeRoute, 25)
+        try ISolarRouter(unirouter).getAmountsOut(rewardBal[0], outputToNativeRoute, 25)
         returns (uint256[] memory amountOut)
         {
             nativeBal = amountOut[amountOut.length - 1];
@@ -222,11 +222,11 @@ contract StrategySolarbeamV2 is StratManager, FeeManager {
 
         if (rewardToOutputRoute.length != 0) {
             for (uint i; i < rewardToOutputRoute.length; i++) {
-                try IUniswapRouterETH(unirouter).getAmountsOut(rewardBal[i+1], rewardToOutputRoute[i], 25)
+                try ISolarRouter(unirouter).getAmountsOut(rewardBal[i+1], rewardToOutputRoute[i], 25)
                 returns (uint256[] memory initialAmountOut)
                 {
                     uint256 outputBal = initialAmountOut[initialAmountOut.length - 1];
-                    try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute, 25)
+                    try ISolarRouter(unirouter).getAmountsOut(outputBal, outputToNativeRoute, 25)
                     returns (uint256[] memory finalAmountOut)
                     {
                         nativeBal += finalAmountOut[finalAmountOut.length - 1];

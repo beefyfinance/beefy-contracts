@@ -2,7 +2,7 @@
 
 pragma solidity >=0.6.0 <0.9.0;
 
-interface IUniswapRouterETH {
+interface IUniswapRouterSolar {
     function addLiquidity(
         address tokenA,
         address tokenB,

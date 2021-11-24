@@ -86,6 +86,11 @@ const config: DeploymentConfig = {
       chainId: 42,
       accounts,
     },
+    aurora: {
+      url: "https://mainnet.aurora.dev/Fon6fPMs5rCdJc4mxX4kiSK1vsKdzc3D8k6UF8aruek",
+      chainId: 1313161554,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan

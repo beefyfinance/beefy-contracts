@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -9,25 +10,38 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/aave/IDataProvider.sol";
-import "../../interfaces/aave/IIncentivesController.sol";
 import "../../interfaces/aave/ILendingPool.sol";
-import "../../interfaces/common/IUniswapRouterETH.sol";
+import "../../interfaces/common/IUniswapRouter.sol";
 import "../Common/FeeManager.sol";
 import "../Common/StratManager.sol";
+import "./IBlizz.sol";
 
-contract StrategyAaveNative is StratManager, FeeManager {
+contract StrategyBlizz is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
     address public want;
-    address public aToken;
-    address public varDebtToken;
+    address public output;
+    address public native;
+
+    struct TokenAddresses {
+        address token;
+        address gToken;
+        address vToken;
+    }
+
+    TokenAddresses public wantTokens;
 
     // Third party contracts
-    address public dataProvider;
-    address public lendingPool;
-    address public incentivesController;
+    address public dataProvider = address(0x51D1e664a3b247782AC95b30A7a3cdE8c8d8AD5D);
+    address public lendingPool = address(0x70BbE4A294878a14CB3CDD9315f5EB490e346163);
+    IBlizzMultiFeeDistribution public feeDistribution = IBlizzMultiFeeDistribution(0xA867c1acA4B5F1E0a66cf7b1FE33525D57608854);
+    IBlizzIncentivesController public incentivesController = IBlizzIncentivesController(0x2d867AE30400ffFaD9BeD8472c514c2d6b827F5f);
+
+    // Routes
+    address[] public outputToNativeRoute;
+    address[] public outputToWantRoute;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -57,35 +71,39 @@ contract StrategyAaveNative is StratManager, FeeManager {
     /**
      * @dev Events that the contract emits
      */
-    event StratHarvest(address indexed harvester);
+    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
+    event Deposit(uint256 tvl);
+    event Withdraw(uint256 tvl);
     event StratRebalance(uint256 _borrowRate, uint256 _borrowDepth);
 
     constructor(
         address _want,
-        uint256 _borrowRate,
-        uint256 _borrowRateMax,
-        uint256 _borrowDepth,
-        uint256 _minLeverage,
-        address _dataProvider,
-        address _lendingPool,
-        address _incentivesController,
+        uint256[] memory _borrowConfig,
         address _vault,
         address _unirouter,
         address _keeper,
         address _strategist,
-        address _beefyFeeRecipient
+        address _beefyFeeRecipient,
+        address[] memory _outputToNativeRoute,
+        address[] memory _outputToWantRoute
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
 
-        borrowRate = _borrowRate;
-        borrowRateMax = _borrowRateMax;
-        borrowDepth = _borrowDepth;
-        minLeverage = _minLeverage;
-        dataProvider = _dataProvider;
-        lendingPool = _lendingPool;
-        incentivesController = _incentivesController;
+        borrowRate = _borrowConfig[0];
+        borrowRateMax = _borrowConfig[1];
+        borrowDepth = _borrowConfig[2];
+        minLeverage = _borrowConfig[3];
 
-        (aToken,,varDebtToken) = IDataProvider(dataProvider).getReserveTokensAddresses(want);
+        (address gToken,,address vToken) = IDataProvider(dataProvider).getReserveTokensAddresses(want);
+        wantTokens = TokenAddresses(want, gToken, vToken);
+
+        output = _outputToNativeRoute[0];
+        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
+        outputToNativeRoute = _outputToNativeRoute;
+
+        require(_outputToWantRoute[0] == output, "outputToWant[0] != output");
+        require(_outputToWantRoute[_outputToWantRoute.length - 1] == want, "!want");
+        outputToWantRoute = _outputToWantRoute;
 
         _giveAllowances();
     }
@@ -96,6 +114,7 @@ contract StrategyAaveNative is StratManager, FeeManager {
 
         if (wantBal > 0) {
             _leverage(wantBal);
+            emit Deposit(balanceOf());
         }
     }
 
@@ -208,35 +227,45 @@ contract StrategyAaveNative is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        uint256 beforeBal = IERC20(want).balanceOf(address(this));
-        address[] memory assets = new address[](2);
-        assets[0] = aToken;
-        assets[1] = varDebtToken;
-        IIncentivesController(incentivesController).claimRewards(assets, type(uint).max, address(this));
-        uint256 afterBal = IERC20(want).balanceOf(address(this));
+        address[] memory tokens = new address[](2);
+        tokens[0] = wantTokens.gToken;
+        tokens[1] = wantTokens.vToken;
+        incentivesController.claim(address(this), tokens);
+        feeDistribution.exit(true);
 
-        uint256 harvestedBal = afterBal.sub(beforeBal);
-        if (harvestedBal > 0) {
-            chargeFees(harvestedBal, callFeeRecipient);
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        if (outputBal > 0) {
+            chargeFees(callFeeRecipient);
+            swapRewards();
+            uint256 wantHarvested = availableWant();
             deposit();
 
             lastHarvest = block.timestamp;
-            emit StratHarvest(msg.sender);
+            emit StratHarvest(msg.sender, wantHarvested, balanceOf());
         }
     }
 
     // performance fees
-    function chargeFees(uint256 harvestedBal, address callFeeRecipient) internal {
-        uint256 feeBal = harvestedBal.mul(45).div(1000);
+    function chargeFees(address callFeeRecipient) internal {
+        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
+        IUniswapRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
-        uint256 callFeeAmount = feeBal.mul(callFee).div(MAX_FEE);
-        IERC20(want).safeTransfer(callFeeRecipient, callFeeAmount);
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
-        uint256 beefyFeeAmount = feeBal.mul(beefyFee).div(MAX_FEE);
-        IERC20(want).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
+        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
+        IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 strategistFee = feeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(want).safeTransfer(strategist, strategistFee);
+        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
+        IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
+
+        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(native).safeTransfer(strategist, strategistFee);
+    }
+
+    // swap rewards to {want}
+    function swapRewards() internal {
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        IUniswapRouter(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), now);
     }
 
     /**
@@ -258,12 +287,13 @@ contract StrategyAaveNative is StratManager, FeeManager {
             wantBal = _amount;
         }
 
-        if (tx.origin == owner() || paused()) {
-            IERC20(want).safeTransfer(vault, wantBal);
-        } else {
+        if (tx.origin != owner() && !paused()) {
             uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
+            wantBal = wantBal.sub(withdrawalFeeAmount);
         }
+
+        IERC20(want).safeTransfer(vault, wantBal);
+        emit Withdraw(balanceOf());
 
         if (!paused()) {
             _leverage(availableWant());
@@ -315,15 +345,27 @@ contract StrategyAaveNative is StratManager, FeeManager {
 
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        address[] memory assets = new address[](2);
-        assets[0] = aToken;
-        assets[1] = varDebtToken;
-        return IIncentivesController(incentivesController).getRewardsBalance(assets, address(this));
+        address[] memory tokens = new address[](2);
+        tokens[0] = wantTokens.gToken;
+        tokens[1] = wantTokens.vToken;
+        uint256[] memory reward = incentivesController.claimableReward(address(this), tokens);
+        return reward[0].add(reward[1]).div(2);
     }
 
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
-        return rewardsAvailable().mul(45).div(1000).mul(callFee).div(MAX_FEE);
+        uint256 outputBal = rewardsAvailable();
+        uint256 nativeOut;
+        if (outputBal > 0) {
+            try IUniswapRouter(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
+                returns (uint256[] memory amountOut)
+            {
+                nativeOut = amountOut[amountOut.length -1];
+            }
+            catch {}
+        }
+
+        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
@@ -367,9 +409,19 @@ contract StrategyAaveNative is StratManager, FeeManager {
 
     function _giveAllowances() internal {
         IERC20(want).safeApprove(lendingPool, uint256(-1));
+        IERC20(output).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(lendingPool, 0);
+        IERC20(output).safeApprove(unirouter, 0);
+    }
+
+    function outputToNative() public view returns (address[] memory) {
+        return outputToNativeRoute;
+    }
+
+    function outputToWant() public view returns (address[] memory) {
+        return outputToWantRoute;
     }
 }
