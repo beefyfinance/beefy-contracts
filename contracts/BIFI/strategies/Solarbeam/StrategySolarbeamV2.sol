@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/solar/ISolarRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/solar/IMasterChef.sol";
+import "../../interfaces/solar/ISolarChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
@@ -84,7 +84,7 @@ contract StrategySolarbeamV2 is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IMasterChef(chef).deposit(poolId, wantBal);
+            ISolarChef(chef).deposit(poolId, wantBal);
             emit Deposit(balanceOf());
         }
     }
@@ -95,7 +95,7 @@ contract StrategySolarbeamV2 is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            ISolarChef(chef).withdraw(poolId, _amount.sub(wantBal));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -134,7 +134,7 @@ contract StrategySolarbeamV2 is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal {
-        IMasterChef(chef).deposit(poolId, 0);
+        ISolarChef(chef).deposit(poolId, 0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
             chargeFees(callFeeRecipient);
@@ -202,12 +202,12 @@ contract StrategySolarbeamV2 is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount,,,) = IMasterChef(chef).userInfo(poolId, address(this));
+        (uint256 _amount,,,) = ISolarChef(chef).userInfo(poolId, address(this));
         return _amount;
     }
 
     function rewardsAvailable() public view returns (uint256[] memory) {
-        (,,,uint256[] memory amounts) = IMasterChef(chef).pendingTokens(poolId, address(this));
+        (,,,uint256[] memory amounts) = ISolarChef(chef).pendingTokens(poolId, address(this));
         return amounts;
     }
 
@@ -252,7 +252,7 @@ contract StrategySolarbeamV2 is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        ISolarChef(chef).emergencyWithdraw(poolId);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -261,7 +261,7 @@ contract StrategySolarbeamV2 is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        ISolarChef(chef).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {
@@ -321,7 +321,7 @@ contract StrategySolarbeamV2 is StratManager, FeeManager {
         if (reward != lpToken0 && reward != lpToken1) {
             IERC20(reward).safeApprove(unirouter, 0);
         }
-        delete rewardToOutputRoute[rewardToOutputRoute.length - 1];
+        rewardToOutputRoute.pop();
     }
 
     function outputToNative() external view returns (address[] memory) {
