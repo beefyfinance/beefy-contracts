@@ -60,6 +60,7 @@ const config: DeploymentConfig = {
       url: "https://rpc.moonriver.moonbeam.network",
       chainId: 1285,
       accounts,
+      gasPrice: 5000000000,
     },
     celo: {
       url: "https://forno.celo.org",
