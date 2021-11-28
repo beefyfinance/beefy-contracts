@@ -8,12 +8,14 @@ import { verifyContract } from "../../utils/verifyContract";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  WBNB: { address: WBNB },
-  LAZIO: { address: LAZIO },
-  DKT: { address: DKT },
-  CAKE: { address: CAKE },
-} = addressBook.bsc.tokens;
-const { pancake, beefyfinance } = addressBook.bsc.platforms;
+  platforms: { pancake, beefyfinance },
+  tokens: {
+    WBNB: { address: WBNB },
+    LAZIO: { address: LAZIO },
+    DKT: { address: DKT },
+    CAKE: { address: CAKE },
+  },
+} = addressBook.bsc;
 
 const shouldVerifyOnEtherscan = false;
 
