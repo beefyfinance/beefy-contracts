@@ -5,45 +5,42 @@ import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
 import { setPendingRewardsFunctionName } from "../../utils/setPendingRewardsFunctionName";
 import { verifyContract } from "../../utils/verifyContract";
 
-const registerSubsidy = require("../../utils/registerSubsidy");
-
 const {
-  platforms: { pancake, beefyfinance },
+  platforms: { sushi, beefyfinance },
   tokens: {
-    WBNB: { address: WBNB },
-    LAZIO: { address: LAZIO },
-    DKT: { address: DKT },
-    CAKE: { address: CAKE },
+    WMOVR_SUSHI: { address: MOVR },
+    ETH: { address: ETH },
+    USDT: { address: USDT },
+    SUSHI: { address: SUSHI },
   },
-} = addressBook.bsc;
+} = addressBook.moonriver;
 
-const shouldVerifyOnEtherscan = false;
+const shouldVerifyOnEtherscan = true;
 
-const want = web3.utils.toChecksumAddress("0x11c0b2BB4fbB430825d07507A9E24e4c32f7704D");
+const want = web3.utils.toChecksumAddress("0xB0A594e76A876DE40a7fda9819E5c4Ec6d9Fd222");
 
 const vaultParams = {
-  mooName: "Moo CakeV2 LAZIO-BNB",
-  mooSymbol: "mooCakeV2LAZIO-BNB",
+  mooName: "Moo Sushi ETH-USDT",
+  mooSymbol: "mooSushiETH-USDT",
   delay: 21600,
 };
 
 const strategyParams = {
   want,
-  poolId: 464,
-  chef: pancake.masterchef,
-  unirouter: pancake.router,
-  strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
+  poolId: 2,
+  chef: sushi.minichef,
+  unirouter: "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
+  strategist: "0xa776f91e4d67C8B3d2515D0E6F37eE6b73e24Cb0", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [CAKE, WBNB],
-  outputToLp0Route: [CAKE, WBNB, LAZIO],
-  outputToLp1Route: [CAKE, WBNB],
-  pendingRewardsFunctionName: "pendingCake", // used for rewardsAvailable(), use correct function name from masterchef
+  outputToNativeRoute: [SUSHI, ETH, MOVR],
+  outputToLp0Route: [MOVR, ETH],
+  outputToLp1Route: [MOVR, ETH, USDT],
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonChefLPBsc",
+  strategy: "StrategyMrSushiLP",
 };
 
 async function main() {
@@ -110,16 +107,10 @@ async function main() {
       verifyContract(strategy.address, strategyConstructorArguments)
     );
   }
-  await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
   await setCorrectCallFee(strategy, hardhat.network.name);
   console.log();
 
   await Promise.all(verifyContractsPromises);
-
-  if (hardhat.network.name === "bsc") {
-    await registerSubsidy(vault.address, deployer);
-    await registerSubsidy(strategy.address, deployer);
-  }
 }
 
 main()
