@@ -2,16 +2,18 @@
 
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "../interfaces/beefy/IVault.sol";
+import "../interfaces/beefy/IBeefyVault.sol";
+import "../interfaces/beefy/IBeefyStrategy.sol";
 
-contract BeefyRegistry {
-  using Address for address;
-  using SafeMath for uint256;
-  using EnumerableSet for EnumerableSet.AddressSet;
+contract BeefyRegistry is Initializable {
+  using AddressUpgradeable for address;
+  using SafeMathUpgradeable for uint256;
+  using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
   event VaultAdded(address vault);
   event ProposedGovernance(address governance);
@@ -20,9 +22,9 @@ contract BeefyRegistry {
   address public governance;  
   address public pendingGovernance;
 
-  EnumerableSet.AddressSet private vaults;
+  EnumerableSetUpgradeable.AddressSet private vaults;
 
-  constructor(address _governance) {
+  function intialize(address _governance) public initializer {
     require(_governance != address(0), "!gov");
     governance = _governance;
   }
@@ -44,12 +46,17 @@ contract BeefyRegistry {
   
   function getVaultData(address _vault) internal view returns (
     address want,
-    address strategy
+    address strategy,
+    uint256 lastHarvest,
+    bool harvestOnDeposit,
+    uint256 callRewards
   ) {
-    IVault vault = IVault(_vault);
+    IBeefyVault vault = IBeefyVault(_vault);
     want = address(vault.want());
     strategy = address(vault.strategy());
-    return (want, strategy);
+    lastHarvest = IBeefyStrategy(strategy).lastHarvest();
+    harvestOnDeposit = IBeefyStrategy(strategy).harvestOnDeposit();
+    callRewards = IBeefyStrategy(strategy).callRewards();
   }
 
   // Vaults getters
@@ -71,28 +78,27 @@ contract BeefyRegistry {
 
   function getVaultInfo(address _vault) external view returns (
     address want,
-    address strategy
+    address strategy,
+    uint256 lastHarvest,
+    bool harvestOnDeposit,
+    uint256 callRewards
   ) {
-    (want, strategy) = getVaultData(_vault);
-    return (
-      want,
-      strategy
-    );
+    (want, strategy, lastHarvest, harvestOnDeposit, callRewards) = getVaultData(_vault);
   }
 
-  function getVaultsInfo() external view returns (
-    address[] memory wantArray,
-    address[] memory strategyArray
-  ) {
-    wantArray = new address[](vaults.length());
-    strategyArray = new address[](vaults.length());
-    
-    for (uint i = 0; i < vaults.length(); i++) {
-      (address _want, address _strategy) = getVaultData(vaults.at(i));
-      wantArray[i] = _want;
-      strategyArray[i] = _strategy;
-    }
-  }
+ // function getVaultsInfo() external view returns (
+ //   address[] memory wantArray,
+ //   address[] memory strategyArray
+ // ) {
+ //   wantArray = new address[](vaults.length());
+ //   strategyArray = new address[](vaults.length());
+ //   
+ //   for (uint i = 0; i < vaults.length(); i++) {
+ //     (address _want, address _strategy) = getVaultData(vaults.at(i));
+ //     wantArray[i] = _want;
+ //     strategyArray[i] = _strategy;
+ //   }
+ // }
 
  // Governance setters
   function setPendingGovernance(address _pendingGovernance) external onlyGovernance {

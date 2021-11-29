@@ -9,7 +9,7 @@ const TIMEOUT = 10 * 60 * 1000;
 const chainName = "fantom";
 
 const config = {
-  vault: "0x15DD4398721733D8273FD4Ed9ac5eadC6c018866",
+  vault: "0xAe0AB718971bb2BAd88AE6Bdc4D0eA63F3CD53Ee",
   testAmount: ethers.utils.parseEther("1"),
   wnative: addressBook[chainName].tokens.WNATIVE.address,
 };
