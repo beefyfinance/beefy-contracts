@@ -26,7 +26,7 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
     // Third party contracts
     address public rewardsGauge;
     address public pool;
-    uint public immutable poolSize;
+    uint public poolSize;
     uint public depositIndex;
     bool public useUnderlying;
 
