@@ -146,8 +146,8 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     function getVaultsForToken(address _token) external view returns (VaultInfo[] memory vaultResults) {
 
         vaultResults = new VaultInfo[](_tokenToVaultsMap[_token].length());
-            VaultInfo storage _vault = _vaultInfoMap[_tokenToVaultsMap[_token].at(i)];
         for (uint256 i; i < _tokenToVaultsMap[_token].length(); i++) {
+            VaultInfo storage _vault = _vaultInfoMap[_tokenToVaultsMap[_token].at(i)];
             vaultResults[i] = _vault;
         }
     }
