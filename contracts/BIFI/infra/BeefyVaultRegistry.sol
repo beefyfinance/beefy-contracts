@@ -70,27 +70,21 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
 
     function intialize() public initializer {
         __Ownable_init();
-        //addVault(0xa4918a9B3CE89c3A179Ea873A45a901a4535eC65);
     }
 
     function addVaults(address[] memory _vaultAddresses) external {
         for (uint i; i < _vaultAddresses.length; i++) {
             IVault vault = IVault(_vaultAddresses[i]);
             IStrategy strat;
-           // console.log("Added vault is %s", i);
 
             require(!_isVault(_vaultAddresses[i]), "Vault Exists");
 
-           // console.log('Validating vault');
             strat = _validateVault(vault);
 
             address[] memory tokens = _collectTokenData(strat);
-
-          //  console.log('Adding vault to Index');
             _vaultIndex.add(_vaultAddresses[i]);
 
             for (uint8 token_id = 0; token_id < tokens.length; token_id++) {
-               // console.log('Adding vault to token %s', tokens[token_id]);
                 _vaultTokens[tokens[token_id]].add(_vaultAddresses[i]);
             }
 
@@ -105,10 +99,8 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     function _validateVault(IVault _vault) internal view returns (IStrategy strategy) {
         address vaultAddress = address(_vault);
 
-       // console.log('_validateVault address %s', address(_vault));
         try _vault.strategy() returns (IStrategy _strategy) {
             require(IStrategy(_strategy).vault() == vaultAddress, "Vault/Strat Mismatch");
-           // console.log('Strategy address is %s', address(_strategy));
             return IStrategy(_strategy);
         } catch {
             require(false, "Address not a Vault");
