@@ -53,7 +53,7 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     struct VaultRegistry {
         address[] tokens;
         bool retired;
-        uint block;
+        uint blockNumber;
         uint256 index;
     }
 
@@ -89,7 +89,7 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
             }
 
             _vaultInfo[_vaultAddresses[i]].tokens = tokens;
-            _vaultInfo[_vaultAddresses[i]].block = block.number;
+            _vaultInfo[_vaultAddresses[i]].blockNumber = block.number;
             _vaultInfo[_vaultAddresses[i]].index = _vaultIndex.length() - 1; 
         }
 
@@ -183,14 +183,14 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         uint256 numResults;
 
         for (uint256 vid; vid < _vaultIndex.length(); vid++) {
-            if (_vaultInfo[_vaultIndex.at(0)].block >= _block) {
+            if (_vaultInfo[_vaultIndex.at(0)].blockNumber >= _block) {
                 numResults++;
             }
         }
 
         VaultRegistry[] memory vaultResults = new VaultRegistry[](numResults);
         for (uint256 vid; vid < _vaultIndex.length(); vid++) {
-            if (_vaultInfo[_vaultIndex.at(0)].block >= _block) {
+            if (_vaultInfo[_vaultIndex.at(0)].blockNumber >= _block) {
                 vaultResults[curResults++] = _vaultInfo[_vaultIndex.at(vid)];
             }
         }
