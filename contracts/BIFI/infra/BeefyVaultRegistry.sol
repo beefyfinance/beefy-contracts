@@ -206,9 +206,8 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         return vaultResults;
     }
 
-    // What is this supposed to do? 
-    function addTokensToVault(address[] memory _tokens) external onlyOwner {
-    //    return false;
+    function addTokensToVault(address _vault, address[] memory _tokens) external onlyOwner {
+        _vaultInfo[_vault].tokens = _tokens;
     }
 
     function setRetireStatus(address _address, bool _status) external onlyOwner {
