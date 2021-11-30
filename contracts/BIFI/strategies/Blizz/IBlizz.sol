@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.0;
+
 interface IBlizzMasterChef {
     function deposit(address _token, uint256 _amount) external;
     function withdraw(address _token, uint256 _amount) external;
