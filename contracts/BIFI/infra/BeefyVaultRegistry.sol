@@ -53,7 +53,7 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     struct VaultInfo {
         EnumerableSetUpgradeable.AddressSet tokens;
         bool retired;
-        uint256 block;
+        uint blockNumber;
         uint256 index;
     }
 
@@ -69,7 +69,6 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
 
     function intialize() public initializer {
         __Ownable_init();
-        //addVault(0xa4918a9B3CE89c3A179Ea873A45a901a4535eC65);
     }
 
     function addVaults(address[] memory _vaultAddresses) external {
@@ -102,30 +101,25 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     function _validateVault(IVault _vault) internal view returns (IStrategy strategy) {
         address vaultAddress = address(_vault);
 
-       // console.log('_validateVault address %s', address(_vault));
         try _vault.strategy() returns (IStrategy _strategy) {
             require(IStrategy(_strategy).vault() == vaultAddress, "Vault/Strat Mismatch");
-           // console.log('Strategy address is %s', address(_strategy));
             return IStrategy(_strategy);
         } catch {
             require(false, "Address not a Vault");
         }
     }
 
-    function _collectTokenData(IStrategy _strategy) internal view returns (address[] memory) {
+    function _collectTokenData(IStrategy _strategy) internal view returns (address[] memory tokens) {
         try _strategy.lpToken0() returns (address lpToken0) {
-            address[] memory tokens = new address[](3);
+            tokens = new address[](3);
 
             tokens[0] = address(_strategy.want());
             tokens[1] = address(lpToken0);
             tokens[2] = address(_strategy.lpToken1());
-
-            return tokens;
         } catch (bytes memory) {
-            address[] memory tokens = new address[](1);
+            tokens = new address[](1);
 
             tokens[0] = address(_strategy.want());
-            return tokens;
         }
     }
 
@@ -137,33 +131,27 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     function getVaultInfo(address _vaultAddress) external view returns (IStrategy strategy, bool isPaused, address[] memory tokens) {
         require(_isVaultInRegistry(_vaultAddress), "Invalid Vault Address");
 
-        IVault vault;
-        IStrategy strat;
-
-        tokens = _vaultInfoMap[_vaultAddress].tokens;
-        vault = IVault(_vaultAddress);
-        strat = IStrategy(vault.strategy());
-        isPaused = strat.paused();
-
-        return (strat, isPaused, tokens);
+        tokens = _vaultInfo[_vaultAddress].tokens;
+        IVault vault = IVault(_vaultAddress);
+        strategy = IStrategy(vault.strategy());
+        isPaused = strategy.paused();
     }
 
     function allVaultAddresses() public view returns (address[] memory) {
         return _vaultSet.values();
     }
 
-    function getVaultsForToken(address _token) external view returns (VaultInfo[] memory) {
+    function getVaultsForToken(address _token) external view returns (VaultInfo[] memory vaultResults) {
         VaultInfo[] memory vaultResults = new VaultInfo[](_vaultTokens[_token].length());
+        vaultResults = new VaultInfo[](_vaultTokens[_token].length());
 
         for (uint256 i; i < _vaultTokens[_token].length(); i++) {
             VaultInfo storage _vault = _vaultInfoMap[_vaultTokens[_token].at(i)];
             vaultResults[i] = _vault;
         }
-
-        return vaultResults;
     }
 
-    function getStakedVaultsForAddress(address _address) external view returns (VaultInfo[] memory) {
+    function getStakedVaultsForAddress(address _address) external view returns (VaultInfo[] memory stakedVaults) {
         uint256 curResults;
         uint256 numResults;
 
@@ -173,34 +161,30 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
             }
         }
 
-        VaultInfo[] memory stakedVaults = new VaultInfo[](numResults);
-        for (uint256 vid; vid < _vaultSet.length(); vid++) {
-            if (IVault(_vaultSet.at(vid)).balanceOf(_address) > 0) {
-                stakedVaults[curResults++] = _vaultInfoMap[_vaultSet.at(vid)];
+        stakedVaults = new VaultInfo[](numResults);
+        for (uint256 vid; vid < _vaultIndex.length(); vid++) {
+            if (IVault(_vaultIndex.at(vid)).balanceOf(_address) > 0) {
+                stakedVaults[curResults++] = _vaultInfo[_vaultIndex.at(vid)];
             }
         }
-
-        return stakedVaults;
     }
 
-    function getVaultsAfterBlock(uint256 _block) external view returns (VaultInfo[] memory) {
+    function getVaultsAfterBlock(uint256 _block) external view returns (VaultInfo[] memory vaultResults) {
         uint256 curResults;
         uint256 numResults;
 
-        for (uint256 vid; vid < _vaultSet.length(); vid++) {
-            if (_vaultInfoMap[_vaultSet.at(0)].block >= _block) {
+        for (uint256 vid; vid < _vaultIndex.length(); vid++) {
+            if (_vaultInfo[_vaultIndex.at(0)].blockNumber >= _block) {
                 numResults++;
             }
         }
 
-        VaultInfo[] memory vaultResults = new VaultInfo[](numResults);
-        for (uint256 vid; vid < _vaultSet.length(); vid++) {
-            if (_vaultInfoMap[_vaultSet.at(0)].block >= _block) {
-                vaultResults[curResults++] = _vaultInfoMap[_vaultSet.at(vid)];
+        vaultResults = new VaultInfo[](numResults);
+        for (uint256 vid; vid < _vaultIndex.length(); vid++) {
+            if (_vaultInfo[_vaultIndex.at(0)].blockNumber >= _block) {
+                vaultResults[curResults++] = _vaultInfo[_vaultIndex.at(vid)];
             }
         }
-
-        return vaultResults;
     }
 
     function addTokensToVault(address _vault, address[] memory _tokens) external onlyOwner {
