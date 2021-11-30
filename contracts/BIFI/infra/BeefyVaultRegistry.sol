@@ -74,7 +74,7 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     }
 
     function addVaults(address[] memory _vaultAddresses) external {
-        for (uint i = 0; i < _vaultAddresses.length; i++) {
+        for (uint i; i < _vaultAddresses.length; i++) {
             IVault vault = IVault(_vaultAddresses[i]);
             IStrategy strat;
            // console.log("Added vault is %s", i);
@@ -158,7 +158,7 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     function getVaultsForToken(address _token) external view returns (VaultRegistry[] memory) {
         VaultRegistry[] memory vaultResults = new VaultRegistry[](_vaultTokens[_token].length());
 
-        for (uint256 i = 0; i < _vaultTokens[_token].length(); i++) {
+        for (uint256 i; i < _vaultTokens[_token].length(); i++) {
             VaultRegistry storage _vault = _vaultInfo[_vaultTokens[_token].at(i)];
             vaultResults[i] = _vault;
         }
@@ -170,14 +170,14 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         uint256 curResults;
         uint256 numResults;
 
-        for (uint256 vid = 0; vid < _vaultIndex.length(); vid++) {
+        for (uint256 vid; vid < _vaultIndex.length(); vid++) {
             if (IVault(_vaultIndex.at(vid)).balanceOf(_address) > 0) {
                 numResults++;
             }
         }
 
         VaultRegistry[] memory stakedVaults = new VaultRegistry[](numResults);
-        for (uint256 vid = 0; vid < _vaultIndex.length(); vid++) {
+        for (uint256 vid; vid < _vaultIndex.length(); vid++) {
             if (IVault(_vaultIndex.at(vid)).balanceOf(_address) > 0) {
                 stakedVaults[curResults++] = _vaultInfo[_vaultIndex.at(vid)];
             }
@@ -190,14 +190,14 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         uint256 curResults;
         uint256 numResults;
 
-        for (uint256 vid = 0; vid < _vaultIndex.length(); vid++) {
+        for (uint256 vid; vid < _vaultIndex.length(); vid++) {
             if (_vaultInfo[_vaultIndex.at(0)].block >= _block) {
                 numResults++;
             }
         }
 
         VaultRegistry[] memory vaultResults = new VaultRegistry[](numResults);
-        for (uint256 vid = 0; vid < _vaultIndex.length(); vid++) {
+        for (uint256 vid; vid < _vaultIndex.length(); vid++) {
             if (_vaultInfo[_vaultIndex.at(0)].block >= _block) {
                 vaultResults[curResults++] = _vaultInfo[_vaultIndex.at(vid)];
             }
