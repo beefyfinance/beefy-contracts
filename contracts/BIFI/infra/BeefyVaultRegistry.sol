@@ -11,7 +11,7 @@ interface IUniswapV2Pair {
     function factory() external view returns (address);
     function token0() external view returns (address);
     function token1() external view returns (address);
-    function burn(address to) external returns (uint amount0, uint amount1);
+    function burn(address to) external returns (uint256 amount0, uint256 amount1);
     function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
 }
 
@@ -50,22 +50,21 @@ interface IVault is IERC20Upgradeable {
 contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
-    struct VaultRegistry {
-        address[] tokens;
+    struct VaultInfo {
+        EnumerableSetUpgradeable.AddressSet tokens;
         bool retired;
-        uint block;
+        uint256 block;
         uint256 index;
     }
 
-    mapping (address => VaultRegistry) private _vaultInfo;
-    mapping (address => EnumerableSetUpgradeable.AddressSet) private _vaultTokens;
-
-    EnumerableSetUpgradeable.AddressSet private _vaultIndex;
+    EnumerableSetUpgradeable.AddressSet private _vaultSet;
+    mapping (address => VaultInfo) private _vaultInfoMap;
 
     event VaultsRegistered(address[] vaults);
+    event VaultsRetired(address[] vaults);
 
     function getVaultCount() public view returns(uint256 count) {
-        return _vaultIndex.length();
+        return _vaultSet.length();
     }
 
     function intialize() public initializer {
@@ -74,32 +73,30 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     }
 
     function addVaults(address[] memory _vaultAddresses) external {
-        for (uint i; i < _vaultAddresses.length; i++) {
+        for (uint256 i; i < _vaultAddresses.length; i++) {
+            _addVault(_vaultAddresses[i]);
+        }
+        emit VaultsRegistered(_vaultAddresses);
+    }
+
+
+    function _addVault(address _vaultAddress) internal {
+            require(!_isVaultInRegistry(_vaultAddresses[i]), "Vault Exists");
+
             IVault vault = IVault(_vaultAddresses[i]);
-            IStrategy strat;
-           // console.log("Added vault is %s", i);
-
-            require(!_isVault(_vaultAddresses[i]), "Vault Exists");
-
-           // console.log('Validating vault');
-            strat = _validateVault(vault);
+            IStrategy strat = _validateVault(vault);
 
             address[] memory tokens = _collectTokenData(strat);
 
-          //  console.log('Adding vault to Index');
-            _vaultIndex.add(_vaultAddresses[i]);
+            _vaultSet.add(_vaultAddresses[i]);
 
             for (uint8 token_id = 0; token_id < tokens.length; token_id++) {
-               // console.log('Adding vault to token %s', tokens[token_id]);
                 _vaultTokens[tokens[token_id]].add(_vaultAddresses[i]);
             }
 
-            _vaultInfo[_vaultAddresses[i]].tokens = tokens;
-            _vaultInfo[_vaultAddresses[i]].block = block.number;
-            _vaultInfo[_vaultAddresses[i]].index = _vaultIndex.length() - 1; 
-        }
-
-        emit VaultsRegistered(_vaultAddresses);
+            _vaultInfoMap[_vaultAddresses[i]].tokens = tokens;
+            _vaultInfoMap[_vaultAddresses[i]].block = block.number;
+            _vaultInfoMap[_vaultAddresses[i]].index = _vaultSet.length() - 1; 
     }
 
     function _validateVault(IVault _vault) internal view returns (IStrategy strategy) {
@@ -132,18 +129,18 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         }
     }
 
-    function _isVault(address _address) internal view returns (bool isVault) {
-        if (_vaultIndex.length() == 0) return false;
-        return (_vaultIndex.contains(_address));
+    function _isVaultInRegistry(address _address) internal view returns (bool isVault) {
+        if (_vaultSet.length() == 0) return false;
+        return (_vaultSet.contains(_address));
     }
 
     function getVaultInfo(address _vaultAddress) external view returns (IStrategy strategy, bool isPaused, address[] memory tokens) {
-        require(_isVault(_vaultAddress), "Invalid Vault Address");
+        require(_isVaultInRegistry(_vaultAddress), "Invalid Vault Address");
 
         IVault vault;
         IStrategy strat;
 
-        tokens = _vaultInfo[_vaultAddress].tokens;
+        tokens = _vaultInfoMap[_vaultAddress].tokens;
         vault = IVault(_vaultAddress);
         strat = IStrategy(vault.strategy());
         isPaused = strat.paused();
@@ -152,54 +149,54 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     }
 
     function allVaultAddresses() public view returns (address[] memory) {
-        return _vaultIndex.values();
+        return _vaultSet.values();
     }
 
-    function getVaultsForToken(address _token) external view returns (VaultRegistry[] memory) {
-        VaultRegistry[] memory vaultResults = new VaultRegistry[](_vaultTokens[_token].length());
+    function getVaultsForToken(address _token) external view returns (VaultInfo[] memory) {
+        VaultInfo[] memory vaultResults = new VaultInfo[](_vaultTokens[_token].length());
 
         for (uint256 i; i < _vaultTokens[_token].length(); i++) {
-            VaultRegistry storage _vault = _vaultInfo[_vaultTokens[_token].at(i)];
+            VaultInfo storage _vault = _vaultInfoMap[_vaultTokens[_token].at(i)];
             vaultResults[i] = _vault;
         }
 
         return vaultResults;
     }
 
-    function getStakedVaultsForAddress(address _address) external view returns (VaultRegistry[] memory) {
+    function getStakedVaultsForAddress(address _address) external view returns (VaultInfo[] memory) {
         uint256 curResults;
         uint256 numResults;
 
-        for (uint256 vid; vid < _vaultIndex.length(); vid++) {
-            if (IVault(_vaultIndex.at(vid)).balanceOf(_address) > 0) {
+        for (uint256 vid; vid < _vaultSet.length(); vid++) {
+            if (IVault(_vaultSet.at(vid)).balanceOf(_address) > 0) {
                 numResults++;
             }
         }
 
-        VaultRegistry[] memory stakedVaults = new VaultRegistry[](numResults);
-        for (uint256 vid; vid < _vaultIndex.length(); vid++) {
-            if (IVault(_vaultIndex.at(vid)).balanceOf(_address) > 0) {
-                stakedVaults[curResults++] = _vaultInfo[_vaultIndex.at(vid)];
+        VaultInfo[] memory stakedVaults = new VaultInfo[](numResults);
+        for (uint256 vid; vid < _vaultSet.length(); vid++) {
+            if (IVault(_vaultSet.at(vid)).balanceOf(_address) > 0) {
+                stakedVaults[curResults++] = _vaultInfoMap[_vaultSet.at(vid)];
             }
         }
 
         return stakedVaults;
     }
 
-    function getVaultsAfterBlock(uint256 _block) external view returns (VaultRegistry[] memory) {
+    function getVaultsAfterBlock(uint256 _block) external view returns (VaultInfo[] memory) {
         uint256 curResults;
         uint256 numResults;
 
-        for (uint256 vid; vid < _vaultIndex.length(); vid++) {
-            if (_vaultInfo[_vaultIndex.at(0)].block >= _block) {
+        for (uint256 vid; vid < _vaultSet.length(); vid++) {
+            if (_vaultInfoMap[_vaultSet.at(0)].block >= _block) {
                 numResults++;
             }
         }
 
-        VaultRegistry[] memory vaultResults = new VaultRegistry[](numResults);
-        for (uint256 vid; vid < _vaultIndex.length(); vid++) {
-            if (_vaultInfo[_vaultIndex.at(0)].block >= _block) {
-                vaultResults[curResults++] = _vaultInfo[_vaultIndex.at(vid)];
+        VaultInfo[] memory vaultResults = new VaultInfo[](numResults);
+        for (uint256 vid; vid < _vaultSet.length(); vid++) {
+            if (_vaultInfoMap[_vaultSet.at(0)].block >= _block) {
+                vaultResults[curResults++] = _vaultInfoMap[_vaultSet.at(vid)];
             }
         }
 
@@ -207,12 +204,11 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     }
 
     function addTokensToVault(address _vault, address[] memory _tokens) external onlyOwner {
-        _vaultInfo[_vault].tokens = _tokens;
+        _vaultInfoMap[_vault].tokens = _tokens;
     }
 
     function setRetireStatus(address _address, bool _status) external onlyOwner {
-        require(_isVault(_address), "Not our Vault");
-
-        _vaultInfo[_address].retired = _status;
+        require(_isVaultInRegistry(_address), "Vault not found in registry.");
+        _vaultInfoMap[_address].retired = _status;
     }
 }
