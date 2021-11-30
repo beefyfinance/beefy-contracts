@@ -58,7 +58,9 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     }
 
     EnumerableSetUpgradeable.AddressSet private _vaultSet;
+
     mapping (address => VaultInfo) private _vaultInfoMap;
+    mapping (address => EnumerableSetUpgradeable.AddressSet) private _tokenToVaultsMap;
 
     event VaultsRegistered(address[] vaults);
     event VaultsRetired(address[] vaults);
@@ -80,22 +82,22 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
 
 
     function _addVault(address _vaultAddress) internal {
-            require(!_isVaultInRegistry(_vaultAddresses[i]), "Vault Exists");
+            require(!_isVaultInRegistry(_vaultAddress), "Vault Exists");
 
-            IVault vault = IVault(_vaultAddresses[i]);
+            IVault vault = IVault(_vaultAddress);
             IStrategy strat = _validateVault(vault);
 
             address[] memory tokens = _collectTokenData(strat);
 
-            _vaultSet.add(_vaultAddresses[i]);
+            _vaultSet.add(_vaultAddress);
 
             for (uint8 token_id = 0; token_id < tokens.length; token_id++) {
-                _vaultTokens[tokens[token_id]].add(_vaultAddresses[i]);
+                _tokenToVaultsMap[tokens[token_id]].add(_vaultAddress);
             }
 
-            _vaultInfoMap[_vaultAddresses[i]].tokens = tokens;
-            _vaultInfoMap[_vaultAddresses[i]].block = block.number;
-            _vaultInfoMap[_vaultAddresses[i]].index = _vaultSet.length() - 1; 
+            _vaultInfoMap[_vaultAddress].tokens = tokens;
+            _vaultInfoMap[_vaultAddress].block = block.number;
+            _vaultInfoMap[_vaultAddress].index = _vaultSet.length() - 1; 
     }
 
     function _validateVault(IVault _vault) internal view returns (IStrategy strategy) {
@@ -131,7 +133,7 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     function getVaultInfo(address _vaultAddress) external view returns (IStrategy strategy, bool isPaused, address[] memory tokens) {
         require(_isVaultInRegistry(_vaultAddress), "Invalid Vault Address");
 
-        tokens = _vaultInfo[_vaultAddress].tokens;
+        tokens = _vaultInfoMap[_vaultAddress].tokens;
         IVault vault = IVault(_vaultAddress);
         strategy = IStrategy(vault.strategy());
         isPaused = strategy.paused();
@@ -142,11 +144,10 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     }
 
     function getVaultsForToken(address _token) external view returns (VaultInfo[] memory vaultResults) {
-        VaultInfo[] memory vaultResults = new VaultInfo[](_vaultTokens[_token].length());
-        vaultResults = new VaultInfo[](_vaultTokens[_token].length());
 
-        for (uint256 i; i < _vaultTokens[_token].length(); i++) {
-            VaultInfo storage _vault = _vaultInfoMap[_vaultTokens[_token].at(i)];
+        vaultResults = new VaultInfo[](_tokenToVaultsMap[_token].length());
+            VaultInfo storage _vault = _vaultInfoMap[_tokenToVaultsMap[_token].at(i)];
+        for (uint256 i; i < _tokenToVaultsMap[_token].length(); i++) {
             vaultResults[i] = _vault;
         }
     }
@@ -162,9 +163,9 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         }
 
         stakedVaults = new VaultInfo[](numResults);
-        for (uint256 vid; vid < _vaultIndex.length(); vid++) {
-            if (IVault(_vaultIndex.at(vid)).balanceOf(_address) > 0) {
-                stakedVaults[curResults++] = _vaultInfo[_vaultIndex.at(vid)];
+        for (uint256 vid; vid < _vaultSet.length(); vid++) {
+            if (IVault(_vaultSet.at(vid)).balanceOf(_address) > 0) {
+                stakedVaults[curResults++] = _vaultInfoMap[_vaultSet.at(vid)];
             }
         }
     }
@@ -173,16 +174,16 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         uint256 curResults;
         uint256 numResults;
 
-        for (uint256 vid; vid < _vaultIndex.length(); vid++) {
-            if (_vaultInfo[_vaultIndex.at(0)].blockNumber >= _block) {
+        for (uint256 vid; vid < _vaultSet.length(); vid++) {
+            if (_vaultInfoMap[_vaultSet.at(0)].blockNumber >= _block) {
                 numResults++;
             }
         }
 
         vaultResults = new VaultInfo[](numResults);
-        for (uint256 vid; vid < _vaultIndex.length(); vid++) {
-            if (_vaultInfo[_vaultIndex.at(0)].blockNumber >= _block) {
-                vaultResults[curResults++] = _vaultInfo[_vaultIndex.at(vid)];
+        for (uint256 vid; vid < _vaultSet.length(); vid++) {
+            if (_vaultInfoMap[_vaultSet.at(0)].blockNumber >= _block) {
+                vaultResults[curResults++] = _vaultInfoMap[_vaultSet.at(vid)];
             }
         }
     }
