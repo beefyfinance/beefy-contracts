@@ -5,7 +5,7 @@
   "dependencies": {
     "@uniswap/lib": "^4.0.1-alpha",
     "bignumber.js": "^9.0.1",
-    "blockchain-addressbook": "^0.4.34",
+    "blockchain-addressbook": "^0.4.37",
     "keccak": "^3.0.1",
     "rlp": "^2.2.6",
     "ts-node": "^10.0.0",
