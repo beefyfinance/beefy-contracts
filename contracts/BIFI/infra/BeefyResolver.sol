@@ -45,15 +45,16 @@ contract BeefyAutoHarvester {
         multiHarvest = IMultiHarvest(_multiHarvest);
     }
 
-    function checker() external view returns (bool, bytes memory execPayload) {
+    function checker(uint256 _numberOfVaultsToCheck, uint256 _numberOfVaultsToSkip, bool _checkAllVaults) external view returns (bool, bytes memory execPayload) {
         function (address) view returns (bool) harvestCondition = _willHarvestStrategy;
         address[] memory vaults = vaultRegistry.allVaultAddresses();
+        address [] memory filteredVaults = _filterVaults(vaults, _numberOfVaultsToCheck, _numberOfVaultsToSkip, _checkAllVaults);
         
-        uint256 numberOfStrategiesToHarvest = _countStrategiesToHarvest(vaults, harvestCondition);
+        uint256 numberOfStrategiesToHarvest = _countStrategiesToHarvest(filteredVaults, harvestCondition);
         if (numberOfStrategiesToHarvest == 0)
             return (false, bytes("BeefyAutoHarvester: No strats to harvest"));
 
-        address[] memory strategiesToHarvest = _buildStrategiesToHarvest(vaults, harvestCondition, numberOfStrategiesToHarvest);
+        address[] memory strategiesToHarvest = _buildStrategiesToHarvest(filteredVaults, harvestCondition, numberOfStrategiesToHarvest);
 
         execPayload = abi.encodeWithSelector(
             IMultiHarvest.harvest.selector,
@@ -61,6 +62,28 @@ contract BeefyAutoHarvester {
         );
 
         return (true, execPayload);
+    }
+
+    function _filterVaults(address[] memory _vaults, uint256 _numberOfVaultsToCheck, uint256 _numberOfVaultsToSkip, bool _checkAllVaults) 
+        internal    
+        pure    
+        returns (address[] memory) 
+    {
+
+        uint256 filteredLength = _checkAllVaults
+            ? _vaults.length
+            : _numberOfVaultsToSkip + _numberOfVaultsToCheck > _vaults.length 
+            ? _vaults.length - _numberOfVaultsToSkip
+            : _numberOfVaultsToCheck;
+
+        address[] memory filteredVaults = new address[](filteredLength); 
+
+        for (uint256 index; index < filteredLength; index++) {
+            uint256 offset = index + _numberOfVaultsToSkip;
+            filteredVaults[index] = _vaults[offset];
+        }
+
+        return filteredVaults;
     }
 
     function _buildStrategiesToHarvest(address[] memory _vaults, function (address) view returns (bool) _harvestCondition, uint256 numberOfStrategiesToHarvest)
