@@ -45,16 +45,16 @@ contract BeefyAutoHarvester {
         multiHarvest = IMultiHarvest(_multiHarvest);
     }
 
-    function checker(uint256 _numberOfVaultsToCheck, uint256 _numberOfVaultsToSkip, bool _checkAllVaults) external view returns (bool, bytes memory execPayload) {
-        function (address) view returns (bool) harvestCondition = _willHarvestStrategy;
+    function checker(uint256 _harvestGasLimit, uint256 _numberOfVaultsToCheck, uint256 _numberOfVaultsToSkip, bool _checkAllVaults) external view returns (bool, bytes memory execPayload) {
+        function (uint256, address) view returns (bool) harvestCondition = _willHarvestStrategy;
         address[] memory vaults = vaultRegistry.allVaultAddresses();
         address [] memory filteredVaults = _filterVaults(vaults, _numberOfVaultsToCheck, _numberOfVaultsToSkip, _checkAllVaults);
         
-        uint256 numberOfStrategiesToHarvest = _countStrategiesToHarvest(filteredVaults, harvestCondition);
+        uint256 numberOfStrategiesToHarvest = _countStrategiesToHarvest(_harvestGasLimit, filteredVaults, harvestCondition);
         if (numberOfStrategiesToHarvest == 0)
             return (false, bytes("BeefyAutoHarvester: No strats to harvest"));
 
-        address[] memory strategiesToHarvest = _buildStrategiesToHarvest(filteredVaults, harvestCondition, numberOfStrategiesToHarvest);
+        address[] memory strategiesToHarvest = _buildStrategiesToHarvest(_harvestGasLimit, filteredVaults, harvestCondition, numberOfStrategiesToHarvest);
 
         execPayload = abi.encodeWithSelector(
             IMultiHarvest.harvest.selector,
@@ -86,7 +86,7 @@ contract BeefyAutoHarvester {
         return filteredVaults;
     }
 
-    function _buildStrategiesToHarvest(address[] memory _vaults, function (address) view returns (bool) _harvestCondition, uint256 numberOfStrategiesToHarvest)
+    function _buildStrategiesToHarvest(uint256 _harvestGasLimit, address[] memory _vaults, function (uint256, address) view returns (bool) _harvestCondition, uint256 numberOfStrategiesToHarvest)
         internal
         view
         returns (address[] memory)
@@ -102,7 +102,7 @@ contract BeefyAutoHarvester {
 
             address strategy = vault.strategy();
 
-            if (_harvestCondition(strategy)) {
+            if (_harvestCondition(_harvestGasLimit, strategy)) {
                 strategiesToHarvest[strategyPositionInArray] = address(strategy);
                 strategyPositionInArray += 1;
             }
@@ -113,7 +113,7 @@ contract BeefyAutoHarvester {
         return strategiesToHarvest;
     }
 
-    function _countStrategiesToHarvest(address[] memory _vaults, function (address) view returns (bool) _harvestCondition)
+    function _countStrategiesToHarvest(uint256 _harvestGasLimit, address[] memory _vaults, function (uint256, address) view returns (bool) _harvestCondition)
         internal
         view
         returns (uint256)
@@ -127,18 +127,18 @@ contract BeefyAutoHarvester {
 
             address strategyAddress = vault.strategy();
 
-            if (_harvestCondition(strategyAddress)) numberOfStrategiesToHarvest += 1;
+            if (_harvestCondition(_harvestGasLimit, strategyAddress)) numberOfStrategiesToHarvest += 1;
         }
 
         return numberOfStrategiesToHarvest;
     }
 
-    function _willHarvestStrategy(address _strategy) 
+    function _willHarvestStrategy(uint256 _harvestGasLimit, address _strategy) 
         internal
         view
         returns (bool)
     {
-        return _canHarvestStrategy(_strategy) && _shouldHarvestStrategy(_strategy);
+        return _canHarvestStrategy(_strategy) && _shouldHarvestStrategy(_harvestGasLimit, _strategy);
     }
 
     function _canHarvestStrategy(address _strategy) 
@@ -171,7 +171,7 @@ contract BeefyAutoHarvester {
         return canHarvest;
     }
 
-    function _shouldHarvestStrategy(address _strategy)
+    function _shouldHarvestStrategy(uint256 _harvestGasLimit, address _strategy)
         internal
         view
         returns (bool)
@@ -182,7 +182,9 @@ contract BeefyAutoHarvester {
 
         uint256 callRewardAmount = strategy.callReward();
 
-        bool isProfitableHarvest = callRewardAmount >= taskTreasury.maxFee();
+        uint256 txFee = _harvestGasLimit * tx.gasprice;
+
+        bool isProfitableHarvest = callRewardAmount >= txFee;
 
         bool shouldHarvestStrategy = isProfitableHarvest ||
             (!hasBeenHarvestedToday && callRewardAmount > 0);
