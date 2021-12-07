@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/kyber/IDMMRouter.sol";
-import "../../interfaces/common/IUniswapV2Pair.sol";
+import "../../interfaces/kyber/IDMMPool.sol";
 import "../../interfaces/kyber/IKyberFairLaunch.sol";
 import "../../interfaces/kyber/IRewardsLocker.sol";
 import "../Common/StratManager.sol";
@@ -77,14 +77,14 @@ contract StrategyKyber is StratManager, FeeManager {
         }
 
         // setup lp routing
-        lpToken0 = IUniswapV2Pair(want).token0();
+        lpToken0 = IDMMPool(want).token0();
         require(_outputToLp0Route[0] == output, "outputToLp0Route[0] != output");
         require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0, "outputToLp0Route[last] != lpToken0");
         for (uint i = 0; i < _outputToLp0Route.length; i++) {
             outputToLp0Route.push(IERC20(_outputToLp0Route[i]));
         }
 
-        lpToken1 = IUniswapV2Pair(want).token1();
+        lpToken1 = IDMMPool(want).token1();
         require(_outputToLp1Route[0] == output, "outputToLp1Route[0] != output");
         require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1, "outputToLp1Route[last] != lpToken1");
         for (uint i = 0; i < _outputToLp1Route.length; i++) {
@@ -150,7 +150,7 @@ contract StrategyKyber is StratManager, FeeManager {
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
         uint256 wantBeforeHarvest = balanceOfWant();
-        IKyberFairLaunch(fairLaunch).harvest(poolId);
+        IKyberFairLaunch(fairLaunch).deposit(poolId, 0, true);
 
         uint256 endIndex = IRewardsLocker(rewardsLocker).numVestingSchedules(address(this), IERC20(output)).sub(1);
         IRewardsLocker(rewardsLocker).vestSchedulesInRange(IERC20(output), storedIndex, endIndex);
@@ -187,14 +187,18 @@ contract StrategyKyber is StratManager, FeeManager {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+
+        uint256 split = getSplit();
+        uint256 outputBal0 = outputBal.mul(split).div(1e6);
+        uint256 outputBal1 = outputBal.sub(outputBal0);
 
         if (lpToken0 != output) {
-            IDMMRouter(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0PoolsPath, outputToLp0Route, address(this), now);
+            IDMMRouter(unirouter).swapExactTokensForTokens(outputBal0, 0, outputToLp0PoolsPath, outputToLp0Route, address(this), now);
         }
 
         if (lpToken1 != output) {
-            IDMMRouter(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1PoolsPath, outputToLp1Route, address(this), now);
+            IDMMRouter(unirouter).swapExactTokensForTokens(outputBal1, 0, outputToLp1PoolsPath, outputToLp1Route, address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
@@ -212,6 +216,20 @@ contract StrategyKyber is StratManager, FeeManager {
             address(this),
             now
         );
+    }
+
+    function getSplit() internal view returns (uint256) {
+        (uint256 reserve0, uint256 reserve1, uint256 vReserve0, uint256 vReserve1,) = IDMMPool(want).getTradeInfo();
+        uint256 lp0Decimals = ERC20(lpToken0).decimals();
+        uint256 lp1Decimals = ERC20(lpToken1).decimals();
+        uint256 ampReserve0 = reserve0.mul(10**lp1Decimals);
+        uint256 ampReserve1 = reserve1.mul(10**lp0Decimals);
+        uint256 ampVReserve0 = vReserve0.mul(10**lp1Decimals);
+        uint256 ampVReserve1 = vReserve1.mul(10**lp0Decimals);
+
+        uint256 ratio = ampReserve0.mul(ampVReserve1).mul(1e6).div(ampReserve1).div(ampVReserve0);
+
+        return ratio.mul(1e6).div(ratio.add(1e6));
     }
 
     // calculate the total underlaying 'want' held by the strat.
