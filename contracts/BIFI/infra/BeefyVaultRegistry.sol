@@ -33,7 +33,7 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         return _vaultSet.length();
     }
 
-    function intialize() public initializer {
+    function initialize() public initializer {
         __Ownable_init();
     }
 
