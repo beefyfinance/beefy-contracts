@@ -14,7 +14,7 @@ const { beefyfinance } = chainData.platforms;
 const config = {
   registry: {
     name: "BeefyVaultRegistry",
-    address: "",
+    address: "0x1dd815D547636e2a645fc4Cc77df095544F03d3F",
   },
 };
 
@@ -24,7 +24,7 @@ describe("BeefyVaultRegistry", () => {
   beforeEach(async () => {
     [deployer, keeper, other] = await ethers.getSigners();
 
-    registry = await ethers.getContractAt(config.registry.name, config.registry.name);
+    registry = await ethers.getContractAt(config.registry.name, config.registry.address);
   });
 
   it("adds vaults to the registry.", async () => {
