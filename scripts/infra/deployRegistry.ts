@@ -1,7 +1,7 @@
 import hardhat, { ethers, upgrades } from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
 
-const shouldVerifyOnEtherscan = true;
+const shouldVerifyOnEtherscan = false;
 
 const contractNames = {
   BeefyVaultRegistry: "BeefyVaultRegistry",
