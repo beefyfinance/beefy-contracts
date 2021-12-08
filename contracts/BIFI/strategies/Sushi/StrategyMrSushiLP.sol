@@ -72,12 +72,12 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
 
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
-        require(_sushiNativeToLp0Route[0] == output);
+        require(_sushiNativeToLp0Route[0] == sushiNative);
         require(_sushiNativeToLp0Route[_sushiNativeToLp0Route.length - 1] == lpToken0);
         sushiNativeToLp0Route = _sushiNativeToLp0Route;
 
         lpToken1 = IUniswapV2Pair(want).token1();
-        require(_sushiNativeToLp1Route[0] == output);
+        require(_sushiNativeToLp1Route[0] == sushiNative);
         require(_sushiNativeToLp1Route[_sushiNativeToLp1Route.length - 1] == lpToken1);
         sushiNativeToLp1Route = _sushiNativeToLp1Route;
 
