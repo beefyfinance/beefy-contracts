@@ -94,13 +94,15 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         return (_vaultSet.contains(_address));
     }
 
-    function getVaultInfo(address _vaultAddress) external view returns (IBeefyRegistryStrategy strategy, bool isPaused, address[] memory tokens) {
+    function getVaultInfo(address _vaultAddress) external view returns (string memory name, IBeefyRegistryStrategy strategy, bool isPaused, address[] memory tokens) {
         require(_isVaultInRegistry(_vaultAddress), "Invalid Vault Address");
 
-        tokens = _vaultInfoMap[_vaultAddress].tokens;
         IBeefyRegistryVault vault = IBeefyRegistryVault(_vaultAddress);
+
+        name = vault.name();
         strategy = IBeefyRegistryStrategy(vault.strategy());
         isPaused = strategy.paused();
+        tokens = _vaultInfoMap[_vaultAddress].tokens;
     }
 
     function allVaultAddresses() external view returns (address[] memory) {

@@ -4,6 +4,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "./IBeefyRegistryStrategy.sol";
 
 interface IBeefyRegistryVault is IERC20Upgradeable {
+    function name() external view returns (string memory);
     function deposit(uint256) external;
     function depositAll() external;
     function withdraw(uint256) external;
