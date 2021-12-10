@@ -46,6 +46,20 @@ describe("BeefyVaultRegistry", () => {
       expect(vaultAddressSet.has(vaultAddress)).to.be.true;
       try {
         const [strategy, isPaused, tokens] = await registry.getVaultInfo(vaultAddress);
+        console.log(`strategy address: ${strategy}`);
+        console.log(`isPaused: ${isPaused}`);
+        let tokenStr = "";
+        tokens.forEach(tokenAddress => {
+          const token = chainData.tokenAddressMap[tokenAddress];
+          let str = "";
+          if (token === undefined) {
+            str = tokenAddress;
+          } else {
+            str = token.symbol;
+          }
+          tokenStr += " " + str;
+        });
+        console.log(`tokens: ${tokenStr}`);
       } catch (e) {
         // fail test
         expect(true).to.eq(false, `Cannot get vault info for vault ${vaultAddress}`);
