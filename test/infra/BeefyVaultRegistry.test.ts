@@ -28,9 +28,9 @@ describe("BeefyVaultRegistry", () => {
   });
 
   it("adds vaults to the registry.", async () => {
-    const quick_matic_mana = "0x6b0Ce31eAD9b14c2281D80A5DDE903AB0855313A";
-    const quick_shib_matic = "0x5FB641De2663e8a94C9dea0a539817850d996e99";
-    const quick_dpi_eth = "0x9F77Ef7175032867d26E75D2fA267A6299E3fb57";
+    const quick_matic_mana = "0x72B5Cf05770C9a6A99FB8652825884ee36a4BfdA";
+    const quick_shib_matic = "0x5e03C75a8728a8E0FF0326baADC95433009424d6";
+    const quick_dpi_eth = "0x1a83915207c9028a9f71e7D9Acf41eD2beB6f42D";
 
     const vaultsToAdd = [quick_matic_mana, quick_shib_matic, quick_dpi_eth];
 
