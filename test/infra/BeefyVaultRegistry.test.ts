@@ -18,6 +18,11 @@ const config = {
   },
 };
 
+// test data
+const quick_matic_mana = "0x72B5Cf05770C9a6A99FB8652825884ee36a4BfdA";
+const quick_shib_matic = "0x5e03C75a8728a8E0FF0326baADC95433009424d6";
+const quick_dpi_eth = "0x1a83915207c9028a9f71e7D9Acf41eD2beB6f42D";
+
 describe("BeefyVaultRegistry", () => {
   let registry, deployer, keeper, other;
 
@@ -64,6 +69,16 @@ describe("BeefyVaultRegistry", () => {
         // fail test
         expect(true).to.eq(false, `Cannot get vault info for vault ${vaultAddress}`);
       }
+    }
+  }).timeout(TIMEOUT);
+
+  it("should not be able to add same vault twice", async () => {
+    const vaultsToAdd = [quick_matic_mana];
+
+    try {
+      await registry.addVaults(vaultsToAdd);
+      expect(true).to.eq(false, `Vault was successfully added twice, should not be possible.`);
+    } catch (e) {
     }
   }).timeout(TIMEOUT);
 });
