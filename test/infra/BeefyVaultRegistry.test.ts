@@ -18,12 +18,17 @@ const config = {
   },
 };
 
-// test data
-const quick_matic_mana = "0x72B5Cf05770C9a6A99FB8652825884ee36a4BfdA";
-const quick_shib_matic = "0x5e03C75a8728a8E0FF0326baADC95433009424d6";
-const quick_dpi_eth = "0x1a83915207c9028a9f71e7D9Acf41eD2beB6f42D";
-const quick_quick = "0x659418cc3cf755F5367a51aDb586a7F770Da6d29"; // single asset
-const curve_poly_atricrypto3 = "0x5A0801BAd20B6c62d86C566ca90688A6b9ea1d3f"; // >2 token LP
+const testData = {
+    vaults: {
+      quick_quick_eth: "0x66df1B2d22759D03A9f37BAaAc826089e56a5936",
+      quick_matic_mana: "0x72B5Cf05770C9a6A99FB8652825884ee36a4BfdA",
+      quick_shib_matic: "0x5e03C75a8728a8E0FF0326baADC95433009424d6",
+      quick_dpi_eth: "0x1a83915207c9028a9f71e7D9Acf41eD2beB6f42D",
+      quick_quick: "0x659418cc3cf755F5367a51aDb586a7F770Da6d29", // single asset
+      curve_poly_atricrypto3: "0x5A0801BAd20B6c62d86C566ca90688A6b9ea1d3f", // >2 token LP
+    }
+}
+
 
 describe("BeefyVaultRegistry", () => {
   let registry, deployer, keeper, other;
@@ -35,7 +40,7 @@ describe("BeefyVaultRegistry", () => {
   });
 
   it("adds vaults to the registry.", async () => {
-    const vaultsToAdd = [quick_matic_mana, quick_shib_matic, quick_dpi_eth, quick_quick, curve_poly_atricrypto3];
+    const vaultsToAdd = Object.values(testData.vaults);
 
     await registry.addVaults(vaultsToAdd);
 
@@ -80,5 +85,25 @@ describe("BeefyVaultRegistry", () => {
       expect(true).to.eq(false, `Vault was successfully added twice, should not be possible.`);
     } catch (e) {
     }
+  }).timeout(TIMEOUT);
+
+  it("fetches correct vaults by token address", async () => {
+    const {WMATIC, QUICK} = chainData.tokens;
+    const triCryptoWant = "0xdAD97F7713Ae9437fa9249920eC8507e5FbB23d3";
+
+    // find by one of the two tokens in lp pair
+    const expectedMaticVaultCount = Object.keys(testData.vaults).filter(vaultName => vaultName.toLowerCase().includes("matic")).length;
+    let vaults = await registry.getVaultsForToken(WMATIC.address);
+    expect(vaults.length).to.eq(expectedMaticVaultCount);
+
+    // find by want
+    vaults = await registry.getVaultsForToken(triCryptoWant); 
+    expect(vaults.length).to.eq(1);
+
+    // find by token that is a single asset and a token in LP pair (quick)
+    const expectedQuickVaultCount = Object.keys(testData.vaults).filter(vaultName => vaultName.toLowerCase().includes("_quick")).length; // _quick to avoid vault platform prefix 
+    vaults = await registry.getVaultsForToken(QUICK.address); 
+    expect(vaults.length).to.eq(expectedQuickVaultCount);
+    
   }).timeout(TIMEOUT);
 });
