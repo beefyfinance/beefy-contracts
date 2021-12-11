@@ -86,7 +86,7 @@ describe("BeefyVaultRegistry", () => {
   }).timeout(TIMEOUT);
 
   it("should not be able to add same vault twice", async () => {
-    const vaultsToAdd = [quick_matic_mana];
+    const vaultsToAdd = [testData.vaults.quick_matic_mana];
 
     try {
       await registry.addVaults(vaultsToAdd);
