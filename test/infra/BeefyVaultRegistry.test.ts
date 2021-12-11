@@ -5,6 +5,8 @@ import { delay } from "../../utils/timeHelpers";
 
 import { addressBook } from "blockchain-addressbook";
 
+import { BeefyVaultRegistry } from "../../typechain-types";
+
 const TIMEOUT = 10 * 60 * 100000;
 
 const chainName = "polygon";
@@ -19,64 +21,68 @@ const config = {
 };
 
 const testData = {
-    vaults: {
-      quick_quick_eth: "0x66df1B2d22759D03A9f37BAaAc826089e56a5936",
-      quick_matic_mana: "0x72B5Cf05770C9a6A99FB8652825884ee36a4BfdA",
-      quick_shib_matic: "0x5e03C75a8728a8E0FF0326baADC95433009424d6",
-      quick_dpi_eth: "0x1a83915207c9028a9f71e7D9Acf41eD2beB6f42D",
-      quick_quick: "0x659418cc3cf755F5367a51aDb586a7F770Da6d29", // single asset
-      curve_poly_atricrypto3: "0x5A0801BAd20B6c62d86C566ca90688A6b9ea1d3f", // >2 token LP
+  vaults: {
+    quick_quick_eth: "0x66df1B2d22759D03A9f37BAaAc826089e56a5936",
+    quick_matic_mana: "0x72B5Cf05770C9a6A99FB8652825884ee36a4BfdA",
+    quick_shib_matic: "0x5e03C75a8728a8E0FF0326baADC95433009424d6",
+    quick_dpi_eth: "0x1a83915207c9028a9f71e7D9Acf41eD2beB6f42D",
+    quick_quick: "0x659418cc3cf755F5367a51aDb586a7F770Da6d29", // single asset
+    curve_poly_atricrypto3: "0x5A0801BAd20B6c62d86C566ca90688A6b9ea1d3f", // >2 token LP
   },
 };
 
 describe("BeefyVaultRegistry", () => {
-  let registry, deployer, keeper, other;
+  let registry: BeefyVaultRegistry;
+  let deployer, keeper, other;
 
   beforeEach(async () => {
     [deployer, keeper, other] = await ethers.getSigners();
 
-    registry = await ethers.getContractAt(config.registry.name, config.registry.address);
+    registry = (await ethers.getContractAt(
+      config.registry.name,
+      config.registry.address
+    )) as unknown as BeefyVaultRegistry;
   });
 
   it("adds vaults to the registry.", async () => {
     const vaultsToAdd = Object.values(testData.vaults);
 
     const addAndValidate = async (vaultsToAdd: string[]) => {
-    await registry.addVaults(vaultsToAdd);
+      await registry.addVaults(vaultsToAdd);
 
-    const vaultCount = await registry.getVaultCount();
-    const vaultAddresses = await registry.allVaultAddresses();
-    const vaultAddressSet = new Set(vaultAddresses);
+      const vaultCount = await registry.getVaultCount();
+      const vaultAddresses = await registry.allVaultAddresses();
+      const vaultAddressSet = new Set(vaultAddresses);
 
-    expect(vaultCount).to.be.eq(vaultsToAdd.length);
+      expect(vaultCount).to.be.eq(vaultsToAdd.length);
 
-    for (const vaultAddress of vaultsToAdd) {
-      expect(vaultAddressSet.has(vaultAddress)).to.be.true;
-      try {
+      for (const vaultAddress of vaultsToAdd) {
+        expect(vaultAddressSet.has(vaultAddress)).to.be.true;
+        try {
           const [name, strategy, isPaused, tokens, blockNumber, retired] = await registry.getVaultInfo(vaultAddress);
-        console.log(`Vault name: ${name}`);
-        console.log(`strategy address: ${strategy}`);
-        console.log(`isPaused: ${isPaused}`);
-        let tokenStr = "";
-        tokens.forEach(tokenAddress => {
-          const token = chainData.tokenAddressMap[tokenAddress];
-          let str = "";
-          if (token === undefined) {
-            str = tokenAddress;
-          } else {
-            str = token.symbol;
-          }
-          tokenStr += " " + str;
-        });
-        console.log(`tokens: ${tokenStr}`);
+          console.log(`Vault name: ${name}`);
+          console.log(`strategy address: ${strategy}`);
+          console.log(`isPaused: ${isPaused}`);
+          let tokenStr = "";
+          tokens.forEach(tokenAddress => {
+            const token = chainData.tokenAddressMap[tokenAddress];
+            let str = "";
+            if (token === undefined) {
+              str = tokenAddress;
+            } else {
+              str = token.symbol;
+            }
+            tokenStr += " " + str;
+          });
+          console.log(`tokens: ${tokenStr}`);
           console.log(`blockNumber: ${blockNumber}`);
           console.log(`retired: ${retired}`);
-        console.log();
-      } catch (e) {
-        // fail test
-        expect(true).to.eq(false, `Cannot get vault info for vault ${vaultAddress}`);
+          console.log();
+        } catch (e) {
+          // fail test
+          expect(true).to.eq(false, `Cannot get vault info for vault ${vaultAddress}`);
+        }
       }
-    }
     };
 
     const half = vaultsToAdd.length / 2;
@@ -106,14 +112,14 @@ describe("BeefyVaultRegistry", () => {
     expect(vaults.length).to.eq(expectedMaticVaultCount);
 
     // find by want
-    vaults = await registry.getVaultsForToken(triCryptoWant); 
+    vaults = await registry.getVaultsForToken(triCryptoWant);
     expect(vaults.length).to.eq(1);
 
     // find by token that is a single asset and a token in LP pair (quick)
     const expectedQuickVaultCount = Object.keys(testData.vaults).filter(vaultName =>
       vaultName.toLowerCase().includes("_quick")
     ).length; // _quick to avoid vault platform prefix
-    vaults = await registry.getVaultsForToken(QUICK.address); 
+    vaults = await registry.getVaultsForToken(QUICK.address);
     expect(vaults.length).to.eq(expectedQuickVaultCount);
   }).timeout(TIMEOUT);
 
@@ -123,9 +129,7 @@ describe("BeefyVaultRegistry", () => {
     const first = vaultAddresses[0];
     const last = vaultAddresses[vaultAddresses.length - 1];
 
-    const firstInfo = await registry.getVaultInfo(first);
-    const [blockNumber] = firstInfo;
-    
+    const { blockNumber } = await registry.getVaultInfo(first);
     const vaultsAfterBlockNumber = await registry.getVaultsAfterBlock(blockNumber);
 
     expect(vaultsAfterBlockNumber.length).to.eq(1);
