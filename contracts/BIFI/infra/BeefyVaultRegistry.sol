@@ -159,10 +159,10 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     }
 
     function setVaultTokens(address _vault, address[] memory _tokens) external onlyOwner {
-        EnumerableSetUpgradeable.AddressSet currentTokens = _vaultInfoMap[_vault].tokens
+        address[] memory currentTokens = _vaultInfoMap[_vault].tokens;
 
         // remove all old mapping of token to vault
-        for (uint256 tokenIndex; tokenIndex < currentTokens.length(); tokenIndex++) {
+        for (uint256 tokenIndex; tokenIndex < currentTokens.length; tokenIndex++) {
             _tokenToVaultsMap[_tokens[tokenIndex]].remove(_vault);
         }
 
@@ -170,7 +170,7 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         _vaultInfoMap[_vault].tokens = _tokens;
 
         // update token to vault mapping with new tokens
-        for (uint256 tokenIndex; tokenIndex < _tokens.length(); tokenIndex++) {
+        for (uint256 tokenIndex; tokenIndex < _tokens.length; tokenIndex++) {
             _tokenToVaultsMap[_tokens[tokenIndex]].add(_vault);
         }
     }

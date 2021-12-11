@@ -16,7 +16,7 @@ const { beefyfinance } = chainData.platforms;
 const config = {
   registry: {
     name: "BeefyVaultRegistry",
-    address: "0x75a02B816c31107eFCe4d203c6E947De022C65c3",
+    address: "0x45372a9cB37252cf9D309D37793b5a07F6c018c0",
   },
 };
 
@@ -143,7 +143,7 @@ describe("BeefyVaultRegistry", () => {
     const { WBTC, ETH, USDT } = chainData.tokens;
     const tokensToAdd = [...([WBTC, ETH, USDT].map(token => token.address)), testData.wants.curve_poly_atricrypto3];
 
-    await registry.addTokensToVault(testData.vaults.curve_poly_atricrypto3, tokensToAdd);
+    await registry.setVaultTokens(testData.vaults.curve_poly_atricrypto3, tokensToAdd);
 
     const vaultInfo = await registry.getVaultInfo(testData.vaults.curve_poly_atricrypto3);
     expect(vaultInfo.tokens.length).to.eq(4); // want + 3 tokens
