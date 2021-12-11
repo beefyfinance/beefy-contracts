@@ -17,7 +17,7 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     struct VaultInfo {
         address[] tokens;
         bool retired;
-        uint blockNumber;
+        uint256 blockNumber;
         uint256 index;
     }
 
@@ -94,7 +94,7 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         return (_vaultSet.contains(_address));
     }
 
-    function getVaultInfo(address _vaultAddress) external view returns (string memory name, IBeefyRegistryStrategy strategy, bool isPaused, address[] memory tokens) {
+    function getVaultInfo(address _vaultAddress) external view returns (string memory name, IBeefyRegistryStrategy strategy, bool isPaused, address[] memory tokens, uint256 blockNumber, bool retired) {
         require(_isVaultInRegistry(_vaultAddress), "Invalid Vault Address");
 
         IBeefyRegistryVault vault = IBeefyRegistryVault(_vaultAddress);
@@ -102,7 +102,11 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         name = vault.name();
         strategy = IBeefyRegistryStrategy(vault.strategy());
         isPaused = strategy.paused();
-        tokens = _vaultInfoMap[_vaultAddress].tokens;
+        
+        VaultInfo memory vaultInfo = _vaultInfoMap[_vaultAddress];
+        tokens = vaultInfo.tokens;
+        blockNumber = vaultInfo.blockNumber;
+        retired = vaultInfo.retired;
     }
 
     function allVaultAddresses() external view returns (address[] memory) {
@@ -110,10 +114,9 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     }
 
     function getVaultsForToken(address _token) external view returns (VaultInfo[] memory vaultResults) {
-
         vaultResults = new VaultInfo[](_tokenToVaultsMap[_token].length());
         for (uint256 i; i < _tokenToVaultsMap[_token].length(); i++) {
-            VaultInfo storage _vault = _vaultInfoMap[_tokenToVaultsMap[_token].at(i)];
+            VaultInfo memory _vault = _vaultInfoMap[_tokenToVaultsMap[_token].at(i)];
             vaultResults[i] = _vault;
         }
     }

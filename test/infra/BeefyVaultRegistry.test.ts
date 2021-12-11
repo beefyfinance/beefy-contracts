@@ -120,15 +120,14 @@ describe("BeefyVaultRegistry", () => {
   it("gets vaults after a block number correctly", async () => {
     // first vault should be added earlier than last vault, since seperate txs, as seen in "adds vaults to the registry." test case.
     const vaultAddresses = Object.values(testData.vaults);
-    const first = vaultAddresses[0]
-    const last = vaultAddresses[vaultAddresses.length-1]
+    const first = vaultAddresses[0];
+    const last = vaultAddresses[vaultAddresses.length - 1];
 
     const firstInfo = await registry.getVaultInfo(first);
-    const [ blockNumber ] = firstInfo;
+    const [blockNumber] = firstInfo;
     
     const vaultsAfterBlockNumber = await registry.getVaultsAfterBlock(blockNumber);
 
     expect(vaultsAfterBlockNumber.length).to.eq(1);
-    
   }).timeout(TIMEOUT);
 });
