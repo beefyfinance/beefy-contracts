@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import "../interfaces/beefy/IBeefyRegistryVault.sol";
 import "../interfaces/beefy/IBeefyRegistryStrategy.sol";
-
+import "hardhat/console.sol";
 
 contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
@@ -96,7 +96,7 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
 
     function getVaultInfo(address _vaultAddress) external view returns (string memory name, IBeefyRegistryStrategy strategy, bool isPaused, address[] memory tokens, uint256 blockNumber, bool retired) {
         require(_isVaultInRegistry(_vaultAddress), "Invalid Vault Address");
-
+        
         IBeefyRegistryVault vault = IBeefyRegistryVault(_vaultAddress);
 
         name = vault.name();
@@ -143,16 +143,17 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         uint256 curResults;
         uint256 numResults;
 
-        for (uint256 vid; vid < _vaultSet.length(); vid++) {
-            if (_vaultInfoMap[_vaultSet.at(0)].blockNumber >= _block) {
+        for (uint256 vaultIndex; vaultIndex < _vaultSet.length(); vaultIndex++) {
+            if (_vaultInfoMap[_vaultSet.at(vaultIndex)].blockNumber >= _block) {
                 numResults++;
             }
         }
 
         vaultResults = new VaultInfo[](numResults);
-        for (uint256 vid; vid < _vaultSet.length(); vid++) {
-            if (_vaultInfoMap[_vaultSet.at(0)].blockNumber >= _block) {
-                vaultResults[curResults++] = _vaultInfoMap[_vaultSet.at(vid)];
+        for (uint256 vaultIndex; vaultIndex < _vaultSet.length(); vaultIndex++) {
+            VaultInfo memory vaultInfo = _vaultInfoMap[_vaultSet.at(vaultIndex)];
+            if (vaultInfo.blockNumber >= _block) {
+                vaultResults[curResults++] = vaultInfo;
             }
         }
     }
