@@ -16,7 +16,7 @@ const { beefyfinance } = chainData.platforms;
 const config = {
   registry: {
     name: "BeefyVaultRegistry",
-    address: "0x1dd815D547636e2a645fc4Cc77df095544F03d3F",
+    address: "0x75a02B816c31107eFCe4d203c6E947De022C65c3",
   },
 };
 
@@ -29,6 +29,9 @@ const testData = {
     quick_quick: "0x659418cc3cf755F5367a51aDb586a7F770Da6d29", // single asset
     curve_poly_atricrypto3: "0x5A0801BAd20B6c62d86C566ca90688A6b9ea1d3f", // >2 token LP
   },
+  wants: {
+    curve_poly_atricrypto3: "0xdAD97F7713Ae9437fa9249920eC8507e5FbB23d3"
+  }
 };
 
 describe("BeefyVaultRegistry", () => {
@@ -48,13 +51,15 @@ describe("BeefyVaultRegistry", () => {
     const vaultsToAdd = Object.values(testData.vaults);
 
     const addAndValidate = async (vaultsToAdd: string[]) => {
+      const prevVaultCount = await registry.getVaultCount();
+
       await registry.addVaults(vaultsToAdd);
 
       const vaultCount = await registry.getVaultCount();
       const vaultAddresses = await registry.allVaultAddresses();
       const vaultAddressSet = new Set(vaultAddresses);
 
-      expect(vaultCount).to.be.eq(vaultsToAdd.length);
+      expect(vaultCount).to.be.eq(prevVaultCount.add(vaultsToAdd.length));
 
       for (const vaultAddress of vaultsToAdd) {
         expect(vaultAddressSet.has(vaultAddress)).to.be.true;
@@ -85,10 +90,10 @@ describe("BeefyVaultRegistry", () => {
       }
     };
 
-    const half = vaultsToAdd.length / 2;
-    await addAndValidate(vaultsToAdd.slice(0, half));
-    await delay(5000); // add vaults at different block numbers
-    await addAndValidate(vaultsToAdd.slice(half, vaultsToAdd.length));
+    const allButOne = vaultsToAdd.length - 1;
+    await addAndValidate(vaultsToAdd.slice(0, allButOne));
+    await delay(20000); // add vaults at different block numbers
+    await addAndValidate(vaultsToAdd.slice(allButOne, vaultsToAdd.length));
   }).timeout(TIMEOUT);
 
   it("should not be able to add same vault twice", async () => {
@@ -102,7 +107,6 @@ describe("BeefyVaultRegistry", () => {
 
   it("fetches correct vaults by token address", async () => {
     const { WMATIC, QUICK } = chainData.tokens;
-    const triCryptoWant = "0xdAD97F7713Ae9437fa9249920eC8507e5FbB23d3";
 
     // find by one of the two tokens in lp pair
     const expectedMaticVaultCount = Object.keys(testData.vaults).filter(vaultName =>
@@ -112,7 +116,7 @@ describe("BeefyVaultRegistry", () => {
     expect(vaults.length).to.eq(expectedMaticVaultCount);
 
     // find by want
-    vaults = await registry.getVaultsForToken(triCryptoWant);
+    vaults = await registry.getVaultsForToken(testData.wants.curve_poly_atricrypto3);
     expect(vaults.length).to.eq(1);
 
     // find by token that is a single asset and a token in LP pair (quick)
@@ -127,11 +131,42 @@ describe("BeefyVaultRegistry", () => {
     // first vault should be added earlier than last vault, since seperate txs, as seen in "adds vaults to the registry." test case.
     const vaultAddresses = Object.values(testData.vaults);
     const first = vaultAddresses[0];
-    const last = vaultAddresses[vaultAddresses.length - 1];
 
     const { blockNumber } = await registry.getVaultInfo(first);
-    const vaultsAfterBlockNumber = await registry.getVaultsAfterBlock(blockNumber);
+    const nextBlock = blockNumber.add(1).toNumber();
+    const vaultsAfterBlockNumber = await registry.getVaultsAfterBlock(nextBlock);
 
     expect(vaultsAfterBlockNumber.length).to.eq(1);
+  }).timeout(TIMEOUT);
+
+  it("sets tokens on existing vault correctly", async () => {
+    const { WBTC, ETH, USDT } = chainData.tokens;
+    const tokensToAdd = [...([WBTC, ETH, USDT].map(token => token.address)), testData.wants.curve_poly_atricrypto3];
+
+    await registry.addTokensToVault(testData.vaults.curve_poly_atricrypto3, tokensToAdd);
+
+    const vaultInfo = await registry.getVaultInfo(testData.vaults.curve_poly_atricrypto3);
+    expect(vaultInfo.tokens.length).to.eq(4); // want + 3 tokens
+    const tokenSet = new Set(vaultInfo.tokens);
+    tokensToAdd.forEach(tokenAddress => {
+      expect(tokenSet.has(tokenAddress)).to.be.true
+    })
+
+    const vaults = await registry.getVaultsForToken(WBTC.address);
+    expect(vaults.length).to.eq(1);
+
+  }).timeout(TIMEOUT);
+
+  it("retires vault correctly", async () => {
+    await registry.setRetireStatus(testData.vaults.curve_poly_atricrypto3, true);
+
+    let vaultInfo = await registry.getVaultInfo(testData.vaults.curve_poly_atricrypto3);
+    expect(vaultInfo.retired).to.be.true
+
+    await registry.setRetireStatus(testData.vaults.curve_poly_atricrypto3, false);
+
+    vaultInfo = await registry.getVaultInfo(testData.vaults.curve_poly_atricrypto3);
+    expect(vaultInfo.retired).to.be.false
+
   }).timeout(TIMEOUT);
 });
