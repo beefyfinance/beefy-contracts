@@ -30,4 +30,4 @@ bin/flatten.sh
 /cache
 /artifacts
 
-typechain
+typechain-types
