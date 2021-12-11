@@ -26,9 +26,8 @@ const testData = {
       quick_dpi_eth: "0x1a83915207c9028a9f71e7D9Acf41eD2beB6f42D",
       quick_quick: "0x659418cc3cf755F5367a51aDb586a7F770Da6d29", // single asset
       curve_poly_atricrypto3: "0x5A0801BAd20B6c62d86C566ca90688A6b9ea1d3f", // >2 token LP
-    }
-}
-
+  },
+};
 
 describe("BeefyVaultRegistry", () => {
   let registry, deployer, keeper, other;
@@ -42,6 +41,7 @@ describe("BeefyVaultRegistry", () => {
   it("adds vaults to the registry.", async () => {
     const vaultsToAdd = Object.values(testData.vaults);
 
+    const addAndValidate = async (vaultsToAdd: string[]) => {
     await registry.addVaults(vaultsToAdd);
 
     const vaultCount = await registry.getVaultCount();
@@ -53,7 +53,7 @@ describe("BeefyVaultRegistry", () => {
     for (const vaultAddress of vaultsToAdd) {
       expect(vaultAddressSet.has(vaultAddress)).to.be.true;
       try {
-        const [name, strategy, isPaused, tokens] = await registry.getVaultInfo(vaultAddress);
+          const [name, strategy, isPaused, tokens, blockNumber, retired] = await registry.getVaultInfo(vaultAddress);
         console.log(`Vault name: ${name}`);
         console.log(`strategy address: ${strategy}`);
         console.log(`isPaused: ${isPaused}`);
@@ -69,12 +69,20 @@ describe("BeefyVaultRegistry", () => {
           tokenStr += " " + str;
         });
         console.log(`tokens: ${tokenStr}`);
+          console.log(`blockNumber: ${blockNumber}`);
+          console.log(`retired: ${retired}`);
         console.log();
       } catch (e) {
         // fail test
         expect(true).to.eq(false, `Cannot get vault info for vault ${vaultAddress}`);
       }
     }
+    };
+
+    const half = vaultsToAdd.length / 2;
+    addAndValidate(vaultsToAdd.slice(0, half));
+    delay(5000); // add vaults at different block numbers
+    addAndValidate(vaultsToAdd.slice(half, vaultsToAdd.length)); 
   }).timeout(TIMEOUT);
 
   it("should not be able to add same vault twice", async () => {
@@ -83,16 +91,17 @@ describe("BeefyVaultRegistry", () => {
     try {
       await registry.addVaults(vaultsToAdd);
       expect(true).to.eq(false, `Vault was successfully added twice, should not be possible.`);
-    } catch (e) {
-    }
+    } catch (e) {}
   }).timeout(TIMEOUT);
 
   it("fetches correct vaults by token address", async () => {
-    const {WMATIC, QUICK} = chainData.tokens;
+    const { WMATIC, QUICK } = chainData.tokens;
     const triCryptoWant = "0xdAD97F7713Ae9437fa9249920eC8507e5FbB23d3";
 
     // find by one of the two tokens in lp pair
-    const expectedMaticVaultCount = Object.keys(testData.vaults).filter(vaultName => vaultName.toLowerCase().includes("matic")).length;
+    const expectedMaticVaultCount = Object.keys(testData.vaults).filter(vaultName =>
+      vaultName.toLowerCase().includes("matic")
+    ).length;
     let vaults = await registry.getVaultsForToken(WMATIC.address);
     expect(vaults.length).to.eq(expectedMaticVaultCount);
 
@@ -101,9 +110,25 @@ describe("BeefyVaultRegistry", () => {
     expect(vaults.length).to.eq(1);
 
     // find by token that is a single asset and a token in LP pair (quick)
-    const expectedQuickVaultCount = Object.keys(testData.vaults).filter(vaultName => vaultName.toLowerCase().includes("_quick")).length; // _quick to avoid vault platform prefix 
+    const expectedQuickVaultCount = Object.keys(testData.vaults).filter(vaultName =>
+      vaultName.toLowerCase().includes("_quick")
+    ).length; // _quick to avoid vault platform prefix
     vaults = await registry.getVaultsForToken(QUICK.address); 
     expect(vaults.length).to.eq(expectedQuickVaultCount);
+  }).timeout(TIMEOUT);
+
+  it("gets vaults after a block number correctly", async () => {
+    // first vault should be added earlier than last vault, since seperate txs, as seen in "adds vaults to the registry." test case.
+    const vaultAddresses = Object.values(testData.vaults);
+    const first = vaultAddresses[0]
+    const last = vaultAddresses[vaultAddresses.length-1]
+
+    const firstInfo = await registry.getVaultInfo(first);
+    const [ blockNumber ] = firstInfo;
+    
+    const vaultsAfterBlockNumber = await registry.getVaultsAfterBlock(blockNumber);
+
+    expect(vaultsAfterBlockNumber.length).to.eq(1);
     
   }).timeout(TIMEOUT);
 });
