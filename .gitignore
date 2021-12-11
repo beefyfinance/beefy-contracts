@@ -29,3 +29,5 @@ bin/flatten.sh
 # Solidity
 /cache
 /artifacts
+
+typechain
