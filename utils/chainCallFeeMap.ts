@@ -1,14 +1,19 @@
-import { ChainId } from "blockchain-addressbook";
+import { BeefyChain } from "./beefyChain"
 
-export const chainCallFeeMap: Record<keyof typeof ChainId & "localhost", number> = {
-  bsc: 111,
-  avax: 111,
-  polygon: 11,
-  heco: 11,
-  fantom: 11,
-  one: 111,
-  arbitrum: 111,
-  moonriver: 11,
-  cronos: 111,
-  localhost: 11,
+const defaultFee = 111;
+const reducedFee = 11;
+
+export const chainCallFeeMap: Record<BeefyChain, number> = {
+  bsc: defaultFee,
+  avax: defaultFee,
+  polygon: reducedFee,
+  heco: reducedFee,
+  fantom: reducedFee,
+  one: defaultFee,
+  arbitrum: defaultFee,
+  moonriver: reducedFee,
+  cronos: defaultFee,
+  localhost: reducedFee,
+  celo: defaultFee,
+  aurora: defaultFee
 };
