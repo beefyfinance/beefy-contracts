@@ -30,8 +30,8 @@ const testData = {
     curve_poly_atricrypto3: "0x5A0801BAd20B6c62d86C566ca90688A6b9ea1d3f", // >2 token LP
   },
   wants: {
-    curve_poly_atricrypto3: "0xdAD97F7713Ae9437fa9249920eC8507e5FbB23d3"
-  }
+    curve_poly_atricrypto3: "0xdAD97F7713Ae9437fa9249920eC8507e5FbB23d3",
+  },
 };
 
 describe("BeefyVaultRegistry", () => {
@@ -141,7 +141,7 @@ describe("BeefyVaultRegistry", () => {
 
   it("sets tokens on existing vault correctly", async () => {
     const { WBTC, ETH, USDT } = chainData.tokens;
-    const tokensToAdd = [...([WBTC, ETH, USDT].map(token => token.address)), testData.wants.curve_poly_atricrypto3];
+    const tokensToAdd = [...[WBTC, ETH, USDT].map(token => token.address), testData.wants.curve_poly_atricrypto3];
 
     await registry.setVaultTokens(testData.vaults.curve_poly_atricrypto3, tokensToAdd);
 
@@ -149,24 +149,22 @@ describe("BeefyVaultRegistry", () => {
     expect(vaultInfo.tokens.length).to.eq(4); // want + 3 tokens
     const tokenSet = new Set(vaultInfo.tokens);
     tokensToAdd.forEach(tokenAddress => {
-      expect(tokenSet.has(tokenAddress)).to.be.true
-    })
+      expect(tokenSet.has(tokenAddress)).to.be.true;
+    });
 
     const vaults = await registry.getVaultsForToken(WBTC.address);
     expect(vaults.length).to.eq(1);
-
   }).timeout(TIMEOUT);
 
   it("retires vault correctly", async () => {
     await registry.setRetireStatus(testData.vaults.curve_poly_atricrypto3, true);
 
     let vaultInfo = await registry.getVaultInfo(testData.vaults.curve_poly_atricrypto3);
-    expect(vaultInfo.retired).to.be.true
+    expect(vaultInfo.retired).to.be.true;
 
     await registry.setRetireStatus(testData.vaults.curve_poly_atricrypto3, false);
 
     vaultInfo = await registry.getVaultInfo(testData.vaults.curve_poly_atricrypto3);
-    expect(vaultInfo.retired).to.be.false
-
+    expect(vaultInfo.retired).to.be.false;
   }).timeout(TIMEOUT);
 });
