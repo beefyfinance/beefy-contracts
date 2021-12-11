@@ -31,3 +31,4 @@ bin/flatten.sh
 /artifacts
 
 typechain-types
+dist

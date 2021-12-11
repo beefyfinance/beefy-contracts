@@ -1,7 +1,8 @@
 import { Contract } from "@ethersproject/contracts";
+import { BeefyChain } from "./beefyChain";
 import { chainCallFeeMap } from "./chainCallFeeMap";
 
-export const setCorrectCallFee = async (strategy: Contract, chainName: string) => {
+export const setCorrectCallFee = async (strategy: Contract, chainName: BeefyChain) => {
   const expectedCallFee = chainCallFeeMap[chainName];
   const defaultCallFee = await strategy.callFee();
   if (expectedCallFee !== defaultCallFee) {
