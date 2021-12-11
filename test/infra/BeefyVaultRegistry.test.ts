@@ -80,9 +80,9 @@ describe("BeefyVaultRegistry", () => {
     };
 
     const half = vaultsToAdd.length / 2;
-    addAndValidate(vaultsToAdd.slice(0, half));
-    delay(5000); // add vaults at different block numbers
-    addAndValidate(vaultsToAdd.slice(half, vaultsToAdd.length)); 
+    await addAndValidate(vaultsToAdd.slice(0, half));
+    await delay(5000); // add vaults at different block numbers
+    await addAndValidate(vaultsToAdd.slice(half, vaultsToAdd.length));
   }).timeout(TIMEOUT);
 
   it("should not be able to add same vault twice", async () => {
