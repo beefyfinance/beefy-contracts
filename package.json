@@ -26,6 +26,7 @@
     "test": "hardhat test --network localhost",
     "test:vault": "hardhat test --network localhost test/prod/VaultLifecycle.test.js",
     "test:upgrade": "hardhat test --network localhost test/prod/StratTimelockUpgrade.test.js",
+    "test:registry": "hardhat test --network localhost test/infra/BeefyVaultRegistry.test.ts",
     "deploy:chef": "hardhat run scripts/vault/deploy-generic-chef-strat.ts --network",
     "deploy:rewardPool": "hardhat run scripts/vault/deploy-generic-rewardPool-strat.ts --network",
     "deploy:lend": "hardhat run scripts/vault/deploy-strat-lend.ts --network",
