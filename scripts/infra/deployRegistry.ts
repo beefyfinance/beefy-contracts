@@ -7,14 +7,14 @@ const contractNames = {
   BeefyVaultRegistry: "BeefyVaultRegistry",
 };
 
-const implementationConstructorArguments = []; // proxy implementations cannot have constructors
+const implementationConstructorArguments: any[] = []; // proxy implementations cannot have constructors
 
 const deploy = async () => {
   const BeefyVaultRegistryFactory = await ethers.getContractFactory(contractNames.BeefyVaultRegistry)
 
   console.log("Deploying:", contractNames.BeefyVaultRegistry);
 
-  const constructorArguments = [];
+  const constructorArguments: any[] = [];
   const transparentUpgradableProxy = await upgrades.deployProxy(BeefyVaultRegistryFactory, constructorArguments);
   await transparentUpgradableProxy.deployed();
 
