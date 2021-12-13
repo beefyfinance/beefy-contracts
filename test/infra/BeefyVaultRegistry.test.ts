@@ -157,12 +157,12 @@ describe("BeefyVaultRegistry", () => {
   }).timeout(TIMEOUT);
 
   it("retires vault correctly", async () => {
-    await registry.setRetireStatus(testData.vaults.curve_poly_atricrypto3, true);
+    await registry.setRetireStatuses([testData.vaults.curve_poly_atricrypto3], true);
 
     let vaultInfo = await registry.getVaultInfo(testData.vaults.curve_poly_atricrypto3);
     expect(vaultInfo.retired).to.be.true;
 
-    await registry.setRetireStatus(testData.vaults.curve_poly_atricrypto3, false);
+    await registry.setRetireStatuses([testData.vaults.curve_poly_atricrypto3], false);
 
     vaultInfo = await registry.getVaultInfo(testData.vaults.curve_poly_atricrypto3);
     expect(vaultInfo.retired).to.be.false;

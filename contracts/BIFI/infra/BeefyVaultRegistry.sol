@@ -27,7 +27,7 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     mapping (address => EnumerableSetUpgradeable.AddressSet) private _tokenToVaultsMap;
 
     event VaultsRegistered(address[] vaults);
-    event VaultsRetired(address[] vaults);
+    event VaultsRetireStatusUpdated(address[] vaults, bool status);
 
     function getVaultCount() external view returns(uint256 count) {
         return _vaultSet.length();
@@ -175,14 +175,15 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         }
     }
 
-    function _setRetireStatus(address _address, bool _status) external onlyOwner {
-        require(_isVaultInRegistry(_address), "Vault not found in registry.");
-        _vaultInfoMap[_address].retired = _status;
+    function setRetireStatuses(address[] memory _vaultAddresses, bool _status) external onlyOwner {
+        for (uint256 vaultIndex = 0; vaultIndex < _vaultAddresses.length; vaultIndex++) {
+            _setRetireStatus(_vaultAddresses[vaultIndex], _status);
+        }
+        emit VaultsRetireStatusUpdated(_vaultAddresses, _status);
     }
 
-    function setRetireStatuses(address[] _vaultAddresses, bool _status) onlyOwner {
-        for (uint256 vaultIndex = 0; vaultIndex < _vaultAddresses.length; vaultIndex++) {
-            _setRetireStatus(_vaultAddresses[vaultIndex]);
-        }
+    function _setRetireStatus(address _address, bool _status) internal onlyOwner {
+        require(_isVaultInRegistry(_address), "Vault not found in registry.");
+        _vaultInfoMap[_address].retired = _status;
     }
 }
