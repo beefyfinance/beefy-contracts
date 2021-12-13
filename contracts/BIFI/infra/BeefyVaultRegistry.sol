@@ -21,13 +21,19 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         uint256 index;
     }
 
+    mapping (address => bool) private _isManager;
     EnumerableSetUpgradeable.AddressSet private _vaultSet;
 
     mapping (address => VaultInfo) private _vaultInfoMap;
     mapping (address => EnumerableSetUpgradeable.AddressSet) private _tokenToVaultsMap;
 
     event VaultsRegistered(address[] vaults);
-    event VaultsRetired(address[] vaults);
+    event VaultsRetireStatusUpdated(address[] vaults, bool status);
+
+    modifier onlyManager() {
+        require(msg.sender == owner() || _isManager[msg.sender], "!manager");
+        _;
+    }
 
     function getVaultCount() external view returns(uint256 count) {
         return _vaultSet.length();
@@ -37,7 +43,7 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         __Ownable_init();
     }
 
-    function addVaults(address[] memory _vaultAddresses) external onlyOwner {
+    function addVaults(address[] memory _vaultAddresses) external onlyManager {
         for (uint256 i; i < _vaultAddresses.length; i++) {
             _addVault(_vaultAddresses[i]);
         }
@@ -158,7 +164,7 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         }
     }
 
-    function setVaultTokens(address _vault, address[] memory _tokens) external onlyOwner {
+    function setVaultTokens(address _vault, address[] memory _tokens) external onlyManager {
         address[] memory currentTokens = _vaultInfoMap[_vault].tokens;
 
         // remove all old mapping of token to vault
@@ -175,8 +181,25 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         }
     }
 
-    function setRetireStatus(address _address, bool _status) external onlyOwner {
+    function setRetireStatuses(address[] memory _vaultAddresses, bool _status) external onlyManager {
+        for (uint256 vaultIndex = 0; vaultIndex < _vaultAddresses.length; vaultIndex++) {
+            _setRetireStatus(_vaultAddresses[vaultIndex], _status);
+        }
+        emit VaultsRetireStatusUpdated(_vaultAddresses, _status);
+    }
+
+    function _setRetireStatus(address _address, bool _status) internal {
         require(_isVaultInRegistry(_address), "Vault not found in registry.");
         _vaultInfoMap[_address].retired = _status;
+    }
+
+    function setManagers(address[] memory _managers, bool _status) external onlyManager {
+        for (uint256 managerIndex = 0; managerIndex < _managers.length; managerIndex++) {
+            _setManager(_managers[managerIndex], _status);
+        }
+    }
+
+    function _setManager(address _manager, bool _status) internal {
+        _isManager[_manager] = _status;
     }
 }
