@@ -175,8 +175,14 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         }
     }
 
-    function setRetireStatus(address _address, bool _status) external onlyOwner {
+    function _setRetireStatus(address _address, bool _status) external onlyOwner {
         require(_isVaultInRegistry(_address), "Vault not found in registry.");
         _vaultInfoMap[_address].retired = _status;
+    }
+
+    function setRetireStatuses(address[] _vaultAddresses, bool _status) onlyOwner {
+        for (uint256 vaultIndex = 0; vaultIndex < _vaultAddresses.length; vaultIndex++) {
+            _setRetireStatus(_vaultAddresses[vaultIndex]);
+        }
     }
 }
