@@ -33,7 +33,8 @@
     "deploy:timelock": "hardhat run scripts/infra/deployTimelockController.js --network",
     "deploy:chain": "hardhat run scripts/infra/deployChain.js --network",
     "deploy:registry": "hardhat run scripts/infra/deployRegistry.ts --network",
-    "flat-hardhat": "hardhat flatten contracts/BIFI/strategies/common/StrategyCommonRewardPoolSingle.sol > tmp/flattened.sol",
+    "upgrade:registry": "hardhat run scripts/upgradeable/upgrade.js --network",
+    "flat-hardhat": "hardhat flatten contracts/BIFI/infra/BeefyVaultRegistry.sol > tmp/flattened.sol",
     "flat": "bin/flatten.sh",
     "flat:chain": "bin/flattenChainContracts.sh",
     "abi-to-sol": "abi-to-sol"
