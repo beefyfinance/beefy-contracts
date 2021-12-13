@@ -6,6 +6,7 @@ import { delay } from "../../utils/timeHelpers";
 import { addressBook } from "blockchain-addressbook";
 
 import { BeefyVaultRegistry } from "../../typechain-types";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 const TIMEOUT = 10 * 60 * 100000;
 
@@ -16,7 +17,7 @@ const { beefyfinance } = chainData.platforms;
 const config = {
   registry: {
     name: "BeefyVaultRegistry",
-    address: "0x45372a9cB37252cf9D309D37793b5a07F6c018c0",
+    address: "0xd4155C58e24866DD0F0588bB8423bEE3A25E692E",
   },
 };
 
@@ -36,7 +37,7 @@ const testData = {
 
 describe("BeefyVaultRegistry", () => {
   let registry: BeefyVaultRegistry;
-  let deployer, keeper, other;
+  let deployer: SignerWithAddress, keeper: SignerWithAddress, other: SignerWithAddress;
 
   beforeEach(async () => {
     [deployer, keeper, other] = await ethers.getSigners();
@@ -166,5 +167,22 @@ describe("BeefyVaultRegistry", () => {
 
     vaultInfo = await registry.getVaultInfo(testData.vaults.curve_poly_atricrypto3);
     expect(vaultInfo.retired).to.be.false;
+  }).timeout(TIMEOUT);
+
+  it("sets and removes manager correctly", async () => {
+    await registry.setManagers([keeper.address], true);
+
+    try {
+      await registry.connect(keeper).setManagers([keeper.address], false);
+    } catch (e) {
+      expect(true).to.eq(false, `Is not manager`);
+    }
+
+    try {
+      await registry.connect(keeper).setManagers([keeper.address], false);
+      expect(true).to.eq(false, `Is still manager`);
+    } catch (e) {
+    }
+
   }).timeout(TIMEOUT);
 });
