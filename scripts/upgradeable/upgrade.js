@@ -8,8 +8,8 @@ const chain = "fantom";
 const a = addressBook[chain].platforms.beefyfinance.beefyFeeRecipient;
 
 const config = {
-  impl: "BeefyFeeBatchV2",
-  proxy: "0x32C82EE8Fca98ce5114D2060c5715AEc714152FB",
+  impl: "BeefyVaultRegistry",
+  proxy: "0x9cA7c8082bB235b1a4d233c4745e6e547412eFE2",
 };
 
 async function main() {
