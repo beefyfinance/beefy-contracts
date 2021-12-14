@@ -22,8 +22,8 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     }
 
     mapping (address => bool) private _isManager;
-    EnumerableSetUpgradeable.AddressSet private _vaultSet;
 
+    EnumerableSetUpgradeable.AddressSet private _vaultSet;
     mapping (address => VaultInfo) private _vaultInfoMap;
     mapping (address => EnumerableSetUpgradeable.AddressSet) private _tokenToVaultsMap;
 
