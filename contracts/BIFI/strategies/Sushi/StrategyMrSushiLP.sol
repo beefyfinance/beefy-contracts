@@ -30,7 +30,6 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
 
     // Third party contracts
     address public chef;
-    address public unirouter2; // needed for wrapping native due to different wnative being used for performance fees
     uint256 public poolId;
 
     uint256 public lastHarvest;
@@ -308,4 +307,5 @@ contract StrategyMrSushiLP is StratManager, FeeManager {
     function sushiNativeToLp1() external view returns (address[] memory) {
         return sushiNativeToLp1Route;
     }
+    receive () external payable {}
 }
