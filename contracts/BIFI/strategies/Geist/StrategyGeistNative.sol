@@ -151,12 +151,13 @@ contract StrategyGeistNative is StratManager, FeeManager {
     function _deleverage() internal {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         (uint256 supplyBal, uint256 borrowBal) = userReserves();
+        uint256 adjBorrowRate = borrowRate > 1 ? borrowRate.sub(1) : borrowRate;
 
         while (wantBal < borrowBal) {
             ILendingPool(lendingPool).repay(want, wantBal, INTEREST_RATE_MODE, address(this));
 
             (supplyBal, borrowBal) = userReserves();
-            uint256 targetSupply = borrowBal.mul(100).div(borrowRate);
+            uint256 targetSupply = borrowBal.mul(100).div(adjBorrowRate);
 
             ILendingPool(lendingPool).withdraw(want, supplyBal.sub(targetSupply), address(this));
             wantBal = IERC20(want).balanceOf(address(this));
@@ -234,6 +235,10 @@ contract StrategyGeistNative is StratManager, FeeManager {
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
         uint256 gTokenBal = IERC20(wantTokens.gToken).balanceOf(address(this));
+        address[] memory tokens = new address[](2);
+        tokens[0] = wantTokens.gToken;
+        tokens[1] = wantTokens.vToken;
+        IIncentivesController(incentivesController).claim(address(this), tokens);
         IMultiFeeDistributer(multiFeeDistributer).exit();
 
         uint256 outputBal = IERC20(output).balanceOf(address(this));
@@ -459,6 +464,23 @@ contract StrategyGeistNative is StratManager, FeeManager {
         for (uint i; i < rewards.length; i++) {
             IERC20(rewards[i].token).safeApprove(unirouter, 0);
         }
+    }
+
+    function addRewardToNativeRoute(address[] memory _rewardToNativeRoute) external onlyOwner {
+        address _token = _rewardToNativeRoute[0];
+        (address _gToken,,address _vToken) = IDataProvider(dataProvider).getReserveTokensAddresses(_token);
+
+        rewards.push(TokenAddresses(_token, _gToken, _vToken));
+        rewardToNativeRoutes.push(_rewardToNativeRoute);
+
+        IERC20(_token).safeApprove(unirouter, uint256(-1));
+    }
+
+    function removeRewardToNativeRoute() external onlyOwner {
+        IERC20(rewards[rewards.length -1].token).safeApprove(unirouter, 0);
+
+        rewards.pop();
+        rewardToNativeRoutes.pop();
     }
 
     function outputToNative() public view returns (address[] memory) {
