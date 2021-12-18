@@ -252,7 +252,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         startIndex = newStartIndex;
     }
 
-    function multiHarvest(address[] memory strategies) external {
+    function multiHarvest(address[] memory strategies) internal {
         bool[] memory isFailedHarvest = new bool[](strategies.length);
         for (uint256 i = 0; i < strategies.length; i++) {
             try IStrategyMultiHarvest(strategies[i]).harvest(callFeeRecipient) {
