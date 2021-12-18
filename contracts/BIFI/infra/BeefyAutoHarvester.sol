@@ -62,7 +62,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     }
 
     modifier onlyManager() {
-        require(msg.sender == owner() || _isManager[msg.sender], "!manager");
+        require(msg.sender == owner() || isManager[msg.sender], "!manager");
         _;
     }
 
@@ -256,7 +256,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         emit FailedHarvests(failedHarvests);
     }
 
-    function getFailedVaults(address[] memory strategies, bool[] memory isFailedHarvest) internal {
+    function getFailedVaults(address[] memory strategies, bool[] memory isFailedHarvest) internal pure returns (address[] memory failedHarvests) {
         uint256 failedCount;
         for (uint256 i = 0; i < strategies.length; i++) {
             if (isFailedHarvest[i]) {
@@ -264,7 +264,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             }
         }
 
-        address[] memory failedHarvests = new address[](failedCount);
+        failedHarvests = new address[](failedCount);
         uint256 failedHarvestIndex;
         for (uint256 i = 0; i < strategies.length; i++) {
             if (isFailedHarvest[i]) {
