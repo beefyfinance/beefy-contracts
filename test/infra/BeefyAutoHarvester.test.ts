@@ -19,6 +19,10 @@ const config = {
     name: "BeefyAutoHarvester",
     address: "0xd4155C58e24866DD0F0588bB8423bEE3A25E692E",
   },
+  vaultRegistry: {
+    name: "BeefyVaultRegistry",
+    address: "0x820cE73c7F15C2b828aBE79670D7e61731AB93Be",
+  },
 };
 
 const testData = {
@@ -29,7 +33,7 @@ const testData = {
   wants: {
     curve_poly_atricrypto3: "0xdAD97F7713Ae9437fa9249920eC8507e5FbB23d3",
   },
-  quickRouter: chainData.platforms.quickswap.router
+  quickRouter: chainData.platforms.quickswap.router,
 };
 
 describe("BeefyVaultRegistry", () => {
@@ -45,12 +49,8 @@ describe("BeefyVaultRegistry", () => {
     )) as unknown as BeefyAutoHarvester;
   });
 
-  it("should not be able to add same vault twice", async () => {
-    const vaultsToAdd = [testData.vaults.quick_matic_mana];
-
-    try {
-      await autoHarvester.addVaults(vaultsToAdd);
-      expect(true).to.eq(false, `Vault was successfully added twice, should not be possible.`);
-    } catch (e) {}
+  it("should harvest when call rewards > tx.gasprice", async () => {
+    // vault registry should have quick_shib_matic
+    // use 5 gwei tx price
   }).timeout(TIMEOUT);
 });
