@@ -15,6 +15,10 @@ interface IStrategy {
     function harvest(address callFeeRecipient) external view; // can be view as will only be executed off chain
 }
 
+interface IStrategyMultiHarvest {
+    function harvest(address callFeeRecipient) external; // used for multiharvest in perform upkeep, this one doesn't have view
+}
+
 interface IVaultRegistry {
     function allVaultAddresses() external view returns (address[] memory);
 }
@@ -38,6 +42,8 @@ contract BeefyAutoHarvester is KeeperCompatibleInterface {
 
     // swapping to keeper gas token, LINK
     address[] public nativeToLinkRoute;
+
+    event FailedHarvests(address[] failedVaults);
 
     constructor(
         address _vaultRegistry,
@@ -227,10 +233,33 @@ contract BeefyAutoHarvester is KeeperCompatibleInterface {
     }
 
     function multiHarvest(address[] memory strategies) external {
+        bool[] memory isFailedHarvest = new bool[](strategies.length);
         for (uint256 i = 0; i < strategies.length; i++) {
-            try IStrategy(strategies[i]).harvest() {
-            } catch {}
+            try IStrategyMultiHarvest(strategies[i]).harvest(callFeeRecipient) {
+            } catch {
+                isFailedHarvest[i] = true;
+            }
         }
+
+        uint256 failedCount;
+        for (uint256 i = 0; i < strategies.length; i++) {
+            if (isFailedHarvest[i]) {
+                failedCount += 1;
+            }
+        }
+
+        address[] memory failedHarvests = new address[](failedCount);
+        uint256 failedHarvestIndex;
+        for (uint256 i = 0; i < strategies.length; i++) {
+            if (isFailedHarvest[i]) {
+                failedHarvests[failedHarvestIndex++] = strategies[i];
+            }
+            if (failedHarvestIndex == strategies.length) {
+                break;
+            }
+        }
+
+        emit FailedHarvests(failedHarvests);
     }
 
     function nativeToLink() external view returns (address[] memory) {
