@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 import "../interfaces/common/IUniswapRouterETH.sol";
@@ -54,6 +55,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     event SuccessfulHarvests(address[] successfulVaults);
     event FailedHarvests(address[] failedVaults);
+    event ConvertedNativeToLink(uint256 nativeAmount, uint256 linkAmount);
 
     constructor(
         address _vaultRegistry,
@@ -265,6 +267,13 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         
         emit SuccessfulHarvests(successfulHarvests);
         emit FailedHarvests(failedHarvests);
+
+        // convert native to link if needed
+        IERC20Upgradeable native = IERC20Upgradeable(nativeToLinkRoute[0]);
+        uint256 nativeBalance = native.balanceOf(address(this));
+        if (nativeBalance > shouldConvertToLinkThreshold) {
+            _convertNativeToLink();
+        }
     }
 
     function getSuccessfulAndFailedVaults(address[] memory strategies, bool[] memory isFailedHarvest) internal pure returns (address[] memory successfulHarvests, address[] memory failedHarvests) {
@@ -295,7 +304,16 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         shouldConvertToLinkThreshold = newThreshold;
     }
 
-    // function convertNativeToLink()
+    function convertNativeToLink() external onlyManager {
+        _convertNativeToLink();
+    }
+
+    function _convertNativeToLink() internal {
+        IERC20Upgradeable native = IERC20Upgradeable(nativeToLinkRoute[0]);
+        uint256 nativeBalance = native.balanceOf(address(this));
+        uint256[] memory amounts = unirouter.swapExactTokensForTokens(nativeBalance, 0, nativeToLinkRoute, address(this), block.timestamp);
+        emit ConvertedNativeToLink(nativeBalance, amounts[amounts.length-1]);
+    }
 
     function setNativeToLinkRoute(address[] memory _nativeToLinkRoute) external onlyManager {
         nativeToLinkRoute = _nativeToLinkRoute;
@@ -303,5 +321,37 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     function nativeToLink() external view returns (address[] memory) {
         return nativeToLinkRoute;
+    }
+
+    function setManagers(address[] memory _managers, bool _status) external onlyManager {
+        for (uint256 managerIndex = 0; managerIndex < _managers.length; managerIndex++) {
+            _setManager(_managers[managerIndex], _status);
+        }
+    }
+
+    function _setManager(address _manager, bool _status) internal {
+        isManager[_manager] = _status;
+    }
+
+    function setUpkeepers(address[] memory _upkeepers, bool _status) external onlyManager {
+        for (uint256 upkeeperIndex = 0; upkeeperIndex < _upkeepers.length; upkeeperIndex++) {
+            _setUpkeeper(_upkeepers[upkeeperIndex], _status);
+        }
+    }
+
+    function _setUpkeeper(address _upkeeper, bool _status) internal {
+        isUpkeeper[_upkeeper] = _status;
+    }
+
+    function setBlockGasLimitBuffer(uint256 newBlockGasLimitBuffer) external onlyManager {
+        blockGasLimitBuffer = newBlockGasLimitBuffer;
+    }
+
+    function setHarvestGasLimit(uint256 newHarvestGasLimit) external onlyManager {
+        harvestGasLimit = newHarvestGasLimit;
+    }
+
+    function setUnirouter(address newUnirouter) external onlyManager {
+        unirouter = IUniswapRouterETH(newUnirouter);
     }
 }
