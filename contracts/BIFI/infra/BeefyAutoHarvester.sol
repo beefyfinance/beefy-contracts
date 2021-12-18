@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
@@ -27,7 +29,11 @@ interface IVault {
     function strategy() external view returns (address);
 }
 
-contract BeefyAutoHarvester is KeeperCompatibleInterface {
+contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatibleInterface {
+
+    // access control
+    mapping (address => bool) private isManager;
+
     // contracts, only modifiable via setters
     IVaultRegistry private vaultRegistry;
     AggregatorV3Interface private gasFeed;
@@ -55,9 +61,14 @@ contract BeefyAutoHarvester is KeeperCompatibleInterface {
         nativeToLinkRoute = _nativeToLinkRoute;
     }
 
-  function checkUpkeep(
-    bytes calldata checkData // unused
-  )
+    modifier onlyManager() {
+        require(msg.sender == owner() || _isManager[msg.sender], "!manager");
+        _;
+    }
+
+    function checkUpkeep(
+        bytes calldata checkData // unused
+    )
     external view
     returns (
       bool upkeepNeeded,
