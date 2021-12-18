@@ -52,6 +52,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     uint256 public shouldConvertToLinkThreshold = 1 ether;
     IUniswapRouterETH public unirouter;
 
+    event SuccessfulHarvests(address[] successfulVaults);
     event FailedHarvests(address[] failedVaults);
 
     constructor(
@@ -246,6 +247,9 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             performData,
             (address[], uint256)
         );
+
+        multiHarvest(strategies);
+        startIndex = newStartIndex;
     }
 
     function multiHarvest(address[] memory strategies) external {
@@ -257,11 +261,13 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             }
         }
 
-        address[] memory failedHarvests = getFailedVaults(strategies, isFailedHarvest);
+        (address[] memory successfulHarvests, address[] memory failedHarvests) = getSuccessfulAndFailedVaults(strategies, isFailedHarvest);
+        
+        emit SuccessfulHarvests(successfulHarvests);
         emit FailedHarvests(failedHarvests);
     }
 
-    function getFailedVaults(address[] memory strategies, bool[] memory isFailedHarvest) internal pure returns (address[] memory failedHarvests) {
+    function getSuccessfulAndFailedVaults(address[] memory strategies, bool[] memory isFailedHarvest) internal pure returns (address[] memory successfulHarvests, address[] memory failedHarvests) {
         uint256 failedCount;
         for (uint256 i = 0; i < strategies.length; i++) {
             if (isFailedHarvest[i]) {
@@ -269,18 +275,20 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             }
         }
 
+        successfulHarvests = new address[](strategies.length - failedCount);
         failedHarvests = new address[](failedCount);
         uint256 failedHarvestIndex;
+        uint256 successfulHarvestsIndex;
         for (uint256 i = 0; i < strategies.length; i++) {
             if (isFailedHarvest[i]) {
                 failedHarvests[failedHarvestIndex++] = strategies[i];
             }
-            if (failedHarvestIndex == strategies.length) {
-                break;
+            else {
+                successfulHarvests[successfulHarvestsIndex++] = strategies[i];
             }
         }
 
-        return failedHarvests;
+        return (successfulHarvests, failedHarvests);
     }
 
     function setShouldConvertToLinkThreshold(uint256 newThreshold) external onlyManager {
