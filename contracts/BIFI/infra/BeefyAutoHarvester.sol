@@ -33,6 +33,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     // access control
     mapping (address => bool) private isManager;
+    mapping (address => bool) private isUpkeeper;
 
     // contracts, only modifiable via setters
     IVaultRegistry private vaultRegistry;
@@ -48,6 +49,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     // swapping to keeper gas token, LINK
     address[] public nativeToLinkRoute;
+    uint256 shouldConvertToLinkThreshold = 1 ether;
 
     event FailedHarvests(address[] failedVaults);
 
@@ -63,6 +65,11 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     modifier onlyManager() {
         require(msg.sender == owner() || isManager[msg.sender], "!manager");
+        _;
+    }
+
+    modifier onlyUpkeeper() {
+        require(isUpkeeper[msg.sender], "!upkeeper");
         _;
     }
 
@@ -97,8 +104,9 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
         performData = abi.encode(
             vaultsToHarvest,
-            newStartIndex
-        ); // how to decode this correctly later?
+            newStartIndex,
+            shouldConvertToLink
+        );
 
         return (true, performData);
     }
@@ -239,8 +247,14 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     function performUpkeep(
         bytes calldata performData
     ) external {
-        // TODO: implement
-
+        (
+            address[] memory strategies,
+            uint256 newStartIndex, 
+            bool shouldConvertToLink
+        ) = abi.decode(
+            performData,
+            (address[], uint256, bool)
+        );
     }
 
     function multiHarvest(address[] memory strategies) external {
@@ -276,6 +290,10 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         }
 
         return failedHarvests;
+    }
+
+    function setShouldConvertToLinkThreshold(uint256 newThreshold) external onlyManager {
+
     }
 
     // function convertNativeToLink()
