@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MIT
 // File: contracts/BIFI/zap/IUniswapV2Pair.sol
 
-pragma solidity >=0.5.0;
+pragma solidity ^0.8.0;
 
 interface IUniswapV2Pair {
     event Approval(address indexed owner, address indexed spender, uint value);
@@ -61,7 +61,7 @@ interface IUniswapV2Pair {
 // File: contracts/BIFI/zap/Babylonian.sol
 
 
-pragma solidity >=0.4.0;
+pragma solidity ^0.8.0;
 
 // computes square roots using the babylonian method
 // https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
@@ -116,7 +116,7 @@ library Babylonian {
 // File: contracts/BIFI/zap/IERC20.sol
 
 
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
@@ -195,7 +195,7 @@ interface IERC20 {
 // File: contracts/BIFI/zap/SafeMath.sol
 
 
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow
@@ -356,7 +356,7 @@ library SafeMath {
 // File: contracts/BIFI/zap/Address.sol
 
 
-pragma solidity >=0.6.2 <0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @dev Collection of functions related to the address type
@@ -522,8 +522,7 @@ library Address {
 
 // File: contracts/BIFI/zap/SafeERC20.sol
 
-
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity ^0.8.0;
 
 
 
@@ -598,7 +597,7 @@ library SafeERC20 {
 
 // File: contracts/BIFI/zap/LowGasSafeMath.sol
 
-pragma solidity >=0.7.0;
+pragma solidity ^0.8.0;
 
 /// @title Optimized overflow and underflow safe math operations
 /// @notice Contains methods for doing math operations that revert on overflow or underflow for minimal gas cost
@@ -646,7 +645,7 @@ library LowGasSafeMath {
 
 // File: contracts/BIFI/zap/IUniswapV2Router01.sol
 
-pragma solidity >=0.6.2;
+pragma solidity ^0.8.0;
 
 interface IUniswapV2Router01 {
     function factory() external pure returns (address);
@@ -744,7 +743,7 @@ interface IUniswapV2Router01 {
 
 // File: contracts/BIFI/zap/IUniswapV2Router02.sol
 
-pragma solidity >=0.6.2;
+pragma solidity ^0.8.0;
 
 
 interface IUniswapV2Router02 is IUniswapV2Router01 {
@@ -804,7 +803,7 @@ interface IUniswapV2Router02 is IUniswapV2Router01 {
 // @author Wivern for Beefy.Finance
 // @notice This contract adds liquidity to Uniswap V2 compatible liquidity pair pools and stake.
 
-pragma solidity >=0.7.0;
+pragma solidity ^0.8.0;
 
 
 
@@ -992,7 +991,7 @@ contract BeefyUniV2Zap {
 
     function _approveTokenIfNeeded(address token, address spender) private {
         if (IERC20(token).allowance(address(this), spender) == 0) {
-            IERC20(token).safeApprove(spender, uint256(~0));
+            IERC20(token).safeApprove(spender, type(uint).max);
         }
     }
 
