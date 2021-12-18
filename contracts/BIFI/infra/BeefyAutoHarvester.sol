@@ -17,20 +17,10 @@ interface IStrategy {
 
 interface IVaultRegistry {
     function allVaultAddresses() external view returns (address[] memory);
-    // this will hardcoded for now, but maybe the gas used by harvest can be recorded on chain after x amount of harvests in strat contract (x amount to avoid writing to storage excessively after each harvest)
-    function getVaultHarvestGasLimitEstimate(address _vaultAddress) external view returns (uint256);
 }
 
 interface IVault {
     function strategy() external view returns (address);
-}
-
-interface ITaskTreasury {
-    function maxFee() external view returns (uint256);
-}
-
-interface IMultiHarvest {
-    function harvest(address[] memory strategies) external;
 }
 
 contract BeefyAutoHarvester is KeeperCompatibleInterface {
@@ -41,16 +31,22 @@ contract BeefyAutoHarvester is KeeperCompatibleInterface {
     // util vars, only modifiable via setters
     address private callFeeRecipient = address(this);
     uint256 private blockGasLimitBuffer = 100000; // not sure what this should be, will probably be trial and error at first.
+    uint256 private harvestGasLimit = 1_500_000;
 
     // state vars that will change across upkeeps
     uint256 private startIndex;
 
+    // swapping to keeper gas token, LINK
+    address[] public nativeToLinkRoute;
+
     constructor(
         address _vaultRegistry,
-        address _gasFeed
+        address _gasFeed,
+        address[] memory _nativeToLinkRoute
     ) {
         vaultRegistry = IVaultRegistry(_vaultRegistry);
         gasFeed = AggregatorV3Interface(_gasFeed);
+        nativeToLinkRoute = _nativeToLinkRoute;
     }
 
   function checkUpkeep(
@@ -207,7 +203,6 @@ contract BeefyAutoHarvester is KeeperCompatibleInterface {
     {
         IVault vault = IVault(_vaultAddress);
         IStrategy strategy = IStrategy(vault.strategy());
-        uint256 harvestGasLimit = vaultRegistry.getVaultHarvestGasLimitEstimate(_vaultAddress);
 
         bool hasBeenHarvestedToday = strategy.lastHarvest() < 1 days;
 
@@ -231,8 +226,14 @@ contract BeefyAutoHarvester is KeeperCompatibleInterface {
 
     }
 
-    // TODO: implement setters
-    // TODO: add natspec docs
-    // TODO: add prettier-plugin-solidity to clean this formatting up
-    
+    function multiHarvest(address[] memory strategies) external {
+        for (uint256 i = 0; i < strategies.length; i++) {
+            try IStrategy(strategies[i]).harvest() {
+            } catch {}
+        }
+    }
+
+    function nativeToLink() external view returns (address[] memory) {
+        return nativeToLinkRoute;
+    }
 }
