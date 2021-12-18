@@ -78,7 +78,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     function checkUpkeep(
         bytes calldata checkData // unused
     )
-    external view
+    external view override
     returns (
       bool upkeepNeeded,
       bytes memory performData // array of vaults + 
@@ -241,7 +241,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     function performUpkeep(
         bytes calldata performData
-    ) external onlyUpkeeper {
+    ) external override onlyUpkeeper {
         (
             address[] memory strategies,
             uint256 newStartIndex
