@@ -3,6 +3,7 @@ import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
 import "@openzeppelin/hardhat-upgrades";
+import "@typechain/hardhat";
 import "./tasks";
 
 import { HardhatUserConfig } from "hardhat/src/types/config";
@@ -56,9 +57,19 @@ const config: DeploymentConfig = {
       chainId: 42161,
       accounts,
     },
+    moonriver: {
+      url: "https://rpc.moonriver.moonbeam.network",
+      chainId: 1285,
+      accounts,
+    },
     celo: {
       url: "https://forno.celo.org",
       chainId: 42220,
+      accounts,
+    },
+    cronos: {
+      url: "https://evm-cronos.crypto.org",
+      chainId: 25,
       accounts,
     },
     localhost: {
@@ -74,6 +85,11 @@ const config: DeploymentConfig = {
     kovan: {
       url: "https://kovan.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
       chainId: 42,
+      accounts,
+    },
+    aurora: {
+      url: "https://mainnet.aurora.dev/Fon6fPMs5rCdJc4mxX4kiSK1vsKdzc3D8k6UF8aruek",
+      chainId: 1313161554,
       accounts,
     },
   },

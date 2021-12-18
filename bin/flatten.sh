@@ -3,11 +3,11 @@
 rm tmp/*.sol
 
 # echo "// SPDX-License-Identifier: MIT" > tmp/Vault.sol
-echo "// SPDX-License-Identifier: MIT" > tmp/FeeBatcher.sol
+# echo "// SPDX-License-Identifier: MIT" > tmp/FeeBatcher.sol
 # echo "// SPDX-License-Identifier: MIT" > tmp/TimelockV4.sol
 # echo "// SPDX-License-Identifier: MIT" > tmp/Treasury.sol
 # echo "// SPDX-License-Identifier: MIT" > tmp/Candidate.sol
-# echo "// SPDX-License-Identifier: MIT" > tmp/Balancer.sol
+echo "// SPDX-License-Identifier: MIT" > tmp/StrategyBifiMaxiV3.sol
 # echo "// SPDX-License-Identifier: MIT" > tmp/TimelockController.sol
 # echo "// SPDX-License-Identifier: MIT" > tmp/RewardPool.sol
 
@@ -17,8 +17,8 @@ echo "// SPDX-License-Identifier: MIT" > tmp/FeeBatcher.sol
 # truffle-flattener contracts/BIFI/infra/BeefyLaunchpool.sol | sed '/SPDX-License-Identifier/d' >> tmp/Pool.sol
 # truffle-flattener contracts/BIFI/infra/BeefyRewardPool.sol | sed '/SPDX-License-Identifier/d' >> tmp/RewardPool.sol
 # truffle-flattener contracts/BIFI/infra/BeefyFeeBatch.sol | sed '/SPDX-License-Identifier/d' >> tmp/Batch.sol
-truffle-flattener contracts/BIFI/infra/BeefyFeeBatchV2.sol | sed '/SPDX-License-Identifier/d' >> tmp/FeeBatcher.sol
+# truffle-flattener contracts/BIFI/infra/BeefyFeeBatchV2.sol | sed '/SPDX-License-Identifier/d' >> tmp/FeeBatcher.sol
 # # truffle-flattener contracts/BIFI/experiments/BeefyTreasury.sol | sed '/SPDX-License-Identifier/d' >> tmp/Treasury.sol
-# truffle-flattener contracts/BIFI/strategies/Common/YieldBalancer.sol | sed '/SPDX-License-Identifier/d' >> tmp/Balancer.sol
+truffle-flattener contracts/BIFI/strategies/BIFI/StrategyBifiMaxiV3.sol | sed '/SPDX-License-Identifier/d' >> tmp/StrategyBifiMaxiV3.sol
 # truffle-flattener node_modules/@openzeppelin/contracts/access/TimelockController.sol | sed '/SPDX-License-Identifier/d' >> tmp/TimelockController.sol
 

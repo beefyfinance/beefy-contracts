@@ -3,16 +3,19 @@ import { addressBook } from "blockchain-addressbook";
 import { predictAddresses } from "../../utils/predictAddresses";
 import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
 import { verifyContract } from "../../utils/verifyContract";
+import { BeefyChain } from "../../utils/beefyChain";
 
 const {
-  SCREAM: { address: SCREAM },
-  fUSDT: { address: fUSDT },
-  WFTM: { address: WFTM },
-  ETH: { address: ETH },
-  WBTC: { address: WBTC },
-  DAI: { address: DAI },
-} = addressBook.fantom.tokens;
-const { spookyswap, beefyfinance } = addressBook.fantom.platforms;
+  platforms: { spookyswap, beefyfinance },
+  tokens: {
+    SCREAM: { address: SCREAM },
+    fUSDT: { address: fUSDT },
+    WFTM: { address: WFTM },
+    ETH: { address: ETH },
+    WBTC: { address: WBTC },
+    DAI: { address: DAI },
+  },
+} = addressBook.fantom;
 
 const shouldVerifyOnEtherscan = false;
 
@@ -107,7 +110,7 @@ async function main() {
       verifyContract(strategy.address, strategyConstructorArguments)
     );
   }
-  await setCorrectCallFee(strategy, hardhat.network.name);
+  await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
   console.log();
 
   await Promise.all(verifyContractsPromises);

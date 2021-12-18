@@ -3,43 +3,41 @@ import { addressBook } from "blockchain-addressbook";
 import { predictAddresses } from "../../utils/predictAddresses";
 import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
 import { verifyContract } from "../../utils/verifyContract";
+import { BeefyChain } from "../../utils/beefyChain";
 
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  WMATIC_DFYN: { address: WMATIC_DFYN },
-  DFYN: { address: DFYN },
-  CRV: { address: CRV },
-  WMATIC: { address: WMATIC },
-} = addressBook.polygon.tokens;
-const { dfyn, beefyfinance } = addressBook.polygon.platforms;
+  platforms: { vvs, beefyfinance },
+  tokens: {
+    BIFI: { address: BIFI },
+    WCRO: { address: WCRO },
+  },
+} = addressBook.cronos;
 
 const shouldVerifyOnEtherscan = false;
 
-const want = web3.utils.toChecksumAddress("0x4ea3e2cfc39fa51df85ebcfa366d7f0eed448a1c");
-const rewardPool = web3.utils.toChecksumAddress("0x098fdadCcde328e6CD1168125e1e7685eEa54342");
+const rewardPool = web3.utils.toChecksumAddress("0x107Dbf9c9C0EF2Df114159e5C7DC2baf7C444cFF");
 
 const vaultParams = {
-  mooName: "Moo DFyn CRV-DFYN",
-  mooSymbol: "mooDFynCRV-DFYN",
+  mooName: "Moo Cronos BIFI",
+  mooSymbol: "mooCronosBIFI",
   delay: 21600,
 };
 
 const strategyParams = {
-  want: want,
+  want: BIFI,
   rewardPool: rewardPool,
-  unirouter: dfyn.router,
-  strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
+  unirouter: vvs.router,
+  strategist: "0x0000000000000000000000000000000000000000", // some address
   keeper: beefyfinance.keeper,
-  beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [DFYN, WMATIC_DFYN],
-  outputToLp0Route: [DFYN, CRV],
-  outputToLp1Route: [DFYN],
+  beefyFeeRecipient: "0x0000000000000000000000000000000000000000",
+  outputToNativeRoute: [WCRO, BIFI],
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyDFYNRewardPoolLP",
+  strategy: "StrategyBifiMaxiV3",
 };
 
 async function main() {
@@ -81,8 +79,6 @@ async function main() {
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
     strategyParams.outputToNativeRoute,
-    strategyParams.outputToLp0Route,
-    strategyParams.outputToLp1Route,
   ];
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();
@@ -105,7 +101,7 @@ async function main() {
       verifyContract(strategy.address, strategyConstructorArguments)
     );
   }
-  await setCorrectCallFee(strategy, hardhat.network.name);
+  await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
   console.log();
 
   await Promise.all(verifyContractsPromises);

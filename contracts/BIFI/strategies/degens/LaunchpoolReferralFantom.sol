@@ -15,6 +15,11 @@ interface IRouter {
     ) external;
 }
 
+interface ISummitReferrals {
+    function getPendingReferralRewards(address user) external view returns (uint256);
+    function redeemReferralRewards() external;
+}
+
 contract LaunchpoolReferralFantom is Ownable {
     using SafeERC20 for IERC20;
 
@@ -51,8 +56,10 @@ contract LaunchpoolReferralFantom is Ownable {
     function swap(address[] memory _route, address _router) public onlyAdmin {
         address token = _route[0];
         uint256 tokenBal = IERC20(token).balanceOf(address(this));
-        IERC20(token).safeIncreaseAllowance(_router, tokenBal);
-        IRouter(_router).swapExactTokensForETHSupportingFeeOnTransferTokens(tokenBal, 0, _route, owner(), now);
+        if (tokenBal > 0) {
+            IERC20(token).safeIncreaseAllowance(_router, tokenBal);
+            IRouter(_router).swapExactTokensForETHSupportingFeeOnTransferTokens(tokenBal, 0, _route, owner(), now);
+        }
     }
 
     function swapToNative(address _token, address _router) public onlyAdmin {
@@ -83,8 +90,17 @@ contract LaunchpoolReferralFantom is Ownable {
         swapToNative(address(0x7C10108d4B7f4bd659ee57A53b30dF928244b354), spiritRouter());
     }
 
+    function summitRefsToFTM() public onlyAdmin {
+        ISummitReferrals referrals = ISummitReferrals(0x0B90dd88692Ec4fd4A77584713E3770057272B38);
+        if (referrals.getPendingReferralRewards(address(this)) > 0) {
+            referrals.redeemReferralRewards();
+        }
+        swapToNative(address(0x8F9bCCB6Dd999148Da1808aC290F2274b13D7994), spookyRouter());
+    }
+
     function AAA_swapAll() external onlyAdmin {
         pearToFTM();
+        summitRefsToFTM();
     }
 
     receive() external payable {}

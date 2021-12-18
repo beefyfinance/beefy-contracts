@@ -145,4 +145,6 @@ contract BeefyFeeBatchV2 is Initializable, OwnableUpgradeable {
     function transferRewardPoolOwnership(address _newOwner) external onlyOwner {
         IRewardPool(rewardPool).transferOwnership(_newOwner);
     }
+
+    receive() external payable {}
 }

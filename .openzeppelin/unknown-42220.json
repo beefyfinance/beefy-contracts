@@ -81,55 +81,170 @@
             "contract": "BeefyFeeBatchV2",
             "label": "wNative",
             "type": "t_contract(IERC20Upgradeable)821",
-            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:29"
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:28"
           },
           {
             "contract": "BeefyFeeBatchV2",
             "label": "bifi",
             "type": "t_contract(IERC20Upgradeable)821",
-            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:30"
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:29"
           },
           {
             "contract": "BeefyFeeBatchV2",
             "label": "treasury",
             "type": "t_address",
-            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:31"
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:30"
           },
           {
             "contract": "BeefyFeeBatchV2",
             "label": "rewardPool",
             "type": "t_address",
-            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:32"
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:31"
           },
           {
             "contract": "BeefyFeeBatchV2",
             "label": "unirouter",
             "type": "t_address",
-            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:33"
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:32"
           },
           {
             "contract": "BeefyFeeBatchV2",
             "label": "treasuryFee",
             "type": "t_uint256",
-            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:37"
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:36"
           },
           {
             "contract": "BeefyFeeBatchV2",
             "label": "rewardPoolFee",
             "type": "t_uint256",
-            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:38"
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:37"
           },
           {
             "contract": "BeefyFeeBatchV2",
             "label": "wNativeToBifiRoute",
             "type": "t_array(t_address)dyn_storage",
-            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:40"
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:39"
           },
           {
             "contract": "BeefyFeeBatchV2",
             "label": "routerInitialized",
             "type": "t_bool",
-            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:42"
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:41"
+          }
+        ],
+        "types": {
+          "t_contract(IERC20Upgradeable)821": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_array(t_address)dyn_storage": {
+            "label": "address[]"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "6abe04c6810cf62b0a113b6c120ffd8f52b69b38e052e72b3fd0610cbb7c0e7c": {
+      "address": "0x8Ef7C232470f85Af0809ce5E43888F989eFcAF47",
+      "txHash": "0x1d8521cbf5664c53016a9b7e22b2fab08f3efd874ddc0f28bf0477c51983e691",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:21"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:26"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:30"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:21"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:77"
+          },
+          {
+            "contract": "BeefyFeeBatchV2",
+            "label": "wNative",
+            "type": "t_contract(IERC20Upgradeable)821",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:28"
+          },
+          {
+            "contract": "BeefyFeeBatchV2",
+            "label": "bifi",
+            "type": "t_contract(IERC20Upgradeable)821",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:29"
+          },
+          {
+            "contract": "BeefyFeeBatchV2",
+            "label": "treasury",
+            "type": "t_address",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:30"
+          },
+          {
+            "contract": "BeefyFeeBatchV2",
+            "label": "rewardPool",
+            "type": "t_address",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:31"
+          },
+          {
+            "contract": "BeefyFeeBatchV2",
+            "label": "unirouter",
+            "type": "t_address",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:32"
+          },
+          {
+            "contract": "BeefyFeeBatchV2",
+            "label": "treasuryFee",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:36"
+          },
+          {
+            "contract": "BeefyFeeBatchV2",
+            "label": "rewardPoolFee",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:37"
+          },
+          {
+            "contract": "BeefyFeeBatchV2",
+            "label": "wNativeToBifiRoute",
+            "type": "t_array(t_address)dyn_storage",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:39"
+          },
+          {
+            "contract": "BeefyFeeBatchV2",
+            "label": "routerInitialized",
+            "type": "t_bool",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV2.sol:41"
           }
         ],
         "types": {

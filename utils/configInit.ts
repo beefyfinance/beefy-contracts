@@ -11,11 +11,11 @@ export const getPKs = () => {
   if (process.env.UPGRADER_PK) upgraderAccount = process.env.UPGRADER_PK;
   if (process.env.REWARDER_PK) rewarderAccount = process.env.REWARDER_PK;
 
-  const accounts = [deployerAccount, keeperAccount, upgraderAccount, rewarderAccount].filter(pk => !!pk);
+  const accounts = [deployerAccount, keeperAccount, upgraderAccount, rewarderAccount].filter(pk => !!pk) as string[];
   return accounts;
 };
 
-export const buildHardhatNetworkAccounts = accounts => {
+export const buildHardhatNetworkAccounts = (accounts: string[]) => {
   const hardhatAccounts = accounts.map(pk => {
     // hardhat network wants 0x prefix in front of PK
     const accountConfig: HardhatNetworkAccountUserConfig = {

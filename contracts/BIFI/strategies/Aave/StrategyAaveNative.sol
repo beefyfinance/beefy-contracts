@@ -140,7 +140,9 @@ contract StrategyAaveNative is StratManager, FeeManager {
         if (borrowBal > 0) {
             ILendingPool(lendingPool).repay(want, uint256(-1), INTEREST_RATE_MODE, address(this));
         }
-        ILendingPool(lendingPool).withdraw(want, type(uint).max, address(this));
+        if (supplyBal > 0) {
+            ILendingPool(lendingPool).withdraw(want, type(uint).max, address(this));
+        }
 
         reserves = 0;
     }
@@ -196,7 +198,7 @@ contract StrategyAaveNative is StratManager, FeeManager {
         _harvest(tx.origin);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -370,4 +372,4 @@ contract StrategyAaveNative is StratManager, FeeManager {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(lendingPool, 0);
     }
-} 
+}
