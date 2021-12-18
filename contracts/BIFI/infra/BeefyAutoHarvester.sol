@@ -252,6 +252,11 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             }
         }
 
+        address[] memory failedHarvests = getFailedVaults(strategies, isFailedHarvest);
+        emit FailedHarvests(failedHarvests);
+    }
+
+    function getFailedVaults(address[] memory strategies, bool[] memory isFailedHarvest) internal {
         uint256 failedCount;
         for (uint256 i = 0; i < strategies.length; i++) {
             if (isFailedHarvest[i]) {
@@ -270,7 +275,13 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             }
         }
 
-        emit FailedHarvests(failedHarvests);
+        return failedHarvests;
+    }
+
+    // function convertNativeToLink()
+
+    function setNativeToLinkRoute(address[] memory _nativeToLinkRoute) external onlyManager {
+        nativeToLinkRoute = _nativeToLinkRoute;
     }
 
     function nativeToLink() external view returns (address[] memory) {
