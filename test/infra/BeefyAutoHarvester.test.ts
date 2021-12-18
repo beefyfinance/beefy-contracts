@@ -5,7 +5,7 @@ import { delay } from "../../utils/timeHelpers";
 
 import { addressBook } from "blockchain-addressbook";
 
-import { BeefyAutoHarvester } from "../../typechain-types";
+import { BeefyAutoHarvester, BeefyUniV2Zap } from "../../typechain-types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 const TIMEOUT = 10 * 60 * 100000;
