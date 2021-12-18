@@ -5,7 +5,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
+import "../interfaces/common/IUniswapRouterETH.sol";
 
 interface IStrategy {
     function lastHarvest() external view returns (uint256);
@@ -36,30 +37,28 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     mapping (address => bool) private isUpkeeper;
 
     // contracts, only modifiable via setters
-    IVaultRegistry private vaultRegistry;
-    AggregatorV3Interface private gasFeed;
+    IVaultRegistry public vaultRegistry;
 
     // util vars, only modifiable via setters
-    address private callFeeRecipient = address(this);
-    uint256 private blockGasLimitBuffer = 100000; // not sure what this should be, will probably be trial and error at first.
-    uint256 private harvestGasLimit = 1_500_000;
+    address public callFeeRecipient = address(this);
+    uint256 public blockGasLimitBuffer = 100000; // not sure what this should be, will probably be trial and error at first.
+    uint256 public harvestGasLimit = 1_500_000;
 
     // state vars that will change across upkeeps
-    uint256 private startIndex;
+    uint256 public startIndex;
 
     // swapping to keeper gas token, LINK
     address[] public nativeToLinkRoute;
-    uint256 shouldConvertToLinkThreshold = 1 ether;
+    uint256 public shouldConvertToLinkThreshold = 1 ether;
+    IUniswapRouterETH public unirouter;
 
     event FailedHarvests(address[] failedVaults);
 
     constructor(
         address _vaultRegistry,
-        address _gasFeed,
         address[] memory _nativeToLinkRoute
     ) {
         vaultRegistry = IVaultRegistry(_vaultRegistry);
-        gasFeed = AggregatorV3Interface(_gasFeed);
         nativeToLinkRoute = _nativeToLinkRoute;
     }
 
@@ -84,34 +83,27 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         checkData; // dummy reference to get rid of unused parameter warning 
 
         // save harvest condition in variable as it will be reused in count and build
-        function (address, uint256) view returns (bool, uint256) harvestCondition = _willHarvestVault;
+        function (address) view returns (bool, uint256) harvestCondition = _willHarvestVault;
         // get vaults to iterate over
         address[] memory vaults = vaultRegistry.allVaultAddresses();
         
-        // get gas price to be able to calculate call rewards to break even on harvest
-        ( , int256 answer, , , ) = gasFeed.latestRoundData();
-        if (answer < 0) 
-            return (false, bytes("Gas price is negative"));
-        uint256 gasPrice = uint256(answer); // TODO: is this in wei or gwei
-
         // count vaults to harvest that will fit within block limit
-        (uint256 numberOfVaultsToHarvest, uint256 newStartIndex) = _countVaultsToHarvest(vaults, gasPrice, harvestCondition);
+        (uint256 numberOfVaultsToHarvest, uint256 newStartIndex) = _countVaultsToHarvest(vaults, harvestCondition);
         if (numberOfVaultsToHarvest == 0)
             return (false, bytes("BeefyAutoHarvester: No vaults to harvest"));
 
         // need to return strategies rather than vaults to harvest to avoid looking up strategy address on chain
-        address[] memory vaultsToHarvest = _buildVaultsToHarvest(vaults, gasPrice, harvestCondition, numberOfVaultsToHarvest);
+        address[] memory vaultsToHarvest = _buildVaultsToHarvest(vaults, harvestCondition, numberOfVaultsToHarvest);
 
         performData = abi.encode(
             vaultsToHarvest,
-            newStartIndex,
-            shouldConvertToLink
+            newStartIndex
         );
 
         return (true, performData);
     }
 
-    function _buildVaultsToHarvest(address[] memory _vaults, uint256 _gasPrice, function (address, uint256) view returns (bool, uint256) _harvestCondition, uint256 numberOfVaultsToHarvest)
+    function _buildVaultsToHarvest(address[] memory _vaults, function (address) view returns (bool, uint256) _harvestCondition, uint256 numberOfVaultsToHarvest)
         internal
         view
         returns (address[] memory)
@@ -127,7 +119,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             address vaultAddress = _vaults[vaultIndexToCheck];
 
             // don't need to check gasLeft here as we know the exact number of vaults that will be harvested, and they will be linearly ordered in the array.
-            (bool willHarvest, ) = _harvestCondition(vaultAddress, _gasPrice);
+            (bool willHarvest, ) = _harvestCondition(vaultAddress);
 
             if (willHarvest) {
                 strategiesToHarvest[vaultPositionInArray] = address(IVault(vaultAddress).strategy()); // TODO: rename functions to strategy* as this will be returning strategies rather than vaults
@@ -141,7 +133,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         return strategiesToHarvest;
     }
 
-    function _countVaultsToHarvest(address[] memory _vaults, uint256 _gasPrice, function (address, uint256) view returns (bool, uint256) _harvestCondition)
+    function _countVaultsToHarvest(address[] memory _vaults, function (address) view returns (bool, uint256) _harvestCondition)
         internal
         view
         returns (uint256, uint256)
@@ -158,7 +150,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             uint256 vaultIndexToCheck = getCircularIndex(startIndex, offset, _vaults.length);
             address vaultAddress = _vaults[vaultIndexToCheck];
 
-            (bool willHarvest, uint256 gasNeeded) = _harvestCondition(vaultAddress, _gasPrice);
+            (bool willHarvest, uint256 gasNeeded) = _harvestCondition(vaultAddress);
 
             if (willHarvest && gasLeft >= gasNeeded) {
                 gasLeft -= gasNeeded;
@@ -177,12 +169,12 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         return (index + offset) % bufferLength;
     }
 
-    function _willHarvestVault(address _vaultAddress, uint256 _gasPrice) 
+    function _willHarvestVault(address _vaultAddress) 
         internal
         view
         returns (bool, uint256)
     {
-        (bool shouldHarvestVault, uint256 gasNeeded) = _shouldHarvestVault(_vaultAddress, _gasPrice);
+        (bool shouldHarvestVault, uint256 gasNeeded) = _shouldHarvestVault(_vaultAddress);
         
         bool willHarvestVault = _canHarvestVault(_vaultAddress) && shouldHarvestVault;
         
@@ -221,7 +213,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         return canHarvest;
     }
 
-    function _shouldHarvestVault(address _vaultAddress, uint256 _gasPrice)
+    function _shouldHarvestVault(address _vaultAddress)
         internal
         view
         returns (bool, uint256)
@@ -233,7 +225,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
         uint256 callRewardAmount = strategy.callReward();
 
-        uint256 gasNeeded = _gasPrice * harvestGasLimit;
+        uint256 gasNeeded = tx.gasprice * harvestGasLimit;
         bool isProfitableHarvest = callRewardAmount >= gasNeeded;
 
         bool shouldHarvest = isProfitableHarvest ||
@@ -246,14 +238,13 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     function performUpkeep(
         bytes calldata performData
-    ) external {
+    ) external onlyUpkeeper {
         (
             address[] memory strategies,
-            uint256 newStartIndex, 
-            bool shouldConvertToLink
+            uint256 newStartIndex
         ) = abi.decode(
             performData,
-            (address[], uint256, bool)
+            (address[], uint256)
         );
     }
 
@@ -293,7 +284,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     }
 
     function setShouldConvertToLinkThreshold(uint256 newThreshold) external onlyManager {
-
+        shouldConvertToLinkThreshold = newThreshold;
     }
 
     // function convertNativeToLink()
