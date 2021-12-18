@@ -24,8 +24,8 @@ const config = {
 const testData = {
   vaults: {
     quick_quick_eth: "0x66df1B2d22759D03A9f37BAaAc826089e56a5936",
-    quick_matic_mana: "0x72B5Cf05770C9a6A99FB8652825884ee36a4BfdA",
-    quick_shib_matic: "0x5e03C75a8728a8E0FF0326baADC95433009424d6",
+    quick_matic_mana: "0x5e03C75a8728a8E0FF0326baADC95433009424d6",
+    quick_shib_matic: "0x72B5Cf05770C9a6A99FB8652825884ee36a4BfdA",
     quick_dpi_eth: "0x1a83915207c9028a9f71e7D9Acf41eD2beB6f42D",
     quick_quick: "0x659418cc3cf755F5367a51aDb586a7F770Da6d29", // single asset
     curve_poly_atricrypto3: "0x5A0801BAd20B6c62d86C566ca90688A6b9ea1d3f", // >2 token LP
