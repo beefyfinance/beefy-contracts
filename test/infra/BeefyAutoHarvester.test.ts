@@ -12,6 +12,11 @@ import { startingEtherPerAccount } from "../../utils/configInit";
 
 const TIMEOUT = 10 * 60 * 100000;
 
+const numberOfTestcases = 2;
+const accountFundsBuffer = ethers.utils.parseUnits("100", "ether").toNumber();
+const totalTestcaseFunds = startingEtherPerAccount - accountFundsBuffer;
+const fundsPerTestcase = totalTestcaseFunds / numberOfTestcases
+
 const chainName = "polygon";
 const chainData = addressBook[chainName];
 const { beefyfinance } = chainData.platforms;
@@ -94,7 +99,10 @@ describe("BeefyAutoHarvester", () => {
   });
 
   it("basic multiharvests", async () => {
-    const etherForTestCase = startingEtherPerAccount / 4;
+    // fund allocation
+    const amountToZap = fundsPerTestcase / 2;
+    const amountToSimulateLinkHarvest = fundsPerTestcase / 2;
+
     // vault registry should have quick_shib_matic
     const { quick_shib_matic } = testData.vaults;
     const vaultInfo = await vaultRegistry.getVaultInfo(quick_shib_matic);
@@ -108,7 +116,7 @@ describe("BeefyAutoHarvester", () => {
 
     // beef in quick_shib_matic with a large amount to ensure harvestability
     let zapTx = await zap.beefInETH(quick_shib_matic, 0, {
-      value: etherForTestCase / 2,
+      value: amountToZap,
     });
     await zapTx.wait();
 
@@ -137,9 +145,10 @@ describe("BeefyAutoHarvester", () => {
     await setUpkeepersTx.wait()
 
     // send wmatic to autoharvester to simulate need to convert to Link
-    const wrapNativeTx = await wrappedNative.deposit({value: etherForTestCase / 2});
+    const valueToWrap = amountToSimulateLinkHarvest;
+    const wrapNativeTx = await wrappedNative.deposit({value: valueToWrap});
     await wrapNativeTx.wait();
-    const transferNativeTx = await wrappedNative.transfer(autoHarvester.address, etherForTestCase / 2);
+    const transferNativeTx = await wrappedNative.transfer(autoHarvester.address, valueToWrap);
     await transferNativeTx.wait();
 
     const performUpkeepTx = await autoHarvester.performUpkeep(performData, upkeepOverrides);
