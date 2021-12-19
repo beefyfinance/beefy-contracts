@@ -7,7 +7,7 @@ import { addressBook } from "blockchain-addressbook";
 
 import { BeefyAutoHarvester, BeefyUniV2Zap, BeefyVaultRegistry, IUniswapRouterETH, StrategyCommonChefLP } from "../../typechain-types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { CallOverrides } from "ethers";
+import { BigNumber, CallOverrides } from "ethers";
 
 const TIMEOUT = 10 * 60 * 100000;
 
@@ -99,10 +99,19 @@ describe("BeefyVaultRegistry", () => {
     await network.provider.send("evm_increaseTime", [12 /* hours */ * 60 /* minutes */ * 60 /* seconds */])
     await network.provider.send("evm_mine")
 
-    // call checker function and ensure there are profitable harvests, use 5 gwei
+    // manually ensure should harvest
+    const callReward = await strategy.callReward();
+    const harvestGasLimit = await autoHarvester.harvestGasLimit();
+    const gasPrice = ethers.utils.parseUnits("5", "gwei")
+
     const upkeepOverrides: CallOverrides = {
-      gasPrice: ethers.utils.parseUnits("5", "gwei")
+      gasPrice
     };
+
+    const expectedTxCost = harvestGasLimit.mul(gasPrice)
+    expect(callReward).to.be.gte(expectedTxCost);
+
+    // call checker function and ensure there are profitable harvests
     const { upkeepNeeded, performData } = await autoHarvester.checkUpkeep([], upkeepOverrides);
     expect(upkeepNeeded).to.be.true
 
