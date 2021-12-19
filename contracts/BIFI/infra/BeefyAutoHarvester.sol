@@ -95,7 +95,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         checkData; // dummy reference to get rid of unused parameter warning 
 
         // save harvest condition in variable as it will be reused in count and build
-        function (address) view returns (bool, uint256) harvestCondition = _willHarvestVault;
+        function (address) view returns (bool) harvestCondition = _willHarvestVault;
         // get vaults to iterate over
         address[] memory vaults = vaultRegistry.allVaultAddresses();
         
@@ -115,7 +115,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         return (true, performData);
     }
 
-    function _buildVaultsToHarvest(address[] memory _vaults, function (address) view returns (bool, uint256) _harvestCondition, uint256 numberOfVaultsToHarvest)
+    function _buildVaultsToHarvest(address[] memory _vaults, function (address) view returns (bool) _harvestCondition, uint256 numberOfVaultsToHarvest)
         internal
         view
         returns (address[] memory)
@@ -130,8 +130,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             uint256 vaultIndexToCheck = getCircularIndex(startIndex, offset, _vaults.length);
             address vaultAddress = _vaults[vaultIndexToCheck];
 
-            // don't need to check gasLeft here as we know the exact number of vaults that will be harvested, and they will be linearly ordered in the array.
-            (bool willHarvest, ) = _harvestCondition(vaultAddress);
+            bool willHarvest = _harvestCondition(vaultAddress);
 
             if (willHarvest) {
                 strategiesToHarvest[vaultPositionInArray] = address(IVault(vaultAddress).strategy()); // TODO: rename functions to strategy* as this will be returning strategies rather than vaults
@@ -145,7 +144,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         return strategiesToHarvest;
     }
 
-    function _countVaultsToHarvest(address[] memory _vaults, function (address) view returns (bool, uint256) _harvestCondition)
+    function _countVaultsToHarvest(address[] memory _vaults, function (address) view returns (bool) _harvestCondition)
         internal
         view
         returns (uint256, uint256)
@@ -162,10 +161,10 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             uint256 vaultIndexToCheck = getCircularIndex(startIndex, offset, _vaults.length);
             address vaultAddress = _vaults[vaultIndexToCheck];
 
-            (bool willHarvest, uint256 gasNeeded) = _harvestCondition(vaultAddress);
+            bool willHarvest = _harvestCondition(vaultAddress);
 
-            if (willHarvest && gasLeft >= gasNeeded) {
-                gasLeft -= gasNeeded;
+            if (willHarvest && gasLeft >= harvestGasLimit) {
+                gasLeft -= harvestGasLimit;
                 numberOfVaultsToHarvest += 1;
                 latestIndexOfVaultToHarvest = vaultIndexToCheck;
             }
@@ -184,13 +183,14 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     function _willHarvestVault(address _vaultAddress) 
         internal
         view
-        returns (bool, uint256)
+        returns (bool)
     {
-        (bool shouldHarvestVault, uint256 gasNeeded) = _shouldHarvestVault(_vaultAddress);
+        bool shouldHarvestVault = _shouldHarvestVault(_vaultAddress);
+        bool canHarvestVault = _canHarvestVault(_vaultAddress);
         
-        bool willHarvestVault = _canHarvestVault(_vaultAddress) && shouldHarvestVault;
+        bool willHarvestVault = canHarvestVault && shouldHarvestVault;
         
-        return (willHarvestVault, gasNeeded);
+        return willHarvestVault;
     }
 
     function _canHarvestVault(address _vaultAddress) 
@@ -203,24 +203,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
         bool isPaused = strategy.paused();
 
-        bool canHarvest = false;
-
-        if (isPaused) 
-        {
-            canHarvest = false;
-        }
-        else 
-        {
-            // if offchain sim is subject to block gas limit, might not be able to make this call
-            try strategy.harvest(callFeeRecipient)
-            {
-                canHarvest = true;
-            }
-            catch
-            {
-                canHarvest = false;
-            }
-        }
+        bool canHarvest = !isPaused;
 
         return canHarvest;
     }
@@ -228,7 +211,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     function _shouldHarvestVault(address _vaultAddress)
         internal
         view
-        returns (bool, uint256)
+        returns (bool)
     {
         IVault vault = IVault(_vaultAddress);
         IStrategy strategy = IStrategy(vault.strategy());
@@ -237,13 +220,13 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
         uint256 callRewardAmount = strategy.callReward();
 
-        uint256 gasNeeded = tx.gasprice * harvestGasLimit;
-        bool isProfitableHarvest = callRewardAmount >= gasNeeded;
+        uint256 txCost = tx.gasprice * harvestGasLimit;
+        bool isProfitableHarvest = callRewardAmount >= txCost;
 
         bool shouldHarvest = isProfitableHarvest ||
             (!hasBeenHarvestedToday && callRewardAmount > 0);
 
-        return (shouldHarvest, gasNeeded);
+        return shouldHarvest;
     }
 
     // PERFORM UPKEEP SECTION
