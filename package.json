@@ -34,6 +34,7 @@
     "deploy:timelock": "hardhat run scripts/infra/deployTimelockController.js --network",
     "deploy:chain": "hardhat run scripts/infra/deployChain.js --network",
     "deploy:registry": "hardhat run scripts/infra/deployRegistry.ts --network",
+    "deploy:autoHarvester": "hardhat run scripts/infra/deployAutoHarvester.ts --network",
     "flat-hardhat": "hardhat flatten contracts/BIFI/strategies/common/StrategyCommonRewardPoolSingle.sol > tmp/flattened.sol",
     "flat": "bin/flatten.sh",
     "flat:chain": "bin/flattenChainContracts.sh",
