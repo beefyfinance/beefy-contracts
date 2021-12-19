@@ -18,7 +18,7 @@ const { beefyfinance } = chainData.platforms;
 const config = {
   autoHarvester: {
     name: "BeefyAutoHarvester",
-    address: "0xd4155C58e24866DD0F0588bB8423bEE3A25E692E",
+    address: "0xA01512CE7Ce88eFFb597C2e5EB0dFc593AA3C157",
   },
   vaultRegistry: {
     name: "BeefyVaultRegistry",
@@ -89,7 +89,7 @@ describe("BeefyVaultRegistry", () => {
     const lastHarvestBefore = await strategy.lastHarvest();
 
     // beef in quick_shib_matic with a large amount to ensure harvestability
-    const nativeToWant = ethers.utils.parseEther("10") // 1000 matic
+    const nativeToWant = ethers.utils.parseEther("100000") // 1000 matic
     let zapTx = await zap.beefInETH(quick_shib_matic, 0, {
       value: nativeToWant,
     });
