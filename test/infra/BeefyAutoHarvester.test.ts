@@ -99,6 +99,11 @@ describe("BeefyAutoHarvester", () => {
   });
 
   it("basic multiharvests", async () => {
+    // set up gas price
+    const gasPrice = ethers.utils.parseUnits("5", "gwei")
+    const upkeepOverrides: CallOverrides = {
+      gasPrice
+    };
     // fund allocation
     const amountToZap = fundsPerTestcase / 2;
     const amountToSimulateLinkHarvest = fundsPerTestcase / 2;
@@ -126,11 +131,6 @@ describe("BeefyAutoHarvester", () => {
 
     const callReward = await strategy.callReward();
     const harvestGasLimit = await autoHarvester.harvestGasLimit();
-    const gasPrice = ethers.utils.parseUnits("5", "gwei")
-
-    const upkeepOverrides: CallOverrides = {
-      gasPrice
-    };
 
     // manually ensure should harvest
     const expectedTxCost = harvestGasLimit.mul(gasPrice)
@@ -167,7 +167,38 @@ describe("BeefyAutoHarvester", () => {
   }).timeout(TIMEOUT);
 
   it("complex multiharvests", async () => {
-    
+    // set up gas price
+    const gasPrice = ethers.utils.parseUnits("5", "gwei")
+    const upkeepOverrides: CallOverrides = {
+      gasPrice
+    };
+    // fund allocation
+    const vaultAddresses = Object.values(testData.vaults);
+    const numberOfVaults = vaultAddresses.length;
+    const fundsPerVault = fundsPerTestcase / numberOfVaults;
+
+    // zap into every vault
+    for (const vaultAddress of vaultAddresses) {
+      let zapTx = await zap.beefInETH(vaultAddress, 0, {
+        value: fundsPerVault,
+      });
+      await zapTx.wait();
+    }
+
+    // fast-forward
+    await network.provider.send("evm_increaseTime", [24 /* hours */ * 60 /* minutes */ * 60 /* seconds */])
+    await network.provider.send("evm_mine")
+
+    // call checker function and ensure there are profitable harvests
+    const { upkeepNeeded, performData } = await autoHarvester.checkUpkeep([], upkeepOverrides);
+    expect(upkeepNeeded).to.be.true
+
+    const performUpkeepTx = await autoHarvester.performUpkeep(performData, upkeepOverrides);
+    const performUpkeepTxReceipt = await performUpkeepTx.wait();
+
+    const newStartIndex = await autoHarvester.startIndex();
+
+    expect(newStartIndex).to.be.gt(0);
 
   }).timeout(TIMEOUT);
 });
