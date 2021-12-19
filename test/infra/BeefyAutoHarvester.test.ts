@@ -69,6 +69,12 @@ describe("BeefyAutoHarvester", () => {
 
   let deployer: SignerWithAddress, keeper: SignerWithAddress, other: SignerWithAddress;
 
+  before(async () => {
+    // allow deployer to upkeep
+    const setUpkeepersTx = await autoHarvester.setUpkeepers([deployer.address], true);
+    await setUpkeepersTx.wait()
+  })
+
   beforeEach(async () => {
     [deployer, keeper, other] = await ethers.getSigners();
 
@@ -139,10 +145,6 @@ describe("BeefyAutoHarvester", () => {
     // call checker function and ensure there are profitable harvests
     const { upkeepNeeded, performData } = await autoHarvester.checkUpkeep([], upkeepOverrides);
     expect(upkeepNeeded).to.be.true
-
-    // allow deployer to upkeep
-    const setUpkeepersTx = await autoHarvester.setUpkeepers([deployer.address], true);
-    await setUpkeepersTx.wait()
 
     // send wmatic to autoharvester to simulate need to convert to Link
     const valueToWrap = amountToSimulateLinkHarvest;
