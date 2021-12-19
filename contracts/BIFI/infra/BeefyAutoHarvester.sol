@@ -41,16 +41,16 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     IVaultRegistry public vaultRegistry;
 
     // util vars, only modifiable via setters
-    address public callFeeRecipient = address(this);
-    uint256 public blockGasLimitBuffer = 100000; // not sure what this should be, will probably be trial and error at first.
-    uint256 public harvestGasLimit = 1_500_000;
+    address public callFeeRecipient;
+    uint256 public blockGasLimitBuffer;
+    uint256 public harvestGasLimit;
 
     // state vars that will change across upkeeps
     uint256 public startIndex;
 
     // swapping to keeper gas token, LINK
     address[] public nativeToLinkRoute;
-    uint256 public shouldConvertToLinkThreshold = 1 ether;
+    uint256 public shouldConvertToLinkThreshold;
     IUniswapRouterETH public unirouter;
 
     event SuccessfulHarvests(address[] successfulVaults);
@@ -77,6 +77,11 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         vaultRegistry = IVaultRegistry(_vaultRegistry);
         unirouter = IUniswapRouterETH(_unirouter);
         nativeToLinkRoute = _nativeToLinkRoute;
+
+        callFeeRecipient = address(this);
+        blockGasLimitBuffer = 100_000;
+        harvestGasLimit = 1_500_000;
+        shouldConvertToLinkThreshold = 1 ether;
     }
 
     function checkUpkeep(
