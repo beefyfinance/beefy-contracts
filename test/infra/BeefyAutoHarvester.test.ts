@@ -1,12 +1,13 @@
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 
 import { expect } from "chai";
 import { delay } from "../../utils/timeHelpers";
 
 import { addressBook } from "blockchain-addressbook";
 
-import { BeefyAutoHarvester, BeefyUniV2Zap, BeefyVaultRegistry, IUniswapRouterETH } from "../../typechain-types";
+import { BeefyAutoHarvester, BeefyUniV2Zap, BeefyVaultRegistry, IUniswapRouterETH, StrategyCommonChefLP } from "../../typechain-types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { CallOverrides } from "ethers";
 
 const TIMEOUT = 10 * 60 * 100000;
 
@@ -79,25 +80,37 @@ describe("BeefyVaultRegistry", () => {
     // vault registry should have quick_shib_matic
     const { quick_shib_matic } = testData.vaults;
     const vaultInfo = await vaultRegistry.getVaultInfo(quick_shib_matic);
-    const {strategy} = vaultInfo;
 
-    // get some output, quick
-    const nativeToQuick = ethers.utils.parseEther("5000") // 5000 matic
-    const {WMATIC, QUICK} = chainData.tokens;
-    let swapToQuickTx = await unirouter.swapExactETHForTokens(0, [WMATIC, QUICK], deployer.address, 5000000000, {
-      value: nativeToQuick,
-    });
-    await swapToQuickTx.wait();
+    const {strategy: strategyAddress} = vaultInfo;
+    const strategy = (await ethers.getContractAt(
+      "StrategyCommonChefLP",
+      strategyAddress
+    )) as unknown as StrategyCommonChefLP;
+    const lastHarvestBefore = strategy.lastHarvest();
 
-    // beef in quick_shib_matic
+    // beef in quick_shib_matic with a large amount to ensure harvestability
     const nativeToWant = ethers.utils.parseEther("10") // 1000 matic
     let zapTx = await zap.beefInETH(quick_shib_matic, 0, {
       value: nativeToWant,
     });
     await zapTx.wait();
 
-    // send all quick to strategy, to simulate harvestability
+    // increase time to enough for harvest to be profitable
+    await network.provider.send("evm_increaseTime", [12 /* hours */ * 60 /* minutes */ * 60 /* seconds */])
+    await network.provider.send("evm_mine")
 
-    // use 5 gwei tx price
+    // call checker function and ensure there are profitable harvests, use 5 gwei
+    const upkeepOverrides: CallOverrides = {
+      gasPrice: ethers.utils.parseUnits("5", "gwei")
+    };
+    const { upkeepNeeded, performData } = await autoHarvester.checkUpkeep("", upkeepOverrides);
+    expect(upkeepNeeded).to.be.true
+
+    const performUpkeepTx = await autoHarvester.performUpkeep(performData, upkeepOverrides);
+    await performUpkeepTx.wait();
+
+    const lastHarvestAfter = strategy.lastHarvest();
+    expect(lastHarvestAfter).to.be.gt(lastHarvestBefore);
+
   }).timeout(TIMEOUT);
 });
