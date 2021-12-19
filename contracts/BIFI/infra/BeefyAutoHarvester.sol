@@ -59,9 +59,11 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     constructor(
         address _vaultRegistry,
+        address _unirouter,
         address[] memory _nativeToLinkRoute
     ) {
         vaultRegistry = IVaultRegistry(_vaultRegistry);
+        unirouter = IUniswapRouterETH(_unirouter);
         nativeToLinkRoute = _nativeToLinkRoute;
     }
 
