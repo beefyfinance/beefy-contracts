@@ -86,7 +86,7 @@ describe("BeefyVaultRegistry", () => {
       "StrategyCommonChefLP",
       strategyAddress
     )) as unknown as StrategyCommonChefLP;
-    const lastHarvestBefore = strategy.lastHarvest();
+    const lastHarvestBefore = await strategy.lastHarvest();
 
     // beef in quick_shib_matic with a large amount to ensure harvestability
     const nativeToWant = ethers.utils.parseEther("10") // 1000 matic
@@ -103,7 +103,7 @@ describe("BeefyVaultRegistry", () => {
     const upkeepOverrides: CallOverrides = {
       gasPrice: ethers.utils.parseUnits("5", "gwei")
     };
-    const { upkeepNeeded, performData } = await autoHarvester.checkUpkeep("", upkeepOverrides);
+    const { upkeepNeeded, performData } = await autoHarvester.checkUpkeep([], upkeepOverrides);
     expect(upkeepNeeded).to.be.true
 
     const performUpkeepTx = await autoHarvester.performUpkeep(performData, upkeepOverrides);
