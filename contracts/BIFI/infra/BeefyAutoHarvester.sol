@@ -57,16 +57,6 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     event FailedHarvests(address[] failedVaults);
     event ConvertedNativeToLink(uint256 nativeAmount, uint256 linkAmount);
 
-    constructor(
-        address _vaultRegistry,
-        address _unirouter,
-        address[] memory _nativeToLinkRoute
-    ) {
-        vaultRegistry = IVaultRegistry(_vaultRegistry);
-        unirouter = IUniswapRouterETH(_unirouter);
-        nativeToLinkRoute = _nativeToLinkRoute;
-    }
-
     modifier onlyManager() {
         require(msg.sender == owner() || isManager[msg.sender], "!manager");
         _;
@@ -75,6 +65,18 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     modifier onlyUpkeeper() {
         require(isUpkeeper[msg.sender], "!upkeeper");
         _;
+    }
+
+    function initialize (
+        address _vaultRegistry,
+        address _unirouter,
+        address[] memory _nativeToLinkRoute
+    ) external initializer {
+        __Ownable_init();
+
+        vaultRegistry = IVaultRegistry(_vaultRegistry);
+        unirouter = IUniswapRouterETH(_unirouter);
+        nativeToLinkRoute = _nativeToLinkRoute;
     }
 
     function checkUpkeep(
