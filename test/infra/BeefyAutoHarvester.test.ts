@@ -18,7 +18,7 @@ const { beefyfinance } = chainData.platforms;
 const config = {
   autoHarvester: {
     name: "BeefyAutoHarvester",
-    address: "0xA01512CE7Ce88eFFb597C2e5EB0dFc593AA3C157",
+    address: "0x19AfD39F0f8A2deeD37Ed74F6a126b68432D4bc7",
   },
   vaultRegistry: {
     name: "BeefyVaultRegistry",
@@ -99,7 +99,6 @@ describe("BeefyVaultRegistry", () => {
     await network.provider.send("evm_increaseTime", [12 /* hours */ * 60 /* minutes */ * 60 /* seconds */])
     await network.provider.send("evm_mine")
 
-    // manually ensure should harvest
     const callReward = await strategy.callReward();
     const harvestGasLimit = await autoHarvester.harvestGasLimit();
     const gasPrice = ethers.utils.parseUnits("5", "gwei")
@@ -108,6 +107,7 @@ describe("BeefyVaultRegistry", () => {
       gasPrice
     };
 
+    // manually ensure should harvest
     const expectedTxCost = harvestGasLimit.mul(gasPrice)
     expect(callReward).to.be.gte(expectedTxCost);
 
@@ -115,10 +115,14 @@ describe("BeefyVaultRegistry", () => {
     const { upkeepNeeded, performData } = await autoHarvester.checkUpkeep([], upkeepOverrides);
     expect(upkeepNeeded).to.be.true
 
+    // allow deployer to upkeep
+    const setUpkeepersTx = await autoHarvester.setUpkeepers([deployer.address], true);
+    await setUpkeepersTx.wait()
+
     const performUpkeepTx = await autoHarvester.performUpkeep(performData, upkeepOverrides);
     await performUpkeepTx.wait();
 
-    const lastHarvestAfter = strategy.lastHarvest();
+    const lastHarvestAfter = await strategy.lastHarvest();
     expect(lastHarvestAfter).to.be.gt(lastHarvestBefore);
 
   }).timeout(TIMEOUT);
