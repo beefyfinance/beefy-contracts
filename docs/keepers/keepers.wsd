@@ -1,0 +1,35 @@
+@startuml Batched AutoHarvesting using Keepers
+title Batched AutoHarvesting using Keepers
+
+actor Keepers
+participant UpkeepMultiHarvest as Upkeep
+collections BeefyVaults
+
+Keepers->Upkeep: call CheckUpkeep using eth_call
+Upkeep->Upkeep: adds harvestable vaults to output array until gas limit is hit (~8-10 vaults)
+note left
+vault list obtained from vault registry
+(Vault registry omitted from diagram for simplicity)
+
+Upkeep stores a variable called startIndex, 
+which is starting point in vault array
+to check for harvestable vaults. 
+This ensures after harvesting the first batch of vaults, 
+we move on to check the next batch of ~10.
+end note
+note right
+harvest condition checks for 
+canHarvest -> (!paused && harvestSimulationSuccess == true) and 
+shouldHarvest -> (isProfitableHarvest || (!hasBeenHarvestedToday && callRewardAmount > 0))
+end note
+alt Upkeep returns true
+    Keepers->Upkeep: call PerformUpkeep on-chain
+    note left: calldata = array of vaults to harvest + new startIndex to store in upkeep for next batch
+    loop ~10 times
+        Upkeep->BeefyVaults: try catch harvest, emit event in catch event
+    Upkeep->Upkeep: update index
+else Upkeep returns false
+    note left: do nothing
+end
+Keepers->Upkeep: Repeat above with new start index...
+@enduml
