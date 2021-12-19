@@ -21,10 +21,12 @@ interface IStrategy {
 
 interface IStrategyMultiHarvest {
     function harvest(address callFeeRecipient) external; // used for multiharvest in perform upkeep, this one doesn't have view
+    function harvestWithCallFeeRecipient(address callFeeRecipient) external; // back compat call
 }
 
 interface IVaultRegistry {
     function allVaultAddresses() external view returns (address[] memory);
+    function getVaultCount() external view returns(uint256 count);
 }
 
 interface IVault {
@@ -242,33 +244,49 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             (address[], uint256)
         );
 
-        multiHarvest(strategies);
-        startIndex = newStartIndex;
+        _runUpkeep(strategies, newStartIndex);
     }
 
-    function multiHarvest(address[] memory strategies) internal {
-        bool[] memory isFailedHarvest = new bool[](strategies.length);
-        for (uint256 i = 0; i < strategies.length; i++) {
-            try IStrategyMultiHarvest(strategies[i]).harvest(callFeeRecipient) {
-            } catch {
-                isFailedHarvest[i] = true;
-            }
-        }
+    function _runUpkeep(address[] memory strategies, uint256 newStartIndex) internal {
+        // multi harvest
+        require(strategies.length > 0, "No strategies to harvest");
+        _multiHarvest(strategies);
 
-        (address[] memory successfulHarvests, address[] memory failedHarvests) = getSuccessfulAndFailedVaults(strategies, isFailedHarvest);
-        
-        emit SuccessfulHarvests(successfulHarvests);
-        emit FailedHarvests(failedHarvests);
+        // ensure newStartIndex is valid and set startIndex
+        uint256 vaultCount = vaultRegistry.getVaultCount();
+        require(newStartIndex >= 0 && newStartIndex < vaultCount, "newStartIndex out of range.");
+        startIndex = newStartIndex;
 
         // convert native to link if needed
         IERC20Upgradeable native = IERC20Upgradeable(nativeToLinkRoute[0]);
         uint256 nativeBalance = native.balanceOf(address(this));
-        if (nativeBalance > shouldConvertToLinkThreshold) {
+
+        if (nativeBalance >= shouldConvertToLinkThreshold) {
             _convertNativeToLink();
         }
     }
 
-    function getSuccessfulAndFailedVaults(address[] memory strategies, bool[] memory isFailedHarvest) internal pure returns (address[] memory successfulHarvests, address[] memory failedHarvests) {
+    function _multiHarvest(address[] memory strategies) internal {
+        bool[] memory isFailedHarvest = new bool[](strategies.length);
+        for (uint256 i = 0; i < strategies.length; i++) {
+            try IStrategyMultiHarvest(strategies[i]).harvest(callFeeRecipient) {
+            } catch {
+                // try old function signature
+                try IStrategyMultiHarvest(strategies[i]).harvestWithCallFeeRecipient(callFeeRecipient) {
+                }
+                catch {
+                isFailedHarvest[i] = true;
+                }
+            }
+        }
+
+        (address[] memory successfulHarvests, address[] memory failedHarvests) = _getSuccessfulAndFailedVaults(strategies, isFailedHarvest);
+        
+        emit SuccessfulHarvests(successfulHarvests);
+        emit FailedHarvests(failedHarvests);
+    }
+
+    function _getSuccessfulAndFailedVaults(address[] memory strategies, bool[] memory isFailedHarvest) internal pure returns (address[] memory successfulHarvests, address[] memory failedHarvests) {
         uint256 failedCount;
         for (uint256 i = 0; i < strategies.length; i++) {
             if (isFailedHarvest[i]) {
