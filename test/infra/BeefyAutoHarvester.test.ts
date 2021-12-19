@@ -41,15 +41,21 @@ const config = {
 
 const testData = {
   vaults: {
+    quick_quick_matic: "0xa008B727ddBa283Ddb178b47BB227Cdbea5C1bfD",
+    quick_eth_matic: "0x8b89477dFde285849E1B07947E25012206F4D674",
+    quick_matic_usdc: "0xC1A2e8274D390b67A7136708203D71BF3877f158",
+    quick_sol_matic: "0x8802fbcb669c7BbcC3989455B3FdBF9235176bD4",
+    quick_usdt_matic: "0x7c0E28652523e36f0dF89C5A895cF59D493cb04c",
+    quick_wmatic_avax: "0x764B2aAcfDE7e33888566a6d44005Dc982F02031",
+    quick_mai_matic: "0xD6eB31D849eE79B5F5fA1b7c470cDDFa515965cD",
+    quick_ftm_matic: "0x48e58c7E8d2063ae7ADe8a0829E00780155232eC",
+    quick_matic_mana: "0x5e03C75a8728a8E0FF0326baADC95433009424d6",
+    quick_matic_wcro: "0x6EfBc871323148d9Fc34226594e90d9Ce2de3da3",
     quick_shib_matic: "0x72B5Cf05770C9a6A99FB8652825884ee36a4BfdA",
-    curve_poly_atricrypto3: "0x5A0801BAd20B6c62d86C566ca90688A6b9ea1d3f", // >2 token LP
   },
-  wants: {
-    curve_poly_atricrypto3: "0xdAD97F7713Ae9437fa9249920eC8507e5FbB23d3",
-  },  
 };
 
-describe("BeefyVaultRegistry", () => {
+describe("BeefyAutoHarvester", () => {
   let autoHarvester: BeefyAutoHarvester;
   let vaultRegistry: BeefyVaultRegistry;
   let zap: BeefyUniV2Zap;
@@ -87,7 +93,7 @@ describe("BeefyVaultRegistry", () => {
     )) as unknown as IWrappedNative;
   });
 
-  it("multiharvests", async () => {
+  it("basic multiharvests", async () => {
     const etherForTestCase = startingEtherPerAccount / 4;
     // vault registry should have quick_shib_matic
     const { quick_shib_matic } = testData.vaults;
@@ -148,6 +154,11 @@ describe("BeefyVaultRegistry", () => {
     // ensure strategy was harvested
     const lastHarvestAfter = await strategy.lastHarvest();
     expect(lastHarvestAfter).to.be.gt(lastHarvestBefore);
+
+  }).timeout(TIMEOUT);
+
+  it("complex multiharvests", async () => {
+    
 
   }).timeout(TIMEOUT);
 });
