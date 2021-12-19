@@ -5,9 +5,10 @@ import { delay } from "../../utils/timeHelpers";
 
 import { addressBook } from "blockchain-addressbook";
 
-import { BeefyAutoHarvester, BeefyUniV2Zap, BeefyVaultRegistry, IUniswapRouterETH, StrategyCommonChefLP } from "../../typechain-types";
+import { BeefyAutoHarvester, BeefyUniV2Zap, BeefyVaultRegistry, IUniswapRouterETH, IWrappedNative, StrategyCommonChefLP } from "../../typechain-types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumber, CallOverrides } from "ethers";
+import { startingEtherPerAccount } from "../../utils/configInit";
 
 const TIMEOUT = 10 * 60 * 100000;
 
@@ -18,7 +19,7 @@ const { beefyfinance } = chainData.platforms;
 const config = {
   autoHarvester: {
     name: "BeefyAutoHarvester",
-    address: "0x19AfD39F0f8A2deeD37Ed74F6a126b68432D4bc7",
+    address: "0x7E9F7ebf04c570129C27d9Dcb521a8bA4393fB04",
   },
   vaultRegistry: {
     name: "BeefyVaultRegistry",
@@ -32,6 +33,10 @@ const config = {
     name: "IUniswapRouterETH",
     address: chainData.platforms.quickswap.router,
   },
+  wrappedNative: {
+    name: "IWrappedNative",
+    address: chainData.tokens.WNATIVE.address,
+  }
 };
 
 const testData = {
@@ -49,6 +54,7 @@ describe("BeefyVaultRegistry", () => {
   let vaultRegistry: BeefyVaultRegistry;
   let zap: BeefyUniV2Zap;
   let unirouter: IUniswapRouterETH;
+  let wrappedNative: IWrappedNative
 
   let deployer: SignerWithAddress, keeper: SignerWithAddress, other: SignerWithAddress;
 
@@ -74,9 +80,15 @@ describe("BeefyVaultRegistry", () => {
       config.unirouter.name,
       config.unirouter.address
     )) as unknown as IUniswapRouterETH;
+
+    wrappedNative = (await ethers.getContractAt(
+      config.wrappedNative.name,
+      config.wrappedNative.address
+    )) as unknown as IWrappedNative;
   });
 
   it("multiharvests", async () => {
+    const etherForTestCase = startingEtherPerAccount / 4;
     // vault registry should have quick_shib_matic
     const { quick_shib_matic } = testData.vaults;
     const vaultInfo = await vaultRegistry.getVaultInfo(quick_shib_matic);
@@ -89,9 +101,8 @@ describe("BeefyVaultRegistry", () => {
     const lastHarvestBefore = await strategy.lastHarvest();
 
     // beef in quick_shib_matic with a large amount to ensure harvestability
-    const nativeToWant = ethers.utils.parseEther("100000") // 1000 matic
     let zapTx = await zap.beefInETH(quick_shib_matic, 0, {
-      value: nativeToWant,
+      value: etherForTestCase / 2,
     });
     await zapTx.wait();
 
@@ -119,9 +130,22 @@ describe("BeefyVaultRegistry", () => {
     const setUpkeepersTx = await autoHarvester.setUpkeepers([deployer.address], true);
     await setUpkeepersTx.wait()
 
-    const performUpkeepTx = await autoHarvester.performUpkeep(performData, upkeepOverrides);
-    await performUpkeepTx.wait();
+    // send wmatic to autoharvester to simulate need to convert to Link
+    const wrapNativeTx = await wrappedNative.deposit({value: etherForTestCase / 2});
+    await wrapNativeTx.wait();
+    const transferNativeTx = await wrappedNative.transfer(autoHarvester.address, etherForTestCase / 2);
+    await transferNativeTx.wait();
 
+    const performUpkeepTx = await autoHarvester.performUpkeep(performData, upkeepOverrides);
+    const performUpkeepTxReceipt = await performUpkeepTx.wait();
+
+    // check logs
+    const [successfulHarvests, failedHarvests, convertedNativeToLink] = performUpkeepTxReceipt.logs;
+    performUpkeepTxReceipt.logs.forEach(log => {
+      expect(log).not.to.be.undefined
+    })
+
+    // ensure strategy was harvested
     const lastHarvestAfter = await strategy.lastHarvest();
     expect(lastHarvestAfter).to.be.gt(lastHarvestBefore);
 
