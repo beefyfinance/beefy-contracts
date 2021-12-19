@@ -22,7 +22,7 @@ const deploy = async () => {
   const vaultRegistryAddress = "0x820cE73c7F15C2b828aBE79670D7e61731AB93Be";
   const unirouter = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff";
   const {WMATIC, ETH, LINK} = chainData.tokens
-  const nativeToLinkRoute: string[] = [WMATIC, ETH, LINK];
+  const nativeToLinkRoute: string[] = [WMATIC.address, ETH.address, LINK.address];
 
   const constructorArguments: any[] = [vaultRegistryAddress, unirouter, nativeToLinkRoute];
   const transparentUpgradableProxy = await upgrades.deployProxy(BeefyAutoHarvesterFactory, constructorArguments);
