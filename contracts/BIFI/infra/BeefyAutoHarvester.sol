@@ -44,7 +44,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     // util vars, only modifiable via setters
     address public callFeeRecipient;
-    uint256 public blockGasLimitBuffer;
+    uint256 public gasCap;
+    uint256 public gasCapBuffer;
     uint256 public harvestGasLimit;
 
     // state vars that will change across upkeeps
@@ -81,7 +82,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         nativeToLinkRoute = _nativeToLinkRoute;
 
         callFeeRecipient = address(this);
-        blockGasLimitBuffer = 100_000;
+        gasCap = 6_500_000;
+        gasCapBuffer = 100_000;
         harvestGasLimit = 1_500_000;
         shouldConvertToLinkThreshold = 1 ether;
     }
@@ -129,7 +131,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
         // create array of strategies to harvest. Could reduce code duplication from _countVaultsToHarvest via a another function parameter called _loopPostProcess
         for (uint256 offset; offset < _vaults.length; ++offset) {
-            uint256 vaultIndexToCheck = getCircularIndex(startIndex, offset, _vaults.length);
+            uint256 vaultIndexToCheck = _getCircularIndex(startIndex, offset, _vaults.length);
             address vaultAddress = _vaults[vaultIndexToCheck];
 
             bool willHarvest = _harvestCondition(vaultAddress);
@@ -151,7 +153,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         view
         returns (uint256, uint256)
     {
-        uint256 gasLeft = block.gaslimit - blockGasLimitBuffer; // does block.gaslimit change when its an eth_call?
+        uint256 gasLeft = gasCap - gasCapBuffer;
         uint256 latestIndexOfVaultToHarvest; // will be used to set newStartIndex
         uint256 numberOfVaultsToHarvest; // used to create fixed size array in _buildVaultsToHarvest
 
@@ -159,8 +161,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         for (uint256 offset; offset < _vaults.length; ++offset) {
             // startIndex is where to start in the vaultRegistry array, offset is position from start index (in other words, number of vaults we've checked so far), 
             // then modulo to wrap around to the start of the array, until we've checked all vaults, or break early due to hitting gas limit
-            // this logic is contained in getCircularIndex()
-            uint256 vaultIndexToCheck = getCircularIndex(startIndex, offset, _vaults.length);
+            // this logic is contained in _getCircularIndex()
+            uint256 vaultIndexToCheck = _getCircularIndex(startIndex, offset, _vaults.length);
             address vaultAddress = _vaults[vaultIndexToCheck];
 
             bool willHarvest = _harvestCondition(vaultAddress);
@@ -172,13 +174,13 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             }
         }
 
-        uint256 newStartIndex = getCircularIndex(latestIndexOfVaultToHarvest, 1, _vaults.length);
+        uint256 newStartIndex = _getCircularIndex(latestIndexOfVaultToHarvest, 1, _vaults.length);
 
         return (numberOfVaultsToHarvest, newStartIndex); // unnecessary return but return statements are always preferred even with named returns
     }
 
     // function used to iterate on an array in a circular way
-    function getCircularIndex(uint256 index, uint256 offset, uint256 bufferLength) private pure returns (uint256) {
+    function _getCircularIndex(uint256 index, uint256 offset, uint256 bufferLength) private pure returns (uint256) {
         return (index + offset) % bufferLength;
     }
 
@@ -353,8 +355,12 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         isUpkeeper[_upkeeper] = _status;
     }
 
-    function setBlockGasLimitBuffer(uint256 newBlockGasLimitBuffer) external onlyManager {
-        blockGasLimitBuffer = newBlockGasLimitBuffer;
+    function setGasCap(uint256 newGasCap) external onlyManager {
+        gasCap = newGasCap;
+    }
+
+    function setGasCapBuffer(uint256 newGasCapBuffer) external onlyManager {
+        gasCapBuffer = newGasCapBuffer;
     }
 
     function setHarvestGasLimit(uint256 newHarvestGasLimit) external onlyManager {
