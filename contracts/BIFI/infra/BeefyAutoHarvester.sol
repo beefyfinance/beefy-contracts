@@ -146,8 +146,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
                 vaultPositionInArray += 1;
             }
 
-            // no need to keep going if we've found our last vault to harvest
-            if (vaultPositionInArray == numberOfVaultsToHarvest - 1) break;
+            // no need to keep going if we're past last index
+            if (vaultPositionInArray == numberOfVaultsToHarvest) break;
         }
 
         return vaultsToHarvest;
