@@ -111,7 +111,7 @@ describe("BeefyAutoHarvester", () => {
     
   // });
 
-  xit("basic multiharvests", async () => {
+  it("basic multiharvests", async () => {
     // set up gas price
     const gasPrice = ethers.utils.parseUnits("5", "gwei")
     const upkeepOverrides: CallOverrides = {
