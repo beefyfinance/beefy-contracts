@@ -15,7 +15,8 @@ const TIMEOUT = 10 * 60 * 100000;
 const numberOfTestcases = 2;
 const accountFundsBuffer = ethers.utils.parseUnits("100", "ether");
 const totalTestcaseFunds = startingEtherPerAccount.sub(accountFundsBuffer);
-const fundsPerTestcase = totalTestcaseFunds.div(numberOfTestcases);
+const totalTestcaseFundsScaledDown = totalTestcaseFunds.div(100)
+const fundsPerTestcase = totalTestcaseFundsScaledDown.div(numberOfTestcases);
 
 const chainName = "polygon";
 const chainData = addressBook[chainName];
@@ -199,8 +200,13 @@ describe("BeefyAutoHarvester", () => {
       }
     }
 
+    const loopIterations = 3;
+
+    for (let i = 0; i < loopIterations; ++i) {
+      const currentNewIndex = await autoHarvester.startIndex();
+
     // fast-forward
-    await network.provider.send("evm_increaseTime", [24 /* hours */ * 60 /* minutes */ * 60 /* seconds */])
+      await network.provider.send("evm_increaseTime", [48 /* hours */ * 60 /* minutes */ * 60 /* seconds */])
     await network.provider.send("evm_mine")
 
     // call checker function and ensure there are profitable harvests
@@ -212,7 +218,7 @@ describe("BeefyAutoHarvester", () => {
 
     const newStartIndex = await autoHarvester.startIndex();
 
-    expect(newStartIndex).to.be.gt(0);
-
+      expect(newStartIndex).not.to.eq(currentNewIndex)
+    }
   }).timeout(TIMEOUT);
 });
