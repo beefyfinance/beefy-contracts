@@ -10,8 +10,8 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
-import "../../interfaces/lendhub/IComptroller.sol";
-import "../../interfaces/venus/IVToken.sol";
+import "../../interfaces/common/IComptroller.sol";
+import "../../interfaces/common/IVToken.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
