@@ -8,7 +8,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 import "../interfaces/common/IUniswapRouterETH.sol";
-import "hardhat/console.sol";
 
 interface IStrategy {
     function lastHarvest() external view returns (uint256);
@@ -110,11 +109,6 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             return (false, bytes("BeefyAutoHarvester: No vaults to harvest"));
 
         address[] memory vaultsToHarvest = _buildVaultsToHarvest(vaults, willHarvestVault, numberOfVaultsToHarvest);
-
-        console.log("vaultsToHarvest");
-        for (uint256 index = 0; index < vaultsToHarvest.length; index++) {
-            console.log(vaultsToHarvest[index]);
-        }
 
         performData = abi.encode(
             vaultsToHarvest,
@@ -281,8 +275,6 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     function _multiHarvest(address[] memory vaults) internal {
         bool[] memory isFailedHarvest = new bool[](vaults.length);
         for (uint256 i = 0; i < vaults.length; i++) {
-            console.log("Trying to harvest");
-            console.log(vaults[i]);
             IStrategyMultiHarvest strategy = IStrategyMultiHarvest(IVault(vaults[i]).strategy());
             try strategy.harvest(callFeeRecipient) {
             } catch {
@@ -290,7 +282,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
                 try strategy.harvestWithCallFeeRecipient(callFeeRecipient) {
                 }
                 catch {
-                isFailedHarvest[i] = true;
+                    isFailedHarvest[i] = true;
                 }
             }
         }
