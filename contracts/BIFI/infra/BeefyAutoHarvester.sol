@@ -9,7 +9,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 import "../interfaces/common/IUniswapRouterETH.sol";
 
-interface IStrategy {
+interface IAutoStrategy {
     function lastHarvest() external view returns (uint256);
 
     function callReward() external view returns (uint256);
@@ -207,7 +207,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         returns (bool)
     {
         IVault vault = IVault(_vaultAddress);
-        IStrategy strategy = IStrategy(vault.strategy());
+        IAutoStrategy strategy = IAutoStrategy(vault.strategy());
 
         bool isPaused = strategy.paused();
 
@@ -222,7 +222,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         returns (bool)
     {
         IVault vault = IVault(_vaultAddress);
-        IStrategy strategy = IStrategy(vault.strategy());
+        IAutoStrategy strategy = IAutoStrategy(vault.strategy());
 
         bool hasBeenHarvestedToday = strategy.lastHarvest() < 1 days;
 
