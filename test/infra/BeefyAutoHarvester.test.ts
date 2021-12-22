@@ -196,24 +196,27 @@ describe("BeefyAutoHarvester", () => {
         await zapTx.wait();
       }
       catch {
-        console.log(`Could not zap ${vault}`)
+          console.log(`Could not zap ${vault}`)
       }
     }
 
+    const loopIterations = 3;
+
+    for (let i = 0; i < loopIterations; ++i) {
       const currentNewIndex = await autoHarvester.startIndex();
 
       // fast-forward, i don't think this actually does what i think
       await network.provider.send("evm_increaseTime", [48 /* hours */ * 60 /* minutes */ * 60 /* seconds */])
-    await network.provider.send("evm_mine")
+      await network.provider.send("evm_mine")
 
-    // call checker function and ensure there are profitable harvests
-    const { upkeepNeeded, performData } = await autoHarvester.checkUpkeep([], upkeepOverrides);
-    expect(upkeepNeeded).to.be.true
+      // call checker function and ensure there are profitable harvests
+      const { upkeepNeeded, performData } = await autoHarvester.checkUpkeep([], upkeepOverrides);
+      expect(upkeepNeeded).to.be.true
 
-    const performUpkeepTx = await autoHarvester.performUpkeep(performData, upkeepOverrides);
-    const performUpkeepTxReceipt = await performUpkeepTx.wait();
+      const performUpkeepTx = await autoHarvester.performUpkeep(performData, upkeepOverrides);
+      const performUpkeepTxReceipt = await performUpkeepTx.wait();
 
-    const newStartIndex = await autoHarvester.startIndex();
+      const newStartIndex = await autoHarvester.startIndex();
 
       expect(newStartIndex).not.to.eq(currentNewIndex)
     }
