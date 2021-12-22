@@ -159,7 +159,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         returns (bool[] memory, uint256, uint256)
     {
         uint256 gasLeft = gasCap - gasCapBuffer;
-        uint256 latestIndexOfVaultToHarvest; // will be used to set newStartIndex
+        uint256 vaultIndexToCheck; // hoisted up to be able to set newStartIndex
         uint256 numberOfVaultsToHarvest; // used to create fixed size array in _buildVaultsToHarvest
         bool[] memory willHarvestVault = new bool[](_vaults.length);
 
@@ -168,7 +168,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             // startIndex is where to start in the vaultRegistry array, offset is position from start index (in other words, number of vaults we've checked so far), 
             // then modulo to wrap around to the start of the array, until we've checked all vaults, or break early due to hitting gas limit
             // this logic is contained in _getCircularIndex()
-            uint256 vaultIndexToCheck = _getCircularIndex(startIndex, offset, _vaults.length);
+            vaultIndexToCheck = _getCircularIndex(startIndex, offset, _vaults.length);
             address vaultAddress = _vaults[vaultIndexToCheck];
 
             bool willHarvest = _harvestCondition(vaultAddress);
@@ -185,7 +185,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             }
         }
 
-        uint256 newStartIndex = _getCircularIndex(latestIndexOfVaultToHarvest, 1, _vaults.length);
+        uint256 newStartIndex = _getCircularIndex(vaultIndexToCheck, 1, _vaults.length);
 
         return (willHarvestVault, numberOfVaultsToHarvest, newStartIndex);
     }
