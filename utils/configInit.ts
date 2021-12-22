@@ -1,10 +1,10 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { HardhatNetworkAccountUserConfig } from "hardhat/src/types/config";
 
-export const startingEtherPerAccount = 1_000_000_000;
+export const startingEtherPerAccount = ethers.utils.parseUnits(BigNumber.from(1_000_000_000).toString(), "ether");
 
 export const getPKs = () => {
   let deployerAccount, keeperAccount, upgraderAccount, rewarderAccount;
@@ -25,7 +25,7 @@ export const buildHardhatNetworkAccounts = (accounts: string[]) => {
     // hardhat network wants 0x prefix in front of PK
     const accountConfig: HardhatNetworkAccountUserConfig = {
       privateKey: pk,
-      balance: ethers.utils.parseUnits(startingEtherPerAccount.toString(), "ether").toString(),
+      balance: startingEtherPerAccount.toString(),
     };
     return accountConfig;
   });

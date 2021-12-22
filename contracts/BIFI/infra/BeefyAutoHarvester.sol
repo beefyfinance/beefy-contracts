@@ -44,7 +44,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     // util vars, only modifiable via setters
     address public callFeeRecipient;
-    uint256 public blockGasLimitBuffer;
+    uint256 public gasCap;
+    uint256 public gasCapBuffer;
     uint256 public harvestGasLimit;
 
     // state vars that will change across upkeeps
@@ -81,7 +82,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         nativeToLinkRoute = _nativeToLinkRoute;
 
         callFeeRecipient = address(this);
-        blockGasLimitBuffer = 100_000;
+        gasCap = 6_500_000;
+        gasCapBuffer = 100_000;
         harvestGasLimit = 1_500_000;
         shouldConvertToLinkThreshold = 1 ether;
     }
@@ -101,13 +103,12 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         // get vaults to iterate over
         address[] memory vaults = vaultRegistry.allVaultAddresses();
         
-        // count vaults to harvest that will fit within block limit
-        (uint256 numberOfVaultsToHarvest, uint256 newStartIndex) = _countVaultsToHarvest(vaults, harvestCondition);
+        // count vaults to harvest that will fit within gas limit
+        (bool[] memory willHarvestVault, uint256 numberOfVaultsToHarvest, uint256 newStartIndex) = _countVaultsToHarvest(vaults, harvestCondition);
         if (numberOfVaultsToHarvest == 0)
             return (false, bytes("BeefyAutoHarvester: No vaults to harvest"));
 
-        // need to return strategies rather than vaults to harvest to avoid looking up strategy address on chain
-        address[] memory vaultsToHarvest = _buildVaultsToHarvest(vaults, harvestCondition, numberOfVaultsToHarvest);
+        address[] memory vaultsToHarvest = _buildVaultsToHarvest(vaults, willHarvestVault, numberOfVaultsToHarvest);
 
         performData = abi.encode(
             vaultsToHarvest,
@@ -117,50 +118,51 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         return (true, performData);
     }
 
-    function _buildVaultsToHarvest(address[] memory _vaults, function (address) view returns (bool) _harvestCondition, uint256 numberOfVaultsToHarvest)
+    function _buildVaultsToHarvest(address[] memory _vaults, bool[] memory willHarvestVault, uint256 numberOfVaultsToHarvest)
         internal
         view
         returns (address[] memory)
     {
         uint256 vaultPositionInArray;
-        address[] memory strategiesToHarvest = new address[](
+        address[] memory vaultsToHarvest = new address[](
             numberOfVaultsToHarvest
         );
 
-        // create array of strategies to harvest. Could reduce code duplication from _countVaultsToHarvest via a another function parameter called _loopPostProcess
+        // create array of vaults to harvest. Could reduce code duplication from _countVaultsToHarvest via a another function parameter called _loopPostProcess
         for (uint256 offset; offset < _vaults.length; ++offset) {
-            uint256 vaultIndexToCheck = getCircularIndex(startIndex, offset, _vaults.length);
+            uint256 vaultIndexToCheck = _getCircularIndex(startIndex, offset, _vaults.length);
             address vaultAddress = _vaults[vaultIndexToCheck];
 
-            bool willHarvest = _harvestCondition(vaultAddress);
+            bool willHarvest = willHarvestVault[offset];
 
             if (willHarvest) {
-                strategiesToHarvest[vaultPositionInArray] = address(IVault(vaultAddress).strategy()); // TODO: rename functions to strategy* as this will be returning strategies rather than vaults
+                vaultsToHarvest[vaultPositionInArray] = vaultAddress;
                 vaultPositionInArray += 1;
             }
 
-            // no need to keep going if we've found our last vault to harvest
-            if (vaultPositionInArray == numberOfVaultsToHarvest - 1) break;
+            // no need to keep going if we're past last index
+            if (vaultPositionInArray == numberOfVaultsToHarvest) break;
         }
 
-        return strategiesToHarvest;
+        return vaultsToHarvest;
     }
 
     function _countVaultsToHarvest(address[] memory _vaults, function (address) view returns (bool) _harvestCondition)
         internal
         view
-        returns (uint256, uint256)
+        returns (bool[] memory, uint256, uint256)
     {
-        uint256 gasLeft = block.gaslimit - blockGasLimitBuffer; // does block.gaslimit change when its an eth_call?
-        uint256 latestIndexOfVaultToHarvest; // will be used to set newStartIndex
+        uint256 gasLeft = gasCap - gasCapBuffer;
+        uint256 vaultIndexToCheck; // hoisted up to be able to set newStartIndex
         uint256 numberOfVaultsToHarvest; // used to create fixed size array in _buildVaultsToHarvest
+        bool[] memory willHarvestVault = new bool[](_vaults.length);
 
         // count the number of vaults to harvest.
         for (uint256 offset; offset < _vaults.length; ++offset) {
             // startIndex is where to start in the vaultRegistry array, offset is position from start index (in other words, number of vaults we've checked so far), 
             // then modulo to wrap around to the start of the array, until we've checked all vaults, or break early due to hitting gas limit
-            // this logic is contained in getCircularIndex()
-            uint256 vaultIndexToCheck = getCircularIndex(startIndex, offset, _vaults.length);
+            // this logic is contained in _getCircularIndex()
+            vaultIndexToCheck = _getCircularIndex(startIndex, offset, _vaults.length);
             address vaultAddress = _vaults[vaultIndexToCheck];
 
             bool willHarvest = _harvestCondition(vaultAddress);
@@ -168,17 +170,21 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             if (willHarvest && gasLeft >= harvestGasLimit) {
                 gasLeft -= harvestGasLimit;
                 numberOfVaultsToHarvest += 1;
-                latestIndexOfVaultToHarvest = vaultIndexToCheck;
+                willHarvestVault[offset] = true;
+            }
+
+            if (gasLeft < harvestGasLimit) {
+                break;
             }
         }
 
-        uint256 newStartIndex = getCircularIndex(latestIndexOfVaultToHarvest, 1, _vaults.length);
+        uint256 newStartIndex = _getCircularIndex(vaultIndexToCheck, 1, _vaults.length);
 
-        return (numberOfVaultsToHarvest, newStartIndex); // unnecessary return but return statements are always preferred even with named returns
+        return (willHarvestVault, numberOfVaultsToHarvest, newStartIndex);
     }
 
     // function used to iterate on an array in a circular way
-    function getCircularIndex(uint256 index, uint256 offset, uint256 bufferLength) private pure returns (uint256) {
+    function _getCircularIndex(uint256 index, uint256 offset, uint256 bufferLength) private pure returns (uint256) {
         return (index + offset) % bufferLength;
     }
 
@@ -237,20 +243,20 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         bytes calldata performData
     ) external override onlyUpkeeper {
         (
-            address[] memory strategies,
+            address[] memory vaults,
             uint256 newStartIndex
         ) = abi.decode(
             performData,
             (address[], uint256)
         );
 
-        _runUpkeep(strategies, newStartIndex);
+        _runUpkeep(vaults, newStartIndex);
     }
 
-    function _runUpkeep(address[] memory strategies, uint256 newStartIndex) internal {
+    function _runUpkeep(address[] memory vaults, uint256 newStartIndex) internal {
         // multi harvest
-        require(strategies.length > 0, "No strategies to harvest");
-        _multiHarvest(strategies);
+        require(vaults.length > 0, "No vaults to harvest");
+        _multiHarvest(vaults);
 
         // ensure newStartIndex is valid and set startIndex
         uint256 vaultCount = vaultRegistry.getVaultCount();
@@ -266,44 +272,45 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         }
     }
 
-    function _multiHarvest(address[] memory strategies) internal {
-        bool[] memory isFailedHarvest = new bool[](strategies.length);
-        for (uint256 i = 0; i < strategies.length; i++) {
-            try IStrategyMultiHarvest(strategies[i]).harvest(callFeeRecipient) {
+    function _multiHarvest(address[] memory vaults) internal {
+        bool[] memory isFailedHarvest = new bool[](vaults.length);
+        for (uint256 i = 0; i < vaults.length; i++) {
+            IStrategyMultiHarvest strategy = IStrategyMultiHarvest(IVault(vaults[i]).strategy());
+            try strategy.harvest(callFeeRecipient) {
             } catch {
                 // try old function signature
-                try IStrategyMultiHarvest(strategies[i]).harvestWithCallFeeRecipient(callFeeRecipient) {
+                try strategy.harvestWithCallFeeRecipient(callFeeRecipient) {
                 }
                 catch {
-                isFailedHarvest[i] = true;
+                    isFailedHarvest[i] = true;
                 }
             }
         }
 
-        (address[] memory successfulHarvests, address[] memory failedHarvests) = _getSuccessfulAndFailedVaults(strategies, isFailedHarvest);
+        (address[] memory successfulHarvests, address[] memory failedHarvests) = _getSuccessfulAndFailedVaults(vaults, isFailedHarvest);
         
         emit SuccessfulHarvests(successfulHarvests);
         emit FailedHarvests(failedHarvests);
     }
 
-    function _getSuccessfulAndFailedVaults(address[] memory strategies, bool[] memory isFailedHarvest) internal pure returns (address[] memory successfulHarvests, address[] memory failedHarvests) {
+    function _getSuccessfulAndFailedVaults(address[] memory vaults, bool[] memory isFailedHarvest) internal pure returns (address[] memory successfulHarvests, address[] memory failedHarvests) {
         uint256 failedCount;
-        for (uint256 i = 0; i < strategies.length; i++) {
+        for (uint256 i = 0; i < vaults.length; i++) {
             if (isFailedHarvest[i]) {
                 failedCount += 1;
             }
         }
 
-        successfulHarvests = new address[](strategies.length - failedCount);
+        successfulHarvests = new address[](vaults.length - failedCount);
         failedHarvests = new address[](failedCount);
         uint256 failedHarvestIndex;
         uint256 successfulHarvestsIndex;
-        for (uint256 i = 0; i < strategies.length; i++) {
+        for (uint256 i = 0; i < vaults.length; i++) {
             if (isFailedHarvest[i]) {
-                failedHarvests[failedHarvestIndex++] = strategies[i];
+                failedHarvests[failedHarvestIndex++] = vaults[i];
             }
             else {
-                successfulHarvests[successfulHarvestsIndex++] = strategies[i];
+                successfulHarvests[successfulHarvestsIndex++] = vaults[i];
             }
         }
 
@@ -353,8 +360,12 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         isUpkeeper[_upkeeper] = _status;
     }
 
-    function setBlockGasLimitBuffer(uint256 newBlockGasLimitBuffer) external onlyManager {
-        blockGasLimitBuffer = newBlockGasLimitBuffer;
+    function setGasCap(uint256 newGasCap) external onlyManager {
+        gasCap = newGasCap;
+    }
+
+    function setGasCapBuffer(uint256 newGasCapBuffer) external onlyManager {
+        gasCapBuffer = newGasCapBuffer;
     }
 
     function setHarvestGasLimit(uint256 newHarvestGasLimit) external onlyManager {
