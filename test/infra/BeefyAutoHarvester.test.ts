@@ -25,7 +25,7 @@ const { beefyfinance } = chainData.platforms;
 const config = {
   autoHarvester: {
     name: "BeefyAutoHarvester",
-    address: "0xEE56893c30567c0A4273A228C88116D45DdCB8AD", // change this
+    address: "0xB0646659bB6Ec42Cd2D9434B77C0B05913492290", // change this
   },
   vaultRegistry: {
     name: "BeefyVaultRegistry",
@@ -186,28 +186,11 @@ describe("BeefyAutoHarvester", () => {
     const numberOfVaults = vaults.length;
     const fundsPerVault = fundsPerTestcase.div(numberOfVaults);
 
-    // zap into every vault
-    for (const vault of vaults) {
-      const vaultAddress = testData.vaults[vault];
-      try {
-        let zapTx = await zap.beefInETH(vaultAddress, 0, {
-          value: fundsPerVault,
-        });
-        await zapTx.wait();
-      }
-      catch {
-          console.log(`Could not zap ${vault}`)
-      }
-    }
-
     const loopIterations = 3;
 
     for (let i = 0; i < loopIterations; ++i) {
       const currentNewIndex = await autoHarvester.startIndex();
 
-      // fast-forward, i don't think this actually does what i think
-      await network.provider.send("evm_increaseTime", [48 /* hours */ * 60 /* minutes */ * 60 /* seconds */])
-      await network.provider.send("evm_mine")
 
       // call checker function and ensure there are profitable harvests
       const { upkeepNeeded, performData } = await autoHarvester.checkUpkeep([], upkeepOverrides);
