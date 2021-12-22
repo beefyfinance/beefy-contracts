@@ -177,7 +177,6 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
                 gasLeft -= harvestGasLimit;
                 numberOfVaultsToHarvest += 1;
                 willHarvestVault[offset] = true;
-                latestIndexOfVaultToHarvest = vaultIndexToCheck;
             }
 
             if (gasLeft < harvestGasLimit) {
