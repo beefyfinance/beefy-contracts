@@ -6,7 +6,7 @@ import { addressBook } from "blockchain-addressbook";
 const chainName = "polygon";
 const chainData = addressBook[chainName];
 
-const shouldVerifyOnEtherscan = true;
+const shouldVerifyOnEtherscan = false;
 
 const contractNames = {
   BeefyAutoHarvester: "BeefyAutoHarvester",

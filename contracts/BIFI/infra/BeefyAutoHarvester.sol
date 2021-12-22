@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 import "../interfaces/common/IUniswapRouterETH.sol";
+import "hardhat/console.sol";
 
 interface IStrategy {
     function lastHarvest() external view returns (uint256);

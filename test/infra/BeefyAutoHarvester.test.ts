@@ -24,7 +24,7 @@ const { beefyfinance } = chainData.platforms;
 const config = {
   autoHarvester: {
     name: "BeefyAutoHarvester",
-    address: "0xECa5e661e3220Fbbd3B3676F341980cb1528F676",
+    address: "0x0B5260f37e03FD97ab653d3B1893D7A3C04d4210",
   },
   vaultRegistry: {
     name: "BeefyVaultRegistry",
@@ -50,14 +50,14 @@ interface TestData {
 
 const testData: TestData = {
   vaults: {
-    quick_quick_matic: "0xa008B727ddBa283Ddb178b47BB227Cdbea5C1bfD",
+    // quick_quick_matic: "0xa008B727ddBa283Ddb178b47BB227Cdbea5C1bfD",
     quick_eth_matic: "0x8b89477dFde285849E1B07947E25012206F4D674",
     quick_matic_usdc: "0xC1A2e8274D390b67A7136708203D71BF3877f158",
-    quick_sol_matic: "0x8802fbcb669c7BbcC3989455B3FdBF9235176bD4",
-    quick_usdt_matic: "0x7c0E28652523e36f0dF89C5A895cF59D493cb04c",
-    quick_wmatic_avax: "0x764B2aAcfDE7e33888566a6d44005Dc982F02031",
+    // quick_sol_matic: "0x8802fbcb669c7BbcC3989455B3FdBF9235176bD4",
+    // quick_usdt_matic: "0x7c0E28652523e36f0dF89C5A895cF59D493cb04c",
+    // quick_wmatic_avax: "0x764B2aAcfDE7e33888566a6d44005Dc982F02031",
     quick_mai_matic: "0xD6eB31D849eE79B5F5fA1b7c470cDDFa515965cD",
-    quick_ftm_matic: "0x48e58c7E8d2063ae7ADe8a0829E00780155232eC",
+    // quick_ftm_matic: "0x48e58c7E8d2063ae7ADe8a0829E00780155232eC",
     quick_matic_mana: "0x5e03C75a8728a8E0FF0326baADC95433009424d6",
     quick_matic_wcro: "0x6EfBc871323148d9Fc34226594e90d9Ce2de3da3",
     quick_shib_matic: "0x72B5Cf05770C9a6A99FB8652825884ee36a4BfdA",
