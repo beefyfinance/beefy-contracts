@@ -179,6 +179,10 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
                 willHarvestVault[offset] = true;
                 latestIndexOfVaultToHarvest = vaultIndexToCheck;
             }
+
+            if (gasLeft < harvestGasLimit) {
+                break;
+            }
         }
 
         uint256 newStartIndex = _getCircularIndex(latestIndexOfVaultToHarvest, 1, _vaults.length);
