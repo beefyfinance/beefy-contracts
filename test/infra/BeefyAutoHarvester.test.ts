@@ -25,7 +25,7 @@ const { beefyfinance } = chainData.platforms;
 const config = {
   autoHarvester: {
     name: "BeefyAutoHarvester",
-    address: "0x0B5260f37e03FD97ab653d3B1893D7A3C04d4210",
+    address: "0xEE56893c30567c0A4273A228C88116D45DdCB8AD", // change this
   },
   vaultRegistry: {
     name: "BeefyVaultRegistry",
