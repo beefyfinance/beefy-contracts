@@ -200,12 +200,9 @@ describe("BeefyAutoHarvester", () => {
       }
     }
 
-    const loopIterations = 3;
-
-    for (let i = 0; i < loopIterations; ++i) {
       const currentNewIndex = await autoHarvester.startIndex();
 
-    // fast-forward
+      // fast-forward, i don't think this actually does what i think
       await network.provider.send("evm_increaseTime", [48 /* hours */ * 60 /* minutes */ * 60 /* seconds */])
     await network.provider.send("evm_mine")
 
