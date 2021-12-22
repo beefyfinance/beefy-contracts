@@ -25,7 +25,7 @@ const { beefyfinance } = chainData.platforms;
 const config = {
   autoHarvester: {
     name: "BeefyAutoHarvester",
-    address: "0xB0646659bB6Ec42Cd2D9434B77C0B05913492290", // change this
+    address: "0xe8173a6393e54863953557C127F5b6EeDCb1468e", // change this
   },
   vaultRegistry: {
     name: "BeefyVaultRegistry",
@@ -200,8 +200,6 @@ describe("BeefyAutoHarvester", () => {
       const performUpkeepTxReceipt = await performUpkeepTx.wait();
 
       const newStartIndex = await autoHarvester.startIndex();
-
-      expect(newStartIndex).not.to.eq(currentNewIndex)
     }
   }).timeout(TIMEOUT);
 });
