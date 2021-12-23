@@ -44,6 +44,11 @@
       "address": "0x820cE73c7F15C2b828aBE79670D7e61731AB93Be",
       "txHash": "0x752465f48bb31350e4165ed6da14e222e9baa52698cf80cb2221fc5f4aaedab7",
       "kind": "transparent"
+    },
+    {
+      "address": "0xB0646659bB6Ec42Cd2D9434B77C0B05913492290",
+      "txHash": "0x3b02966ee490e4ae5062ba99e426091e63ff56c25a85fa0eb4d70ddc6dad981a",
+      "kind": "transparent"
     }
   ],
   "impls": {
@@ -398,6 +403,139 @@
           },
           "t_mapping(t_address,t_struct(AddressSet)1671_storage)": {
             "label": "mapping(address => struct EnumerableSetUpgradeable.AddressSet)"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "35c24d37e7715fb5e50065acc6be2313057fd3e4efa456cf2a9c2426313f8a4c": {
+      "address": "0x9eEB76e629bcBA0ce22A06362784dEc6c32e3518",
+      "txHash": "0xb1f1adb8f1dcd308095ed021a04655c022e89a80a92ce75e634aea1833e70d8a",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:21"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:26"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:30"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:21"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:77"
+          },
+          {
+            "contract": "BeefyAutoHarvester",
+            "label": "isManager",
+            "type": "t_mapping(t_address,t_bool)",
+            "src": "contracts/BIFI/infra/BeefyAutoHarvester.sol:39"
+          },
+          {
+            "contract": "BeefyAutoHarvester",
+            "label": "isUpkeeper",
+            "type": "t_mapping(t_address,t_bool)",
+            "src": "contracts/BIFI/infra/BeefyAutoHarvester.sol:40"
+          },
+          {
+            "contract": "BeefyAutoHarvester",
+            "label": "vaultRegistry",
+            "type": "t_contract(IVaultRegistry)2231",
+            "src": "contracts/BIFI/infra/BeefyAutoHarvester.sol:43"
+          },
+          {
+            "contract": "BeefyAutoHarvester",
+            "label": "callFeeRecipient",
+            "type": "t_address",
+            "src": "contracts/BIFI/infra/BeefyAutoHarvester.sol:46"
+          },
+          {
+            "contract": "BeefyAutoHarvester",
+            "label": "gasCap",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyAutoHarvester.sol:47"
+          },
+          {
+            "contract": "BeefyAutoHarvester",
+            "label": "gasCapBuffer",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyAutoHarvester.sol:48"
+          },
+          {
+            "contract": "BeefyAutoHarvester",
+            "label": "harvestGasLimit",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyAutoHarvester.sol:49"
+          },
+          {
+            "contract": "BeefyAutoHarvester",
+            "label": "startIndex",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyAutoHarvester.sol:52"
+          },
+          {
+            "contract": "BeefyAutoHarvester",
+            "label": "nativeToLinkRoute",
+            "type": "t_array(t_address)dyn_storage",
+            "src": "contracts/BIFI/infra/BeefyAutoHarvester.sol:55"
+          },
+          {
+            "contract": "BeefyAutoHarvester",
+            "label": "shouldConvertToLinkThreshold",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyAutoHarvester.sol:56"
+          },
+          {
+            "contract": "BeefyAutoHarvester",
+            "label": "unirouter",
+            "type": "t_contract(IUniswapRouterETH)4538",
+            "src": "contracts/BIFI/infra/BeefyAutoHarvester.sol:57"
+          }
+        ],
+        "types": {
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_contract(IVaultRegistry)2231": {
+            "label": "contract IVaultRegistry"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_array(t_address)dyn_storage": {
+            "label": "address[]"
+          },
+          "t_contract(IUniswapRouterETH)4538": {
+            "label": "contract IUniswapRouterETH"
           },
           "t_array(t_uint256)49_storage": {
             "label": "uint256[49]"
