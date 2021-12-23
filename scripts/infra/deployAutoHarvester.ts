@@ -19,7 +19,7 @@ const deploy = async () => {
 
   console.log("Deploying:", contractNames.BeefyAutoHarvester);
 
-  const vaultRegistryAddress = chainData.platforms.beefyFinance.vaultRegistry;
+  const vaultRegistryAddress = chainData.platforms.beefyfinance.vaultRegistry;
   const unirouter = chainData.platforms.quickswap.router;
   const {WMATIC, ETH, LINK} = chainData.tokens
   const nativeToLinkRoute: string[] = [WMATIC.address, ETH.address, LINK.address];
