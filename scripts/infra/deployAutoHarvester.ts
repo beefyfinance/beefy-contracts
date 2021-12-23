@@ -20,7 +20,7 @@ const deploy = async () => {
   console.log("Deploying:", contractNames.BeefyAutoHarvester);
 
   const vaultRegistryAddress = "0x820cE73c7F15C2b828aBE79670D7e61731AB93Be";
-  const unirouter = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff";
+  const unirouter = chainData.platforms.quickswap.router;
   const {WMATIC, ETH, LINK} = chainData.tokens
   const nativeToLinkRoute: string[] = [WMATIC.address, ETH.address, LINK.address];
 
