@@ -6,7 +6,7 @@ import { addressBook } from "blockchain-addressbook";
 const chainName = "polygon";
 const chainData = addressBook[chainName];
 
-const shouldVerifyOnEtherscan = false;
+const shouldVerifyOnEtherscan = true;
 
 const contractNames = {
   BeefyAutoHarvester: "BeefyAutoHarvester",
@@ -19,7 +19,7 @@ const deploy = async () => {
 
   console.log("Deploying:", contractNames.BeefyAutoHarvester);
 
-  const vaultRegistryAddress = "0x820cE73c7F15C2b828aBE79670D7e61731AB93Be";
+  const vaultRegistryAddress = chainData.platforms.beefyFinance.vaultRegistry;
   const unirouter = chainData.platforms.quickswap.router;
   const {WMATIC, ETH, LINK} = chainData.tokens
   const nativeToLinkRoute: string[] = [WMATIC.address, ETH.address, LINK.address];
