@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 import "../interfaces/common/IUniswapRouterETH.sol";
@@ -34,6 +35,7 @@ interface IVault {
 }
 
 contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatibleInterface {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // access control
     mapping (address => bool) private isManager;
@@ -374,5 +376,18 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     function setUnirouter(address newUnirouter) external onlyManager {
         unirouter = IUniswapRouterETH(newUnirouter);
+    }
+
+    function LINK() public view returns (address link) {
+        return nativeToLinkRoute[nativeToLinkRoute.length - 1];
+    }
+
+    function withdrawAllLink() external onlyManager {
+        uint256 amount = IERC20Upgradeable(LINK()).balanceOf(address(this));
+        withdrawLink(amount);
+    }
+
+    function withdrawLink(uint256 amount) public onlyManager {
+        IERC20Upgradeable(LINK()).safeTransfer(msg.sender, amount);
     }
 }
