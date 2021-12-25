@@ -374,6 +374,10 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         _wrapAllLinkToOracleVersion();
     }
 
+    function NATIVE() public view returns (address link) {
+        return nativeToLinkRoute[0];
+    }
+
     function LINK() public view returns (address link) {
         return nativeToLinkRoute[nativeToLinkRoute.length - 1];
     }
@@ -398,6 +402,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     }
 
     function setNativeToLinkRoute(address[] memory _nativeToLinkRoute) external onlyManager {
+        require(_nativeToLinkRoute[0] == NATIVE(), "!NATIVE");
+        require(_nativeToLinkRoute[_nativeToLinkRoute.length-1] == LINK(), "!LINK");
         nativeToLinkRoute = _nativeToLinkRoute;
     }
 
@@ -444,5 +450,16 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
         IERC20Upgradeable(LINK_oracle_version()).safeApprove(pegswapAddress, 0);
         IERC20Upgradeable(LINK_oracle_version()).safeApprove(pegswapAddress, type(uint256).max);
+    }
+
+    function _approveNativeSpending() internal {
+        address unirouterAddress = address(unirouter);
+        IERC20Upgradeable(NATIVE()).safeApprove(unirouterAddress, 0);
+        IERC20Upgradeable(NATIVE()).safeApprove(unirouterAddress, type(uint256).max);
+    }
+
+    function _approveSpending() internal {
+        _approveNativeSpending();
+        _approveLinkSpending();
     }
 }
