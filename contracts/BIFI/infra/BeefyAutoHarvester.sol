@@ -5,9 +5,11 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 import "../interfaces/common/IUniswapRouterETH.sol";
+import "../interfaces/pegswap/IPegSwap.sol";
 
 interface IAutoStrategy {
     function lastHarvest() external view returns (uint256);
@@ -34,6 +36,7 @@ interface IVault {
 }
 
 contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatibleInterface {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // access control
     mapping (address => bool) private isManager;
@@ -55,6 +58,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     address[] public nativeToLinkRoute;
     uint256 public shouldConvertToLinkThreshold;
     IUniswapRouterETH public unirouter;
+    address public oracleLink;
+    IPegSwap public pegswap;
 
     event SuccessfulHarvests(address[] successfulVaults);
     event FailedHarvests(address[] failedVaults);
@@ -73,19 +78,28 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     function initialize (
         address _vaultRegistry,
         address _unirouter,
-        address[] memory _nativeToLinkRoute
+        address[] memory _nativeToLinkRoute,
+        address _oracleLink,
+        address _pegswap,
+        uint256 _gasCap,
+        uint256 _gasCapBuffer,
+        uint256 _harvestGasLimit,
+        uint256 _shouldConvertToLinkThreshold
     ) external initializer {
         __Ownable_init();
 
         vaultRegistry = IVaultRegistry(_vaultRegistry);
         unirouter = IUniswapRouterETH(_unirouter);
         nativeToLinkRoute = _nativeToLinkRoute;
+        oracleLink = _oracleLink;
+        pegswap = IPegSwap(_pegswap);
+        _approveSpending();
 
         callFeeRecipient = address(this);
-        gasCap = 6_500_000;
-        gasCapBuffer = 100_000;
-        harvestGasLimit = 1_500_000;
-        shouldConvertToLinkThreshold = 1 ether;
+        gasCapBuffer = _gasCapBuffer;
+        gasCap = _gasCap;
+        harvestGasLimit = _harvestGasLimit;
+        shouldConvertToLinkThreshold = _shouldConvertToLinkThreshold;
     }
 
     function checkUpkeep(
@@ -268,7 +282,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         uint256 nativeBalance = native.balanceOf(address(this));
 
         if (nativeBalance >= shouldConvertToLinkThreshold) {
-            _convertNativeToLink();
+            _convertNativeToLinkAndWrap();
         }
     }
 
@@ -317,28 +331,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         return (successfulHarvests, failedHarvests);
     }
 
-    function setShouldConvertToLinkThreshold(uint256 newThreshold) external onlyManager {
-        shouldConvertToLinkThreshold = newThreshold;
-    }
-
-    function convertNativeToLink() external onlyManager {
-        _convertNativeToLink();
-    }
-
-    function _convertNativeToLink() internal {
-        IERC20Upgradeable native = IERC20Upgradeable(nativeToLinkRoute[0]);
-        uint256 nativeBalance = native.balanceOf(address(this));
-        uint256[] memory amounts = unirouter.swapExactTokensForTokens(nativeBalance, 0, nativeToLinkRoute, address(this), block.timestamp);
-        emit ConvertedNativeToLink(nativeBalance, amounts[amounts.length-1]);
-    }
-
-    function setNativeToLinkRoute(address[] memory _nativeToLinkRoute) external onlyManager {
-        nativeToLinkRoute = _nativeToLinkRoute;
-    }
-
-    function nativeToLink() external view returns (address[] memory) {
-        return nativeToLinkRoute;
-    }
+    // Access control functions
 
     function setManagers(address[] memory _managers, bool _status) external onlyManager {
         for (uint256 managerIndex = 0; managerIndex < _managers.length; managerIndex++) {
@@ -360,6 +353,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         isUpkeeper[_upkeeper] = _status;
     }
 
+    // Set config functions
+
     function setGasCap(uint256 newGasCap) external onlyManager {
         gasCap = newGasCap;
     }
@@ -374,5 +369,111 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     function setUnirouter(address newUnirouter) external onlyManager {
         unirouter = IUniswapRouterETH(newUnirouter);
+    }
+
+    // LINK conversion functions
+
+    function _convertNativeToLinkAndWrap() internal {
+        _convertNativeToLink();
+        _wrapAllLinkToOracleVersion();
+    }
+
+    function NATIVE() public view returns (address link) {
+        return nativeToLinkRoute[0];
+    }
+
+    function LINK() public view returns (address link) {
+        return nativeToLinkRoute[nativeToLinkRoute.length - 1];
+    }
+
+    function oracleLINK() public view returns (address link) {
+        return oracleLink;
+    }
+
+    function balanceOfNative() public view returns (uint256 balance) { 
+        return IERC20Upgradeable(NATIVE()).balanceOf(address(this));
+    }
+
+    function balanceOfLink() public view returns (uint256 balance) { 
+        return IERC20Upgradeable(LINK()).balanceOf(address(this));
+    }
+
+    function balanceOfOracleLink() public view returns (uint256 balance) { 
+        return IERC20Upgradeable(oracleLINK()).balanceOf(address(this));
+    }
+
+    function setShouldConvertToLinkThreshold(uint256 newThreshold) external onlyManager {
+        shouldConvertToLinkThreshold = newThreshold;
+    }
+
+    function convertNativeToLink() external onlyManager {
+        _convertNativeToLink();
+    }
+
+    function _convertNativeToLink() internal {
+        IERC20Upgradeable native = IERC20Upgradeable(nativeToLinkRoute[0]);
+        uint256 nativeBalance = native.balanceOf(address(this));
+        uint256[] memory amounts = unirouter.swapExactTokensForTokens(nativeBalance, 0, nativeToLinkRoute, address(this), block.timestamp);
+        emit ConvertedNativeToLink(nativeBalance, amounts[amounts.length-1]);
+    }
+
+    function setNativeToLinkRoute(address[] memory _nativeToLinkRoute) external onlyManager {
+        require(_nativeToLinkRoute[0] == NATIVE(), "!NATIVE");
+        require(_nativeToLinkRoute[_nativeToLinkRoute.length-1] == LINK(), "!LINK");
+        nativeToLinkRoute = _nativeToLinkRoute;
+    }
+
+    function nativeToLink() external view returns (address[] memory) {
+        return nativeToLinkRoute;
+    }
+
+    function withdrawAllLink() external onlyManager {
+        uint256 amount = IERC20Upgradeable(LINK()).balanceOf(address(this));
+        withdrawLink(amount);
+    }
+
+    function withdrawLink(uint256 amount) public onlyManager {
+        IERC20Upgradeable(LINK()).safeTransfer(msg.sender, amount);
+    }
+
+    function _wrapLinkToOracleVersion(uint256 amount) internal {
+        pegswap.swap(amount, LINK(), oracleLINK());
+    }
+
+    function _wrapAllLinkToOracleVersion() internal {
+        _wrapLinkToOracleVersion(balanceOfLink());
+    }
+
+    function managerWrapAllLinkToOracleVersion() external onlyManager {
+        _wrapAllLinkToOracleVersion();
+    }
+
+    function unwrapToDexLink(uint256 amount) public onlyManager {
+        pegswap.swap(amount, oracleLINK(), LINK());
+    }
+
+    function unwrapAllToDexLink() public onlyManager {
+        unwrapToDexLink(balanceOfOracleLink());
+    }
+
+    // approve pegswap spending to swap from erc20 link to oracle compatible link
+    function _approveLinkSpending() internal {
+        address pegswapAddress = address(pegswap);
+        IERC20Upgradeable(LINK()).safeApprove(pegswapAddress, 0);
+        IERC20Upgradeable(LINK()).safeApprove(pegswapAddress, type(uint256).max);
+
+        IERC20Upgradeable(oracleLINK()).safeApprove(pegswapAddress, 0);
+        IERC20Upgradeable(oracleLINK()).safeApprove(pegswapAddress, type(uint256).max);
+    }
+
+    function _approveNativeSpending() internal {
+        address unirouterAddress = address(unirouter);
+        IERC20Upgradeable(NATIVE()).safeApprove(unirouterAddress, 0);
+        IERC20Upgradeable(NATIVE()).safeApprove(unirouterAddress, type(uint256).max);
+    }
+
+    function _approveSpending() internal {
+        _approveNativeSpending();
+        _approveLinkSpending();
     }
 }

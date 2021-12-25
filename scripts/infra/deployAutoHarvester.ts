@@ -2,11 +2,12 @@ import hardhat, { ethers, upgrades } from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
 
 import { addressBook } from "blockchain-addressbook";
+import { BigNumber } from "ethers";
 
 const chainName = "polygon";
 const chainData = addressBook[chainName];
 
-const shouldVerifyOnEtherscan = false;
+const shouldVerifyOnEtherscan = true;
 
 const contractNames = {
   BeefyAutoHarvester: "BeefyAutoHarvester",
@@ -15,16 +16,32 @@ const contractNames = {
 const implementationConstructorArguments: any[] = []; // proxy implementations cannot have constructors
 
 const deploy = async () => {
-  const BeefyAutoHarvesterFactory = await ethers.getContractFactory(contractNames.BeefyAutoHarvester)
+  const BeefyAutoHarvesterFactory = await ethers.getContractFactory(contractNames.BeefyAutoHarvester);
 
   console.log("Deploying:", contractNames.BeefyAutoHarvester);
 
-  const vaultRegistryAddress = "0x820cE73c7F15C2b828aBE79670D7e61731AB93Be";
-  const unirouter = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff";
-  const {WMATIC, ETH, LINK} = chainData.tokens
+  const vaultRegistryAddress = chainData.platforms.beefyfinance.vaultRegistry;
+  const unirouter = chainData.platforms.quickswap.router;
+  const { WMATIC, ETH, LINK } = chainData.tokens;
   const nativeToLinkRoute: string[] = [WMATIC.address, ETH.address, LINK.address];
+  const oracleLink: string = "0xb0897686c545045aFc77CF20eC7A532E3120E0F1";
+  const pegswapAddress: string = "0xAA1DC356dc4B18f30C347798FD5379F3D77ABC5b";
+  const gasCap: number = 2500000;
+  const gasCapBuffer: number = 100000;
+  const harvestGasLimit: number = 600000;
+  const shouldConvertToLinkThreshold: BigNumber = ethers.utils.parseEther("1");
 
-  const constructorArguments: any[] = [vaultRegistryAddress, unirouter, nativeToLinkRoute];
+  const constructorArguments: any[] = [
+    vaultRegistryAddress,
+    unirouter,
+    nativeToLinkRoute,
+    oracleLink,
+    pegswapAddress,
+    gasCap,
+    gasCapBuffer,
+    harvestGasLimit,
+    shouldConvertToLinkThreshold
+  ];
   const transparentUpgradableProxy = await upgrades.deployProxy(BeefyAutoHarvesterFactory, constructorArguments);
   await transparentUpgradableProxy.deployed();
 

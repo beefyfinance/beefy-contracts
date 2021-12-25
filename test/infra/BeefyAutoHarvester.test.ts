@@ -188,9 +188,22 @@ describe("BeefyAutoHarvester", () => {
 
     const loopIterations = 3;
 
-    for (let i = 0; i < loopIterations; ++i) {
-      const currentNewIndex = await autoHarvester.startIndex();
+    const printInfo = async () => {
+      const startIndex = await autoHarvester.startIndex();
 
+      const nativeBalance = await autoHarvester.balanceOfNative();
+      const linkBalance = await autoHarvester.balanceOfLink();
+      const oracleLinkBalance = await autoHarvester.balanceOfOracleLink();
+
+      console.log(`startIndex: ${startIndex}`);
+      console.log(`nativeBalance: ${nativeBalance}`);
+      console.log(`linkBalance: ${linkBalance}`);
+      console.log(`oracleLinkBalance: ${oracleLinkBalance}`);
+    }
+
+    for (let i = 0; i < loopIterations; ++i) {
+      console.log(`Before upkeep.`)
+      await printInfo();
 
       // call checker function and ensure there are profitable harvests
       const { upkeepNeeded, performData } = await autoHarvester.checkUpkeep([], upkeepOverrides);
@@ -199,7 +212,8 @@ describe("BeefyAutoHarvester", () => {
       const performUpkeepTx = await autoHarvester.performUpkeep(performData, upkeepOverrides);
       const performUpkeepTxReceipt = await performUpkeepTx.wait();
 
-      const newStartIndex = await autoHarvester.startIndex();
+      console.log(`After upkeep.`)
+      await printInfo();
     }
   }).timeout(TIMEOUT);
 });
