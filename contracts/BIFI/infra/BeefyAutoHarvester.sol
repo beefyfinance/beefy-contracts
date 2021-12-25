@@ -278,8 +278,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         uint256 nativeBalance = native.balanceOf(address(this));
 
         if (nativeBalance >= shouldConvertToLinkThreshold) {
-            _convertNativeToLink();
-            _wrapAllLinkToOracleVersion();
+            _convertNativeToLinkAndWrap();
         }
     }
 
@@ -369,6 +368,11 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     }
 
     // LINK conversion functions
+
+    function _convertNativeToLinkAndWrap() internal {
+        _convertNativeToLink();
+        _wrapAllLinkToOracleVersion();
+    }
 
     function LINK() public view returns (address link) {
         return nativeToLinkRoute[nativeToLinkRoute.length - 1];
