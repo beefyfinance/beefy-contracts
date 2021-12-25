@@ -9,6 +9,7 @@ import "./tasks";
 import { HardhatUserConfig } from "hardhat/src/types/config";
 import { HardhatUserConfig as WithEtherscanConfig } from "hardhat/config";
 import { buildHardhatNetworkAccounts, getPKs } from "./utils/configInit";
+import { ethers } from "ethers";
 
 type DeploymentConfig = HardhatUserConfig & WithEtherscanConfig;
 
@@ -41,6 +42,7 @@ const config: DeploymentConfig = {
       url: "https://polygon-rpc.com/",
       chainId: 137,
       accounts,
+      gasPrice: ethers.utils.parseUnits("100", "gwei").toNumber()
     },
     fantom: {
       url: "https://rpc.ftm.tools",
