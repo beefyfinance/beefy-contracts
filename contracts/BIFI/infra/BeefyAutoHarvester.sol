@@ -58,6 +58,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     uint256 public shouldConvertToLinkThreshold;
     IUniswapRouterETH public unirouter;
     address public link_oracle_version;
+    address public pegswap;
 
     event SuccessfulHarvests(address[] successfulVaults);
     event FailedHarvests(address[] failedVaults);
@@ -77,7 +78,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         address _vaultRegistry,
         address _unirouter,
         address[] memory _nativeToLinkRoute,
-        address _link_oracle_version
+        address _link_oracle_version,
+        address _pegswap
     ) external initializer {
         __Ownable_init();
 
@@ -85,6 +87,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         unirouter = IUniswapRouterETH(_unirouter);
         nativeToLinkRoute = _nativeToLinkRoute;
         link_oracle_version = _link_oracle_version;
+        pegswap = _pegswap;
+        _approveLinkSpending();
 
         callFeeRecipient = address(this);
         gasCap = 6_500_000;
@@ -396,5 +400,15 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     function withdrawLink(uint256 amount) public onlyManager {
         IERC20Upgradeable(LINK()).safeTransfer(msg.sender, amount);
+    }
+
+    function wrapLinkToOracleVersion(uint256 amount) public onlyManager {
+        
+    }
+
+    // approve pegswap spending to swap from erc20 link to oracle compatible link
+    function _approveLinkSpending() internal {
+        IERC20Upgradeable(LINK()).safeApprove(pegswap, 0);
+        IERC20Upgradeable(LINK()).safeApprove(pegswap, type(uint256).max);
     }
 }
