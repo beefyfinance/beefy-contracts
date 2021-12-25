@@ -80,7 +80,11 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         address _unirouter,
         address[] memory _nativeToLinkRoute,
         address _oracleLink,
-        address _pegswap
+        address _pegswap,
+        uint256 _gasCap,
+        uint256 _gasCapBuffer,
+        uint256 _harvestGasLimit,
+        uint256 _shouldConvertToLinkThreshold
     ) external initializer {
         __Ownable_init();
 
@@ -92,10 +96,10 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         _approveSpending();
 
         callFeeRecipient = address(this);
-        gasCap = 6_500_000;
-        gasCapBuffer = 100_000;
-        harvestGasLimit = 1_500_000;
-        shouldConvertToLinkThreshold = 1 ether;
+        gasCapBuffer = _gasCapBuffer;
+        gasCap = _gasCap;
+        harvestGasLimit = _harvestGasLimit;
+        shouldConvertToLinkThreshold = _shouldConvertToLinkThreshold;
     }
 
     function checkUpkeep(

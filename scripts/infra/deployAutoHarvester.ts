@@ -25,6 +25,10 @@ const deploy = async () => {
   const nativeToLinkRoute: string[] = [WMATIC.address, ETH.address, LINK.address];
   const link_oracle_version: string = "0xb0897686c545045aFc77CF20eC7A532E3120E0F1";
   const pegswapAddress: string = "0xAA1DC356dc4B18f30C347798FD5379F3D77ABC5b";
+  const gasCap: number = 2500000;
+  const gasCapBuffer: number = 100000;
+  const harvestGasLimit: number = 600000;
+  const shouldConvertToLinkThreshold: number = ethers.utils.parseEther("1").toNumber();
 
   const constructorArguments: any[] = [
     vaultRegistryAddress,
@@ -32,6 +36,10 @@ const deploy = async () => {
     nativeToLinkRoute,
     link_oracle_version,
     pegswapAddress,
+    gasCap,
+    gasCapBuffer,
+    harvestGasLimit,
+    shouldConvertToLinkThreshold
   ];
   const transparentUpgradableProxy = await upgrades.deployProxy(BeefyAutoHarvesterFactory, constructorArguments);
   await transparentUpgradableProxy.deployed();
