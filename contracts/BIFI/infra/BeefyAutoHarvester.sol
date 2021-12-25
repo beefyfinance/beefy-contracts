@@ -89,7 +89,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         nativeToLinkRoute = _nativeToLinkRoute;
         link_oracle_version = _link_oracle_version;
         pegswap = IPegSwap(_pegswap);
-        _approveLinkSpending();
+        _approveSpending();
 
         callFeeRecipient = address(this);
         gasCap = 6_500_000;
