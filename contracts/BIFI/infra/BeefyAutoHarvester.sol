@@ -386,6 +386,18 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         return link_oracle_version;
     }
 
+    function balanceOfNative() public view returns (uint256 balance) { 
+        return IERC20Upgradeable(NATIVE()).balanceOf(address(this));
+    }
+
+    function balanceOfLink() public view returns (uint256 balance) { 
+        return IERC20Upgradeable(LINK()).balanceOf(address(this));
+    }
+
+    function balanceOfLink_oracle_version() public view returns (uint256 balance) { 
+        return IERC20Upgradeable(LINK_oracle_version()).balanceOf(address(this));
+    }
+
     function setShouldConvertToLinkThreshold(uint256 newThreshold) external onlyManager {
         shouldConvertToLinkThreshold = newThreshold;
     }
@@ -425,8 +437,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     }
 
     function _wrapAllLinkToOracleVersion() internal {
-        uint256 balance = IERC20Upgradeable(LINK()).balanceOf(address(this));
-        _wrapLinkToOracleVersion(balance);
+        _wrapLinkToOracleVersion(balanceOfLink());
     }
 
     function managerWrapAllLinkToOracleVersion() external onlyManager {
@@ -438,8 +449,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     }
 
     function unwrapAllToDexLink() public onlyManager {
-        uint256 balance = IERC20Upgradeable(LINK_oracle_version()).balanceOf(address(this));
-        unwrapToDexLink(balance);
+        unwrapToDexLink(balanceOfLink_oracle_version());
     }
 
     // approve pegswap spending to swap from erc20 link to oracle compatible link
