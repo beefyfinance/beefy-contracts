@@ -15,16 +15,24 @@ const contractNames = {
 const implementationConstructorArguments: any[] = []; // proxy implementations cannot have constructors
 
 const deploy = async () => {
-  const BeefyAutoHarvesterFactory = await ethers.getContractFactory(contractNames.BeefyAutoHarvester)
+  const BeefyAutoHarvesterFactory = await ethers.getContractFactory(contractNames.BeefyAutoHarvester);
 
   console.log("Deploying:", contractNames.BeefyAutoHarvester);
 
   const vaultRegistryAddress = chainData.platforms.beefyfinance.vaultRegistry;
   const unirouter = chainData.platforms.quickswap.router;
-  const {WMATIC, ETH, LINK} = chainData.tokens
+  const { WMATIC, ETH, LINK } = chainData.tokens;
   const nativeToLinkRoute: string[] = [WMATIC.address, ETH.address, LINK.address];
+  const link_oracle_version: string = "0xb0897686c545045aFc77CF20eC7A532E3120E0F1";
+  const pegswapAddress: string = "0xAA1DC356dc4B18f30C347798FD5379F3D77ABC5b";
 
-  const constructorArguments: any[] = [vaultRegistryAddress, unirouter, nativeToLinkRoute];
+  const constructorArguments: any[] = [
+    vaultRegistryAddress,
+    unirouter,
+    nativeToLinkRoute,
+    link_oracle_version,
+    pegswapAddress,
+  ];
   const transparentUpgradableProxy = await upgrades.deployProxy(BeefyAutoHarvesterFactory, constructorArguments);
   await transparentUpgradableProxy.deployed();
 
