@@ -2,6 +2,7 @@ import hardhat, { ethers, upgrades } from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
 
 import { addressBook } from "blockchain-addressbook";
+import { BigNumber } from "ethers";
 
 const chainName = "polygon";
 const chainData = addressBook[chainName];
@@ -28,7 +29,7 @@ const deploy = async () => {
   const gasCap: number = 2500000;
   const gasCapBuffer: number = 100000;
   const harvestGasLimit: number = 600000;
-  const shouldConvertToLinkThreshold: number = ethers.utils.parseEther("1").toNumber();
+  const shouldConvertToLinkThreshold: BigNumber = ethers.utils.parseEther("1");
 
   const constructorArguments: any[] = [
     vaultRegistryAddress,
