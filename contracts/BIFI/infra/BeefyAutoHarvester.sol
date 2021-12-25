@@ -57,6 +57,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     address[] public nativeToLinkRoute;
     uint256 public shouldConvertToLinkThreshold;
     IUniswapRouterETH public unirouter;
+    address public link_oracle_version;
 
     event SuccessfulHarvests(address[] successfulVaults);
     event FailedHarvests(address[] failedVaults);
@@ -75,13 +76,15 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     function initialize (
         address _vaultRegistry,
         address _unirouter,
-        address[] memory _nativeToLinkRoute
+        address[] memory _nativeToLinkRoute,
+        address _link_oracle_version
     ) external initializer {
         __Ownable_init();
 
         vaultRegistry = IVaultRegistry(_vaultRegistry);
         unirouter = IUniswapRouterETH(_unirouter);
         nativeToLinkRoute = _nativeToLinkRoute;
+        link_oracle_version = _link_oracle_version;
 
         callFeeRecipient = address(this);
         gasCap = 6_500_000;
@@ -380,6 +383,10 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     function LINK() public view returns (address link) {
         return nativeToLinkRoute[nativeToLinkRoute.length - 1];
+    }
+
+    function LINK_oracle_version() public view returns (address link) {
+        return link_oracle_version;
     }
 
     function withdrawAllLink() external onlyManager {
