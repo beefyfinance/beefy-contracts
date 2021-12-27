@@ -412,12 +412,18 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         uint256 gasAfter = gasleft();
         uint256 gasUsedByPerformUpkeep = gasBefore - gasAfter;
 
-        uint256 estimatedTxCost = nonHeuristicEstimatedTxCost; // use nonHeuristic here as its more accurate
-        uint256 estimatedProfit = estimatedCallRewards - estimatedTxCost;
+        // split these into their own functions to avoid `Stack too deep`
+        _reportProfitSummary(gasUsedByPerformUpkeep, nonHeuristicEstimatedTxCost, estimatedCallRewards, calculatedCallRewards);
+        _reportHarvestSummary(newStartIndex, gasUsedByPerformUpkeep, numberOfSuccessfulHarvests, numberOfFailedHarvests, linkConverted);
+    }
 
-        uint256 calculatedTxCost = tx.gasprice * gasUsedByPerformUpkeep;
-        uint256 calculatedProfit = calculatedCallRewards - calculatedTxCost;
-
+    function _reportHarvestSummary(
+        uint256 newStartIndex,
+        uint256 gasUsedByPerformUpkeep,
+        uint256 numberOfSuccessfulHarvests,
+        uint256 numberOfFailedHarvests,
+        uint256 linkConverted
+    ) internal {
         emit HarvestSummary(
             block.number,
             // state variables
@@ -431,7 +437,20 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             numberOfFailedHarvests,
             linkConverted
         );
-        
+    }
+
+    function _reportProfitSummary(
+        uint256 gasUsedByPerformUpkeep,
+        uint256 nonHeuristicEstimatedTxCost,
+        uint256 estimatedCallRewards,
+        uint256 calculatedCallRewards
+    ) internal {
+        uint256 estimatedTxCost = nonHeuristicEstimatedTxCost; // use nonHeuristic here as its more accurate
+        uint256 estimatedProfit = estimatedCallRewards - estimatedTxCost;
+
+        uint256 calculatedTxCost = tx.gasprice * gasUsedByPerformUpkeep;
+        uint256 calculatedProfit = calculatedCallRewards - calculatedTxCost;
+
         emit ProfitSummary(
             // predicted values
             estimatedTxCost,
