@@ -223,7 +223,7 @@ contract StrategyArbSushiMimLP is StratManager, FeeManager, GasThrottler {
             pendingSpell = IRewarder(rewarder).pendingToken(poolId, address(this));
         } 
 
-        uint256[] memory rewardOut = IUniswapRouterETH(unirouter).getAmountsOut(pendingSpell, rewardToOutputRoute);
+        // uint256[] memory rewardOut = IUniswapRouterETH(unirouter).getAmountsOut(pendingSpell, rewardToOutputRoute);
         // uint256 moreOutput = rewardOut[rewardOut.length -1];
 
         uint256 outputBal = rewardsAvailable();
