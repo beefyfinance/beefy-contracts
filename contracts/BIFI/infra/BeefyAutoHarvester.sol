@@ -67,9 +67,9 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     IPegSwap public pegswap;
     uint256 public upkeepId;
 
-    event SuccessfulHarvests(address[] successfulVaults);
-    event FailedHarvests(address[] failedVaults);
-    event ConvertedNativeToLink(uint256 nativeAmount, uint256 linkAmount);
+    event SuccessfulHarvests(uint256 indexed blockNumber, address[] successfulVaults);
+    event FailedHarvests(uint256 indexed blockNumber, address[] failedVaults);
+    event ConvertedNativeToLink(uint256 indexed blockNumber, uint256 nativeAmount, uint256 linkAmount);
 
     modifier onlyManager() {
         require(msg.sender == owner() || isManager[msg.sender], "!manager");
@@ -346,8 +346,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
         (address[] memory successfulHarvests, address[] memory failedHarvests) = _getSuccessfulAndFailedVaults(vaults, isFailedHarvest);
         
-        emit SuccessfulHarvests(successfulHarvests);
-        emit FailedHarvests(failedHarvests);
+        emit SuccessfulHarvests(block.number, successfulHarvests);
+        emit FailedHarvests(block.number,  failedHarvests);
     }
 
     function _getSuccessfulAndFailedVaults(address[] memory vaults, bool[] memory isFailedHarvest) internal pure returns (address[] memory successfulHarvests, address[] memory failedHarvests) {
@@ -470,7 +470,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         IERC20Upgradeable native = IERC20Upgradeable(nativeToLinkRoute[0]);
         uint256 nativeBalance = native.balanceOf(address(this));
         uint256[] memory amounts = unirouter.swapExactTokensForTokens(nativeBalance, 0, nativeToLinkRoute, address(this), block.timestamp);
-        emit ConvertedNativeToLink(nativeBalance, amounts[amounts.length-1]);
+        emit ConvertedNativeToLink(block.number, nativeBalance, amounts[amounts.length-1]);
     }
 
     function setNativeToLinkRoute(address[] memory _nativeToLinkRoute) external onlyManager {
