@@ -280,13 +280,18 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     function _isProfitable(
         uint256 callRewardAmount
     ) internal view returns (bool) {
-        uint256 ONE = 10 ** 8;
-        uint256 rawTxCost = tx.gasprice * harvestGasLimit;
-        uint256 txCostWithOverhead = rawTxCost + _estimateAdditionalPremiumFactorFromOverhead();
-        uint256 costFactor = ONE + txPremiumFactor + managerProfitabilityBuffer;
-        uint256 txCostWithPremium = txCostWithOverhead * costFactor;
-
+        uint256 txCostWithPremium = _buildTxCost() * _buildCostFactor();
         return callRewardAmount >= txCostWithPremium;
+    }
+    
+    function _buildTxCost() internal view returns (uint256) {
+        uint256 rawTxCost = tx.gasprice * harvestGasLimit;
+        return rawTxCost + _estimateAdditionalPremiumFactorFromOverhead();
+    }
+
+    function _buildCostFactor() internal view returns (uint256) {
+        uint256 ONE = 10 ** 8;
+        return ONE + txPremiumFactor + managerProfitabilityBuffer;
     }
 
     // PERFORM UPKEEP SECTION
