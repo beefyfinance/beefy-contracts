@@ -408,6 +408,10 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         unirouter = IUniswapRouterETH(newUnirouter);
     }
 
+    function setManagerProfitabilityBuffer(uint256 newManagerProfitabilityBuffer) external onlyManager {
+        managerProfitabilityBuffer = newManagerProfitabilityBuffer;
+    }
+
     // LINK conversion functions
 
     function _convertNativeToLinkAndWrap() internal {
