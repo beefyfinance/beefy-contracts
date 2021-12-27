@@ -33,6 +33,7 @@ const deploy = async () => {
   const harvestGasLimit: number = 600000;
   const shouldConvertToLinkThreshold: BigNumber = ethers.utils.parseEther("1");
   const keeperRegistryGasOverhead: number = 80000;
+  const managerProfitabilityBuffer: BigNumber = ethers.utils.parseUnits("0.05", "gwei");
 
   const constructorArguments: any[] = [
     vaultRegistryAddress,
@@ -45,7 +46,8 @@ const deploy = async () => {
     gasCapBuffer,
     harvestGasLimit,
     shouldConvertToLinkThreshold,
-    keeperRegistryGasOverhead
+    keeperRegistryGasOverhead,
+    managerProfitabilityBuffer
   ];
   const transparentUpgradableProxy = await upgrades.deployProxy(BeefyAutoHarvesterFactory, constructorArguments);
   await transparentUpgradableProxy.deployed();
