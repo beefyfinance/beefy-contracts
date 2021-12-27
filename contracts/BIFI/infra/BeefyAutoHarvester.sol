@@ -23,6 +23,7 @@ interface IAutoStrategy {
 }
 
 interface IStrategyMultiHarvest {
+    function callReward() external view returns (uint256);
     function harvest(address callFeeRecipient) external; // used for multiharvest in perform upkeep, this one doesn't have view
     function harvestWithCallFeeRecipient(address callFeeRecipient) external; // back compat call
 }
@@ -92,7 +93,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     event SuccessfulHarvests(uint256 indexed blockNumber, address[] successfulVaults);
     event FailedHarvests(uint256 indexed blockNumber, address[] failedVaults);
     event ConvertedNativeToLink(uint256 indexed blockNumber, uint256 nativeAmount, uint256 linkAmount);
-    event HeuristicFailed(uint256 indexed blockNumber, uint256 heuristicEstimatedTxCost, uint256 nonHeuristicEstimatedTxCost, uint265 callRewards);
+    event HeuristicFailed(uint256 indexed blockNumber, uint256 heuristicEstimatedTxCost, uint256 nonHeuristicEstimatedTxCost, uint256 estimatedCallRewards);
 
     modifier onlyManager() {
         require(msg.sender == owner() || isManager[msg.sender], "!manager");
@@ -340,8 +341,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     }
 
     function _buildCostFactor() internal view returns (uint256) {
-        uint256 ONE = 10 ** 8;
-        return ONE + txPremiumFactor + managerProfitabilityBuffer;
+        uint256 one = 10 ** 8;
+        return one + txPremiumFactor + managerProfitabilityBuffer;
     }
 
     // PERFORM UPKEEP SECTION
@@ -387,7 +388,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         (
             uint256 numberOfSuccessfulHarvests,
             uint256 numberOfFailedHarvests,
-            uint256 actualAmountHarvested
+            uint256 calculatedCallRewards
         ) = _multiHarvest(vaults);
 
         // ensure newStartIndex is valid and set startIndex
@@ -408,9 +409,10 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         uint256 gasUsedByPerformUpkeep = gasBefore - gasAfter;
 
         uint256 estimatedTxCost = nonHeuristicEstimatedTxCost; // use nonHeuristic here as its more accurate
-        uint256 estimatedProfit = estimatedTxCost - estimatedCallRewards;
+        uint256 estimatedProfit = estimatedCallRewards - estimatedTxCost;
 
-        uint256 calculatedTxCost = gasUsedByPerformUpkeep
+        uint256 calculatedTxCost = tx.gasprice * gasUsedByPerformUpkeep;
+        uint256 calculatedProfit = calculatedCallRewards - calculatedTxCost;
 
         emit HarvestSummary(
             block.number,
@@ -435,15 +437,24 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         );
     }
 
-    function _multiHarvest(address[] memory vaults) internal returns (uint256 numberOfSuccessfulHarvests, uint256 numberOfFailedHarvests, uint256 amountHarvested) {
+    function _multiHarvest(address[] memory vaults) 
+    internal returns (
+        uint256,
+        uint256,
+        uint256
+    ) {
+        uint256 calculatedCallRewards;
         bool[] memory isFailedHarvest = new bool[](vaults.length);
         for (uint256 i = 0; i < vaults.length; i++) {
             IStrategyMultiHarvest strategy = IStrategyMultiHarvest(IVault(vaults[i]).strategy());
-            uint256 toAdd = strategy.callRewards();
+            uint256 toAdd = strategy.callReward();
+            bool didHarvest;
             try strategy.harvest(callFeeRecipient) {
+                didHarvest = true;
             } catch {
                 // try old function signature
                 try strategy.harvestWithCallFeeRecipient(callFeeRecipient) {
+                    didHarvest = true;
                 }
                 catch {
                     isFailedHarvest[i] = true;
@@ -451,8 +462,9 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             }
 
             // Add rewards to cumulative tracker.
-
-            amountHarvested += toAdd;
+            if (didHarvest) {
+                calculatedCallRewards += toAdd;
+            }
         }
 
         (address[] memory successfulHarvests, address[] memory failedHarvests) = _getSuccessfulAndFailedVaults(vaults, isFailedHarvest);
@@ -460,7 +472,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         emit SuccessfulHarvests(block.number, successfulHarvests);
         emit FailedHarvests(block.number,  failedHarvests);
 
-        return (successfulHarvests.length, failedHarvests.length, amountHarvested);
+        return (successfulHarvests.length, failedHarvests.length, calculatedCallRewards);
     }
 
     function _getSuccessfulAndFailedVaults(address[] memory vaults, bool[] memory isFailedHarvest) internal pure returns (address[] memory successfulHarvests, address[] memory failedHarvests) {
