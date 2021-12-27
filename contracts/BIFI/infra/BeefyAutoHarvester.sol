@@ -82,15 +82,17 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         uint256 newStartIndex,
         uint256 gasPrice,
         uint256 gasUsedByPerformUpkeep,
+        uint256 numberOfSuccessfulHarvests,
+        uint256 numberOfFailedHarvests,
+        uint256 linkConverted
+    );
+    event ProfitSummary(
         uint256 estimatedTxCost,
         uint256 estimatedCallRewards,
         uint256 estimatedProfit,
         uint256 calculatedTxCost,
         uint256 calculatedCallRewards,
-        uint256 calculatedProfit,
-        uint256 numberOfSuccessfulHarvests,
-        uint256 numberOfFailedHarvests,
-        uint256 linkConverted
+        uint256 calculatedProfit
     );
     event SuccessfulHarvests(uint256 indexed blockNumber, address[] successfulVaults);
     event FailedHarvests(uint256 indexed blockNumber, address[] failedVaults);
@@ -424,6 +426,13 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             // gas metrics
             tx.gasprice,
             gasUsedByPerformUpkeep,
+            // summary metrics
+            numberOfSuccessfulHarvests,
+            numberOfFailedHarvests,
+            linkConverted
+        );
+        
+        emit ProfitSummary(
             // predicted values
             estimatedTxCost,
             estimatedCallRewards,
@@ -431,11 +440,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             // calculated values
             calculatedTxCost,
             calculatedCallRewards,
-            calculatedProfit,
-            // summary metrics
-            numberOfSuccessfulHarvests,
-            numberOfFailedHarvests,
-            linkConverted
+            calculatedProfit
         );
     }
 
