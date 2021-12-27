@@ -33,7 +33,8 @@ const deploy = async () => {
   const harvestGasLimit: number = 600000;
   const shouldConvertToLinkThreshold: BigNumber = ethers.utils.parseEther("1");
   const keeperRegistryGasOverhead: number = 80000;
-  const managerProfitabilityBuffer: BigNumber = ethers.utils.parseUnits("0.05", "gwei");
+  // const managerProfitabilityBuffer: BigNumber = ethers.utils.parseUnits("0.05", "gwei");
+  const managerProfitabilityBuffer: BigNumber = ethers.utils.parseUnits("0", "gwei");
 
   const constructorArguments: any[] = [
     vaultRegistryAddress,

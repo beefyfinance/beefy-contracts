@@ -37,7 +37,9 @@ interface IVault {
     function strategy() external view returns (address);
 }
 
+/* solhint-disable max-states-count */
 contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatibleInterface {
+/* solhint-enable max-states-count */
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     struct HarvestInfo {
@@ -561,11 +563,15 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         _wrapAllLinkToOracleVersion();
     }
 
+    /* solhint-disable func-name-mixedcase */
     function NATIVE() public view returns (address link) {
+    /* solhint-enable func-name-mixedcase */
         return nativeToLinkRoute[0];
     }
 
+    /* solhint-disable func-name-mixedcase */
     function LINK() public view returns (address link) {
+    /* solhint-enable func-name-mixedcase */
         return nativeToLinkRoute[nativeToLinkRoute.length - 1];
     }
 
@@ -596,7 +602,10 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     function _convertNativeToLink() internal {
         IERC20Upgradeable native = IERC20Upgradeable(nativeToLinkRoute[0]);
         uint256 nativeBalance = native.balanceOf(address(this));
+        
+        /* solhint-disable not-rely-on-time */
         uint256[] memory amounts = unirouter.swapExactTokensForTokens(nativeBalance, 0, nativeToLinkRoute, address(this), block.timestamp);
+        /* solhint-enable not-rely-on-time */
         emit ConvertedNativeToLink(block.number, nativeBalance, amounts[amounts.length-1]);
     }
 
