@@ -65,6 +65,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     IUniswapRouterETH public unirouter;
     address public oracleLink;
     IPegSwap public pegswap;
+    uint256 public upkeepId;
 
     event SuccessfulHarvests(address[] successfulVaults);
     event FailedHarvests(address[] failedVaults);
@@ -173,7 +174,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         return vaultsToHarvest;
     }
 
-    function _getAdjustedGasCap() internal view {
+    function _getAdjustedGasCap() internal view returns (uint256) {
         return gasCap - gasCapBuffer;
     }
 
@@ -182,7 +183,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         view
         returns (bool[] memory, uint256, uint256)
     {
-        uint256 gasLeft = _getAdjustedGasCap(gasCap, gasCapBuffer);
+        uint256 gasLeft = _getAdjustedGasCap();
         uint256 vaultIndexToCheck; // hoisted up to be able to set newStartIndex
         uint256 numberOfVaultsToHarvest; // used to create fixed size array in _buildVaultsToHarvest
         bool[] memory willHarvestVault = new bool[](_vaults.length);
@@ -283,7 +284,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         uint256 rawTxCost = tx.gasprice * harvestGasLimit;
         uint256 txCostWithOverhead = rawTxCost + _estimateAdditionalPremiumFactorFromOverhead();
         uint256 costFactor = ONE + txPremiumFactor + managerProfitabilityBuffer;
-        uint256 txCostWithPremium = rawTxCost * costFactor;
+        uint256 txCostWithPremium = txCostWithOverhead * costFactor;
 
         return callRewardAmount >= txCostWithPremium;
     }
@@ -318,8 +319,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         IERC20Upgradeable native = IERC20Upgradeable(nativeToLinkRoute[0]);
         uint256 nativeBalance = native.balanceOf(address(this));
 
-        if (nativeBalance >= shouldConvertToLinkThreshold) {
-            _convertNativeToLinkAndWrap();
+        if (nativeBalance >= shouldConvertToLinkThreshold && upkeepId > 0) {
+            _addHarvestedFundsToUpkeep();
         }
     }
 
@@ -412,7 +413,16 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         managerProfitabilityBuffer = newManagerProfitabilityBuffer;
     }
 
+    function setUpkeepId(uint256 upkeepId_) external onlyManager {
+        upkeepId = upkeepId_;
+    }
+
     // LINK conversion functions
+
+    function _addHarvestedFundsToUpkeep() internal {
+        _convertNativeToLinkAndWrap();
+        keeperRegistry.addFunds(upkeepId, uint96(balanceOfOracleLink()));
+    }
 
     function _convertNativeToLinkAndWrap() internal {
         _convertNativeToLink();

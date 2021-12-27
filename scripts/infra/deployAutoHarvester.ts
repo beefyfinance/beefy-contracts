@@ -79,6 +79,8 @@ const deploy = async () => {
 
   const chainlinkUpkeeper: string = "0x7b3EC232b08BD7b4b3305BE0C044D907B2DF960B"; // TODO: move this to address book
   await autoHarvester.setUpkeepers([chainlinkUpkeeper], true);
+
+  // don't forget to set upkeepId once registered.
 };
 
 deploy()

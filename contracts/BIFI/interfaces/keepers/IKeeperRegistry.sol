@@ -89,7 +89,7 @@ interface IKeeperRegistry {
             uint256 fallbackLinkPrice
         );
 
-    function    () external view returns (uint32);
+    function getFlatFee() external view returns (uint32);
 
     function getKeeperInfo(address query)
         external
