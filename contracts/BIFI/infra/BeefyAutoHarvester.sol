@@ -10,6 +10,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 import "../interfaces/common/IUniswapRouterETH.sol";
 import "../interfaces/pegswap/IPegSwap.sol";
+import "../interfaces/keepers/IKeeperRegistry.sol";
 
 interface IAutoStrategy {
     function lastHarvest() external view returns (uint256);
@@ -44,12 +45,16 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     // contracts, only modifiable via setters
     IVaultRegistry public vaultRegistry;
+    IKeeperRegistry public keeperRegistry;
 
     // util vars, only modifiable via setters
     address public callFeeRecipient;
     uint256 public gasCap;
     uint256 public gasCapBuffer;
     uint256 public harvestGasLimit;
+    uint256 public keeperRegistryGasOverhead;
+    uint256 public txPremiumFactor;
+    uint256 public managerProfitabilityBuffer; // extra factor on top of tx premium call rewards must clear to trigger a harvest
 
     // state vars that will change across upkeeps
     uint256 public startIndex;
@@ -77,6 +82,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     function initialize (
         address _vaultRegistry,
+        address _keeperRegistry,
         address _unirouter,
         address[] memory _nativeToLinkRoute,
         address _oracleLink,
@@ -84,11 +90,14 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         uint256 _gasCap,
         uint256 _gasCapBuffer,
         uint256 _harvestGasLimit,
-        uint256 _shouldConvertToLinkThreshold
+        uint256 _shouldConvertToLinkThreshold,
+        uint256 _keeperRegistryGasOverhead,
+        uint256 _managerProfitabilityBuffer
     ) external initializer {
         __Ownable_init();
 
         vaultRegistry = IVaultRegistry(_vaultRegistry);
+        keeperRegistry = IKeeperRegistry(_keeperRegistry);
         unirouter = IUniswapRouterETH(_unirouter);
         nativeToLinkRoute = _nativeToLinkRoute;
         oracleLink = _oracleLink;
@@ -100,6 +109,9 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         gasCap = _gasCap;
         harvestGasLimit = _harvestGasLimit;
         shouldConvertToLinkThreshold = _shouldConvertToLinkThreshold;
+        ( txPremiumFactor, , , , , , ) = keeperRegistry.getConfig();
+        keeperRegistryGasOverhead = _keeperRegistryGasOverhead;
+        managerProfitabilityBuffer = _managerProfitabilityBuffer;
     }
 
     function checkUpkeep(
@@ -161,12 +173,16 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         return vaultsToHarvest;
     }
 
+    function _getAdjustedGasCap() internal view {
+        return gasCap - gasCapBuffer;
+    }
+
     function _countVaultsToHarvest(address[] memory _vaults, function (address) view returns (bool) _harvestCondition)
         internal
         view
         returns (bool[] memory, uint256, uint256)
     {
-        uint256 gasLeft = gasCap - gasCapBuffer;
+        uint256 gasLeft = _getAdjustedGasCap(gasCap, gasCapBuffer);
         uint256 vaultIndexToCheck; // hoisted up to be able to set newStartIndex
         uint256 numberOfVaultsToHarvest; // used to create fixed size array in _buildVaultsToHarvest
         bool[] memory willHarvestVault = new bool[](_vaults.length);
@@ -242,13 +258,34 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
         uint256 callRewardAmount = strategy.callReward();
 
-        uint256 txCost = tx.gasprice * harvestGasLimit;
-        bool isProfitableHarvest = callRewardAmount >= txCost;
+        bool isProfitableHarvest = _isProfitable(callRewardAmount);
 
         bool shouldHarvest = isProfitableHarvest ||
             (!hasBeenHarvestedToday && callRewardAmount > 0);
 
         return shouldHarvest;
+    }
+
+    function _estimateAdditionalPremiumFactorFromOverhead() internal view returns (uint256) {
+        uint256 estimatedMaxVaultsPerUpkeep = _getAdjustedGasCap() / harvestGasLimit;
+        // Evenly distribute the overhead to all vaults, assuming we will harvest max amount of vaults everytime.
+        uint256 evenlyDistributedOverheadPerVault = keeperRegistryGasOverhead / estimatedMaxVaultsPerUpkeep;
+        // Being additionally conservative by assuming half the max amount of vaults will be harvested, making the overhead to clear higher.
+        uint256 adjustedOverheadPerVault = evenlyDistributedOverheadPerVault * 2;
+
+        return adjustedOverheadPerVault;
+    }
+
+    function _isProfitable(
+        uint256 callRewardAmount
+    ) internal view returns (bool) {
+        uint256 ONE = 10 ** 8;
+        uint256 rawTxCost = tx.gasprice * harvestGasLimit;
+        uint256 txCostWithOverhead = rawTxCost + _estimateAdditionalPremiumFactorFromOverhead();
+        uint256 costFactor = ONE + txPremiumFactor + managerProfitabilityBuffer;
+        uint256 txCostWithPremium = rawTxCost * costFactor;
+
+        return callRewardAmount >= txCostWithPremium;
     }
 
     // PERFORM UPKEEP SECTION
