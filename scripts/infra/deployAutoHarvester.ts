@@ -3,6 +3,7 @@ import { verifyContract } from "../../utils/verifyContract";
 
 import { addressBook } from "blockchain-addressbook";
 import { BigNumber } from "ethers";
+import { BeefyAutoHarvester } from "../../typechain-types";
 
 const chainName = "polygon";
 const chainData = addressBook[chainName];
@@ -62,6 +63,16 @@ const deploy = async () => {
   console.log();
 
   await Promise.all(verifyContractsPromises);
+
+  console.log("Setting upkeep address.")
+
+  const autoHarvester = (await ethers.getContractAt(
+    contractNames.BeefyAutoHarvester,
+    transparentUpgradableProxy.address
+  )) as unknown as BeefyAutoHarvester;
+
+  const chainlinkUpkeeper: string = "0x7b3EC232b08BD7b4b3305BE0C044D907B2DF960B"; // TODO: move this to address book
+  await autoHarvester.setUpkeepers([chainlinkUpkeeper], true);
 };
 
 deploy()

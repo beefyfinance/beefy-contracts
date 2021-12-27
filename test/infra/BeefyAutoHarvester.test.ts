@@ -25,15 +25,15 @@ const { beefyfinance } = chainData.platforms;
 const config = {
   autoHarvester: {
     name: "BeefyAutoHarvester",
-    address: "0xe8173a6393e54863953557C127F5b6EeDCb1468e", // change this
+    address: "0x3Ba4A20e62a2224D39448CEeEE9ebc7f4905Bb8a", // change this
   },
   vaultRegistry: {
     name: "BeefyVaultRegistry",
-    address: "0x820cE73c7F15C2b828aBE79670D7e61731AB93Be",
+    address: "0x820cE73c7F15C2b828aBE79670D7e61731AB93Be", // TODO: get all of these from address book
   },
   zap: {
     name: "BeefyUniV2Zap",
-    address: "0x540A9f99bB730631BF243a34B19fd00BA8CF315C",
+    address: "0x540A9f99bB730631BF243a34B19fd00BA8CF315C", // TODO: add this to the vaultRegistry
   },
   unirouter: {
     name: "IUniswapRouterETH",
