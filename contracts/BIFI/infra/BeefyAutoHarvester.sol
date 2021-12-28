@@ -62,8 +62,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     uint256 public gasCapBuffer;
     uint256 public harvestGasLimit;
     uint256 public keeperRegistryGasOverhead;
-    uint256 public txPremiumFactor;
-    uint256 public managerProfitabilityBuffer; // extra factor on top of tx premium call rewards must clear to trigger a harvest
+    uint256 public chainlinkTxFeeMultiplier;
     uint256 public keeperRegistryGasOverheadBufferFactor;
 
     // state vars that will change across upkeeps
@@ -121,8 +120,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         uint256 _gasCapBuffer,
         uint256 _harvestGasLimit,
         uint256 _shouldConvertToLinkThreshold,
-        uint256 _keeperRegistryGasOverhead,
-        uint256 _managerProfitabilityBuffer
+        uint256 _keeperRegistryGasOverhead
     ) external initializer {
         __Ownable_init();
 
@@ -139,9 +137,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         gasCap = _gasCap;
         harvestGasLimit = _harvestGasLimit;
         shouldConvertToLinkThreshold = _shouldConvertToLinkThreshold;
-        ( txPremiumFactor, , , , , , ) = keeperRegistry.getConfig();
+        ( chainlinkTxFeeMultiplier, , , , , , ) = keeperRegistry.getConfig();
         keeperRegistryGasOverhead = _keeperRegistryGasOverhead;
-        managerProfitabilityBuffer = _managerProfitabilityBuffer;
         keeperRegistryGasOverheadBufferFactor = 1;
     }
 
@@ -169,7 +166,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
             uint256 callRewards
         ) = _buildVaultsToHarvest(vaults, harvestInfo, numberOfVaultsToHarvest);
 
-        uint256 nonHeuristicEstimatedTxCost = _estimateNonHeuristicExpectedCost(numberOfVaultsToHarvest);
+        uint256 nonHeuristicEstimatedTxCost = _estimateUpkeepTxCost(numberOfVaultsToHarvest);
 
         performData = abi.encode(
             vaultsToHarvest,
@@ -182,10 +179,19 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         return (true, performData);
     }
 
-    function _estimateNonHeuristicExpectedCost(uint256 numberOfVaultsToHarvest) internal view returns (uint256) {
-        uint256 rawTxCostForAllHarvests = tx.gasprice * harvestGasLimit * numberOfVaultsToHarvest;
-        uint256 costWithoutPremium = keeperRegistryGasOverhead + rawTxCostForAllHarvests;
-        return costWithoutPremium * _buildCostFactor();
+    function _estimateUpkeepGasUnits(uint256 numberOfVaultsToHarvest) internal view returns (uint256) {
+        uint256 totalGasUnitsForAllVaults = harvestGasLimit * numberOfVaultsToHarvest;
+        uint256 gasUnitsWithOverhead = keeperRegistryGasOverhead + totalGasUnitsForAllVaults;
+        return gasUnitsWithOverhead;
+    }
+
+    function _calculateGasCostWithPremium(uint256 numberOfVaultsToHarvest) internal view returns (uint256) {
+        uint256 gasUnits = _estimateUpkeepGasUnits(numberOfVaultsToHarvest);
+        return _estimateUpkeepTxCost(gasUnits);
+    }
+
+    function _estimateUpkeepTxCost(uint256 gasUnits) internal view returns (uint256) {
+        return tx.gasprice * gasUnits * _buildChainlinkTxFeeMultiplier();
     }
 
     function _buildVaultsToHarvest(address[] memory _vaults, HarvestInfo[] memory willHarvestVault, uint256 numberOfVaultsToHarvest)
@@ -322,7 +328,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
         uint256 callRewardAmount = strategy.callReward();
 
-        uint256 txCostWithPremium = _buildTxCost() * _buildCostFactor();
+        uint256 txCostWithPremium = _buildTxCost() * _buildChainlinkTxFeeMultiplier();
         bool isProfitableHarvest = callRewardAmount >= txCostWithPremium;
 
         bool shouldHarvestVault = isProfitableHarvest ||
@@ -331,24 +337,21 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         return (shouldHarvestVault, txCostWithPremium, callRewardAmount);
     }
 
-    function _estimateAdditionalPremiumFactorFromOverhead() internal view returns (uint256) {
-        uint256 estimatedMaxVaultsPerUpkeep = _getAdjustedGasCap() / harvestGasLimit;
+    function _estimateAdditionalPremiumFromOverhead() internal view returns (uint256) {
+        uint256 estimatedVaultCountPerUpkeep = _getAdjustedGasCap() / harvestGasLimit;
         // Evenly distribute the overhead to all vaults, assuming we will harvest max amount of vaults everytime.
-        uint256 evenlyDistributedOverheadPerVault = keeperRegistryGasOverhead / estimatedMaxVaultsPerUpkeep;
-        // Being additionally conservative by an additional factor if wanted.
-        uint256 adjustedOverheadPerVault = evenlyDistributedOverheadPerVault * keeperRegistryGasOverheadBufferFactor;
-
-        return adjustedOverheadPerVault;
+        uint256 evenlyDistributedOverheadPerVault = keeperRegistryGasOverhead / estimatedVaultCountPerUpkeep;
+        return evenlyDistributedOverheadPerVault;
     }
 
     function _buildTxCost() internal view returns (uint256) {
         uint256 rawTxCost = tx.gasprice * harvestGasLimit;
-        return rawTxCost + _estimateAdditionalPremiumFactorFromOverhead();
+        return rawTxCost + _estimateAdditionalPremiumFromOverhead();
     }
 
-    function _buildCostFactor() internal view returns (uint256) {
+    function _buildChainlinkTxFeeMultiplier() internal view returns (uint256) {
         uint256 one = 10 ** 8;
-        return one + txPremiumFactor + managerProfitabilityBuffer;
+        return one + chainlinkTxFeeMultiplier;
     }
 
     // PERFORM UPKEEP SECTION
@@ -450,8 +453,9 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         uint256 estimatedTxCost = nonHeuristicEstimatedTxCost; // use nonHeuristic here as its more accurate
         uint256 estimatedProfit = estimatedCallRewards - estimatedTxCost;
 
-        uint256 calculatedTxCost = tx.gasprice * gasUsedByPerformUpkeep;
-        uint256 calculatedProfit = calculatedCallRewards - calculatedTxCost;
+        uint256 calculatedTxCost = tx.gasprice * (gasUsedByPerformUpkeep + keeperRegistryGasOverhead);
+        uint256 calculatedTxCostWithPremium = _estimateUpkeepTxCost(calculatedTxCost);
+        uint256 calculatedProfit = calculatedCallRewards - calculatedTxCostWithPremium;
 
         emit ProfitSummary(
             // predicted values
@@ -565,10 +569,6 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     function setUnirouter(address newUnirouter) external onlyManager {
         unirouter = IUniswapRouterETH(newUnirouter);
-    }
-
-    function setManagerProfitabilityBuffer(uint256 newManagerProfitabilityBuffer) external onlyManager {
-        managerProfitabilityBuffer = newManagerProfitabilityBuffer;
     }
 
     function setUpkeepId(uint256 upkeepId_) external onlyManager {
