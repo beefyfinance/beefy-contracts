@@ -64,6 +64,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     uint256 public keeperRegistryGasOverhead;
     uint256 public txPremiumFactor;
     uint256 public managerProfitabilityBuffer; // extra factor on top of tx premium call rewards must clear to trigger a harvest
+    uint256 public keeperRegistryGasOverheadBufferFactor;
 
     // state vars that will change across upkeeps
     uint256 public startIndex;
@@ -141,6 +142,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         ( txPremiumFactor, , , , , , ) = keeperRegistry.getConfig();
         keeperRegistryGasOverhead = _keeperRegistryGasOverhead;
         managerProfitabilityBuffer = _managerProfitabilityBuffer;
+        keeperRegistryGasOverheadBufferFactor = 1;
     }
 
     function checkUpkeep(
@@ -333,8 +335,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         uint256 estimatedMaxVaultsPerUpkeep = _getAdjustedGasCap() / harvestGasLimit;
         // Evenly distribute the overhead to all vaults, assuming we will harvest max amount of vaults everytime.
         uint256 evenlyDistributedOverheadPerVault = keeperRegistryGasOverhead / estimatedMaxVaultsPerUpkeep;
-        // Being additionally conservative by assuming half the max amount of vaults will be harvested, making the overhead to clear higher.
-        uint256 adjustedOverheadPerVault = evenlyDistributedOverheadPerVault * 2;
+        // Being additionally conservative by an additional factor if wanted.
+        uint256 adjustedOverheadPerVault = evenlyDistributedOverheadPerVault * keeperRegistryGasOverheadBufferFactor;
 
         return adjustedOverheadPerVault;
     }
@@ -571,6 +573,10 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
 
     function setUpkeepId(uint256 upkeepId_) external onlyManager {
         upkeepId = upkeepId_;
+    }
+
+    function setKeeperRegistryGasOverheadBufferFactor(uint256 newFactor) external onlyManager {
+        keeperRegistryGasOverheadBufferFactor = newFactor;
     }
 
     // LINK conversion functions
