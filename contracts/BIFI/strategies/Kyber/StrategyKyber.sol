@@ -218,6 +218,11 @@ contract StrategyKyber is StratManager, FeeManager {
         );
     }
 
+    /**
+     * @dev Reserve ratio determines how much of each asset is added to the LP, same as with a normal LP.
+     * However, the value added is not 50/50 as virtual reserve ratio determines price of each asset instead.
+     * To calculate how much of the output should be swapped to either asset the ratios must be combined.
+     */
     function getSplit() internal view returns (uint256) {
         (uint256 reserve0, uint256 reserve1, uint256 vReserve0, uint256 vReserve1,) = IDMMPool(want).getTradeInfo();
         uint256 lp0Decimals = ERC20(lpToken0).decimals();
