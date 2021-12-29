@@ -49,7 +49,7 @@
     "@openzeppelin-2/contracts": "npm:@openzeppelin/contracts@2.5.1",
     "@openzeppelin-4/contracts": "npm:@openzeppelin/contracts",
     "@openzeppelin/contracts": "^3.4.2",
-    "@openzeppelin/contracts-upgradeable": "^4.3.3",
+    "@openzeppelin/contracts-upgradeable": "^4.4.1",
     "@openzeppelin/hardhat-upgrades": "^1.10.0",
     "@openzeppelin/upgrades-core": "^1.9.2",
     "@typechain/ethers-v5": "^8.0.5",
