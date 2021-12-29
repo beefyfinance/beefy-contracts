@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity >=0.6.0 <0.9.0;
 
 interface IPegSwap {
@@ -18,7 +17,9 @@ interface IPegSwap {
         address indexed caller
     );
 
+    /* solhint-disable payable-fallback */
     fallback() external;
+    /* solhint-enable payable-fallback */
 
     function acceptOwnership() external;
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -47,29 +47,6 @@ contract BeefyHarvester is Initializable, OwnableUpgradeable, IBeefyHarvester {
     address public oracleLink;
     IPegSwap public pegswap;
     uint256 public upkeepId;
-
-    event HarvestSummary(
-        uint256 indexed blockNumber,
-        uint256 oldStartIndex,
-        uint256 newStartIndex,
-        uint256 gasPrice,
-        uint256 gasUsedByPerformUpkeep,
-        uint256 numberOfSuccessfulHarvests,
-        uint256 numberOfFailedHarvests,
-        uint256 linkConverted
-    );
-    event ProfitSummary(
-        uint256 estimatedTxCost,
-        uint256 estimatedCallRewards,
-        uint256 estimatedProfit,
-        uint256 calculatedTxCost,
-        uint256 calculatedCallRewards,
-        uint256 calculatedProfit
-    );
-    event SuccessfulHarvests(uint256 indexed blockNumber, address[] successfulVaults);
-    event FailedHarvests(uint256 indexed blockNumber, address[] failedVaults);
-    event ConvertedNativeToLink(uint256 indexed blockNumber, uint256 nativeAmount, uint256 linkAmount);
-    event HeuristicFailed(uint256 indexed blockNumber, uint256 heuristicEstimatedTxCost, uint256 nonHeuristicEstimatedTxCost, uint256 estimatedCallRewards);
 
     modifier onlyManager() {
         require(msg.sender == owner() || isManager[msg.sender], "!manager");
