@@ -386,18 +386,19 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
             uint256 cumulativeCallRewards_
         )
     {
-        bool[] memory isFailedHarvest = new bool[](vaults_.length);
+        bool[] memory isSuccessfulHarvest = new bool[](vaults_.length);
         for (uint256 i = 0; i < vaults_.length; ++i) {
             (bool didHarvest, uint256 callRewards) = _harvestVault(vaults_[i]);
             // Add rewards to cumulative tracker.
             if (didHarvest) {
+                isSuccessfulHarvest[i] = true;
                 cumulativeCallRewards_ += callRewards;
             }
         }
 
         (address[] memory successfulHarvests, address[] memory failedHarvests) = _getSuccessfulAndFailedVaults(
             vaults_,
-            isFailedHarvest
+            isSuccessfulHarvest
         );
 
         emit SuccessfulHarvests(block.number, successfulHarvests);
