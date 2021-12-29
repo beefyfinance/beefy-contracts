@@ -6,7 +6,6 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../interfaces/IPegSwap.sol";
@@ -14,17 +13,12 @@ import "../interfaces/IKeeperRegistry.sol";
 import "../interfaces/IBeefyVault.sol";
 import "../interfaces/IBeefyStrategy.sol";
 import "../interfaces/IBeefyRegistry.sol";
+import "../interfaces/IBeefyHarvester.sol";
 
 /* solhint-disable max-states-count */
-contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatibleInterface {
+contract BeefyHarvester is Initializable, OwnableUpgradeable, IBeefyHarvester {
 /* solhint-enable max-states-count */
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    struct HarvestInfo {
-        bool willHarvest;
-        uint256 estimatedTxCost;
-        uint256 callRewardsAmount;
-    }
 
     // access control
     mapping (address => bool) private isManager;
