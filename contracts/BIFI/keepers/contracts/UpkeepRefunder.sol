@@ -20,7 +20,7 @@ import "../libraries/UpkeepHelper.sol";
 contract UpkeepRefunder is Initializable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    event ConvertedNativeToLink(uint256 indexed blockNumber, uint256 nativeAmount, uint256 linkAmount);
+    event SwappedNativeToLink(uint256 indexed blockNumber, uint256 nativeAmount, uint256 linkAmount);
 
     // access control
     mapping (address => bool) private isManager;
@@ -31,7 +31,7 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable {
     IPegSwap public pegswap;
 
     address[] public nativeToLinkRoute;
-    uint256 public shouldConvertToLinkThreshold;
+    uint256 public shouldSwapToLinkThreshold;
     address public oracleLink;
     uint256 public upkeepId;
 
@@ -56,7 +56,7 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable {
         address[] memory _nativeToLinkRoute,
         address _oracleLink,
         address _pegswap,
-        uint256 _shouldConvertToLinkThreshold
+        uint256 _shouldSwapToLinkThreshold
     ) external initializer {
         __Ownable_init();
 
@@ -65,7 +65,7 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable {
         nativeToLinkRoute = _nativeToLinkRoute;
         oracleLink = _oracleLink;
         pegswap = IPegSwap(_pegswap);
-        shouldConvertToLinkThreshold = _shouldConvertToLinkThreshold;
+        shouldSwapToLinkThreshold = _shouldSwapToLinkThreshold;
 
         _approveSpending();
     }
@@ -75,7 +75,7 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable {
     /*      */
 
     /**
-     * @dev Harvester needs to approve refunder to allow transfer of tokens.
+     * @dev Harvester needs to approve refunder to allow transfer of tokens. Note that this function has open access control, anyone can refund the upkeep.
      * @return linkRefunded_ amount of link that was refunded to harvester.
      */
     function refundUpkeep(uint256 amount_, uint256 upkeepId_) external returns (uint256 linkRefunded_) {
@@ -85,7 +85,7 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable {
         native.safeTransferFrom(msg.sender, address(this), amount_);
 
         uint256 linkRefunded;
-        if (balanceOfNative() >= shouldConvertToLinkThreshold) {
+        if (balanceOfNative() >= shouldSwapToLinkThreshold) {
             linkRefunded = _addHarvestedFundsToUpkeep(upkeepId_);
         }
 
@@ -101,7 +101,7 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable {
         IERC20Upgradeable(LINK()).safeTransfer(msg.sender, amount);
     }
 
-    function managerWrapAllLinkToOracleVersion() external onlyManager {
+    function wrapAllLinkToOracleVersion() external onlyManager {
         _wrapAllLinkToOracleVersion();
     }
 
@@ -113,8 +113,11 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable {
         unwrapToDexLink(balanceOfOracleLink());
     }
 
-    function convertNativeToLink() external onlyManager {
-        _convertNativeToLink();
+    /**
+     * @notice Manually trigger native to link swap.
+     */
+    function swapNativeToLink() external onlyManager {
+        _swapNativeToLink();
     }
 
     /**
@@ -135,25 +138,25 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable {
     /*         */
 
     function _addHarvestedFundsToUpkeep(uint256 upkeepId_) internal returns (uint256) {
-        _convertNativeToLinkAndWrap();
+        _swapNativeToLinkAndWrap();
         uint256 balance = balanceOfOracleLink();
         keeperRegistry.addFunds(upkeepId_, uint96(balance));
         return balance;
     }
 
-    function _convertNativeToLinkAndWrap() internal {
-        _convertNativeToLink();
+    function _swapNativeToLinkAndWrap() internal {
+        _swapNativeToLink();
         _wrapAllLinkToOracleVersion();
     }
 
-    function _convertNativeToLink() internal {
+    function _swapNativeToLink() internal {
         IERC20Upgradeable native = IERC20Upgradeable(nativeToLinkRoute[0]);
         uint256 nativeBalance = native.balanceOf(address(this));
         
         /* solhint-disable not-rely-on-time */
         uint256[] memory amounts = unirouter.swapExactTokensForTokens(nativeBalance, 0, nativeToLinkRoute, address(this), block.timestamp);
         /* solhint-enable not-rely-on-time */
-        emit ConvertedNativeToLink(block.number, nativeBalance, amounts[amounts.length-1]);
+        emit SwappedNativeToLink(block.number, nativeBalance, amounts[amounts.length-1]);
     }
 
     function _wrapLinkToOracleVersion(uint256 amount) internal {
@@ -193,8 +196,8 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable {
         unirouter = IUniswapRouterETH(newUnirouter);
     }
 
-    function setShouldConvertToLinkThreshold(uint256 newThreshold) external onlyManager {
-        shouldConvertToLinkThreshold = newThreshold;
+    function setShouldSwapToLinkThreshold(uint256 newThreshold) external onlyManager {
+        shouldSwapToLinkThreshold = newThreshold;
     }
 
     function setNativeToLinkRoute(address[] memory _nativeToLinkRoute) external onlyManager {
