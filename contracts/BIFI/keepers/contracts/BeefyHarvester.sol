@@ -15,6 +15,8 @@ import "../interfaces/IBeefyStrategy.sol";
 import "../interfaces/IBeefyRegistry.sol";
 import "../interfaces/IBeefyHarvester.sol";
 
+import "../libraries/UpkeepHelper.sol";
+
 /* solhint-disable max-states-count */
 contract BeefyHarvester is Initializable, OwnableUpgradeable, IBeefyHarvester {
 /* solhint-enable max-states-count */
@@ -91,6 +93,10 @@ contract BeefyHarvester is Initializable, OwnableUpgradeable, IBeefyHarvester {
         keeperRegistryGasOverheadBufferFactor = 1;
     }
 
+    /*             */
+    /* checkUpkeep */
+    /*             */
+
     function checkUpkeep(
         bytes calldata checkData // unused
     )
@@ -157,7 +163,7 @@ contract BeefyHarvester is Initializable, OwnableUpgradeable, IBeefyHarvester {
 
         // create array of vaults to harvest. Could reduce code duplication from _countVaultsToHarvest via a another function parameter called _loopPostProcess
         for (uint256 offset; offset < _vaults.length; ++offset) {
-            uint256 vaultIndexToCheck = _getCircularIndex(startIndex, offset, _vaults.length);
+            uint256 vaultIndexToCheck = UpkeepHelper._getCircularIndex(startIndex, offset, _vaults.length);
             address vaultAddress = _vaults[vaultIndexToCheck];
 
             HarvestInfo memory harvestInfo = willHarvestVault[offset];
@@ -199,7 +205,7 @@ contract BeefyHarvester is Initializable, OwnableUpgradeable, IBeefyHarvester {
             // startIndex is where to start in the vaultRegistry array, offset is position from start index (in other words, number of vaults we've checked so far), 
             // then modulo to wrap around to the start of the array, until we've checked all vaults, or break early due to hitting gas limit
             // this logic is contained in _getCircularIndex()
-            vaultIndexToCheck = _getCircularIndex(startIndex, offset, _vaults.length);
+            vaultIndexToCheck = UpkeepHelper._getCircularIndex(startIndex, offset, _vaults.length);
             address vaultAddress = _vaults[vaultIndexToCheck];
 
             (
@@ -223,14 +229,9 @@ contract BeefyHarvester is Initializable, OwnableUpgradeable, IBeefyHarvester {
             }
         }
 
-        uint256 newStartIndex = _getCircularIndex(vaultIndexToCheck, 1, _vaults.length);
+        uint256 newStartIndex = UpkeepHelper._getCircularIndex(vaultIndexToCheck, 1, _vaults.length);
 
         return (harvestInfo, numberOfVaultsToHarvest, newStartIndex);
-    }
-
-    // function used to iterate on an array in a circular way
-    function _getCircularIndex(uint256 index, uint256 offset, uint256 bufferLength) private pure returns (uint256) {
-        return (index + offset) % bufferLength;
     }
 
     function _willHarvestVault(address _vaultAddress) 
@@ -303,7 +304,9 @@ contract BeefyHarvester is Initializable, OwnableUpgradeable, IBeefyHarvester {
         return one + chainlinkTxFeeMultiplier;
     }
 
-    // PERFORM UPKEEP SECTION
+    /*               */
+    /* performUpkeep */
+    /*               */
 
     function performUpkeep(
         bytes calldata performData
