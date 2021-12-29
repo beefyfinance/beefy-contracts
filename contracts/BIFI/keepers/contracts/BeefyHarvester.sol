@@ -2,9 +2,10 @@
 
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+
+import "./ManageableUpgradable.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../interfaces/IPegSwap.sol";
@@ -17,7 +18,7 @@ import "../interfaces/IUpkeepRefunder.sol";
 
 import "../libraries/UpkeepHelper.sol";
 
-contract BeefyHarvester is OwnableUpgradeable, IBeefyHarvester {
+contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // access control
@@ -42,11 +43,6 @@ contract BeefyHarvester is OwnableUpgradeable, IBeefyHarvester {
     // state vars that will change across upkeeps
     uint256 public startIndex;
 
-    modifier onlyManager() {
-        require(msg.sender == owner() || isManager[msg.sender], "!manager");
-        _;
-    }
-
     modifier onlyUpkeeper() {
         require(isUpkeeper[msg.sender], "!upkeeper");
         _;
@@ -62,7 +58,7 @@ contract BeefyHarvester is OwnableUpgradeable, IBeefyHarvester {
         uint256 keeperRegistryGasOverhead_,
         address upkeepRefunder_
     ) external initializer {
-        __Ownable_init();
+        __Manageable_init();
 
         native = IERC20Upgradeable(native_);
         vaultRegistry = IBeefyRegistry(vaultRegistry_);
@@ -460,16 +456,6 @@ contract BeefyHarvester is OwnableUpgradeable, IBeefyHarvester {
     }
 
     // Access control functions
-
-    function setManagers(address[] memory _managers, bool _status) external onlyManager {
-        for (uint256 managerIndex = 0; managerIndex < _managers.length; managerIndex++) {
-            _setManager(_managers[managerIndex], _status);
-        }
-    }
-
-    function _setManager(address _manager, bool _status) internal {
-        isManager[_manager] = _status;
-    }
 
     function setUpkeepers(address[] memory _upkeepers, bool _status) external onlyManager {
         for (uint256 upkeeperIndex = 0; upkeeperIndex < _upkeepers.length; upkeeperIndex++) {

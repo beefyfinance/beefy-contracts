@@ -2,14 +2,15 @@
 
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+
+import "./ManageableUpgradable.sol";
 
 import "../interfaces/IBeefyVault.sol";
 import "../interfaces/IBeefyStrategy.sol";
 
-contract BeefyRegistry is OwnableUpgradeable {
+contract BeefyRegistry is ManageableUpgradable {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
     struct VaultInfo {
@@ -28,17 +29,12 @@ contract BeefyRegistry is OwnableUpgradeable {
     event VaultsRegistered(address[] vaults);
     event VaultsRetireStatusUpdated(address[] vaults, bool status);
 
-    modifier onlyManager() {
-        require(msg.sender == owner() || _isManager[msg.sender], "!manager");
-        _;
-    }
-
     function getVaultCount() external view returns(uint256 count) {
         return _vaultSet.length();
     }
 
     function initialize() public initializer {
-        __Ownable_init();
+        __Manageable_init();
     }
 
     function addVaults(address[] memory _vaultAddresses) external onlyManager {
@@ -189,15 +185,5 @@ contract BeefyRegistry is OwnableUpgradeable {
     function _setRetireStatus(address _address, bool _status) internal {
         require(_isVaultInRegistry(_address), "Vault not found in registry.");
         _vaultInfoMap[_address].retired = _status;
-    }
-
-    function setManagers(address[] memory _managers, bool _status) external onlyManager {
-        for (uint256 managerIndex = 0; managerIndex < _managers.length; managerIndex++) {
-            _setManager(_managers[managerIndex], _status);
-        }
-    }
-
-    function _setManager(address _manager, bool _status) internal {
-        _isManager[_manager] = _status;
     }
 }

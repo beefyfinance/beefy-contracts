@@ -2,21 +2,18 @@
 
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+
+import "./ManageableUpgradable.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../interfaces/IPegSwap.sol";
 import "../interfaces/IKeeperRegistry.sol";
 import "../interfaces/IUpkeepRefunder.sol";
 
-contract UpkeepRefunder is Initializable, OwnableUpgradeable, IUpkeepRefunder {
+contract UpkeepRefunder is ManageableUpgradable, IUpkeepRefunder {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    // access control
-    mapping (address => bool) private isManager;
 
     // contracts
     IKeeperRegistry public keeperRegistry;
@@ -28,11 +25,6 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable, IUpkeepRefunder {
     address public oracleLink;
     uint256 public upkeepId;
 
-    modifier onlyManager() {
-        require(msg.sender == owner() || isManager[msg.sender], "!manager");
-        _;
-    }
-
     function initialize (
         address keeperRegistry_,
         uint256 upkeepId_,
@@ -42,7 +34,7 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable, IUpkeepRefunder {
         address pegswap_,
         uint256 shouldSwapToLinkThreshold_
     ) external initializer {
-        __Ownable_init();
+        __Manageable_init();
 
         keeperRegistry = IKeeperRegistry(keeperRegistry_);
         upkeepId = upkeepId_;
