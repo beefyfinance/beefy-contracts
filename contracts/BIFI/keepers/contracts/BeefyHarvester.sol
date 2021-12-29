@@ -364,7 +364,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
 
         uint256 calculatedTxCost = tx.gasprice * (gasUsedByPerformUpkeep_ + _keeperRegistryGasOverhead);
         uint256 calculatedTxCostWithPremium = _calculateTxCostWithPremium(calculatedTxCost);
-        uint256 calculatedProfit = UpkeepLibrary._calculateProfit(calculatedTxCost, calculatedTxCostWithPremium);
+        uint256 calculatedProfit = UpkeepLibrary._calculateProfit(calculatedCallRewards_, calculatedTxCostWithPremium);
 
         emit ProfitSummary(
             // predicted values
