@@ -20,63 +20,65 @@ import "../libraries/UpkeepHelper.sol";
 
 contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    // access control
+
+    // Access control.
     mapping (address => bool) private isUpkeeper;
 
-    // contracts
+    // Contracts.
     IBeefyRegistry public vaultRegistry;
     IKeeperRegistry public keeperRegistry;
     IUpkeepRefunder public upkeepRefunder;
 
-    // util vars
+    // Configuration state variables.
+    uint256 public performUpkeepGasLimit; 
+    uint256 public performUpkeepGasLimitBuffer;
+    uint256 public harvestGasConsumption; // Eventually this needs to live in BeefyRegistry, and needs to be a `per vault` number.
+    uint256 public keeperRegistryGasOverhead; // Gas cost of calling contract, i.e. 80k, this is a private variable on KeeperRegistry.
+    uint256 public chainlinkTxPremiumFactor; // 1 + Tx premium factor/multiplier i.e. 1 + 70% = 1.7.
     address public callFeeRecipient;
-    uint256 public gasCap;
-    uint256 public gasCapBuffer;
-    uint256 public harvestGasLimit; // Eventually this needs to live in BeefyRegistry, and needs to be a `per vault` number.
-    uint256 public keeperRegistryGasOverhead;
-    uint256 public chainlinkTxFeeMultiplier;
 
-    // state vars that will change across upkeeps
+    // State variables that will change across upkeeps.
     uint256 public startIndex;
 
-    modifier onlyUpkeeper() {
-        require(isUpkeeper[msg.sender], "!upkeeper");
-        _;
-    }
+    /*             */
+    /* Initializer */
+    /*             */
 
     function initialize (
         address vaultRegistry_,
         address keeperRegistry_,
-        uint256 gasCap_,
-        uint256 gasCapBuffer_,
+        address upkeepRefunder_,
+        uint256 performUpkeepGasLimit_,
+        uint256 performUpkeepGasLimitBuffer_,
         uint256 harvestGasLimit_,
-        uint256 keeperRegistryGasOverhead_,
-        address upkeepRefunder_
+        uint256 keeperRegistryGasOverhead_
     ) external initializer {
         __Manageable_init();
 
+        // Set contract references.
         vaultRegistry = IBeefyRegistry(vaultRegistry_);
         keeperRegistry = IKeeperRegistry(keeperRegistry_);
+        upkeepRefunder = IUpkeepRefunder(upkeepRefunder_);
 
-        gasCap = gasCap_;
-        gasCapBuffer = gasCapBuffer_;
-        harvestGasLimit = harvestGasLimit_;
-        ( chainlinkTxFeeMultiplier, , , , , , ) = keeperRegistry.getConfig();
+        // Initialize state variables from initialize() arguments.
+        performUpkeepGasLimit = performUpkeepGasLimit_;
+        performUpkeepGasLimitBuffer = performUpkeepGasLimitBuffer_;
+        harvestGasConsumption = harvestGasLimit_;
         keeperRegistryGasOverhead = keeperRegistryGasOverhead_;
 
-        upkeepRefunder = IUpkeepRefunder(upkeepRefunder_);
+        // Initialize state variables derived from initialize() arguments. 
+        ( uint32 paymentPremiumPPB, , , , , , ) = keeperRegistry.getConfig();
+        chainlinkTxPremiumFactor = 10 ** 8 + uint256(paymentPremiumPPB);
         callFeeRecipient = address(upkeepRefunder);
     }
 
-    /**
-     * @dev Rescues random funds stuck.
-     * @param token_ address of the token to rescue.
-     */
-    function inCaseTokensGetStuck(address token_) external onlyManager {
-        IERC20Upgradeable token = IERC20Upgradeable(token_);
+    /*           */
+    /* Modifiers */
+    /*           */
 
-        uint256 amount = token.balanceOf(address(this));
-        token.safeTransfer(msg.sender, amount);
+    modifier onlyUpkeeper() {
+        require(isUpkeeper[msg.sender], "!upkeeper");
+        _;
     }
 
     /*             */
@@ -121,7 +123,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     }
 
     function _estimateUpkeepGasUnits(uint256 numberOfVaultsToHarvest) internal view returns (uint256) {
-        uint256 totalGasUnitsForAllVaults = harvestGasLimit * numberOfVaultsToHarvest;
+        uint256 totalGasUnitsForAllVaults = harvestGasConsumption * numberOfVaultsToHarvest;
         uint256 gasUnitsWithOverhead = keeperRegistryGasOverhead + totalGasUnitsForAllVaults;
         return gasUnitsWithOverhead;
     }
@@ -132,7 +134,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     }
 
     function _estimateUpkeepTxCost(uint256 gasUnits) internal view returns (uint256) {
-        return tx.gasprice * gasUnits * _buildChainlinkTxFeeMultiplier();
+        return tx.gasprice * gasUnits * chainlinkTxPremiumFactor;
     }
 
     function _buildVaultsToHarvest(address[] memory _vaults, HarvestInfo[] memory willHarvestVault, uint256 numberOfVaultsToHarvest)
@@ -169,7 +171,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     }
 
     function _getAdjustedGasCap() internal view returns (uint256) {
-        return gasCap - gasCapBuffer;
+        return performUpkeepGasLimit - performUpkeepGasLimitBuffer;
     }
 
     function _countVaultsToHarvest(address[] memory _vaults)
@@ -200,8 +202,8 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
                 uint256 callRewardsAmount
             ) = _willHarvestVault(vaultAddress);
 
-            if (willHarvest && gasLeft >= harvestGasLimit) {
-                gasLeft -= harvestGasLimit;
+            if (willHarvest && gasLeft >= harvestGasConsumption) {
+                gasLeft -= harvestGasConsumption;
                 numberOfVaultsToHarvest += 1;
                 harvestInfo[offset] = HarvestInfo(
                     true,
@@ -210,7 +212,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
                 );
             }
 
-            if (gasLeft < harvestGasLimit) {
+            if (gasLeft < harvestGasConsumption) {
                 break;
             }
         }
@@ -264,7 +266,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
 
         uint256 callRewardAmount = strategy.callReward();
 
-        uint256 txCostWithPremium = _buildTxCost() * _buildChainlinkTxFeeMultiplier();
+        uint256 txCostWithPremium = _buildTxCost() * chainlinkTxPremiumFactor;
         bool isProfitableHarvest = callRewardAmount >= txCostWithPremium;
 
         bool shouldHarvestVault = isProfitableHarvest ||
@@ -274,20 +276,15 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     }
 
     function _estimateAdditionalPremiumFromOverhead() internal view returns (uint256) {
-        uint256 estimatedVaultCountPerUpkeep = _getAdjustedGasCap() / harvestGasLimit;
+        uint256 estimatedVaultCountPerUpkeep = _getAdjustedGasCap() / harvestGasConsumption;
         // Evenly distribute the overhead to all vaults, assuming we will harvest max amount of vaults everytime.
         uint256 evenlyDistributedOverheadPerVault = keeperRegistryGasOverhead / estimatedVaultCountPerUpkeep;
         return evenlyDistributedOverheadPerVault;
     }
 
     function _buildTxCost() internal view returns (uint256) {
-        uint256 rawTxCost = tx.gasprice * harvestGasLimit;
+        uint256 rawTxCost = tx.gasprice * harvestGasConsumption;
         return rawTxCost + _estimateAdditionalPremiumFromOverhead();
-    }
-
-    function _buildChainlinkTxFeeMultiplier() internal view returns (uint256) {
-        uint256 one = 10 ** 8;
-        return one + chainlinkTxFeeMultiplier;
     }
 
     /*               */
@@ -458,7 +455,9 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         return (successfulHarvests, failedHarvests);
     }
 
-    // Access control functions
+    /*     */
+    /* Set */
+    /*     */
 
     function setUpkeepers(address[] memory _upkeepers, bool _status) external onlyManager {
         for (uint256 upkeeperIndex = 0; upkeeperIndex < _upkeepers.length; upkeeperIndex++) {
@@ -470,18 +469,27 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         isUpkeeper[_upkeeper] = _status;
     }
 
-    // Set config functions
-
     function setGasCap(uint256 newGasCap) external onlyManager {
-        gasCap = newGasCap;
+        performUpkeepGasLimit = newGasCap;
     }
 
     function setGasCapBuffer(uint256 newGasCapBuffer) external onlyManager {
-        gasCapBuffer = newGasCapBuffer;
+        performUpkeepGasLimitBuffer = newGasCapBuffer;
     }
 
     function setHarvestGasLimit(uint256 newHarvestGasLimit) external onlyManager {
-        harvestGasLimit = newHarvestGasLimit;
+        harvestGasConsumption = newHarvestGasLimit;
+    }
+
+    /**
+     * @dev Rescues random funds stuck.
+     * @param token_ address of the token to rescue.
+     */
+    function inCaseTokensGetStuck(address token_) external onlyManager {
+        IERC20Upgradeable token = IERC20Upgradeable(token_);
+
+        uint256 amount = token.balanceOf(address(this));
+        token.safeTransfer(msg.sender, amount);
     }
 
     /*      */
