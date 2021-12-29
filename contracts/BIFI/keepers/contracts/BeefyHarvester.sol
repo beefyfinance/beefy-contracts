@@ -262,7 +262,11 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         return (shouldHarvestVault, txCostWithPremium, callRewardAmount);
     }
 
-    function _estimateAdditionalPremiumFromOverhead() internal view returns (uint256 evenlyDistributedOverheadPerVault_) {
+    function _estimateAdditionalPremiumFromOverhead()
+        internal
+        view
+        returns (uint256 evenlyDistributedOverheadPerVault_)
+    {
         uint256 estimatedVaultCountPerUpkeep = _getAdjustedGasCap() / _harvestGasOverhead;
         // Evenly distribute the overhead to all vaults, assuming we will harvest max amount of vaults everytime.
         uint256 evenlyDistributedOverheadPerVault = _keeperRegistryGasOverhead / estimatedVaultCountPerUpkeep;
@@ -372,11 +376,11 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         uint256 calculatedCallRewards_
     ) internal {
         uint256 estimatedTxCost = nonHeuristicEstimatedTxCost_; // use nonHeuristic here as its more accurate
-        uint256 estimatedProfit = estimatedCallRewards_ - estimatedTxCost;
+        uint256 estimatedProfit = UpkeepLibrary._calculateProfit(estimatedCallRewards_, estimatedTxCost);
 
         uint256 calculatedTxCost = tx.gasprice * (gasUsedByPerformUpkeep_ + _keeperRegistryGasOverhead);
         uint256 calculatedTxCostWithPremium = _calculateTxCostWithPremium(calculatedTxCost);
-        uint256 calculatedProfit = calculatedCallRewards_ - calculatedTxCostWithPremium;
+        uint256 calculatedProfit = UpkeepLibrary._calculateProfit(calculatedTxCost, calculatedTxCostWithPremium);
 
         emit ProfitSummary(
             // predicted values
@@ -395,28 +399,15 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         returns (
             uint256 numberOfSuccessfulHarvests_,
             uint256 numberOfFailedHarvests_,
-            uint256 calculatedCallRewards_
+            uint256 cumulativeCallRewards_
         )
     {
         bool[] memory isFailedHarvest = new bool[](vaults_.length);
         for (uint256 i = 0; i < vaults_.length; ++i) {
-            IBeefyStrategy strategy = IBeefyStrategy(IBeefyVault(vaults_[i]).strategy());
-            uint256 toAdd = strategy.callReward();
-            bool didHarvest;
-            try strategy.harvest(_callFeeRecipient) {
-                didHarvest = true;
-            } catch {
-                // try old function signature
-                try strategy.harvestWithCallFeeRecipient(_callFeeRecipient) {
-                    didHarvest = true;
-                } catch {
-                    isFailedHarvest[i] = true;
-                }
-            }
-
+            (bool didHarvest, uint256 callRewards) = _harvestVault(vaults_[i]);
             // Add rewards to cumulative tracker.
             if (didHarvest) {
-                calculatedCallRewards_ += toAdd;
+                cumulativeCallRewards_ += callRewards;
             }
         }
 
@@ -428,30 +419,48 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         emit SuccessfulHarvests(block.number, successfulHarvests);
         emit FailedHarvests(block.number, failedHarvests);
 
-        return (successfulHarvests.length, failedHarvests.length, calculatedCallRewards_);
+        return (successfulHarvests.length, failedHarvests.length, cumulativeCallRewards_);
     }
 
-    function _getSuccessfulAndFailedVaults(address[] memory vaults_, bool[] memory isFailedHarvest_)
+    function _harvestVault(address vault_) internal returns (bool didHarvest_, uint256 callRewards_) {
+        IBeefyStrategy strategy = IBeefyStrategy(IBeefyVault(vault_).strategy());
+        callRewards_ = strategy.callReward();
+        try strategy.harvest(_callFeeRecipient) {
+            didHarvest_ = true;
+        } catch {
+            // try old function signature
+            try strategy.harvestWithCallFeeRecipient(_callFeeRecipient) {
+                didHarvest_ = true;
+                /* solhint-disable no-empty-blocks */
+            } catch {
+                /* solhint-enable no-empty-blocks */
+            }
+        }
+
+        return (didHarvest_, callRewards_);
+    }
+
+    function _getSuccessfulAndFailedVaults(address[] memory vaults_, bool[] memory isSuccessfulHarvest_)
         internal
         pure
         returns (address[] memory successfulHarvests_, address[] memory failedHarvests_)
     {
-        uint256 failedCount;
+        uint256 successfulCount;
         for (uint256 i = 0; i < vaults_.length; i++) {
-            if (isFailedHarvest_[i]) {
-                failedCount += 1;
+            if (isSuccessfulHarvest_[i]) {
+                successfulCount += 1;
             }
         }
 
-        successfulHarvests_ = new address[](vaults_.length - failedCount);
-        failedHarvests_ = new address[](failedCount);
-        uint256 failedHarvestIndex;
+        successfulHarvests_ = new address[](successfulCount);
+        failedHarvests_ = new address[](vaults_.length - successfulCount);
         uint256 successfulHarvestsIndex;
+        uint256 failedHarvestIndex;
         for (uint256 i = 0; i < vaults_.length; i++) {
-            if (isFailedHarvest_[i]) {
-                failedHarvests_[failedHarvestIndex++] = vaults_[i];
-            } else {
+            if (isSuccessfulHarvest_[i]) {
                 successfulHarvests_[successfulHarvestsIndex++] = vaults_[i];
+            } else {
+                failedHarvests_[failedHarvestIndex++] = vaults_[i];
             }
         }
 
@@ -488,13 +497,21 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     /* View */
     /*      */
 
-    function _estimateUpkeepGasConsumption(uint256 numberOfVaultsToHarvest_) internal view returns (uint256 gasOverhead) {
+    function _estimateUpkeepGasConsumption(uint256 numberOfVaultsToHarvest_)
+        internal
+        view
+        returns (uint256 gasOverhead)
+    {
         uint256 totalHarvestGasOverhead = _harvestGasOverhead * numberOfVaultsToHarvest_;
         uint256 totalOverhead = _keeperRegistryGasOverhead + totalHarvestGasOverhead;
         return totalOverhead;
     }
 
-    function _calculateTxCostWithPremiumBasedOnHarvestCount(uint256 numberOfVaultsToHarvest_) internal view returns (uint256 txCost_) {
+    function _calculateTxCostWithPremiumBasedOnHarvestCount(uint256 numberOfVaultsToHarvest_)
+        internal
+        view
+        returns (uint256 txCost_)
+    {
         uint256 gasOverhead = _estimateUpkeepGasConsumption(numberOfVaultsToHarvest_);
         return _calculateTxCostWithPremium(gasOverhead);
     }
