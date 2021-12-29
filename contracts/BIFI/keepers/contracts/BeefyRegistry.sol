@@ -22,16 +22,16 @@ contract BeefyRegistry is ManageableUpgradable {
         uint256 index;
     }
 
-    mapping (address => bool) private _isManager;
+    mapping(address => bool) private _isManager;
 
     EnumerableSetUpgradeable.AddressSet private _vaultSet;
-    mapping (address => VaultInfo) private _vaultInfoMap;
-    mapping (address => EnumerableSetUpgradeable.AddressSet) private _tokenToVaultsMap;
+    mapping(address => VaultInfo) private _vaultInfoMap;
+    mapping(address => EnumerableSetUpgradeable.AddressSet) private _tokenToVaultsMap;
 
     event VaultsRegistered(address[] vaults);
     event VaultsRetireStatusUpdated(address[] vaults, bool status);
 
-    function getVaultCount() external view returns(uint256 count) {
+    function getVaultCount() external view returns (uint256 count) {
         return _vaultSet.length();
     }
 
@@ -46,24 +46,23 @@ contract BeefyRegistry is ManageableUpgradable {
         emit VaultsRegistered(_vaultAddresses);
     }
 
-
     function _addVault(address _vaultAddress) internal {
-            require(!_isVaultInRegistry(_vaultAddress), "Vault Exists");
+        require(!_isVaultInRegistry(_vaultAddress), "Vault Exists");
 
-            IBeefyVault vault = IBeefyVault(_vaultAddress);
-            IBeefyStrategy strat = _validateVault(vault);
+        IBeefyVault vault = IBeefyVault(_vaultAddress);
+        IBeefyStrategy strat = _validateVault(vault);
 
-            address[] memory tokens = _collectTokenData(strat);
+        address[] memory tokens = _collectTokenData(strat);
 
-            _vaultSet.add(_vaultAddress);
+        _vaultSet.add(_vaultAddress);
 
-            for (uint8 tokenId = 0; tokenId < tokens.length; tokenId++) {
-                _tokenToVaultsMap[tokens[tokenId]].add(_vaultAddress);
-            }
+        for (uint8 tokenId = 0; tokenId < tokens.length; tokenId++) {
+            _tokenToVaultsMap[tokens[tokenId]].add(_vaultAddress);
+        }
 
-            _vaultInfoMap[_vaultAddress].tokens = tokens;
-            _vaultInfoMap[_vaultAddress].blockNumber = block.number;
-            _vaultInfoMap[_vaultAddress].index = _vaultSet.length() - 1; 
+        _vaultInfoMap[_vaultAddress].tokens = tokens;
+        _vaultInfoMap[_vaultAddress].blockNumber = block.number;
+        _vaultInfoMap[_vaultAddress].index = _vaultSet.length() - 1;
     }
 
     function _validateVault(IBeefyVault _vault) internal view returns (IBeefyStrategy strategy) {
@@ -96,15 +95,26 @@ contract BeefyRegistry is ManageableUpgradable {
         return (_vaultSet.contains(_address));
     }
 
-    function getVaultInfo(address _vaultAddress) external view returns (string memory name, IBeefyStrategy strategy, bool isPaused, address[] memory tokens, uint256 blockNumber, bool retired) {
+    function getVaultInfo(address _vaultAddress)
+        external
+        view
+        returns (
+            string memory name,
+            IBeefyStrategy strategy,
+            bool isPaused,
+            address[] memory tokens,
+            uint256 blockNumber,
+            bool retired
+        )
+    {
         require(_isVaultInRegistry(_vaultAddress), "Invalid Vault Address");
-        
+
         IBeefyVault vault = IBeefyVault(_vaultAddress);
 
         name = vault.name();
         strategy = IBeefyStrategy(vault.strategy());
         isPaused = strategy.paused();
-        
+
         VaultInfo memory vaultInfo = _vaultInfoMap[_vaultAddress];
         tokens = vaultInfo.tokens;
         blockNumber = vaultInfo.blockNumber;

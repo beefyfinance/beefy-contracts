@@ -13,15 +13,19 @@ abstract contract ManageableUpgradable is Initializable, ContextUpgradeable {
 
     event ManagersUpdated(address[] users_, address status_);
 
+    /* solhint-disable func-name-mixedcase */
     /**
      * @dev Initializes the contract setting the deployer as the only manager.
      */
-    function __Manageable_init() internal onlyInitializing { // solhint-disable func-name-mixedcase 
+    function __Manageable_init() internal onlyInitializing {
+        /* solhint-enable func-name-mixedcase */
         __Context_init_unchained();
         __Manageable_init_unchained();
     }
 
-    function __Manageable_init_unchained() internal onlyInitializing { // solhint-disable func-name-mixedcase
+    /* solhint-disable func-name-mixedcase */
+    function __Manageable_init_unchained() internal onlyInitializing {
+        /* solhint-enable func-name-mixedcase */
         _setManager(_msgSender(), true);
     }
 

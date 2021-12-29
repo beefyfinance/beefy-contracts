@@ -22,7 +22,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // Access control.
-    mapping (address => bool) private _isUpkeeper;
+    mapping(address => bool) private _isUpkeeper;
 
     // Contracts.
     IBeefyRegistry public _vaultRegistry;
@@ -30,7 +30,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     IUpkeepRefunder public _upkeepRefunder;
 
     // Configuration state variables.
-    uint256 public _performUpkeepGasLimit; 
+    uint256 public _performUpkeepGasLimit;
     uint256 public _performUpkeepGasLimitBuffer;
     uint256 public _harvestGasConsumption; // Eventually this needs to live in BeefyRegistry, and needs to be a `per vault` number.
     uint256 public _keeperRegistryGasOverhead; // Gas cost of calling contract, i.e. 80k, this is a private variable on KeeperRegistry.
@@ -44,7 +44,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     /* Initializer */
     /*             */
 
-    function initialize (
+    function initialize(
         address vaultRegistry_,
         address keeperRegistry_,
         address upkeepRefunder_,
@@ -66,9 +66,9 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         _harvestGasConsumption = harvestGasLimit_;
         _keeperRegistryGasOverhead = keeperRegistryGasOverhead_;
 
-        // Initialize state variables derived from initialize() arguments. 
-        ( uint32 paymentPremiumPPB, , , , , , ) = _keeperRegistry.getConfig();
-        _chainlinkTxPremiumFactor = 10 ** 8 + uint256(paymentPremiumPPB);
+        // Initialize state variables derived from initialize() arguments.
+        (uint32 paymentPremiumPPB, , , , , , ) = _keeperRegistry.getConfig();
+        _chainlinkTxPremiumFactor = 10**8 + uint256(paymentPremiumPPB);
         _callFeeRecipient = address(_upkeepRefunder);
     }
 
@@ -88,22 +88,28 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     function checkUpkeep(
         bytes calldata checkData_ // unused
     )
-    external view override
-    returns (
-      bool upkeepNeeded_,
-      bytes memory performData_ // array of vaults + 
-    ) {
-        checkData_; // dummy reference to get rid of unused parameter warning 
+        external
+        view
+        override
+        returns (
+            bool upkeepNeeded_,
+            bytes memory performData_ // array of vaults +
+        )
+    {
+        checkData_; // dummy reference to get rid of unused parameter warning
 
         // get vaults to iterate over
         address[] memory vaults = _vaultRegistry.allVaultAddresses();
-        
-        // count vaults to harvest that will fit within gas limit
-        (HarvestInfo[] memory harvestInfo, uint256 numberOfVaultsToHarvest, uint256 newStartIndex) = _countVaultsToHarvest(vaults);
-        if (numberOfVaultsToHarvest == 0)
-            return (false, bytes("BeefyAutoHarvester: No vaults to harvest"));
 
-        ( 
+        // count vaults to harvest that will fit within gas limit
+        (
+            HarvestInfo[] memory harvestInfo,
+            uint256 numberOfVaultsToHarvest,
+            uint256 newStartIndex
+        ) = _countVaultsToHarvest(vaults);
+        if (numberOfVaultsToHarvest == 0) return (false, bytes("BeefyAutoHarvester: No vaults to harvest"));
+
+        (
             address[] memory vaultsToHarvest,
             uint256 heuristicEstimatedTxCost,
             uint256 callRewards
@@ -137,15 +143,21 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         return tx.gasprice * gasUnits_ * _chainlinkTxPremiumFactor;
     }
 
-    function _buildVaultsToHarvest(address[] memory vaults_, HarvestInfo[] memory willHarvestVault_, uint256 numberOfVaultsToHarvest_)
+    function _buildVaultsToHarvest(
+        address[] memory vaults_,
+        HarvestInfo[] memory willHarvestVault_,
+        uint256 numberOfVaultsToHarvest_
+    )
         internal
         view
-        returns (address[] memory, uint256, uint256)
+        returns (
+            address[] memory,
+            uint256,
+            uint256
+        )
     {
         uint256 vaultPositionInArray;
-        address[] memory vaultsToHarvest = new address[](
-            numberOfVaultsToHarvest_
-        );
+        address[] memory vaultsToHarvest = new address[](numberOfVaultsToHarvest_);
         uint256 heuristicEstimatedTxCost;
         uint256 totalCallRewards;
 
@@ -167,7 +179,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
             if (vaultPositionInArray == numberOfVaultsToHarvest_) break;
         }
 
-        return ( vaultsToHarvest, heuristicEstimatedTxCost, totalCallRewards );
+        return (vaultsToHarvest, heuristicEstimatedTxCost, totalCallRewards);
     }
 
     function _getAdjustedGasCap() internal view returns (uint256) {
@@ -189,26 +201,18 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
 
         // count the number of vaults to harvest.
         for (uint256 offset; offset < vaults_.length; ++offset) {
-            // _startIndex is where to start in the _vaultRegistry array, offset is position from start index (in other words, number of vaults we've checked so far), 
+            // _startIndex is where to start in the _vaultRegistry array, offset is position from start index (in other words, number of vaults we've checked so far),
             // then modulo to wrap around to the start of the array, until we've checked all vaults, or break early due to hitting gas limit
             // this logic is contained in _getCircularIndex()
             vaultIndexToCheck = UpkeepHelper._getCircularIndex(_startIndex, offset, vaults_.length);
             address vaultAddress = vaults_[vaultIndexToCheck];
 
-            (
-                bool willHarvest,
-                uint256 estimatedTxCost,
-                uint256 callRewardsAmount
-            ) = _willHarvestVault(vaultAddress);
+            (bool willHarvest, uint256 estimatedTxCost, uint256 callRewardsAmount) = _willHarvestVault(vaultAddress);
 
             if (willHarvest && gasLeft >= _harvestGasConsumption) {
                 gasLeft -= _harvestGasConsumption;
                 numberOfVaultsToHarvest_ += 1;
-                harvestInfo_[offset] = HarvestInfo(
-                    true,
-                    estimatedTxCost,
-                    callRewardsAmount
-                );
+                harvestInfo_[offset] = HarvestInfo(true, estimatedTxCost, callRewardsAmount);
             }
 
             if (gasLeft < _harvestGasConsumption) {
@@ -221,28 +225,26 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         return (harvestInfo_, numberOfVaultsToHarvest_, newStartIndex_);
     }
 
-    function _willHarvestVault(address vaultAddress_) 
+    function _willHarvestVault(address vaultAddress_)
         internal
         view
-        returns (bool willHarvestVault_, uint256 estimatedTxCost_, uint256 callRewardAmount_)
+        returns (
+            bool willHarvestVault_,
+            uint256 estimatedTxCost_,
+            uint256 callRewardAmount_
+        )
     {
-        (
-            bool shouldHarvestVault,
-            uint256 estimatedTxCost,
-            uint256 callRewardAmount
-        ) = _shouldHarvestVault(vaultAddress_);
+        (bool shouldHarvestVault, uint256 estimatedTxCost, uint256 callRewardAmount) = _shouldHarvestVault(
+            vaultAddress_
+        );
         bool canHarvestVault = _canHarvestVault(vaultAddress_);
-        
+
         willHarvestVault_ = canHarvestVault && shouldHarvestVault;
-        
+
         return (willHarvestVault_, estimatedTxCost, callRewardAmount);
     }
 
-    function _canHarvestVault(address vaultAddress_) 
-        internal
-        view
-        returns (bool canHarvest_)
-    {
+    function _canHarvestVault(address vaultAddress_) internal view returns (bool canHarvest_) {
         IBeefyVault vault = IBeefyVault(vaultAddress_);
         IBeefyStrategy strategy = IBeefyStrategy(vault.strategy());
 
@@ -260,7 +262,8 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
             bool shouldHarvestVault_,
             uint256 txCostWithPremium_,
             uint256 callRewardAmount_
-    ) {
+        )
+    {
         IBeefyVault vault = IBeefyVault(vaultAddress_);
         IBeefyStrategy strategy = IBeefyStrategy(vault.strategy());
 
@@ -271,8 +274,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         uint256 txCostWithPremium = _buildTxCost() * _chainlinkTxPremiumFactor;
         bool isProfitableHarvest = callRewardAmount >= txCostWithPremium;
 
-        bool shouldHarvestVault = isProfitableHarvest ||
-            (!hasBeenHarvestedToday && callRewardAmount > 0);
+        bool shouldHarvestVault = isProfitableHarvest || (!hasBeenHarvestedToday && callRewardAmount > 0);
 
         return (shouldHarvestVault, txCostWithPremium, callRewardAmount);
     }
@@ -293,27 +295,22 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     /* performUpkeep */
     /*               */
 
-    function performUpkeep(
-        bytes calldata performData
-    ) external override onlyUpkeeper {
+    function performUpkeep(bytes calldata performData) external override onlyUpkeeper {
         (
             address[] memory vaultsToHarvest,
             uint256 newStartIndex,
             uint256 heuristicEstimatedTxCost,
             uint256 nonHeuristicEstimatedTxCost,
             uint256 estimatedCallRewards
-        ) = abi.decode(
-            performData,
-            (
-                address[],
-                uint256,
-                uint256,
-                uint256,
-                uint256
-            )
-        );
+        ) = abi.decode(performData, (address[], uint256, uint256, uint256, uint256));
 
-        _runUpkeep(vaultsToHarvest, newStartIndex, heuristicEstimatedTxCost, nonHeuristicEstimatedTxCost, estimatedCallRewards);
+        _runUpkeep(
+            vaultsToHarvest,
+            newStartIndex,
+            heuristicEstimatedTxCost,
+            nonHeuristicEstimatedTxCost,
+            estimatedCallRewards
+        );
     }
 
     function _runUpkeep(
@@ -325,7 +322,12 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     ) internal {
         // Make sure estimate looks good.
         if (estimatedCallRewards_ < nonHeuristicEstimatedTxCost_) {
-            emit HeuristicFailed(block.number, heuristicEstimatedTxCost_, nonHeuristicEstimatedTxCost_, estimatedCallRewards_);
+            emit HeuristicFailed(
+                block.number,
+                heuristicEstimatedTxCost_,
+                nonHeuristicEstimatedTxCost_,
+                estimatedCallRewards_
+            );
         }
 
         uint256 gasBefore = gasleft();
@@ -346,8 +348,18 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         uint256 gasUsedByPerformUpkeep = gasBefore - gasAfter;
 
         // split these into their own functions to avoid `Stack too deep`
-        _reportProfitSummary(gasUsedByPerformUpkeep, nonHeuristicEstimatedTxCost_, estimatedCallRewards_, calculatedCallRewards);
-        _reportHarvestSummary(newStartIndex_, gasUsedByPerformUpkeep, numberOfSuccessfulHarvests, numberOfFailedHarvests);
+        _reportProfitSummary(
+            gasUsedByPerformUpkeep,
+            nonHeuristicEstimatedTxCost_,
+            estimatedCallRewards_,
+            calculatedCallRewards
+        );
+        _reportHarvestSummary(
+            newStartIndex_,
+            gasUsedByPerformUpkeep,
+            numberOfSuccessfulHarvests,
+            numberOfFailedHarvests
+        );
     }
 
     function _reportHarvestSummary(
@@ -388,7 +400,6 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
             estimatedTxCost,
             estimatedCallRewards_,
             estimatedProfit,
-
             // calculated values
             calculatedTxCost,
             calculatedCallRewards_,
@@ -396,12 +407,14 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         );
     }
 
-    function _multiHarvest(address[] memory vaults_) 
-    internal returns (
-        uint256,
-        uint256,
-        uint256
-    ) {
+    function _multiHarvest(address[] memory vaults_)
+        internal
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
+    {
         uint256 calculatedCallRewards;
         bool[] memory isFailedHarvest = new bool[](vaults_.length);
         for (uint256 i = 0; i < vaults_.length; ++i) {
@@ -414,8 +427,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
                 // try old function signature
                 try strategy.harvestWithCallFeeRecipient(_callFeeRecipient) {
                     didHarvest = true;
-                }
-                catch {
+                } catch {
                     isFailedHarvest[i] = true;
                 }
             }
@@ -426,15 +438,22 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
             }
         }
 
-        (address[] memory successfulHarvests, address[] memory failedHarvests) = _getSuccessfulAndFailedVaults(vaults_, isFailedHarvest);
-        
+        (address[] memory successfulHarvests, address[] memory failedHarvests) = _getSuccessfulAndFailedVaults(
+            vaults_,
+            isFailedHarvest
+        );
+
         emit SuccessfulHarvests(block.number, successfulHarvests);
-        emit FailedHarvests(block.number,  failedHarvests);
+        emit FailedHarvests(block.number, failedHarvests);
 
         return (successfulHarvests.length, failedHarvests.length, calculatedCallRewards);
     }
 
-    function _getSuccessfulAndFailedVaults(address[] memory vaults_, bool[] memory isFailedHarvest_) internal pure returns (address[] memory successfulHarvests_, address[] memory failedHarvests_) {
+    function _getSuccessfulAndFailedVaults(address[] memory vaults_, bool[] memory isFailedHarvest_)
+        internal
+        pure
+        returns (address[] memory successfulHarvests_, address[] memory failedHarvests_)
+    {
         uint256 failedCount;
         for (uint256 i = 0; i < vaults_.length; i++) {
             if (isFailedHarvest_[i]) {
@@ -449,8 +468,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         for (uint256 i = 0; i < vaults_.length; i++) {
             if (isFailedHarvest_[i]) {
                 failedHarvests_[failedHarvestIndex++] = vaults_[i];
-            }
-            else {
+            } else {
                 successfulHarvests_[successfulHarvestsIndex++] = vaults_[i];
             }
         }
@@ -487,8 +505,6 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     /*      */
     /* View */
     /*      */
-
-
 
     /*      */
     /* Misc */

@@ -25,7 +25,7 @@ contract UpkeepRefunder is ManageableUpgradable, IUpkeepRefunder {
     address public oracleLink;
     uint256 public upkeepId;
 
-    function initialize (
+    function initialize(
         address keeperRegistry_,
         uint256 upkeepId_,
         address unirouter_,
@@ -125,11 +125,17 @@ contract UpkeepRefunder is ManageableUpgradable, IUpkeepRefunder {
     function _swapNativeToLink() internal {
         IERC20Upgradeable native = IERC20Upgradeable(nativeToLinkRoute[0]);
         uint256 nativeBalance = native.balanceOf(address(this));
-        
+
         /* solhint-disable not-rely-on-time */
-        uint256[] memory amounts = unirouter.swapExactTokensForTokens(nativeBalance, 0, nativeToLinkRoute, address(this), block.timestamp);
+        uint256[] memory amounts = unirouter.swapExactTokensForTokens(
+            nativeBalance,
+            0,
+            nativeToLinkRoute,
+            address(this),
+            block.timestamp
+        );
         /* solhint-enable not-rely-on-time */
-        emit SwappedNativeToLink(block.number, nativeBalance, amounts[amounts.length-1]);
+        emit SwappedNativeToLink(block.number, nativeBalance, amounts[amounts.length - 1]);
     }
 
     function _wrapLinkToOracleVersion(uint256 amount_) internal {
@@ -179,7 +185,7 @@ contract UpkeepRefunder is ManageableUpgradable, IUpkeepRefunder {
 
     function setNativeToLinkRoute(address[] memory nativeToLinkRoute_) external onlyManager {
         require(nativeToLinkRoute_[0] == NATIVE(), "!NATIVE");
-        require(nativeToLinkRoute_[nativeToLinkRoute_.length-1] == LINK(), "!LINK");
+        require(nativeToLinkRoute_[nativeToLinkRoute_.length - 1] == LINK(), "!LINK");
         nativeToLinkRoute = nativeToLinkRoute_;
     }
 
@@ -189,13 +195,13 @@ contract UpkeepRefunder is ManageableUpgradable, IUpkeepRefunder {
 
     /* solhint-disable func-name-mixedcase */
     function NATIVE() public view returns (address link) {
-    /* solhint-enable func-name-mixedcase */
+        /* solhint-enable func-name-mixedcase */
         return nativeToLinkRoute[0];
     }
 
     /* solhint-disable func-name-mixedcase */
     function LINK() public view returns (address link) {
-    /* solhint-enable func-name-mixedcase */
+        /* solhint-enable func-name-mixedcase */
         return nativeToLinkRoute[nativeToLinkRoute.length - 1];
     }
 
@@ -203,15 +209,15 @@ contract UpkeepRefunder is ManageableUpgradable, IUpkeepRefunder {
         return oracleLink;
     }
 
-    function balanceOfNative() public view returns (uint256 balance) { 
+    function balanceOfNative() public view returns (uint256 balance) {
         return IERC20Upgradeable(NATIVE()).balanceOf(address(this));
     }
 
-    function balanceOfLink() public view returns (uint256 balance) { 
+    function balanceOfLink() public view returns (uint256 balance) {
         return IERC20Upgradeable(LINK()).balanceOf(address(this));
     }
 
-    function balanceOfOracleLink() public view returns (uint256 balance) { 
+    function balanceOfOracleLink() public view returns (uint256 balance) {
         return IERC20Upgradeable(oracleLINK()).balanceOf(address(this));
     }
 

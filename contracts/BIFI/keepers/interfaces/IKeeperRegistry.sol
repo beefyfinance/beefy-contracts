@@ -18,22 +18,9 @@ interface IKeeperRegistry {
     event OwnershipTransferRequested(address indexed from, address indexed to);
     event OwnershipTransferred(address indexed from, address indexed to);
     event Paused(address account);
-    event PayeeshipTransferRequested(
-        address indexed keeper,
-        address indexed from,
-        address indexed to
-    );
-    event PayeeshipTransferred(
-        address indexed keeper,
-        address indexed from,
-        address indexed to
-    );
-    event PaymentWithdrawn(
-        address indexed keeper,
-        uint256 indexed amount,
-        address indexed to,
-        address payee
-    );
+    event PayeeshipTransferRequested(address indexed keeper, address indexed from, address indexed to);
+    event PayeeshipTransferred(address indexed keeper, address indexed from, address indexed to);
+    event PaymentWithdrawn(address indexed keeper, uint256 indexed amount, address indexed to, address payee);
     event RegistrarChanged(address indexed from, address indexed to);
     event Unpaused(address account);
     event UpkeepCanceled(uint256 indexed id, uint64 indexed atBlockHeight);
@@ -44,11 +31,7 @@ interface IKeeperRegistry {
         uint96 payment,
         bytes performData
     );
-    event UpkeepRegistered(
-        uint256 indexed id,
-        uint32 executeGas,
-        address admin
-    );
+    event UpkeepRegistered(uint256 indexed id, uint32 executeGas, address admin);
 
     function FAST_GAS_FEED() external view returns (address);
 
@@ -102,15 +85,9 @@ interface IKeeperRegistry {
 
     function getKeeperList() external view returns (address[] memory);
 
-    function getMaxPaymentForGas(uint256 gasLimit)
-        external
-        view
-        returns (uint96 maxPayment);
+    function getMaxPaymentForGas(uint256 gasLimit) external view returns (uint96 maxPayment);
 
-    function getMinBalanceForUpkeep(uint256 id)
-        external
-        view
-        returns (uint96 minBalance);
+    function getMinBalanceForUpkeep(uint256 id) external view returns (uint96 minBalance);
 
     function getRegistrar() external view returns (address);
 
@@ -141,9 +118,7 @@ interface IKeeperRegistry {
 
     function paused() external view returns (bool);
 
-    function performUpkeep(uint256 id, bytes memory performData)
-        external
-        returns (bool success);
+    function performUpkeep(uint256 id, bytes memory performData) external returns (bool success);
 
     function recoverFunds() external;
 
@@ -165,8 +140,7 @@ interface IKeeperRegistry {
         uint256 fallbackLinkPrice
     ) external;
 
-    function setKeepers(address[] memory keepers, address[] memory payees)
-        external;
+    function setKeepers(address[] memory keepers, address[] memory payees) external;
 
     function setRegistrar(address registrar) external;
 
