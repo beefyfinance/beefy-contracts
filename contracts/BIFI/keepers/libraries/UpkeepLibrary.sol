@@ -25,6 +25,17 @@ library UpkeepLibrary {
             CHAINLINK_UPKEEPTX_PREMIUM_SCALING_FACTOR;
     }
 
+    function _calculateUpkeepTxCostFromTotalVaultHarvestOverhead(
+        uint256 gasprice_,
+        uint256 totalVaultHarvestOverhead_,
+        uint256 keeperRegistryOverhead_,
+        uint256 chainlinkUpkeepTxPremiumFactor_
+    ) internal pure returns (uint256 upkeepTxCost_) {
+        uint256 totalOverhead = totalVaultHarvestOverhead_ + keeperRegistryOverhead_;
+
+        upkeepTxCost_ = _calculateUpkeepTxCost(gasprice_, totalOverhead, chainlinkUpkeepTxPremiumFactor_);
+    }
+
     function _calculateProfit(uint256 revenue, uint256 expenses) internal pure returns (uint256 profit_) {
         profit_ = revenue - expenses;
     }

@@ -491,10 +491,19 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         return UpkeepLibrary._calculateUpkeepTxCost(tx.gasprice, gasOverhead_, _chainlinkUpkeepTxPremiumFactor);
     }
 
-    function _calculateExpectedTotalUpkeepTxCost(uint256 numberOfVaultsToHarvest_) internal view returns (uint256 txCost_) {
+    function _calculateExpectedTotalUpkeepTxCost(uint256 numberOfVaultsToHarvest_)
+        internal
+        view
+        returns (uint256 txCost_)
+    {
         uint256 totalVaultHarvestGasOverhead = _vaultHarvestFunctionGasOverhead * numberOfVaultsToHarvest_;
-        uint256 totalTxOverhead = totalVaultHarvestGasOverhead + _keeperRegistryGasOverhead;
-        return _calculateTxCostWithPremium(totalTxOverhead);
+        return
+            UpkeepLibrary._calculateUpkeepTxCostFromTotalVaultHarvestOverhead(
+                tx.gasprice,
+                totalVaultHarvestGasOverhead,
+                _keeperRegistryGasOverhead,
+                _chainlinkUpkeepTxPremiumFactor
+            );
     }
 
     function _estimateUpkeepGasOverhead(uint256 numberOfVaultsToHarvest_)
@@ -525,8 +534,14 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         return _calculateTxCostWithPremium(gasOverhead);
     }
 
-    function _estimateSingleVaultHarvestGasOverhead(uint256 vaultHarvestFunctionGasOverhead_) internal view returns (uint256 totalGasOverhead_) {
-        totalGasOverhead_ = vaultHarvestFunctionGasOverhead_ + _estimateAdditionalGasOverheadPerVaultFromKeeperRegistryGasOverhead();
+    function _estimateSingleVaultHarvestGasOverhead(uint256 vaultHarvestFunctionGasOverhead_)
+        internal
+        view
+        returns (uint256 totalGasOverhead_)
+    {
+        totalGasOverhead_ =
+            vaultHarvestFunctionGasOverhead_ +
+            _estimateAdditionalGasOverheadPerVaultFromKeeperRegistryGasOverhead();
     }
 
     /*      */
