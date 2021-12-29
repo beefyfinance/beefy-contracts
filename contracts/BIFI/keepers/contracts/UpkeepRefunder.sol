@@ -10,11 +10,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../interfaces/IPegSwap.sol";
 import "../interfaces/IKeeperRegistry.sol";
+import "../interfaces/IUpkeepRefunder.sol";
 
-contract UpkeepRefunder is Initializable, OwnableUpgradeable {
+contract UpkeepRefunder is Initializable, OwnableUpgradeable, IUpkeepRefunder {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    event SwappedNativeToLink(uint256 indexed blockNumber, uint256 nativeAmount, uint256 linkAmount);
 
     // access control
     mapping (address => bool) private isManager;
@@ -34,32 +33,24 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable {
         _;
     }
 
-    function setManagers(address[] memory _managers, bool _status) external onlyManager {
-        for (uint256 managerIndex = 0; managerIndex < _managers.length; managerIndex++) {
-            _setManager(_managers[managerIndex], _status);
-        }
-    }
-
-    function _setManager(address _manager, bool _status) internal {
-        isManager[_manager] = _status;
-    }
-
     function initialize (
-        address _keeperRegistry,
-        address _unirouter,
-        address[] memory _nativeToLinkRoute,
-        address _oracleLink,
-        address _pegswap,
-        uint256 _shouldSwapToLinkThreshold
+        address keeperRegistry_,
+        uint256 upkeepId_,
+        address unirouter_,
+        address[] memory nativeToLinkRoute_,
+        address oracleLink_,
+        address pegswap_,
+        uint256 shouldSwapToLinkThreshold_
     ) external initializer {
         __Ownable_init();
 
-        keeperRegistry = IKeeperRegistry(_keeperRegistry);
-        unirouter = IUniswapRouterETH(_unirouter);
-        nativeToLinkRoute = _nativeToLinkRoute;
-        oracleLink = _oracleLink;
-        pegswap = IPegSwap(_pegswap);
-        shouldSwapToLinkThreshold = _shouldSwapToLinkThreshold;
+        keeperRegistry = IKeeperRegistry(keeperRegistry_);
+        upkeepId = upkeepId_;
+        unirouter = IUniswapRouterETH(unirouter_);
+        nativeToLinkRoute = nativeToLinkRoute_;
+        oracleLink = oracleLink_;
+        pegswap = IPegSwap(pegswap_);
+        shouldSwapToLinkThreshold = shouldSwapToLinkThreshold_;
 
         _approveSpending();
     }
@@ -72,18 +63,16 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable {
      * @dev Harvester needs to approve refunder to allow transfer of tokens. Note that this function has open access control, anyone can refund the upkeep.
      * @return linkRefunded_ amount of link that was refunded to harvester.
      */
-    function refundUpkeep(uint256 amount_, uint256 upkeepId_) external returns (uint256 linkRefunded_) {
+    function refundUpkeep(uint256 amount_) external returns (uint256 linkRefunded_) {
         require(upkeepId > 0, "Invalid upkeep id.");
 
-        IERC20Upgradeable native = IERC20Upgradeable(NATIVE());
-        native.safeTransferFrom(msg.sender, address(this), amount_);
-
-        uint256 linkRefunded;
-        if (balanceOfNative() >= shouldSwapToLinkThreshold) {
-            linkRefunded = _addHarvestedFundsToUpkeep(upkeepId_);
+        if (amount_ >= shouldSwapToLinkThreshold) {
+            IERC20Upgradeable native = IERC20Upgradeable(NATIVE());
+            native.safeTransferFrom(msg.sender, address(this), amount_);
+            linkRefunded_ = _addHarvestedFundsToUpkeep(upkeepId);
         }
 
-        return linkRefunded;
+        return linkRefunded_;
     }
 
     function withdrawAllLink() external onlyManager {
@@ -91,16 +80,16 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable {
         withdrawLink(amount);
     }
 
-    function withdrawLink(uint256 amount) public onlyManager {
-        IERC20Upgradeable(LINK()).safeTransfer(msg.sender, amount);
+    function withdrawLink(uint256 amount_) public onlyManager {
+        IERC20Upgradeable(LINK()).safeTransfer(msg.sender, amount_);
     }
 
     function wrapAllLinkToOracleVersion() external onlyManager {
         _wrapAllLinkToOracleVersion();
     }
 
-    function unwrapToDexLink(uint256 amount) public onlyManager {
-        pegswap.swap(amount, oracleLINK(), LINK());
+    function unwrapToDexLink(uint256 amount_) public onlyManager {
+        pegswap.swap(amount_, oracleLINK(), LINK());
     }
 
     function unwrapAllToDexLink() public onlyManager {
@@ -153,8 +142,8 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable {
         emit SwappedNativeToLink(block.number, nativeBalance, amounts[amounts.length-1]);
     }
 
-    function _wrapLinkToOracleVersion(uint256 amount) internal {
-        pegswap.swap(amount, LINK(), oracleLINK());
+    function _wrapLinkToOracleVersion(uint256 amount_) internal {
+        pegswap.swap(amount_, LINK(), oracleLINK());
     }
 
     function _wrapAllLinkToOracleVersion() internal {
@@ -186,18 +175,22 @@ contract UpkeepRefunder is Initializable, OwnableUpgradeable {
     /* Set */
     /*     */
 
-    function setUnirouter(address newUnirouter) external onlyManager {
-        unirouter = IUniswapRouterETH(newUnirouter);
+    function setUnirouter(address unirouter_) external onlyManager {
+        unirouter = IUniswapRouterETH(unirouter_);
     }
 
-    function setShouldSwapToLinkThreshold(uint256 newThreshold) external onlyManager {
-        shouldSwapToLinkThreshold = newThreshold;
+    function setShouldSwapToLinkThreshold(uint256 shouldSwapToLinkThreshold_) external onlyManager {
+        shouldSwapToLinkThreshold = shouldSwapToLinkThreshold_;
     }
 
-    function setNativeToLinkRoute(address[] memory _nativeToLinkRoute) external onlyManager {
-        require(_nativeToLinkRoute[0] == NATIVE(), "!NATIVE");
-        require(_nativeToLinkRoute[_nativeToLinkRoute.length-1] == LINK(), "!LINK");
-        nativeToLinkRoute = _nativeToLinkRoute;
+    function setUpkeepId(uint256 upkeepId_) external onlyManager {
+        upkeepId = upkeepId_;
+    }
+
+    function setNativeToLinkRoute(address[] memory nativeToLinkRoute_) external onlyManager {
+        require(nativeToLinkRoute_[0] == NATIVE(), "!NATIVE");
+        require(nativeToLinkRoute_[nativeToLinkRoute_.length-1] == LINK(), "!LINK");
+        nativeToLinkRoute = nativeToLinkRoute_;
     }
 
     /*      */

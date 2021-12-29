@@ -11,8 +11,7 @@ interface IBeefyHarvester is KeeperCompatibleInterface {
         uint256 gasPrice,
         uint256 gasUsedByPerformUpkeep,
         uint256 numberOfSuccessfulHarvests,
-        uint256 numberOfFailedHarvests,
-        uint256 linkConverted
+        uint256 numberOfFailedHarvests
     );
     event ProfitSummary(
         uint256 estimatedTxCost,
