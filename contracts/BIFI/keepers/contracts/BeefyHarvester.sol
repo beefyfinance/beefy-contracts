@@ -328,6 +328,9 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
             numberOfSuccessfulHarvests,
             numberOfFailedHarvests
         );
+
+        // Don't consider it as part of upkeep. TODO: make upkeepRefunder its own Upkeep.
+        _upkeepRefunder.notifyRefundUpkeep();
     }
 
     function _reportHarvestSummary(
