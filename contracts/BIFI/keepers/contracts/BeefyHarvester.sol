@@ -20,16 +20,13 @@ import "../libraries/UpkeepHelper.sol";
 
 contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
     // access control
-    mapping (address => bool) private isManager;
     mapping (address => bool) private isUpkeeper;
 
     // contracts
     IBeefyRegistry public vaultRegistry;
     IKeeperRegistry public keeperRegistry;
     IUpkeepRefunder public upkeepRefunder;
-    IERC20Upgradeable public native;
 
     // util vars
     address public callFeeRecipient;
@@ -38,7 +35,6 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     uint256 public harvestGasLimit;
     uint256 public keeperRegistryGasOverhead;
     uint256 public chainlinkTxFeeMultiplier;
-    uint256 public keeperRegistryGasOverheadBufferFactor;
 
     // state vars that will change across upkeeps
     uint256 public startIndex;
@@ -60,7 +56,6 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     ) external initializer {
         __Manageable_init();
 
-        native = IERC20Upgradeable(native_);
         vaultRegistry = IBeefyRegistry(vaultRegistry_);
         keeperRegistry = IKeeperRegistry(keeperRegistry_);
 
@@ -70,8 +65,18 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         harvestGasLimit = harvestGasLimit_;
         ( chainlinkTxFeeMultiplier, , , , , , ) = keeperRegistry.getConfig();
         keeperRegistryGasOverhead = keeperRegistryGasOverhead_;
-        keeperRegistryGasOverheadBufferFactor = 1;
         upkeepRefunder = IUpkeepRefunder(upkeepRefunder_);
+    }
+
+    /**
+     * @dev Rescues random funds stuck.
+     * @param token_ address of the token to rescue.
+     */
+    function inCaseTokensGetStuck(address token_) external onlyManager {
+        IERC20Upgradeable token = IERC20Upgradeable(token_);
+
+        uint256 amount = token.balanceOf(address(this));
+        token.safeTransfer(msg.sender, amount);
     }
 
     /*             */
@@ -338,8 +343,6 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         require(newStartIndex >= 0 && newStartIndex < vaultCount, "newStartIndex out of range.");
         startIndex = newStartIndex;
 
-        upkeepRefunder.refundUpkeep(native.balanceOf(address(this)));
-
         uint256 gasAfter = gasleft();
         uint256 gasUsedByPerformUpkeep = gasBefore - gasAfter;
 
@@ -479,10 +482,6 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
 
     function setHarvestGasLimit(uint256 newHarvestGasLimit) external onlyManager {
         harvestGasLimit = newHarvestGasLimit;
-    }
-
-    function setKeeperRegistryGasOverheadBufferFactor(uint256 newFactor) external onlyManager {
-        keeperRegistryGasOverheadBufferFactor = newFactor;
     }
 
     /*      */

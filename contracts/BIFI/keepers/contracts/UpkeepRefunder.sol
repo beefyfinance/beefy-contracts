@@ -55,12 +55,10 @@ contract UpkeepRefunder is ManageableUpgradable, IUpkeepRefunder {
      * @dev Harvester needs to approve refunder to allow transfer of tokens. Note that this function has open access control, anyone can refund the upkeep.
      * @return linkRefunded_ amount of link that was refunded to harvester.
      */
-    function refundUpkeep(uint256 amount_) external returns (uint256 linkRefunded_) {
+    function refundUpkeep() external returns (uint256 linkRefunded_) {
         require(upkeepId > 0, "Invalid upkeep id.");
 
-        if (amount_ >= shouldSwapToLinkThreshold) {
-            IERC20Upgradeable native = IERC20Upgradeable(NATIVE());
-            native.safeTransferFrom(msg.sender, address(this), amount_);
+        if (balanceOfNative() >= shouldSwapToLinkThreshold) {
             linkRefunded_ = _addHarvestedFundsToUpkeep(upkeepId);
         }
 
@@ -96,7 +94,7 @@ contract UpkeepRefunder is ManageableUpgradable, IUpkeepRefunder {
     }
 
     /**
-     * @dev Rescues random funds stuck that the strat can't handle.
+     * @dev Rescues random funds stuck.
      * @param token_ address of the token to rescue.
      */
     function inCaseTokensGetStuck(address token_) external onlyManager {
