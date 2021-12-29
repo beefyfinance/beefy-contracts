@@ -32,7 +32,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     address public callFeeRecipient;
     uint256 public gasCap;
     uint256 public gasCapBuffer;
-    uint256 public harvestGasLimit;
+    uint256 public harvestGasLimit; // Eventually this needs to live in BeefyRegistry, and needs to be a `per vault` number.
     uint256 public keeperRegistryGasOverhead;
     uint256 public chainlinkTxFeeMultiplier;
 
@@ -45,7 +45,6 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     }
 
     function initialize (
-        address native_,
         address vaultRegistry_,
         address keeperRegistry_,
         uint256 gasCap_,
@@ -59,13 +58,14 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         vaultRegistry = IBeefyRegistry(vaultRegistry_);
         keeperRegistry = IKeeperRegistry(keeperRegistry_);
 
-        callFeeRecipient = address(this);
-        gasCapBuffer = gasCapBuffer_;
         gasCap = gasCap_;
+        gasCapBuffer = gasCapBuffer_;
         harvestGasLimit = harvestGasLimit_;
         ( chainlinkTxFeeMultiplier, , , , , , ) = keeperRegistry.getConfig();
         keeperRegistryGasOverhead = keeperRegistryGasOverhead_;
+
         upkeepRefunder = IUpkeepRefunder(upkeepRefunder_);
+        callFeeRecipient = address(upkeepRefunder);
     }
 
     /**
