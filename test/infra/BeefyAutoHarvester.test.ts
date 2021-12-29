@@ -5,7 +5,7 @@ import { delay } from "../../utils/timeHelpers";
 
 import { addressBook } from "blockchain-addressbook";
 
-import { BeefyAutoHarvester, BeefyUniV2Zap, BeefyVaultRegistry, IUniswapRouterETH, IWrappedNative, StrategyCommonChefLP } from "../../typechain-types";
+import { BeefyHarvester, BeefyUniV2Zap, BeefyRegistry, IUniswapRouterETH, IWrappedNative, StrategyCommonChefLP, UpkeepRefunder } from "../../typechain-types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { CallOverrides } from "ethers";
 import { startingEtherPerAccount } from "../../utils/configInit";
@@ -23,12 +23,12 @@ const chainData = addressBook[chainName];
 const { beefyfinance } = chainData.platforms;
 
 const config = {
-  autoHarvester: {
-    name: "BeefyAutoHarvester",
-    address: "0x3Ba4A20e62a2224D39448CEeEE9ebc7f4905Bb8a", // change this
+  harvester: {
+    name: "BeefyHarvester",
+    address: "0x9F58E3D18b2E156d4E9cB26C2aAEA58fcDf9fA34", // change this
   },
   vaultRegistry: {
-    name: "BeefyVaultRegistry",
+    name: "BeefyRegistry",
     address: "0x820cE73c7F15C2b828aBE79670D7e61731AB93Be", // TODO: get all of these from address book
   },
   zap: {
@@ -65,9 +65,9 @@ const testData: TestData = {
   },
 };
 
-describe("BeefyAutoHarvester", () => {
-  let autoHarvester: BeefyAutoHarvester;
-  let vaultRegistry: BeefyVaultRegistry;
+describe("BeefyHarvester", () => {
+  let harvester: BeefyHarvester;
+  let vaultRegistry: BeefyRegistry;
   let zap: BeefyUniV2Zap;
   let unirouter: IUniswapRouterETH;
   let wrappedNative: IWrappedNative
@@ -77,15 +77,15 @@ describe("BeefyAutoHarvester", () => {
   before(async () => {
     [deployer, keeper, other] = await ethers.getSigners();
 
-    autoHarvester = (await ethers.getContractAt(
-      config.autoHarvester.name,
-      config.autoHarvester.address
-    )) as unknown as BeefyAutoHarvester;
+    harvester = (await ethers.getContractAt(
+      config.harvester.name,
+      config.harvester.address
+    )) as unknown as BeefyHarvester;
 
     vaultRegistry = (await ethers.getContractAt(
       config.vaultRegistry.name,
       config.vaultRegistry.address
-    )) as unknown as BeefyVaultRegistry;
+    )) as unknown as BeefyRegistry;
 
     zap = (await ethers.getContractAt(
       config.zap.name,
@@ -103,7 +103,7 @@ describe("BeefyAutoHarvester", () => {
     )) as unknown as IWrappedNative;
 
     // allow deployer to upkeep
-    const setUpkeepersTx = await autoHarvester.setUpkeepers([deployer.address], true);
+    const setUpkeepersTx = await harvester.setUpkeepers([deployer.address], true);
     await setUpkeepersTx.wait()
   })
 
@@ -143,24 +143,24 @@ describe("BeefyAutoHarvester", () => {
     await network.provider.send("evm_mine")
 
     const callReward = await strategy.callReward();
-    const harvestGasLimit = await autoHarvester.harvestGasLimit();
+    const harvestGasLimit = await harvester._vaultHarvestFunctionGasOverhead();
 
     // manually ensure should harvest
     const expectedTxCost = harvestGasLimit.mul(gasPrice)
     expect(callReward).to.be.gte(expectedTxCost);
 
     // call checker function and ensure there are profitable harvests
-    const { upkeepNeeded, performData } = await autoHarvester.checkUpkeep([], upkeepOverrides);
-    expect(upkeepNeeded).to.be.true
+    const { upkeepNeeded_, performData_ } = await harvester.checkUpkeep([], upkeepOverrides);
+    expect(upkeepNeeded_).to.be.true
 
-    // send wmatic to autoharvester to simulate need to convert to Link
+    // send wmatic to harvester to simulate need to convert to Link
     const valueToWrap = amountToSimulateLinkHarvest;
     const wrapNativeTx = await wrappedNative.deposit({value: valueToWrap});
     await wrapNativeTx.wait();
-    const transferNativeTx = await wrappedNative.transfer(autoHarvester.address, valueToWrap);
+    const transferNativeTx = await wrappedNative.transfer(harvester.address, valueToWrap);
     await transferNativeTx.wait();
 
-    const performUpkeepTx = await autoHarvester.performUpkeep(performData, upkeepOverrides);
+    const performUpkeepTx = await harvester.performUpkeep(performData_, upkeepOverrides);
     const performUpkeepTxReceipt = await performUpkeepTx.wait();
 
     // check logs
@@ -188,12 +188,19 @@ describe("BeefyAutoHarvester", () => {
 
     const loopIterations = 3;
 
-    const printInfo = async () => {
-      const startIndex = await autoHarvester.startIndex();
+    const upkeepRefunderAddress = await harvester._upkeepRefunder();
+    const upkeepRefunder = (await ethers.getContractAt(
+        "UpkeepRefunder",
+        upkeepRefunderAddress
+      )) as unknown as UpkeepRefunder;
 
-      const nativeBalance = await autoHarvester.balanceOfNative();
-      const linkBalance = await autoHarvester.balanceOfLink();
-      const oracleLinkBalance = await autoHarvester.balanceOfOracleLink();
+    const printInfo = async () => {
+      const startIndex = await harvester._startIndex();
+      
+
+      const nativeBalance = await upkeepRefunder.balanceOfNative();
+      const linkBalance = await upkeepRefunder.balanceOfLink();
+      const oracleLinkBalance = await upkeepRefunder.balanceOfOracleLink();
 
       console.log(`startIndex: ${startIndex}`);
       console.log(`nativeBalance: ${nativeBalance}`);
@@ -206,10 +213,10 @@ describe("BeefyAutoHarvester", () => {
       await printInfo();
 
       // call checker function and ensure there are profitable harvests
-      const { upkeepNeeded, performData } = await autoHarvester.checkUpkeep([], upkeepOverrides);
-      expect(upkeepNeeded).to.be.true
+      const { upkeepNeeded_, performData_ } = await harvester.checkUpkeep([], upkeepOverrides);
+      expect(upkeepNeeded_).to.be.true
 
-      const performUpkeepTx = await autoHarvester.performUpkeep(performData, upkeepOverrides);
+      const performUpkeepTx = await harvester.performUpkeep(performData_, upkeepOverrides);
       const performUpkeepTxReceipt = await performUpkeepTx.wait();
 
       console.log(`After upkeep.`)
