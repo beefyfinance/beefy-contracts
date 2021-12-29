@@ -2,7 +2,7 @@ import hardhat, { ethers, upgrades } from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
 
 import { addressBook } from "blockchain-addressbook";
-import { BigNumber } from "ethers";
+import { BigNumber, ContractFactory } from "ethers";
 import { BeefyHarvester, UpkeepRefunder } from "../../typechain-types";
 
 const chainName = "polygon";
@@ -15,7 +15,8 @@ const {
   },
 } = chainData;
 
-const shouldVerifyOnEtherscan = true;
+const shouldVerifyOnEtherscan = false;
+const isProxy = true;
 
 const keeperRegistry = "0x7b3EC232b08BD7b4b3305BE0C044D907B2DF960B";
 
@@ -77,22 +78,12 @@ const deployUpkeepRefunder = async (): Promise<{ upkeepAddress: string }> => {
     shouldSwapToLinkThreshold
   ]
 
-  const refunderProxy = await upgrades.deployProxy(UpkeepRefunder, refunderConstructorArguments);
-  await refunderProxy.deployed();
-
-  const implementationAddress = await upgrades.erc1967.getImplementationAddress(refunderProxy.address);
-
-  console.log();
-  console.log("Refunder proxy:", refunderProxy.address);
-  console.log(`Refunder implementation address (${config.upkeepRefunder.contractName}):`, implementationAddress);
-
-  console.log();
-  console.log("Running post deployment");
+  const contractInfo = await deployContract(config.harvester.contractName, isProxy, UpkeepRefunder, refunderConstructorArguments)
 
   const verifyContractsPromises: Promise<any>[] = [];
   if (shouldVerifyOnEtherscan) {
     console.log(`Verifying ${config.upkeepRefunder.contractName}`);
-    verifyContractsPromises.push(verifyContract(implementationAddress, implementationConstructorArguments));
+    verifyContractsPromises.push(verifyContract(contractInfo.impl, implementationConstructorArguments));
   }
   console.log();
 
@@ -106,14 +97,13 @@ const deployUpkeepRefunder = async (): Promise<{ upkeepAddress: string }> => {
   // Manually reset upkeep id if needed
 
   return { 
-    upkeepAddress: refunderProxy.address
+    upkeepAddress: contractInfo.contract
   };
 };
 
 const deployHarvester = async (upkeepAddress: string) => {
   const BeefyHarvesterFactory = await ethers.getContractFactory(config.harvester.contractName);
 
-  console.log("Deploying:", config.harvester.contractName);
 
   const {
     vaultRegistry,
@@ -133,22 +123,13 @@ const deployHarvester = async (upkeepAddress: string) => {
     vaultHarvestFunctionGasOverhead,
     keeperRegistryGasOverhead,
   ];
-  const harvesterProxy = await upgrades.deployProxy(BeefyHarvesterFactory, harvesterConstructorArguments);
-  await harvesterProxy.deployed();
 
-  const implementationAddress = await upgrades.erc1967.getImplementationAddress(harvesterProxy.address);
-
-  console.log();
-  console.log("Harvester proxy:", harvesterProxy.address);
-  console.log(`Harvester implementation address (${config.harvester.contractName}):`, implementationAddress);
-
-  console.log();
-  console.log("Running post deployment");
+  const contractInfo = await deployContract(config.harvester.contractName, isProxy, BeefyHarvesterFactory, harvesterConstructorArguments)
 
   const verifyContractsPromises: Promise<any>[] = [];
   if (shouldVerifyOnEtherscan) {
     console.log(`Verifying ${config.harvester.contractName}`);
-    verifyContractsPromises.push(verifyContract(implementationAddress, implementationConstructorArguments));
+    verifyContractsPromises.push(verifyContract(contractInfo.impl, implementationConstructorArguments));
   }
   console.log();
 
@@ -158,12 +139,46 @@ const deployHarvester = async (upkeepAddress: string) => {
 
   const autoHarvester = (await ethers.getContractAt(
     config.harvester.contractName,
-    harvesterProxy.address
+    contractInfo.contract
   )) as unknown as BeefyHarvester;
 
   const chainlinkUpkeeper: string = "0x7b3EC232b08BD7b4b3305BE0C044D907B2DF960B"; // TODO: move this to address book
   await autoHarvester.setUpkeepers([chainlinkUpkeeper], true);
 };
+
+
+const deployContract = async (name: string, isProxy: boolean, contractFactory: ContractFactory, constructorArgs: any[]): Promise<{ contract: string, impl: string}> => {
+  console.log("Deploying:", name);
+
+  const ret = {
+    contract: "",
+    impl: ""
+  }
+
+  if (isProxy) {
+    const proxy = await upgrades.deployProxy(contractFactory, constructorArgs);
+    await proxy.deployed();
+
+    const implementationAddress = await upgrades.erc1967.getImplementationAddress(proxy.address);
+
+    console.log();
+    console.log(`Proxy ${proxy.address}`);
+    console.log(`Implementation address (${name}): ${implementationAddress}`);
+
+    ret.contract = proxy.address;
+    ret.impl = implementationAddress;
+  } else {
+    const contract = await contractFactory.deploy(...constructorArgs);
+    await contract.deployed();
+
+    console.log();
+    console.log(`${name}: ${contract.address}`);
+
+    ret.contract = contract.address
+  }
+
+  return ret;
+}
 
 deploy()
   .then(() => process.exit(0))
