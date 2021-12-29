@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -18,7 +17,7 @@ import "../interfaces/IUpkeepRefunder.sol";
 
 import "../libraries/UpkeepHelper.sol";
 
-contract BeefyHarvester is Initializable, OwnableUpgradeable, IBeefyHarvester {
+contract BeefyHarvester is OwnableUpgradeable, IBeefyHarvester {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // access control
