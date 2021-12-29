@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.0 <0.9.0;
 
-library UpkeepHelper {
+library UpkeepLibrary {
     uint256 constant public CHAINLINK_UPKEEPTX_PREMIUM_SCALING_FACTOR = 1 gwei;
 
     /**
