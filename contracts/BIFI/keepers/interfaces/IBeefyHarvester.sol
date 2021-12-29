@@ -24,7 +24,6 @@ interface IBeefyHarvester is KeeperCompatibleInterface {
     );
     event SuccessfulHarvests(uint256 indexed blockNumber, address[] successfulVaults);
     event FailedHarvests(uint256 indexed blockNumber, address[] failedVaults);
-    event ConvertedNativeToLink(uint256 indexed blockNumber, uint256 nativeAmount, uint256 linkAmount);
     event HeuristicFailed(uint256 indexed blockNumber, uint256 heuristicEstimatedTxCost, uint256 nonHeuristicEstimatedTxCost, uint256 estimatedCallRewards);
 
     struct HarvestInfo {

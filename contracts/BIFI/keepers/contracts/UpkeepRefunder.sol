@@ -10,12 +10,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../interfaces/IPegSwap.sol";
 import "../interfaces/IKeeperRegistry.sol";
-import "../interfaces/IBeefyVault.sol";
-import "../interfaces/IBeefyStrategy.sol";
-import "../interfaces/IBeefyRegistry.sol";
-import "../interfaces/IBeefyHarvester.sol";
-
-import "../libraries/UpkeepHelper.sol";
 
 contract UpkeepRefunder is Initializable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
