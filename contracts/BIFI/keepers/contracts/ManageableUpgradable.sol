@@ -14,7 +14,7 @@ abstract contract ManageableUpgradable is Initializable, ContextUpgradeable {
     event ManagersUpdated(address[] users_, address status_);
 
     /**
-     * @dev Initializes the contract setting the deployer as the initial owner.
+     * @dev Initializes the contract setting the deployer as the only manager.
      */
     function __Manageable_init() internal onlyInitializing { // solhint-disable func-name-mixedcase 
         __Context_init_unchained();
@@ -26,7 +26,7 @@ abstract contract ManageableUpgradable is Initializable, ContextUpgradeable {
     }
 
     /**
-     * @dev Throws if called by any account other than the owner.
+     * @dev Throws if called by any account other than the manager.
      */
     modifier onlyManager() {
         require(_managers.contains(msg.sender), "!manager");
@@ -43,6 +43,8 @@ abstract contract ManageableUpgradable is Initializable, ContextUpgradeable {
         if (status_) {
             _managers.add(manager_);
         } else {
+            // Must be at least 1 manager.
+            require(_managers.length() > 1, "!(managers > 1)");
             _managers.remove(manager_);
         }
     }
