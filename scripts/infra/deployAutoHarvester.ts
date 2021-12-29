@@ -16,7 +16,7 @@ const {
 } = chainData;
 
 const shouldVerifyOnEtherscan = false;
-const isProxy = true;
+const isProxy = false;
 
 const keeperRegistry = "0x7b3EC232b08BD7b4b3305BE0C044D907B2DF960B";
 
@@ -41,7 +41,7 @@ const config = {
       nativeToLinkRoute: [WMATIC, ETH, LINK],
       oracleLink: "0xb0897686c545045aFc77CF20eC7A532E3120E0F1",
       pegswap: "0xAA1DC356dc4B18f30C347798FD5379F3D77ABC5b",
-      shouldSwapToLinkThreshold: ethers.utils.parseEther("1")
+      shouldSwapToLinkThreshold: ethers.utils.parseEther("1"),
     },
   },
 };
@@ -56,17 +56,8 @@ const deploy = async () => {
 const deployUpkeepRefunder = async (): Promise<{ upkeepAddress: string }> => {
   const UpkeepRefunder = await ethers.getContractFactory(config.upkeepRefunder.contractName);
 
-  console.log("Deploying:", config.upkeepRefunder.contractName);
-
-  const {
-    keeperRegistry,
-    upkeepId,
-    unirouter,
-    nativeToLinkRoute,
-    oracleLink,
-    pegswap,
-    shouldSwapToLinkThreshold
-  } = config.upkeepRefunder.args
+  const { keeperRegistry, upkeepId, unirouter, nativeToLinkRoute, oracleLink, pegswap, shouldSwapToLinkThreshold } =
+    config.upkeepRefunder.args;
 
   const refunderConstructorArguments: any[] = [
     keeperRegistry,
@@ -75,10 +66,15 @@ const deployUpkeepRefunder = async (): Promise<{ upkeepAddress: string }> => {
     nativeToLinkRoute,
     oracleLink,
     pegswap,
-    shouldSwapToLinkThreshold
-  ]
+    shouldSwapToLinkThreshold,
+  ];
 
-  const contractInfo = await deployContract(config.harvester.contractName, isProxy, UpkeepRefunder, refunderConstructorArguments)
+  const contractInfo = await deployContract(
+    config.upkeepRefunder.contractName,
+    isProxy,
+    UpkeepRefunder,
+    refunderConstructorArguments
+  );
 
   const verifyContractsPromises: Promise<any>[] = [];
   if (shouldVerifyOnEtherscan) {
@@ -96,14 +92,13 @@ const deployUpkeepRefunder = async (): Promise<{ upkeepAddress: string }> => {
 
   // Manually reset upkeep id if needed
 
-  return { 
-    upkeepAddress: contractInfo.contract
+  return {
+    upkeepAddress: contractInfo.contract,
   };
 };
 
 const deployHarvester = async (upkeepAddress: string) => {
   const BeefyHarvesterFactory = await ethers.getContractFactory(config.harvester.contractName);
-
 
   const {
     vaultRegistry,
@@ -124,7 +119,12 @@ const deployHarvester = async (upkeepAddress: string) => {
     keeperRegistryGasOverhead,
   ];
 
-  const contractInfo = await deployContract(config.harvester.contractName, isProxy, BeefyHarvesterFactory, harvesterConstructorArguments)
+  const contractInfo = await deployContract(
+    config.harvester.contractName,
+    isProxy,
+    BeefyHarvesterFactory,
+    harvesterConstructorArguments
+  );
 
   const verifyContractsPromises: Promise<any>[] = [];
   if (shouldVerifyOnEtherscan) {
@@ -146,14 +146,18 @@ const deployHarvester = async (upkeepAddress: string) => {
   await autoHarvester.setUpkeepers([chainlinkUpkeeper], true);
 };
 
-
-const deployContract = async (name: string, isProxy: boolean, contractFactory: ContractFactory, constructorArgs: any[]): Promise<{ contract: string, impl: string}> => {
+const deployContract = async (
+  name: string,
+  isProxy: boolean,
+  contractFactory: ContractFactory,
+  constructorArgs: any[]
+): Promise<{ contract: string; impl: string }> => {
   console.log("Deploying:", name);
 
   const ret = {
     contract: "",
-    impl: ""
-  }
+    impl: "",
+  };
 
   if (isProxy) {
     const proxy = await upgrades.deployProxy(contractFactory, constructorArgs);
@@ -168,17 +172,23 @@ const deployContract = async (name: string, isProxy: boolean, contractFactory: C
     ret.contract = proxy.address;
     ret.impl = implementationAddress;
   } else {
-    const contract = await contractFactory.deploy(...constructorArgs);
-    await contract.deployed();
+    const deployTx = await contractFactory.deploy();
+    await deployTx.deployed();
 
     console.log();
-    console.log(`${name}: ${contract.address}`);
+    console.log(`${name}: ${deployTx.address}`);
 
-    ret.contract = contract.address
+    console.log(`Running initialize()`);
+
+    const contract = await ethers.getContractAt(name, deployTx.address);
+
+    contract.initialize(...constructorArgs);
+
+    ret.contract = contract.address;
   }
 
   return ret;
-}
+};
 
 deploy()
   .then(() => process.exit(0))
