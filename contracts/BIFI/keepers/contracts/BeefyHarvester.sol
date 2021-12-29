@@ -52,7 +52,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         uint256 performUpkeepGasLimitBuffer_,
         uint256 harvestGasLimit_,
         uint256 keeperRegistryGasOverhead_
-    ) external initializer {
+    ) external override initializer {
         __Manageable_init();
 
         // Set contract references.
@@ -457,7 +457,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
     /* Set */
     /*     */
 
-    function setUpkeepers(address[] memory upkeepers_, bool status_) external onlyManager {
+    function setUpkeepers(address[] memory upkeepers_, bool status_) external override onlyManager {
         for (uint256 upkeeperIndex = 0; upkeeperIndex < upkeepers_.length; upkeeperIndex++) {
             _setUpkeeper(upkeepers_[upkeeperIndex], status_);
         }
@@ -467,15 +467,15 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         _isUpkeeper[upkeeper_] = status_;
     }
 
-    function setPerformUpkeepGasLimit(uint256 performUpkeepGasLimit_) external onlyManager {
+    function setPerformUpkeepGasLimit(uint256 performUpkeepGasLimit_) external override onlyManager {
         _performUpkeepGasLimit = performUpkeepGasLimit_;
     }
 
-    function setPerformUpkeepGasLimitBuffer(uint256 performUpkeepGasLimitBuffer_) external onlyManager {
+    function setPerformUpkeepGasLimitBuffer(uint256 performUpkeepGasLimitBuffer_) external override onlyManager {
         _performUpkeepGasLimitBuffer = performUpkeepGasLimitBuffer_;
     }
 
-    function setHarvestGasConsumption(uint256 harvestGasConsumption_) external onlyManager {
+    function setHarvestGasConsumption(uint256 harvestGasConsumption_) external override onlyManager {
         _vaultHarvestFunctionGasOverhead = harvestGasConsumption_;
     }
 
@@ -531,7 +531,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
      * @dev Rescues random funds stuck.
      * @param token_ address of the token to rescue.
      */
-    function inCaseTokensGetStuck(address token_) external onlyManager {
+    function inCaseTokensGetStuck(address token_) external override onlyManager {
         IERC20Upgradeable token = IERC20Upgradeable(token_);
 
         uint256 amount = token.balanceOf(address(this));
