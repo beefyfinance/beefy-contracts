@@ -7,11 +7,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "../interfaces/beefy/IBeefyRegistryVault.sol";
-import "../interfaces/beefy/IBeefyRegistryStrategy.sol";
-import "hardhat/console.sol";
+import "../interfaces/IBeefyVault.sol";
+import "../interfaces/IBeefyStrategy.sol";
 
-contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
+contract BeefyRegistry is Initializable, OwnableUpgradeable {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
     struct VaultInfo {
@@ -54,15 +53,15 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
     function _addVault(address _vaultAddress) internal {
             require(!_isVaultInRegistry(_vaultAddress), "Vault Exists");
 
-            IBeefyRegistryVault vault = IBeefyRegistryVault(_vaultAddress);
-            IBeefyRegistryStrategy strat = _validateVault(vault);
+            IBeefyVault vault = IBeefyVault(_vaultAddress);
+            IBeefyStrategy strat = _validateVault(vault);
 
             address[] memory tokens = _collectTokenData(strat);
 
             _vaultSet.add(_vaultAddress);
 
-            for (uint8 token_id = 0; token_id < tokens.length; token_id++) {
-                _tokenToVaultsMap[tokens[token_id]].add(_vaultAddress);
+            for (uint8 tokenId = 0; tokenId < tokens.length; tokenId++) {
+                _tokenToVaultsMap[tokens[tokenId]].add(_vaultAddress);
             }
 
             _vaultInfoMap[_vaultAddress].tokens = tokens;
@@ -70,18 +69,18 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
             _vaultInfoMap[_vaultAddress].index = _vaultSet.length() - 1; 
     }
 
-    function _validateVault(IBeefyRegistryVault _vault) internal view returns (IBeefyRegistryStrategy strategy) {
+    function _validateVault(IBeefyVault _vault) internal view returns (IBeefyStrategy strategy) {
         address vaultAddress = address(_vault);
 
-        try _vault.strategy() returns (IBeefyRegistryStrategy _strategy) {
-            require(IBeefyRegistryStrategy(_strategy).vault() == vaultAddress, "Vault/Strat Mismatch");
-            return IBeefyRegistryStrategy(_strategy);
+        try _vault.strategy() returns (IBeefyStrategy _strategy) {
+            require(IBeefyStrategy(_strategy).vault() == vaultAddress, "Vault/Strat Mismatch");
+            return IBeefyStrategy(_strategy);
         } catch {
             require(false, "Address not a Vault");
         }
     }
 
-    function _collectTokenData(IBeefyRegistryStrategy _strategy) internal view returns (address[] memory tokens) {
+    function _collectTokenData(IBeefyStrategy _strategy) internal view returns (address[] memory tokens) {
         try _strategy.lpToken0() returns (address lpToken0) {
             tokens = new address[](3);
 
@@ -100,13 +99,13 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         return (_vaultSet.contains(_address));
     }
 
-    function getVaultInfo(address _vaultAddress) external view returns (string memory name, IBeefyRegistryStrategy strategy, bool isPaused, address[] memory tokens, uint256 blockNumber, bool retired) {
+    function getVaultInfo(address _vaultAddress) external view returns (string memory name, IBeefyStrategy strategy, bool isPaused, address[] memory tokens, uint256 blockNumber, bool retired) {
         require(_isVaultInRegistry(_vaultAddress), "Invalid Vault Address");
         
-        IBeefyRegistryVault vault = IBeefyRegistryVault(_vaultAddress);
+        IBeefyVault vault = IBeefyVault(_vaultAddress);
 
         name = vault.name();
-        strategy = IBeefyRegistryStrategy(vault.strategy());
+        strategy = IBeefyStrategy(vault.strategy());
         isPaused = strategy.paused();
         
         VaultInfo memory vaultInfo = _vaultInfoMap[_vaultAddress];
@@ -132,14 +131,14 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         uint256 numResults;
 
         for (uint256 vid; vid < _vaultSet.length(); vid++) {
-            if (IBeefyRegistryVault(_vaultSet.at(vid)).balanceOf(_address) > 0) {
+            if (IBeefyVault(_vaultSet.at(vid)).balanceOf(_address) > 0) {
                 numResults++;
             }
         }
 
         stakedVaults = new VaultInfo[](numResults);
         for (uint256 vid; vid < _vaultSet.length(); vid++) {
-            if (IBeefyRegistryVault(_vaultSet.at(vid)).balanceOf(_address) > 0) {
+            if (IBeefyVault(_vaultSet.at(vid)).balanceOf(_address) > 0) {
                 stakedVaults[curResults++] = _vaultInfoMap[_vaultSet.at(vid)];
             }
         }

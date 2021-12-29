@@ -8,34 +8,12 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
-import "../interfaces/common/IUniswapRouterETH.sol";
-import "../interfaces/pegswap/IPegSwap.sol";
-import "../interfaces/keepers/IKeeperRegistry.sol";
-
-interface IAutoStrategy {
-    function lastHarvest() external view returns (uint256);
-
-    function callReward() external view returns (uint256);
-
-    function paused() external view returns (bool);
-
-    function harvest(address callFeeRecipient) external view; // can be view as will only be executed off chain
-}
-
-interface IStrategyMultiHarvest {
-    function callReward() external view returns (uint256);
-    function harvest(address callFeeRecipient) external; // used for multiharvest in perform upkeep, this one doesn't have view
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external; // back compat call
-}
-
-interface IVaultRegistry {
-    function allVaultAddresses() external view returns (address[] memory);
-    function getVaultCount() external view returns(uint256 count);
-}
-
-interface IVault {
-    function strategy() external view returns (address);
-}
+import "../../interfaces/common/IUniswapRouterETH.sol";
+import "../interfaces/IPegSwap.sol";
+import "../interfaces/IKeeperRegistry.sol";
+import "../interfaces/IBeefyVault.sol";
+import "../interfaces/IBeefyStrategy.sol";
+import "../interfaces/IBeefyRegistry.sol";
 
 /* solhint-disable max-states-count */
 contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatibleInterface {
@@ -53,7 +31,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     mapping (address => bool) private isUpkeeper;
 
     // contracts, only modifiable via setters
-    IVaultRegistry public vaultRegistry;
+    IBeefyRegistry public vaultRegistry;
     IKeeperRegistry public keeperRegistry;
 
     // util vars, only modifiable via setters
@@ -124,7 +102,7 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     ) external initializer {
         __Ownable_init();
 
-        vaultRegistry = IVaultRegistry(_vaultRegistry);
+        vaultRegistry = IBeefyRegistry(_vaultRegistry);
         keeperRegistry = IKeeperRegistry(_keeperRegistry);
         unirouter = IUniswapRouterETH(_unirouter);
         nativeToLinkRoute = _nativeToLinkRoute;
@@ -306,8 +284,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         view
         returns (bool)
     {
-        IVault vault = IVault(_vaultAddress);
-        IAutoStrategy strategy = IAutoStrategy(vault.strategy());
+        IBeefyVault vault = IBeefyVault(_vaultAddress);
+        IBeefyStrategy strategy = IBeefyStrategy(vault.strategy());
 
         bool isPaused = strategy.paused();
 
@@ -321,8 +299,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
         view
         returns (bool, uint256, uint256)
     {
-        IVault vault = IVault(_vaultAddress);
-        IAutoStrategy strategy = IAutoStrategy(vault.strategy());
+        IBeefyVault vault = IBeefyVault(_vaultAddress);
+        IBeefyStrategy strategy = IBeefyStrategy(vault.strategy());
 
         bool hasBeenHarvestedToday = strategy.lastHarvest() < 1 days;
 
@@ -477,8 +455,8 @@ contract BeefyAutoHarvester is Initializable, OwnableUpgradeable, KeeperCompatib
     ) {
         uint256 calculatedCallRewards;
         bool[] memory isFailedHarvest = new bool[](vaults.length);
-        for (uint256 i = 0; i < vaults.length; i++) {
-            IStrategyMultiHarvest strategy = IStrategyMultiHarvest(IVault(vaults[i]).strategy());
+        for (uint256 i = 0; i < vaults.length; ++i) {
+            IBeefyStrategy strategy = IBeefyStrategy(IBeefyVault(vaults[i]).strategy());
             uint256 toAdd = strategy.callReward();
             bool didHarvest;
             try strategy.harvest(callFeeRecipient) {
