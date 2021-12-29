@@ -50,7 +50,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         address upkeepRefunder_,
         uint256 performUpkeepGasLimit_,
         uint256 performUpkeepGasLimitBuffer_,
-        uint256 harvestGasLimit_,
+        uint256 vaultHarvestFunctionGasOverhead_,
         uint256 keeperRegistryGasOverhead_
     ) external override initializer {
         __Manageable_init();
@@ -63,7 +63,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         // Initialize state variables from initialize() arguments.
         _performUpkeepGasLimit = performUpkeepGasLimit_;
         _performUpkeepGasLimitBuffer = performUpkeepGasLimitBuffer_;
-        _vaultHarvestFunctionGasOverhead = harvestGasLimit_;
+        _vaultHarvestFunctionGasOverhead = vaultHarvestFunctionGasOverhead_;
         _keeperRegistryGasOverhead = keeperRegistryGasOverhead_;
 
         // Initialize state variables derived from initialize() arguments.

@@ -25,7 +25,6 @@ interface IBeefyHarvester is KeeperCompatibleInterface {
         uint256 nonHeuristicEstimatedTxCost,
         uint256 estimatedCallRewards
     );
-    event ManagersUpdated(address[] users_, address status_);
     event ProfitSummary(
         uint256 estimatedTxCost,
         uint256 estimatedCallRewards,
