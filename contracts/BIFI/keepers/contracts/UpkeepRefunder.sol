@@ -55,7 +55,7 @@ contract UpkeepRefunder is ManageableUpgradable, IUpkeepRefunder {
      * @dev Harvester needs to approve refunder to allow transfer of tokens. Note that this function has open access control, anyone can refund the upkeep.
      * @return linkRefunded_ amount of link that was refunded to harvester.
      */
-    function notifyRefundUpkeep() external returns (uint256 linkRefunded_) {
+    function notifyRefundUpkeep() external override returns (uint256 linkRefunded_) {
         require(upkeepId > 0, "Invalid upkeep id.");
 
         if (balanceOfNative() >= shouldSwapToLinkThreshold) {
