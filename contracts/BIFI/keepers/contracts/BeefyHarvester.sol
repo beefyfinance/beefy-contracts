@@ -115,7 +115,7 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
             uint256 callRewards
         ) = _buildVaultsToHarvest(vaults, harvestInfo, numberOfVaultsToHarvest);
 
-        uint256 nonHeuristicEstimatedTxCost = _calculateTxCostWithPremium(numberOfVaultsToHarvest);
+        uint256 nonHeuristicEstimatedTxCost = _calculateExpectedTotalUpkeepTxCost(numberOfVaultsToHarvest);
 
         performData_ = abi.encode(
             vaultsToHarvest,
@@ -487,17 +487,14 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         return _performUpkeepGasLimit - _performUpkeepGasLimitBuffer;
     }
 
-    function _calculateTxCostWithPremiumBasedOnHarvestCount(uint256 numberOfVaultsToHarvest_)
-        internal
-        view
-        returns (uint256 txCost_)
-    {
-        uint256 gasOverhead = _estimateUpkeepGasOverhead(numberOfVaultsToHarvest_);
-        return _calculateTxCostWithPremium(gasOverhead);
-    }
-
     function _calculateTxCostWithPremium(uint256 gasOverhead_) internal view returns (uint256 txCost_) {
         return UpkeepLibrary._calculateUpkeepTxCost(tx.gasprice, gasOverhead_, _chainlinkUpkeepTxPremiumFactor);
+    }
+
+    function _calculateExpectedTotalUpkeepTxCost(uint256 numberOfVaultsToHarvest_) internal view returns (uint256 txCost_) {
+        uint256 totalVaultHarvestGasOverhead = _vaultHarvestFunctionGasOverhead * numberOfVaultsToHarvest_;
+        uint256 totalTxOverhead = totalVaultHarvestGasOverhead + _keeperRegistryGasOverhead;
+        return _calculateTxCostWithPremium(totalTxOverhead);
     }
 
     function _estimateUpkeepGasOverhead(uint256 numberOfVaultsToHarvest_)
@@ -517,6 +514,15 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         uint256 estimatedVaultCountPerUpkeep = _calculateAdjustedGasCap() / _vaultHarvestFunctionGasOverhead;
         // Evenly distribute the overhead to all vaults, assuming we will harvest max amount of vaults everytime.
         evenlyDistributedOverheadPerVault_ = _keeperRegistryGasOverhead / estimatedVaultCountPerUpkeep;
+    }
+
+    function _estimateTxCostWithPremiumBasedOnHarvestCount(uint256 numberOfVaultsToHarvest_)
+        internal
+        view
+        returns (uint256 txCost_)
+    {
+        uint256 gasOverhead = _estimateUpkeepGasOverhead(numberOfVaultsToHarvest_);
+        return _calculateTxCostWithPremium(gasOverhead);
     }
 
     function _estimateSingleVaultHarvestGasOverhead(uint256 vaultHarvestFunctionGasOverhead_) internal view returns (uint256 totalGasOverhead_) {
