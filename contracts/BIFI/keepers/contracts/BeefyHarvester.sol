@@ -362,9 +362,8 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         uint256 estimatedTxCost = nonHeuristicEstimatedTxCost_; // use nonHeuristic here as its more accurate
         uint256 estimatedProfit = UpkeepLibrary._calculateProfit(estimatedCallRewards_, estimatedTxCost);
 
-        uint256 calculatedTxCost = tx.gasprice * (gasUsedByPerformUpkeep_ + _keeperRegistryGasOverhead);
-        uint256 calculatedTxCostWithPremium = _calculateTxCostWithPremium(calculatedTxCost);
-        uint256 calculatedProfit = UpkeepLibrary._calculateProfit(calculatedCallRewards_, calculatedTxCostWithPremium);
+        uint256 calculatedTxCost = _calculateTxCostWithOverheadWithPremium(gasUsedByPerformUpkeep_);
+        uint256 calculatedProfit = UpkeepLibrary._calculateProfit(calculatedCallRewards_, calculatedTxCost);
 
         emit ProfitSummary(
             // predicted values
@@ -490,6 +489,16 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
 
     function _calculateTxCostWithPremium(uint256 gasOverhead_) internal view returns (uint256 txCost_) {
         return UpkeepLibrary._calculateUpkeepTxCost(tx.gasprice, gasOverhead_, _chainlinkUpkeepTxPremiumFactor);
+    }
+
+    function _calculateTxCostWithOverheadWithPremium(uint256 totalVaultHarvestOverhead_) internal view returns (uint256 txCost_) {
+        return
+            UpkeepLibrary._calculateUpkeepTxCostFromTotalVaultHarvestOverhead(
+                tx.gasprice,
+                totalVaultHarvestOverhead_,
+                _keeperRegistryGasOverhead,
+                _chainlinkUpkeepTxPremiumFactor
+            );
     }
 
     function _calculateExpectedTotalUpkeepTxCost(uint256 numberOfVaultsToHarvest_)
