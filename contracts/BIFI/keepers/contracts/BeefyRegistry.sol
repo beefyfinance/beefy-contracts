@@ -2,16 +2,17 @@
 
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "../interfaces/beefy/IBeefyRegistryVault.sol";
-import "../interfaces/beefy/IBeefyRegistryStrategy.sol";
-import "hardhat/console.sol";
+import "./ManageableUpgradable.sol";
 
-contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
+import "../interfaces/IBeefyVault.sol";
+import "../interfaces/IBeefyStrategy.sol";
+
+contract BeefyRegistry is ManageableUpgradable {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
     struct VaultInfo {
@@ -21,26 +22,21 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         uint256 index;
     }
 
-    mapping (address => bool) private _isManager;
+    mapping(address => bool) private _isManager;
 
     EnumerableSetUpgradeable.AddressSet private _vaultSet;
-    mapping (address => VaultInfo) private _vaultInfoMap;
-    mapping (address => EnumerableSetUpgradeable.AddressSet) private _tokenToVaultsMap;
+    mapping(address => VaultInfo) private _vaultInfoMap;
+    mapping(address => EnumerableSetUpgradeable.AddressSet) private _tokenToVaultsMap;
 
     event VaultsRegistered(address[] vaults);
     event VaultsRetireStatusUpdated(address[] vaults, bool status);
 
-    modifier onlyManager() {
-        require(msg.sender == owner() || _isManager[msg.sender], "!manager");
-        _;
-    }
-
-    function getVaultCount() external view returns(uint256 count) {
+    function getVaultCount() external view returns (uint256 count) {
         return _vaultSet.length();
     }
 
     function initialize() public initializer {
-        __Ownable_init();
+        __Manageable_init();
     }
 
     function addVaults(address[] memory _vaultAddresses) external onlyManager {
@@ -50,38 +46,37 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         emit VaultsRegistered(_vaultAddresses);
     }
 
-
     function _addVault(address _vaultAddress) internal {
-            require(!_isVaultInRegistry(_vaultAddress), "Vault Exists");
+        require(!_isVaultInRegistry(_vaultAddress), "Vault Exists");
 
-            IBeefyRegistryVault vault = IBeefyRegistryVault(_vaultAddress);
-            IBeefyRegistryStrategy strat = _validateVault(vault);
+        IBeefyVault vault = IBeefyVault(_vaultAddress);
+        IBeefyStrategy strat = _validateVault(vault);
 
-            address[] memory tokens = _collectTokenData(strat);
+        address[] memory tokens = _collectTokenData(strat);
 
-            _vaultSet.add(_vaultAddress);
+        _vaultSet.add(_vaultAddress);
 
-            for (uint8 token_id = 0; token_id < tokens.length; token_id++) {
-                _tokenToVaultsMap[tokens[token_id]].add(_vaultAddress);
-            }
+        for (uint8 tokenId = 0; tokenId < tokens.length; tokenId++) {
+            _tokenToVaultsMap[tokens[tokenId]].add(_vaultAddress);
+        }
 
-            _vaultInfoMap[_vaultAddress].tokens = tokens;
-            _vaultInfoMap[_vaultAddress].blockNumber = block.number;
-            _vaultInfoMap[_vaultAddress].index = _vaultSet.length() - 1; 
+        _vaultInfoMap[_vaultAddress].tokens = tokens;
+        _vaultInfoMap[_vaultAddress].blockNumber = block.number;
+        _vaultInfoMap[_vaultAddress].index = _vaultSet.length() - 1;
     }
 
-    function _validateVault(IBeefyRegistryVault _vault) internal view returns (IBeefyRegistryStrategy strategy) {
+    function _validateVault(IBeefyVault _vault) internal view returns (IBeefyStrategy strategy) {
         address vaultAddress = address(_vault);
 
-        try _vault.strategy() returns (IBeefyRegistryStrategy _strategy) {
-            require(IBeefyRegistryStrategy(_strategy).vault() == vaultAddress, "Vault/Strat Mismatch");
-            return IBeefyRegistryStrategy(_strategy);
+        try _vault.strategy() returns (IBeefyStrategy _strategy) {
+            require(IBeefyStrategy(_strategy).vault() == vaultAddress, "Vault/Strat Mismatch");
+            return IBeefyStrategy(_strategy);
         } catch {
             require(false, "Address not a Vault");
         }
     }
 
-    function _collectTokenData(IBeefyRegistryStrategy _strategy) internal view returns (address[] memory tokens) {
+    function _collectTokenData(IBeefyStrategy _strategy) internal view returns (address[] memory tokens) {
         try _strategy.lpToken0() returns (address lpToken0) {
             tokens = new address[](3);
 
@@ -100,15 +95,26 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         return (_vaultSet.contains(_address));
     }
 
-    function getVaultInfo(address _vaultAddress) external view returns (string memory name, IBeefyRegistryStrategy strategy, bool isPaused, address[] memory tokens, uint256 blockNumber, bool retired) {
+    function getVaultInfo(address _vaultAddress)
+        external
+        view
+        returns (
+            string memory name,
+            IBeefyStrategy strategy,
+            bool isPaused,
+            address[] memory tokens,
+            uint256 blockNumber,
+            bool retired
+        )
+    {
         require(_isVaultInRegistry(_vaultAddress), "Invalid Vault Address");
-        
-        IBeefyRegistryVault vault = IBeefyRegistryVault(_vaultAddress);
+
+        IBeefyVault vault = IBeefyVault(_vaultAddress);
 
         name = vault.name();
-        strategy = IBeefyRegistryStrategy(vault.strategy());
+        strategy = IBeefyStrategy(vault.strategy());
         isPaused = strategy.paused();
-        
+
         VaultInfo memory vaultInfo = _vaultInfoMap[_vaultAddress];
         tokens = vaultInfo.tokens;
         blockNumber = vaultInfo.blockNumber;
@@ -132,14 +138,14 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         uint256 numResults;
 
         for (uint256 vid; vid < _vaultSet.length(); vid++) {
-            if (IBeefyRegistryVault(_vaultSet.at(vid)).balanceOf(_address) > 0) {
+            if (IBeefyVault(_vaultSet.at(vid)).balanceOf(_address) > 0) {
                 numResults++;
             }
         }
 
         stakedVaults = new VaultInfo[](numResults);
         for (uint256 vid; vid < _vaultSet.length(); vid++) {
-            if (IBeefyRegistryVault(_vaultSet.at(vid)).balanceOf(_address) > 0) {
+            if (IBeefyVault(_vaultSet.at(vid)).balanceOf(_address) > 0) {
                 stakedVaults[curResults++] = _vaultInfoMap[_vaultSet.at(vid)];
             }
         }
@@ -193,13 +199,14 @@ contract BeefyVaultRegistry is Initializable, OwnableUpgradeable {
         _vaultInfoMap[_address].retired = _status;
     }
 
-    function setManagers(address[] memory _managers, bool _status) external onlyManager {
-        for (uint256 managerIndex = 0; managerIndex < _managers.length; managerIndex++) {
-            _setManager(_managers[managerIndex], _status);
-        }
-    }
+    /**
+     * @dev Rescues random funds stuck.
+     * @param token_ address of the token to rescue.
+     */
+    function inCaseTokensGetStuck(address token_) external onlyManager {
+        IERC20Upgradeable token = IERC20Upgradeable(token_);
 
-    function _setManager(address _manager, bool _status) internal {
-        _isManager[_manager] = _status;
+        uint256 amount = token.balanceOf(address(this));
+        token.safeTransfer(msg.sender, amount);
     }
 }

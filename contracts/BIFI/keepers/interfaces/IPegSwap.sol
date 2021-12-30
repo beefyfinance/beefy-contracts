@@ -1,24 +1,17 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity >=0.6.0 <0.9.0;
 
 interface IPegSwap {
-    event LiquidityUpdated(
-        uint256 amount,
-        address indexed source,
-        address indexed target
-    );
+    event LiquidityUpdated(uint256 amount, address indexed source, address indexed target);
     event OwnershipTransferRequested(address indexed from, address indexed to);
     event OwnershipTransferred(address indexed from, address indexed to);
     event StuckTokensRecovered(uint256 amount, address indexed target);
-    event TokensSwapped(
-        uint256 amount,
-        address indexed source,
-        address indexed target,
-        address indexed caller
-    );
+    event TokensSwapped(uint256 amount, address indexed source, address indexed target, address indexed caller);
 
+    /* solhint-disable payable-fallback */
     fallback() external;
+
+    /* solhint-enable payable-fallback */
 
     function acceptOwnership() external;
 
@@ -28,10 +21,7 @@ interface IPegSwap {
         address target
     ) external;
 
-    function getSwappableAmount(address source, address target)
-        external
-        view
-        returns (uint256 amount);
+    function getSwappableAmount(address source, address target) external view returns (uint256 amount);
 
     function onTokenTransfer(
         address sender,
