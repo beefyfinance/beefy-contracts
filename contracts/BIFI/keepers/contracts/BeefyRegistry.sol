@@ -25,6 +25,7 @@ contract BeefyRegistry is ManageableUpgradeable {
     EnumerableSetUpgradeable.AddressSet private _vaultSet;
     mapping(address => VaultInfo) private _vaultInfoMap;
     mapping(address => EnumerableSetUpgradeable.AddressSet) private _tokenToVaultsMap;
+    mapping(address => uint256) private _harvestFunctionGasOverhead;
 
     event VaultsRegistered(address[] vaults);
     event VaultsRetireStatusUpdated(address[] vaults, bool status);
@@ -97,26 +98,27 @@ contract BeefyRegistry is ManageableUpgradeable {
         external
         view
         returns (
-            string memory name,
-            IBeefyStrategy strategy,
-            bool isPaused,
-            address[] memory tokens,
-            uint256 blockNumber,
-            bool retired
+            string memory name_,
+            IBeefyStrategy strategy_,
+            bool isPaused_,
+            address[] memory tokens_,
+            uint256 blockNumber_,
+            bool retired_,
+            uint256 gasOverhead_
         )
     {
         require(_isVaultInRegistry(_vaultAddress), "Invalid Vault Address");
 
         IBeefyVault vault = IBeefyVault(_vaultAddress);
-
-        name = vault.name();
-        strategy = IBeefyStrategy(vault.strategy());
-        isPaused = strategy.paused();
-
         VaultInfo memory vaultInfo = _vaultInfoMap[_vaultAddress];
-        tokens = vaultInfo.tokens;
-        blockNumber = vaultInfo.blockNumber;
-        retired = vaultInfo.retired;
+
+        name_ = vault.name();
+        strategy_ = IBeefyStrategy(vault.strategy());
+        isPaused_ = strategy_.paused();
+        tokens_ = vaultInfo.tokens;
+        blockNumber_ = vaultInfo.blockNumber;
+        retired_ = vaultInfo.retired;
+        gasOverhead_ = _harvestFunctionGasOverhead[_vaultAddress];
     }
 
     function allVaultAddresses() external view returns (address[] memory) {
