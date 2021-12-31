@@ -60,4 +60,6 @@ interface IBeefyHarvester is KeeperCompatibleInterface {
     ) external;
 
     function setUpkeepers(address[] memory upkeepers_, bool status_) external;
+
+    function setUpkeepRefunder(address upkeepRefunder_) external;
 }

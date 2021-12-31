@@ -246,7 +246,10 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         IBeefyVault vault = IBeefyVault(vaultAddress_);
         IBeefyStrategy strategy = IBeefyStrategy(vault.strategy());
 
-        bool hasBeenHarvestedToday = strategy.lastHarvest() < 1 days;
+        /* solhint-disable not-rely-on-time */
+        uint256 oneDayAgo = block.timestamp - 1 days;
+        bool hasBeenHarvestedToday = strategy.lastHarvest() > oneDayAgo;
+        /* solhint-enable not-rely-on-time */
 
         callRewardAmount_ = strategy.callReward();
 
@@ -479,6 +482,11 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         _vaultHarvestFunctionGasOverhead = harvestGasConsumption_;
     }
 
+    function setUpkeepRefunder(address upkeepRefunder_) external override onlyManager {
+        _upkeepRefunder = IUpkeepRefunder(upkeepRefunder_);
+        _callFeeRecipient = address(_upkeepRefunder);
+    }
+
     /*      */
     /* View */
     /*      */
@@ -550,8 +558,8 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         returns (uint256 totalGasOverhead_)
     {
         totalGasOverhead_ =
-            vaultHarvestFunctionGasOverhead_ +
-            _estimateAdditionalGasOverheadPerVaultFromKeeperRegistryGasOverhead();
+            vaultHarvestFunctionGasOverhead_ + _keeperRegistryGasOverhead;
+            // _estimateAdditionalGasOverheadPerVaultFromKeeperRegistryGasOverhead();
     }
 
     /*      */
