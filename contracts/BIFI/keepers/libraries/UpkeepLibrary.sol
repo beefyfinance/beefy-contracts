@@ -37,6 +37,6 @@ library UpkeepLibrary {
     }
 
     function _calculateProfit(uint256 revenue, uint256 expenses) internal pure returns (uint256 profit_) {
-        profit_ = revenue - expenses;
+        profit_ = revenue >= expenses ? revenue - expenses : 0;
     }
 }
