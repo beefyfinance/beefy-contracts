@@ -550,8 +550,8 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         returns (uint256 totalGasOverhead_)
     {
         totalGasOverhead_ =
-            vaultHarvestFunctionGasOverhead_ +
-            _estimateAdditionalGasOverheadPerVaultFromKeeperRegistryGasOverhead();
+            vaultHarvestFunctionGasOverhead_ + _keeperRegistryGasOverhead;
+            // _estimateAdditionalGasOverheadPerVaultFromKeeperRegistryGasOverhead();
     }
 
     /*      */
