@@ -6,12 +6,13 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
-import "./ManageableUpgradable.sol";
+import "./ManageableUpgradeable.sol";
 
 import "../interfaces/IBeefyVault.sol";
 import "../interfaces/IBeefyStrategy.sol";
+import "../interfaces/IBeefyRegistry.sol";
 
-contract BeefyRegistry is ManageableUpgradable {
+contract BeefyRegistry is ManageableUpgradeable, IBeefyRegistry {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
@@ -22,16 +23,16 @@ contract BeefyRegistry is ManageableUpgradable {
         uint256 index;
     }
 
-    mapping(address => bool) private _isManager;
-
     EnumerableSetUpgradeable.AddressSet private _vaultSet;
     mapping(address => VaultInfo) private _vaultInfoMap;
     mapping(address => EnumerableSetUpgradeable.AddressSet) private _tokenToVaultsMap;
+    mapping(address => uint256) private _harvestFunctionGasOverhead;
 
-    event VaultsRegistered(address[] vaults);
-    event VaultsRetireStatusUpdated(address[] vaults, bool status);
+    event VaultsRegistered(address[] vaults_);
+    event VaultsRetireStatusUpdated(address[] vaults_, bool status_);
+    event VaultHarvestFunctionGasOverheadUpdated(address indexed vaultAddress_, uint256 gasOverhead_);
 
-    function getVaultCount() external view returns (uint256 count) {
+    function getVaultCount() external view override returns (uint256 count) {
         return _vaultSet.length();
     }
 
@@ -99,29 +100,30 @@ contract BeefyRegistry is ManageableUpgradable {
         external
         view
         returns (
-            string memory name,
-            IBeefyStrategy strategy,
-            bool isPaused,
-            address[] memory tokens,
-            uint256 blockNumber,
-            bool retired
+            string memory name_,
+            IBeefyStrategy strategy_,
+            bool isPaused_,
+            address[] memory tokens_,
+            uint256 blockNumber_,
+            bool retired_,
+            uint256 gasOverhead_
         )
     {
         require(_isVaultInRegistry(_vaultAddress), "Invalid Vault Address");
 
         IBeefyVault vault = IBeefyVault(_vaultAddress);
-
-        name = vault.name();
-        strategy = IBeefyStrategy(vault.strategy());
-        isPaused = strategy.paused();
-
         VaultInfo memory vaultInfo = _vaultInfoMap[_vaultAddress];
-        tokens = vaultInfo.tokens;
-        blockNumber = vaultInfo.blockNumber;
-        retired = vaultInfo.retired;
+
+        name_ = vault.name();
+        strategy_ = IBeefyStrategy(vault.strategy());
+        isPaused_ = strategy_.paused();
+        tokens_ = vaultInfo.tokens;
+        blockNumber_ = vaultInfo.blockNumber;
+        retired_ = vaultInfo.retired;
+        gasOverhead_ = _harvestFunctionGasOverhead[_vaultAddress];
     }
 
-    function allVaultAddresses() external view returns (address[] memory) {
+    function allVaultAddresses() external view override returns (address[] memory) {
         return _vaultSet.values();
     }
 
@@ -197,6 +199,13 @@ contract BeefyRegistry is ManageableUpgradable {
     function _setRetireStatus(address _address, bool _status) internal {
         require(_isVaultInRegistry(_address), "Vault not found in registry.");
         _vaultInfoMap[_address].retired = _status;
+    }
+
+    function setHarvestFunctionGasOverhead(address vaultAddress_, uint256 gasOverhead_) external override onlyManager {
+        require(_isVaultInRegistry(vaultAddress_), "Vault not found in registry.");
+        _harvestFunctionGasOverhead[vaultAddress_] = gasOverhead_;
+
+        emit VaultHarvestFunctionGasOverheadUpdated(vaultAddress_, gasOverhead_);
     }
 
     /**

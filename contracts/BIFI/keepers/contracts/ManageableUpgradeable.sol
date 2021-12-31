@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
-abstract contract ManageableUpgradable is Initializable, ContextUpgradeable {
+abstract contract ManageableUpgradeable is Initializable, ContextUpgradeable {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
     EnumerableSetUpgradeable.AddressSet private _managers;
