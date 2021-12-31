@@ -246,7 +246,9 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         IBeefyVault vault = IBeefyVault(vaultAddress_);
         IBeefyStrategy strategy = IBeefyStrategy(vault.strategy());
 
-        bool hasBeenHarvestedToday = strategy.lastHarvest() < 1 days;
+        /* solhint-disable not-rely-on-time */
+        bool hasBeenHarvestedToday = strategy.lastHarvest() < block.timestamp - 1 days;
+        /* solhint-enable not-rely-on-time */
 
         callRewardAmount_ = strategy.callReward();
 
