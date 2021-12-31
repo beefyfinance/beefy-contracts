@@ -21,9 +21,6 @@ import "../libraries/UpkeepLibrary.sol";
 contract BeefyHarvester is ManageableUpgradeable, IBeefyHarvester {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    // Access control.
-    mapping(address => bool) private _isUpkeeper;
-
     // Contracts.
     IBeefyRegistry public _vaultRegistry;
     IKeeperRegistry public _keeperRegistry;
@@ -70,15 +67,6 @@ contract BeefyHarvester is ManageableUpgradeable, IBeefyHarvester {
         (uint32 paymentPremiumPPB, , , , , , ) = _keeperRegistry.getConfig();
         _chainlinkUpkeepTxPremiumFactor = uint256(paymentPremiumPPB);
         _callFeeRecipient = address(_upkeepRefunder);
-    }
-
-    /*           */
-    /* Modifiers */
-    /*           */
-
-    modifier onlyUpkeeper() {
-        require(_isUpkeeper[msg.sender], "!upkeeper");
-        _;
     }
 
     /*             */
@@ -266,7 +254,7 @@ contract BeefyHarvester is ManageableUpgradeable, IBeefyHarvester {
     /* performUpkeep */
     /*               */
 
-    function performUpkeep(bytes calldata performData) external override onlyUpkeeper {
+    function performUpkeep(bytes calldata performData) external override {
         (
             address[] memory vaultsToHarvest,
             uint256 newStartIndex,
@@ -459,16 +447,6 @@ contract BeefyHarvester is ManageableUpgradeable, IBeefyHarvester {
     /*     */
     /* Set */
     /*     */
-
-    function setUpkeepers(address[] memory upkeepers_, bool status_) external override onlyManager {
-        for (uint256 upkeeperIndex = 0; upkeeperIndex < upkeepers_.length; upkeeperIndex++) {
-            _setUpkeeper(upkeepers_[upkeeperIndex], status_);
-        }
-    }
-
-    function _setUpkeeper(address upkeeper_, bool status_) internal {
-        _isUpkeeper[upkeeper_] = status_;
-    }
 
     function setPerformUpkeepGasLimit(uint256 performUpkeepGasLimit_) external override onlyManager {
         _performUpkeepGasLimit = performUpkeepGasLimit_;

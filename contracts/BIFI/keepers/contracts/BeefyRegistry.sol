@@ -10,8 +10,9 @@ import "./ManageableUpgradeable.sol";
 
 import "../interfaces/IBeefyVault.sol";
 import "../interfaces/IBeefyStrategy.sol";
+import "../interfaces/IBeefyRegistry.sol";
 
-contract BeefyRegistry is ManageableUpgradeable {
+contract BeefyRegistry is ManageableUpgradeable, IBeefyRegistry {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
@@ -27,10 +28,11 @@ contract BeefyRegistry is ManageableUpgradeable {
     mapping(address => EnumerableSetUpgradeable.AddressSet) private _tokenToVaultsMap;
     mapping(address => uint256) private _harvestFunctionGasOverhead;
 
-    event VaultsRegistered(address[] vaults);
-    event VaultsRetireStatusUpdated(address[] vaults, bool status);
+    event VaultsRegistered(address[] vaults_);
+    event VaultsRetireStatusUpdated(address[] vaults_, bool status_);
+    event VaultHarvestFunctionGasOverheadUpdated(address indexed vaultAddress_, uint256 gasOverhead_);
 
-    function getVaultCount() external view returns (uint256 count) {
+    function getVaultCount() external view override returns (uint256 count) {
         return _vaultSet.length();
     }
 
@@ -121,7 +123,7 @@ contract BeefyRegistry is ManageableUpgradeable {
         gasOverhead_ = _harvestFunctionGasOverhead[_vaultAddress];
     }
 
-    function allVaultAddresses() external view returns (address[] memory) {
+    function allVaultAddresses() external view override returns (address[] memory) {
         return _vaultSet.values();
     }
 
@@ -197,6 +199,13 @@ contract BeefyRegistry is ManageableUpgradeable {
     function _setRetireStatus(address _address, bool _status) internal {
         require(_isVaultInRegistry(_address), "Vault not found in registry.");
         _vaultInfoMap[_address].retired = _status;
+    }
+
+    function setHarvestFunctionGasOverhead(address vaultAddress_, uint256 gasOverhead_) external override onlyManager {
+        require(_isVaultInRegistry(vaultAddress_), "Vault not found in registry.");
+        _harvestFunctionGasOverhead[vaultAddress_] = gasOverhead_;
+
+        emit VaultHarvestFunctionGasOverheadUpdated(vaultAddress_, gasOverhead_);
     }
 
     /**

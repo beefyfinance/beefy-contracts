@@ -10,7 +10,7 @@ import "./ManageableUpgradeable.sol";
 
 import "../interfaces/IBeefyRegistry.sol";
 import "../interfaces/IBeefyVault.sol";
-import "../interfaces/IBeefyStrategy.sol";
+import "../interfaces/IBeefyStrategyEthCall.sol";
 import "../interfaces/IVaultGasOverheadAnalyzer.sol";
 
 import "../libraries/UpkeepLibrary.sol";
@@ -19,18 +19,11 @@ contract VaultGasOverheadAnalyzer is ManageableUpgradeable, IVaultGasOverheadAna
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
-    EnumerableSetUpgradeable.AddressSet private _upkeepers;
-
     IBeefyRegistry private _vaultRegistry;
 
     uint256 private _index;
     uint256 private _lastUpdateCycle; // Last time all harvestGasOverhead were updated in vault array.
     address private _dummyCallFeeRecipient;
-
-    modifier onlyUpkeeper() {
-        require(_upkeepers.contains(msg.sender), "!upkeeper");
-        _;
-    }
 
     function initialize() public initializer {
         __Manageable_init();
@@ -55,22 +48,37 @@ contract VaultGasOverheadAnalyzer is ManageableUpgradeable, IVaultGasOverheadAna
     {
         checkData_; // dummy reference to get rid of unused parameter warning
 
+        // Make sure cron is running.
+        /* solhint-disable not-rely-on-time */
+        uint256 oneWeekAgo = block.timestamp - 1 weeks;
+        /* solhint-enable not-rely-on-time */
+        if (_lastUpdateCycle > oneWeekAgo) {
+            // only run once a week
+            return (false, bytes("VaultGasOverheadAnalyzer: Ran less than 1 week ago."));
+        } 
+
         // Get all vault addresses.
         address[] memory vaults = _vaultRegistry.allVaultAddresses();
 
+        // Get current circular index. This also protects against race condition where vault array in registry is edited while cron is running.
+        uint256 currentIndex = UpkeepLibrary._getCircularIndex(_index, 0, vaults.length);
+
         // Get vault to analyze.
-        IBeefyVault vaultToAnalyze = IBeefyVault(vaults[_index]);
+        IBeefyVault vaultToAnalyze = IBeefyVault(vaults[currentIndex]);
 
-        // Update index
-        uint256 newIndex = UpkeepLibrary._getCircularIndex(_index, 1, vaults.length);
+        ( bool didHarvest, uint256 gasOverhead ) = _analyzeHarvest(vaultToAnalyze);
 
-        if (newIndex == 0) {
-            // We've hit the start, restart delay in cron job
-        }
+        performData_ = abi.encode(
+            currentIndex,
+            didHarvest,
+            gasOverhead
+        );
+
+        return (true, performData_);
     }
 
-    function _analyzeHarvest(address vault) internal returns (bool didHarvest_, uint256 gasOverhead_) {
-        IBeefyStrategy strategy = IBeefyStrategy(IBeefyVault(vault).strategy());
+    function _analyzeHarvest(IBeefyVault vault) internal view returns (bool didHarvest_, uint256 gasOverhead_) {
+        IBeefyStrategyEthCall strategy = IBeefyStrategyEthCall(address(IBeefyVault(vault).strategy()));
 
         (bool didHarvest, uint256 gasOverhead) = _tryHarvest(strategy);
 
@@ -91,7 +99,7 @@ contract VaultGasOverheadAnalyzer is ManageableUpgradeable, IVaultGasOverheadAna
         return (false, 0);
     }
 
-    function _tryHarvest(IBeefyStrategy strategy) internal returns (bool didHarvest_, uint256 gasOverhead_) {
+    function _tryHarvest(IBeefyStrategyEthCall strategy) internal view returns (bool didHarvest_, uint256 gasOverhead_) {
         uint256 gasBefore = gasleft();
         try strategy.harvest(_dummyCallFeeRecipient) {
             didHarvest_ = true;
@@ -104,7 +112,7 @@ contract VaultGasOverheadAnalyzer is ManageableUpgradeable, IVaultGasOverheadAna
         gasOverhead_ = gasBefore - gasAfter;
     }
 
-    function _tryOldHarvest(IBeefyStrategy strategy) internal returns (bool didHarvest_, uint256 gasOverhead_) {
+    function _tryOldHarvest(IBeefyStrategyEthCall strategy) internal view returns (bool didHarvest_, uint256 gasOverhead_) {
         uint256 gasBefore = gasleft();
         try strategy.harvestWithCallFeeRecipient(_dummyCallFeeRecipient) {
             didHarvest_ = true;
@@ -121,38 +129,54 @@ contract VaultGasOverheadAnalyzer is ManageableUpgradeable, IVaultGasOverheadAna
     /* performUpkeep */
     /*               */
 
-    function performUpkeep(bytes calldata performData) external override onlyUpkeeper {
+    function performUpkeep(bytes calldata performData_) external override {
         (
-            address[] memory vaultsToHarvest,
-            uint256 newStartIndex,
-            uint256 heuristicEstimatedTxCost,
-            uint256 nonHeuristicEstimatedTxCost,
-            uint256 estimatedCallRewards
-        ) = abi.decode(performData, (address[], uint256, uint256, uint256, uint256));
+            uint256 currentIndex,
+            bool didHarvest,
+            uint256 gasOverhead
+        ) = abi.decode(performData_, (uint256, bool, uint256));
 
         _runUpkeep(
-            
+            currentIndex,
+            didHarvest,
+            gasOverhead
         );
     }
 
-    function _runUpkeep() internal {}
+    function _runUpkeep(
+        uint256 currentIndex_,
+        bool didHarvest_,
+        uint256 gasOverhead_
+    ) internal {
+        // Get all vault addresses.
+        address[] memory vaults = _vaultRegistry.allVaultAddresses();
+
+        address vaultAddress = vaults[currentIndex_];
+
+        if (didHarvest_) {
+            _vaultRegistry.setHarvestFunctionGasOverhead(vaultAddress, gasOverhead_);
+        }
+        
+        // Update index
+        _index = UpkeepLibrary._getCircularIndex(currentIndex_, 1, vaults.length);
+
+        if (_index == 0) {
+            /* solhint-disable not-rely-on-time */
+            _lastUpdateCycle = block.timestamp;
+            /* solhint-enable not-rely-on-time */
+        }
+    }
 
     /*     */
     /* Set */
     /*     */
 
-    function setUpkeepers(address[] memory upkeepers_, bool status_) external override onlyManager {
-        for (uint256 upkeeperIndex = 0; upkeeperIndex < upkeepers_.length; upkeeperIndex++) {
-            _setUpkeeper(upkeepers_[upkeeperIndex], status_);
-        }
-    }
-
-    function _setUpkeeper(address upkeeper_, bool status_) internal {
-        if (status_) {
-            _upkeepers.add(upkeeper_);
-        } else {
-            _upkeepers.remove(upkeeper_);
-        }
+    /**
+     * @notice Manually set lastUpdateCycle
+     * @param lastUpdateCycle_.
+     */
+    function setLastUpdateCycle(uint256 lastUpdateCycle_) external onlyManager {
+        _lastUpdateCycle = lastUpdateCycle_;
     }
 
     /**
