@@ -143,6 +143,9 @@ contract VaultGasOverheadAnalyzer is ManageableUpgradeable, IVaultGasOverheadAna
         );
     }
 
+    /**
+     * @dev This contract must be manager of the vaultRegistry to be able to write to it.
+     */
     function _runUpkeep(
         uint256 currentIndex_,
         bool didHarvest_,
