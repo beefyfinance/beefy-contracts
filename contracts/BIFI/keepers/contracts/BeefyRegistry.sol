@@ -6,12 +6,12 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
-import "./ManageableUpgradable.sol";
+import "./ManageableUpgradeable.sol";
 
 import "../interfaces/IBeefyVault.sol";
 import "../interfaces/IBeefyStrategy.sol";
 
-contract BeefyRegistry is ManageableUpgradable {
+contract BeefyRegistry is ManageableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
@@ -21,8 +21,6 @@ contract BeefyRegistry is ManageableUpgradable {
         uint256 blockNumber;
         uint256 index;
     }
-
-    mapping(address => bool) private _isManager;
 
     EnumerableSetUpgradeable.AddressSet private _vaultSet;
     mapping(address => VaultInfo) private _vaultInfoMap;

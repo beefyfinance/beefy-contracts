@@ -6,17 +6,21 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
-import "./ManageableUpgradable.sol";
+import "./ManageableUpgradeable.sol";
 
 import "../interfaces/IBeefyVault.sol";
 import "../interfaces/IBeefyStrategy.sol";
 
-contract VaultGasOverheadAnalyzer is ManageableUpgradable {
+contract VaultGasOverheadAnalyzer is ManageableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
     function initialize() public initializer {
         __Manageable_init();
+    }
+
+    function analyzeHarvest() external {
+        
     }
 
     /**

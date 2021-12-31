@@ -5,14 +5,14 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import "./ManageableUpgradable.sol";
+import "./ManageableUpgradeable.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../interfaces/IPegSwap.sol";
 import "../interfaces/IKeeperRegistry.sol";
 import "../interfaces/IUpkeepRefunder.sol";
 
-contract UpkeepRefunder is ManageableUpgradable, IUpkeepRefunder {
+contract UpkeepRefunder is ManageableUpgradeable, IUpkeepRefunder {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // contracts
