@@ -482,6 +482,11 @@ contract BeefyHarvester is ManageableUpgradable, IBeefyHarvester {
         _vaultHarvestFunctionGasOverhead = harvestGasConsumption_;
     }
 
+    function setUpkeepRefunder(address upkeepRefunder_) external override onlyManager {
+        _upkeepRefunder = IUpkeepRefunder(upkeepRefunder_);
+        _callFeeRecipient = address(_upkeepRefunder);
+    }
+
     /*      */
     /* View */
     /*      */
