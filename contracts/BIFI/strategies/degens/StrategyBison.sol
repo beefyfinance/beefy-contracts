@@ -7,10 +7,16 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/bison/IBisonRewardPool.sol";
 import "../../utils/GasThrottler.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
+
+interface IBisonRewardPool {
+    function deposit(uint256 amount) external returns (bool);
+    function withdraw(uint256 amount) external returns (bool);
+    function pendingReward(address account) external view returns (uint256);
+    function userInfo(address account) external view returns (uint256,uint256);
+}
 
 contract StrategyBison is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;

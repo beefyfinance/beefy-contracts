@@ -20,7 +20,7 @@ const contractNames = {
   strategistBuyback: "StrategistBuyback",
 };
 
-const implementationConstructorArguments = []; // proxy implementations cannot have constructors
+const implementationConstructorArguments: any[] = []; // proxy implementations cannot have constructors
 
 const deployStrategistBuyback = async () => {
   if (Object.values(params).some(v => v === undefined) || Object.values(contractNames).some(v => v === undefined)) {

@@ -12,8 +12,9 @@ import "../../interfaces/common/IMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 import "../../utils/StringUtils.sol";
+import "../../utils/GasThrottler.sol";
 
-contract StrategyCommonChefLP is StratManager, FeeManager {
+contract StrategyCommonChefLP is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -117,11 +118,11 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual {
+    function harvest() external gasThrottle virtual {
         _harvest(tx.origin);
     }
 
-    function harvest(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external gasThrottle virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -236,6 +237,10 @@ contract StrategyCommonChefLP is StratManager, FeeManager {
         } else {
             setWithdrawalFee(10);
         }
+    }
+
+    function setShouldGasThrottle(bool _shouldGasThrottle) external onlyManager {
+        shouldGasThrottle = _shouldGasThrottle;
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
