@@ -4,7 +4,7 @@ pragma solidity ^0.6.0;
 
 interface ICurveSwap {
     function remove_liquidity_one_coin(uint256 token_amount, int128 i, uint256 min_amount) external;
-    function calc_withdraw_one_coin(uint256 tokenAmount, uint256 i) external view returns (uint256);
+    function calc_withdraw_one_coin(uint256 tokenAmount, int128 i) external view returns (uint256);
 }
 
 interface ICurveSwap2 {

@@ -199,8 +199,7 @@ contract StrategyKyberCurve2Jpy is StratManager, FeeManager {
                 returns (uint256[] memory amountOutFromOutput)
             {
                 uint256 wantOut = amountOutFromOutput[amountOutFromOutput.length -1];
-                ICurveSwap(want).calc_withdraw_one_coin(wantOut, 1);
-                uint256 stableBal = IERC20(stable).balanceOf(address(this));
+                uint256 stableBal = ICurveSwap(want).calc_withdraw_one_coin(wantOut, 1);
                 try IUniswapRouter(unirouter2).getAmountsOut(stableBal, stableToNativeRoute)
                     returns (uint256[] memory amountOutFromStable)
                 {
