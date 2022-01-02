@@ -10,5 +10,6 @@ export const chainCallFeeMap: Record<keyof typeof ChainId & "localhost", number>
   arbitrum: 111,
   moonriver: 11,
   cronos: 111,
+  aurora: 1,
   localhost: 11,
 };

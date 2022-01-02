@@ -12,14 +12,14 @@ const STRAT_OWNER_DELAY = 21600;
 const VAULT_OWNER_DELAY = 0;
 const TRUSTED_EOA = "0x3Eb7fB70C03eC4AEEC97C6C6C1B59B014600b7F7";
 const KEEPER = "0x10aee6B5594942433e7Fc2783598c979B030eF3D";
-const chainName = "aurora";
+const chainName = "fuse";
 
 const config = {
   bifi: null, // addressBook[chainName].tokens.BIFI.address,
-  wnative: addressBook[chainName].tokens.WNATIVE.address,
-  rpc: "https://mainnet.aurora.dev/Fon6fPMs5rCdJc4mxX4kiSK1vsKdzc3D8k6UF8aruek",
-  chainName: "aurora",
-  chainId: 1313161554,
+  wnative: "0x0BE9e53fd7EDaC9F859882AfdDa116645287C629", // addressBook[chainName].tokens.WNATIVE.address,
+  rpc: "https://rpc.fuse.io",
+  chainName: "fuse",
+  chainId: 122,
   devMultisig: null,
   treasuryMultisig: null,
   multicall: null,

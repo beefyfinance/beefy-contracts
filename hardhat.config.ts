@@ -3,11 +3,13 @@ import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
 import "@openzeppelin/hardhat-upgrades";
+import "@typechain/hardhat";
 import "./tasks";
 
 import { HardhatUserConfig } from "hardhat/src/types/config";
 import { HardhatUserConfig as WithEtherscanConfig } from "hardhat/config";
 import { buildHardhatNetworkAccounts, getPKs } from "./utils/configInit";
+import { ethers } from "ethers";
 
 type DeploymentConfig = HardhatUserConfig & WithEtherscanConfig;
 
@@ -95,7 +97,7 @@ const config: DeploymentConfig = {
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: "XQXJK85W9YES73NHC596I8QITEKA5IHDZ9",
+    apiKey: "",
   },
   solidity: {
     compilers: [

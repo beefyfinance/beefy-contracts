@@ -14,9 +14,12 @@ import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 import "../../utils/GasThrottler.sol";
 
-contract StrategyArbSushiMimLP is StratManager, FeeManager, GasThrottler {
+contract StrategyArbSushiDualLP is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
+    
+    
+    address constant nullAddress = address(0);
 
     // Tokens used
     address public native;
@@ -42,7 +45,10 @@ contract StrategyArbSushiMimLP is StratManager, FeeManager, GasThrottler {
     /**
      * @dev Event that is fired each time someone harvests the strat.
      */
-    event StratHarvest(address indexed harvester);
+    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
+    event Deposit(uint256 tvl);
+    event Withdraw(uint256 tvl);
+
 
     constructor(
         address _want,
@@ -91,6 +97,7 @@ contract StrategyArbSushiMimLP is StratManager, FeeManager, GasThrottler {
 
         if (wantBal > 0) {
             IMiniChefV2(chef).deposit(poolId, wantBal, address(this));
+            emit Deposit(balanceOf());
         }
     }
 
@@ -114,39 +121,46 @@ contract StrategyArbSushiMimLP is StratManager, FeeManager, GasThrottler {
             uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
             IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
         }
+
+        emit Withdraw(balanceOf());
     }
 
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
-            _harvest();
+            _harvest(tx.origin);
         }
     }
 
-    function harvest() external virtual whenNotPaused gasThrottle() {
-        _harvest();
+    function harvest() external virtual gasThrottle{
+        _harvest(tx.origin);
+    }
+
+    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
+        _harvest(callFeeRecipient);
     }
 
     function managerHarvest() external onlyManager {
-        _harvest();
+        _harvest(tx.origin);
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest(address callFeeRecipient) internal whenNotPaused {
         IMiniChefV2(chef).harvest(poolId, address(this));
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         uint256 rewardBal = IERC20(reward).balanceOf(address(this));
         if (outputBal > 0 || rewardBal > 0) {
-            chargeFees();
+            chargeFees(callFeeRecipient);
             addLiquidity();
+            uint256 wantHarvested = balanceOfWant();
             deposit();
             lastHarvest = block.timestamp;
-            emit StratHarvest(msg.sender);
+            emit StratHarvest(msg.sender, wantHarvested, balanceOf());
         }
     }
 
     // performance fees
-    function chargeFees() internal {
+    function chargeFees(address callFeeRecipient) internal {
         uint256 toOutput = IERC20(reward).balanceOf(address(this));
         if (toOutput > 0) {
             IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, rewardToOutputRoute, address(this), block.timestamp);
@@ -158,7 +172,7 @@ contract StrategyArbSushiMimLP is StratManager, FeeManager, GasThrottler {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
+        IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
@@ -217,19 +231,20 @@ contract StrategyArbSushiMimLP is StratManager, FeeManager, GasThrottler {
 
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
-        uint256 pendingSpell;
+        uint256 pendingReward;
         address rewarder = IMiniChefV2(chef).rewarder(poolId);
         if (rewarder != address(0)) {
-            pendingSpell = IRewarder(rewarder).pendingToken(poolId, address(this));
+            pendingReward = IRewarder(rewarder).pendingToken(poolId, address(this));
         } 
 
-        uint256[] memory rewardOut = IUniswapRouterETH(unirouter).getAmountsOut(pendingSpell, rewardToOutputRoute);
+        uint256[] memory rewardOut = IUniswapRouterETH(unirouter).getAmountsOut(pendingReward, rewardToOutputRoute);
         uint256 moreOutput = rewardOut[rewardOut.length -1];
 
         uint256 outputBal = rewardsAvailable();
+        uint256 outputTot = outputBal.add(moreOutput);
         uint256 nativeOut;
         if (outputBal > 0) {
-            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
+            try IUniswapRouterETH(unirouter).getAmountsOut(outputTot, outputToNativeRoute)
                 returns (uint256[] memory amountOut) 
             {
                 nativeOut = amountOut[amountOut.length -1];
