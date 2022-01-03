@@ -11,11 +11,11 @@ import "./ManageableUpgradeable.sol";
 import "../interfaces/IBeefyRegistry.sol";
 import "../interfaces/IBeefyVault.sol";
 import "../interfaces/IBeefyStrategyEthCall.sol";
-import "../interfaces/IVaultGasOverheadAnalyzer.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 import "../libraries/UpkeepLibrary.sol";
 
-contract VaultGasOverheadAnalyzer is ManageableUpgradeable, IVaultGasOverheadAnalyzer {
+contract VaultGasOverheadAnalyzer is ManageableUpgradeable, KeeperCompatibleInterface {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
