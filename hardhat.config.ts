@@ -93,6 +93,11 @@ const config: DeploymentConfig = {
       chainId: 1313161554,
       accounts,
     },
+    fuse: {
+      url: "https://rpc.fuse.io",
+      chainId: 122,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
