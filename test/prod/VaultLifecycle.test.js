@@ -5,14 +5,14 @@ import { chainCallFeeMap } from "../../utils/chainCallFeeMap";
 const { zapNativeToToken, getVaultWant, unpauseIfPaused, getUnirouterData } = require("../../utils/testHelpers");
 const { delay } = require("../../utils/timeHelpers");
 
-const TIMEOUT = 10 * 60 * 100000;
+const TIMEOUT = 10 * 60 * 1000000;
 
-const chainName = "avax";
+const chainName = "fantom";
 const chainData = addressBook[chainName];
 const { beefyfinance } = chainData.platforms;
 
 const config = {
-  vault: "0xfda2E1E9BE74F60738e935b06A5d9C32143B18D5",
+  vault: "0x5d2EF803D6e255eF4D1c66762CBc8845051B54dB",
   vaultContract: "BeefyVaultV6",
   strategyContract: "StrategyCommonChefLP",
   testAmount: ethers.utils.parseEther("5"),

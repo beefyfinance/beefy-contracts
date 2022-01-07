@@ -8,36 +8,42 @@ import { BeefyChain } from "../../utils/beefyChain";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: { vvs, beefyfinance },
+  platforms: { quickswap, beefyfinance },
   tokens: {
-    BIFI: { address: BIFI },
-    WCRO: { address: WCRO },
+    QUICK: { address: QUICK },
+    HBAR: { address: HBAR },
+    TOMB: { address: TOMB },
+    MAI: { address: MAI },
+    MATIC: { address: MATIC},
   },
-} = addressBook.cronos;
+} = addressBook.polygon;
 
 const shouldVerifyOnEtherscan = false;
 
-const rewardPool = web3.utils.toChecksumAddress("0x107Dbf9c9C0EF2Df114159e5C7DC2baf7C444cFF");
+const rewardPool = web3.utils.toChecksumAddress("0xCa379470379fCb2daBff4eECF975a2b6733bdF9E");
+const lp = web3.utils.toChecksumAddress("0x71952D09Aa093aCCCAe0c1d5612D7FE26F20517f");
 
 const vaultParams = {
-  mooName: "Moo Cronos BIFI",
-  mooSymbol: "mooCronosBIFI",
+  mooName: "Moo Quick HBAR-MAI",
+  mooSymbol: "mooQuickHBAR-MAI",
   delay: 21600,
 };
 
 const strategyParams = {
-  want: BIFI,
+  want: lp,
   rewardPool: rewardPool,
-  unirouter: vvs.router,
-  strategist: "0x0000000000000000000000000000000000000000", // some address
+  unirouter: quickswap.router,
+  strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
-  beefyFeeRecipient: "0x0000000000000000000000000000000000000000",
-  outputToNativeRoute: [WCRO, BIFI],
+  beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
+  outputToNativeRoute: [QUICK, MATIC],
+  outputToLp0Route: [QUICK, MATIC, MAI, HBAR],
+  outputToLp1Route: [QUICK, MATIC, MAI],
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyBifiMaxiV3",
+  strategy: "StrategyPolygonQuickLP",
 };
 
 async function main() {
@@ -79,6 +85,8 @@ async function main() {
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
     strategyParams.outputToNativeRoute,
+    strategyParams.outputToLp0Route,
+    strategyParams.outputToLp1Route,
   ];
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();
@@ -118,3 +126,4 @@ main()
     console.error(error);
     process.exit(1);
   });
+  

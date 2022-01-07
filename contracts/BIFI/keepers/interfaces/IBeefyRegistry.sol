@@ -5,4 +5,6 @@ interface IBeefyRegistry {
     function allVaultAddresses() external view returns (address[] memory);
 
     function getVaultCount() external view returns (uint256 count);
+
+    function setHarvestFunctionGasOverhead(address vaultAddress_, uint256 gasOverhead_) external;
 }

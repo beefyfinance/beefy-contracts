@@ -59,7 +59,5 @@ interface IBeefyHarvester is KeeperCompatibleInterface {
         uint256 performUpkeepGasLimitBuffer_
     ) external;
 
-    function setUpkeepers(address[] memory upkeepers_, bool status_) external;
-
     function setUpkeepRefunder(address upkeepRefunder_) external;
 }

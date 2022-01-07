@@ -14,6 +14,6 @@ export const chainCallFeeMap: Record<BeefyChain, number> = {
   moonriver: reducedFee,
   cronos: defaultFee,
   localhost: reducedFee,
-  celo: defaultFee,
-  aurora: defaultFee
+  celo: reducedFee,
+  aurora: reducedFee
 };
