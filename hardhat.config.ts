@@ -69,7 +69,8 @@ const config: DeploymentConfig = {
       accounts,
     },
     cronos: {
-      url: "https://evm-cronos.crypto.org",
+      // url: "https://evm-cronos.crypto.org",
+      url: "https://rpc.vvs.finance/",
       chainId: 25,
       accounts,
     },
