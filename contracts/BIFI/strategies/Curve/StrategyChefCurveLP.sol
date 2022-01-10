@@ -31,6 +31,7 @@ contract StrategyChefCurveLP is StratManager, FeeManager, GasThrottler {
     address public pool;
     uint public poolSize;
     uint public depositIndex;
+    bool public useMetapool;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -51,6 +52,7 @@ contract StrategyChefCurveLP is StratManager, FeeManager, GasThrottler {
         address _pool,
         uint _poolSize,
         uint _depositIndex,
+        bool _useMetapool,
         address[] memory _outputToNativeRoute,
         address[] memory _outputToDepositRoute,
         address _vault,
@@ -65,6 +67,7 @@ contract StrategyChefCurveLP is StratManager, FeeManager, GasThrottler {
         pool = _pool;
         poolSize = _poolSize;
         depositIndex = _depositIndex;
+        useMetapool = _useMetapool;
 
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
@@ -178,11 +181,13 @@ contract StrategyChefCurveLP is StratManager, FeeManager, GasThrottler {
         } else if (poolSize == 3) {
             uint256[3] memory amounts;
             amounts[depositIndex] = depositBal;
-            ICurveSwap3(pool).add_liquidity(amounts, 0);
+            if (useMetapool) ICurveSwap3(pool).add_liquidity(want, amounts, 0);
+            else ICurveSwap3(pool).add_liquidity(amounts, 0);
         } else if (poolSize == 4) {
             uint256[4] memory amounts;
             amounts[depositIndex] = depositBal;
-            ICurveSwap4(pool).add_liquidity(amounts, 0);
+            if (useMetapool) ICurveSwap4(pool).add_liquidity(want, amounts, 0);
+            else ICurveSwap4(pool).add_liquidity(amounts, 0);
         } else if (poolSize == 5) {
             uint256[5] memory amounts;
             amounts[depositIndex] = depositBal;
