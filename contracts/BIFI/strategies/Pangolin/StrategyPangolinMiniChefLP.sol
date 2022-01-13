@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/pangolin/IPangolinMiniChef.sol";
-import "../../interfaces/sushi/IRewarder.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
@@ -103,12 +102,12 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
             wantBal = _amount;
         }
 
-        if (tx.origin == owner() || paused()) {
-            IERC20(want).safeTransfer(vault, wantBal);
-        } else {
+        if (tx.origin != owner() && !paused()) {
             uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
+            wantBal = wantBal.sub(withdrawalFeeAmount);
         }
+
+        IERC20(want).safeTransfer(vault, wantBal);
 
         emit Withdraw(balanceOf());
     }
@@ -146,7 +145,6 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
             emit StratHarvest(msg.sender, wantHarvested, balanceOf());
         }
     }
-
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
