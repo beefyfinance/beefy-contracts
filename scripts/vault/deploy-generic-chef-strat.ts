@@ -1,7 +1,7 @@
 import hardhat, { ethers, web3 } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
 import { predictAddresses } from "../../utils/predictAddresses";
-import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
+// import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
 // import { setPendingRewardsFunctionName } from "../../utils/setPendingRewardsFunctionName";
 import { verifyContract } from "../../utils/verifyContract";
 import { BeefyChain } from "../../utils/beefyChain";
@@ -9,41 +9,42 @@ import { BeefyChain } from "../../utils/beefyChain";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: { sushi, beefyfinance },
+  platforms: { mdex, beefyfinance },
   tokens: {
-    ONE: { address: ONE },
-    SUSHI: { address: SUSHI },
-    BIFI: { address: BIFI },
+    MDX: { address: MDX },
+    BUSD: { address: BUSD },
+    LAC: { address: LAC },
+    WBNB: { address: WBNB },
   },
-} = addressBook.one;
+} = addressBook.bsc;
 
 const shouldVerifyOnEtherscan = false;
 
-const want = web3.utils.toChecksumAddress("0x27f3b2Df4a81382202E87EE40429e0212ecc7d3F");
+const want = web3.utils.toChecksumAddress("0xa269E050DD2262E7BdC8A481D76880A562dD1d5E");
 
 const vaultParams = {
-  mooName: "Moo Sushi BIFI-ONE",
-  mooSymbol: "mooSushiBIFI-ONE",
+  mooName: "Moo Mdex LAC-BUSD",
+  mooSymbol: "mooMdexLAC-BUSD",
   delay: 21600,
 };
 
 const strategyParams = {
   want,
-  poolId: 20,
-  chef: sushi.minichef,
-  unirouter: sushi.router,
+  poolId: 136,
+  chef: mdex.masterchef,
+  unirouter: mdex.router,
   strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [SUSHI, ONE],
-  outputToLp0Route: [ONE, BIFI],
-  outputToLp1Route: [ONE],
+  outputToNativeRoute: [MDX, WBNB],
+  outputToLp0Route: [MDX, BUSD, LAC],
+  outputToLp1Route: [MDX, BUSD],
 //  pendingRewardsFunctionName: "pendingCake", // used for rewardsAvailable(), use correct function name from masterchef
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategySushiNativeDualLP",
+  strategy: "StrategyMdexChefLP",
 };
 
 async function main() {
@@ -111,7 +112,7 @@ async function main() {
     );
   }
  // await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
-  await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
+ // await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
   console.log();
 
   await Promise.all(verifyContractsPromises);

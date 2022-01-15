@@ -8,4 +8,5 @@ interface IMasterChef {
     function pendingMdx(uint256 _pid, address _user) external view returns (uint256);
     function userInfo(uint256 _pid, address _user) external view returns (uint256, uint256, uint256);
     function emergencyWithdraw(uint256 _pid) external;
+    function pending(uint256 _pid, address _user) external view returns (uint256, uint256);
 }
