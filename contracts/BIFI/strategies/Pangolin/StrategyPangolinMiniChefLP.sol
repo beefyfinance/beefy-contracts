@@ -123,7 +123,7 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
         _harvest(tx.origin);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 
