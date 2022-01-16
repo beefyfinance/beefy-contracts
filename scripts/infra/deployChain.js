@@ -1,5 +1,6 @@
 const hardhat = require("hardhat");
 const { addressBook } = require("blockchain-addressbook");
+const { getImplementationAddress } = require("@openzeppelin/upgrades-core");
 
 /**
  * Script used to deploy the basic infrastructure needed to run Beefy.
@@ -7,27 +8,42 @@ const { addressBook } = require("blockchain-addressbook");
 
 const ethers = hardhat.ethers;
 
+const {
+  platforms: { 
+    beefyfinance: {
+      treasury,
+      devMultisig,
+      keeper,
+      multicall,
+    } },
+  tokens: {
+    BIFI: { address: BIFI },
+    WNATIVE: { address: WNATIVE },
+  },
+} = addressBook.metis;
+
 const TIMELOCK_ADMIN_ROLE = "0x5f58e3a2316349923ce3780f8d587db2d72378aed66a8261c916544fa6846ca5";
 const STRAT_OWNER_DELAY = 21600;
 const VAULT_OWNER_DELAY = 0;
 const TRUSTED_EOA = "0x3Eb7fB70C03eC4AEEC97C6C6C1B59B014600b7F7";
-const KEEPER = "0x10aee6B5594942433e7Fc2783598c979B030eF3D";
-const chainName = "fuse";
+const KEEPER = keeper;
+const chainName = "metis";
 
 const config = {
-  bifi: null, // addressBook[chainName].tokens.BIFI.address,
-  wnative: "0x0BE9e53fd7EDaC9F859882AfdDa116645287C629", // addressBook[chainName].tokens.WNATIVE.address,
-  rpc: "https://rpc.fuse.io",
-  chainName: "fuse",
-  chainId: 122,
-  devMultisig: null,
-  treasuryMultisig: null,
-  multicall: null,
-  vaultOwner: null,
-  stratOwner: null,
-  treasury: null,
+  bifi: BIFI, // addressBook[chainName].tokens.BIFI.address,
+  wnative: WNATIVE,
+  rpc: "https://andromeda.metis.io/?owner=1088",
+  chainName: "metis",
+  chainId: 1088,
+  devMultisig: devMultisig,
+  treasuryMultisig: treasury,
+  multicall: multicall,
+  vaultOwner: "0x41D44B276904561Ac51855159516FD4cB2c90968",
+  stratOwner: "0xdf68Bf80D427A5827Ff2c06A9c70D407e17DC041",
+  treasury: treasury,
   unirouterHasBifiLiquidity: false,
   unirouter: ethers.constants.AddressZero,
+  rewardPool: "0x2a30C5e0d577108F694d2A96179cd73611Ee069b",
 };
 
 const proposer = config.devMultisig || TRUSTED_EOA;
@@ -111,8 +127,8 @@ async function main() {
     const batcher = await upgrades.deployProxy(BeefyFeeBatch, [
       config.bifi,
       config.wnative,
-      treasury.address,
-      rewardPool.address,
+      config.treasury,
+      config.rewardPool,
       unirouterAddress,
     ]);
     await batcher.deployed();

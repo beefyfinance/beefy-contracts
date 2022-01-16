@@ -99,6 +99,11 @@ const config: DeploymentConfig = {
       chainId: 122,
       accounts,
     },
+    metis: {
+      url: "https://andromeda.metis.io/?owner=1088",
+      chainId: 1088,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan

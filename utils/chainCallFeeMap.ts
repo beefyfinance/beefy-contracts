@@ -15,5 +15,7 @@ export const chainCallFeeMap: Record<BeefyChain, number> = {
   cronos: defaultFee,
   localhost: reducedFee,
   celo: reducedFee,
-  aurora: reducedFee
+  aurora: reducedFee,
+  fuse: reducedFee,
+  metis: defaultFee,
 };

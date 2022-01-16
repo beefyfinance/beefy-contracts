@@ -12,7 +12,7 @@ const chainData = addressBook[chainName];
 const { beefyfinance } = chainData.platforms;
 
 const config = {
-  vault: "0x5d2EF803D6e255eF4D1c66762CBc8845051B54dB",
+  vault: "0xC62Bec8168404CcDE75Db95F5cED342C1AD770a5",
   vaultContract: "BeefyVaultV6",
   strategyContract: "StrategyCommonChefLP",
   testAmount: ethers.utils.parseEther("5"),
@@ -76,7 +76,7 @@ describe("VaultLifecycleTest", () => {
     await delay(5000);
   //  const callRewardBeforeHarvest = await strategy.callReward();
   //  expect(callRewardBeforeHarvest).to.be.gt(0);
-    await strategy.harvest(deployer);
+    await strategy.connect(keeper).managerHarvest();
     const vaultBalAfterHarvest = await vault.balance();
     const pricePerShareAfterHarvest = await vault.getPricePerFullShare();
   //  const callRewardAfterHarvest = await strategy.callReward();
@@ -115,7 +115,7 @@ describe("VaultLifecycleTest", () => {
 
     // Users can't deposit.
     const tx = vault.depositAll();
-    await expect(tx).to.be.revertedWith("TransferHelper: TRANSFER_FROM_FAILED");
+    await expect(tx).to.be.revertedWith("Pausable: paused");
 
     // User can still withdraw
     await vault.withdrawAll();
