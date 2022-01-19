@@ -147,11 +147,11 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
     function _harvest(address callFeeRecipient) internal whenNotPaused {
         IPangolinMiniChef(chef).harvest(poolId, address(this));
         if (rewardToOutputRoute[0] != nullAddress) {
-                address reward = rewardToOutputRoute[0];
-                uint256 rewardBal = IERC20(reward).balanceOf(address(this));
-                if (rewardBal > 0) {
-                    IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardBal, 0, rewardToOutputRoute, address(this), now);
-                }
+            address reward = rewardToOutputRoute[0];
+            uint256 rewardBal = IERC20(reward).balanceOf(address(this));
+            if (rewardBal > 0) {
+                IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardBal, 0, rewardToOutputRoute, address(this), now);
+            }
         }
 
         uint256 outputBal = IERC20(output).balanceOf(address(this));
@@ -295,8 +295,8 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
         IERC20(lpToken1).safeApprove(unirouter, type(uint256).max);
 
         if (rewardToOutputRoute[0] != nullAddress) {
-                IERC20(rewardToOutputRoute[0]).safeApprove(unirouter, 0);
-                IERC20(rewardToOutputRoute[0]).safeApprove(unirouter, uint256(-1));
+            IERC20(rewardToOutputRoute[0]).safeApprove(unirouter, 0);
+            IERC20(rewardToOutputRoute[0]).safeApprove(unirouter, uint256(-1));
         }
     }
 
@@ -318,7 +318,7 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
         IERC20(_rewardToOutputRoute[0]).safeApprove(unirouter, uint256(-1));
     }
 
-    function removeRewardRoute() external onlyOwner {
+    function removeRewardRoute() external onlyManager {
         address reward = rewardToOutputRoute[0];
         if (reward != lpToken0 && reward != lpToken1 && reward != nullAddress) {
             IERC20(reward).safeApprove(unirouter, 0);
