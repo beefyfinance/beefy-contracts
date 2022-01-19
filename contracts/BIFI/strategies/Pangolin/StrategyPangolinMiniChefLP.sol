@@ -146,7 +146,16 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
         IPangolinMiniChef(chef).harvest(poolId, address(this));
+        if (rewardToOutputRoute[0] != nullAddress) {
+                address reward = rewardToOutputRoute[0];
+                uint256 rewardBal = IERC20(reward).balanceOf(address(this));
+                if (rewardBal > 0) {
+                    IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardBal, 0, rewardToOutputRoute, address(this), now);
+                }
+        }
+
         uint256 outputBal = IERC20(output).balanceOf(address(this));
+
         if (outputBal > 0) {
             chargeFees(callFeeRecipient);
             addLiquidity();
@@ -160,14 +169,6 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        if (rewardToOutputRoute[0] != nullAddress) {
-                address reward = rewardToOutputRoute[0];
-                uint256 rewardBal = IERC20(reward).balanceOf(address(this));
-                if (rewardBal > 0) {
-                    IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardBal, 0, rewardToOutputRoute, address(this), now);
-                }
-        }
-        
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
