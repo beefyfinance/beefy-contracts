@@ -59,7 +59,7 @@ contract StrategyCommonChefSingle is StratManager, FeeManager, GasThrottler {
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
 
-        require(_outputToWantRoute[0] == output, "toDeposit[0] != output");
+        require(_outputToWantRoute[0] == output, "outputToWantRoute[0] != output");
         require(_outputToWantRoute[_outputToWantRoute.length - 1] == want, "!want");
         outputToWantRoute = _outputToWantRoute;
 
@@ -79,23 +79,23 @@ contract StrategyCommonChefSingle is StratManager, FeeManager, GasThrottler {
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = balanceOfWant();
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
             IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
-            wantBal = balanceOfWant();
+            wantBal = IERC20(want).balanceOf(address(this));
         }
 
         if (wantBal > _amount) {
             wantBal = _amount;
         }
 
-        if (tx.origin == owner() || paused()) {
-            IERC20(want).safeTransfer(vault, wantBal);
-        } else {
+        if (tx.origin != owner() && !paused()) {
             uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
+            wantBal = wantBal.sub(withdrawalFeeAmount);
         }
+
+        IERC20(want).safeTransfer(vault, wantBal);
 
         emit Withdraw(balanceOf());
     }
