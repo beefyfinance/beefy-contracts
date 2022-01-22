@@ -67,7 +67,6 @@ contract StrategyCommonChefSingle is StratManager, FeeManager, GasThrottler {
         outputToWantRoute = _outputToWantRoute;
 
         _giveAllowances();
-        setWithdrawalFee(0);
     }
 
     // puts the funds to work
