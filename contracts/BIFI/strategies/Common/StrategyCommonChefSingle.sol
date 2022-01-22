@@ -11,8 +11,10 @@ import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/common/IMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
+import "../../utils/StringUtils.sol";
+import "../../utils/GasThrottler.sol";
 
-contract StrategyCommonChefSingle is StratManager, FeeManager {
+contract StrategyCommonChefSingle is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -27,18 +29,20 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
     address public chef;
     uint256 public poolId;
 
+    bool public harvestOnDeposit;
     uint256 public lastHarvest;
+    string public pendingRewardsFunctionName;
 
     // Routes
     address[] public outputToNativeRoute;
     address[] public outputToWantRoute;
 
-    bool public harvestOnDeposit = true;
-
     /**
      * @dev Event that is fired each time someone harvests the strat.
      */
-    event StratHarvest(address indexed harvester);
+    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
+    event Deposit(uint256 tvl);
+    event Withdraw(uint256 tvl);
 
     constructor(
         address _want,
@@ -74,6 +78,7 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
 
         if (wantBal > 0) {
             IMasterChef(chef).deposit(poolId, wantBal);
+            emit Deposit(balanceOf());
         }
     }
 
@@ -97,6 +102,8 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
             uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
             IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
         }
+
+        emit Withdraw(balanceOf());
     }
 
     function beforeDeposit() external override {
@@ -106,11 +113,11 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual {
-        _harvest(nullAddress);
+    function harvest() external gasThrottle virtual {
+        _harvest(tx.origin);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external gasThrottle virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -126,10 +133,11 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
         if (outputBal > 0) {
             chargeFees(callFeeRecipient);
             swapRewards();
+            uint256 wantHarvested = balanceOfWant();
             deposit();
 
             lastHarvest = block.timestamp;
-            emit StratHarvest(msg.sender);
+            emit StratHarvest(msg.sender, wantHarvested, balanceOf());
         }
     }
 
@@ -178,6 +186,54 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
         return _amount;
     }
 
+    function setPendingRewardsFunctionName(string calldata _pendingRewardsFunctionName) external onlyManager {
+        pendingRewardsFunctionName = _pendingRewardsFunctionName;
+    }
+
+    // returns rewards unharvested
+    function rewardsAvailable() public view returns (uint256) {
+        string memory signature = StringUtils.concat(pendingRewardsFunctionName, "(uint256,address)");
+        bytes memory result = Address.functionStaticCall(
+            chef, 
+            abi.encodeWithSignature(
+                signature,
+                poolId,
+                address(this)
+            )
+        );  
+        return abi.decode(result, (uint256));
+    }
+
+    // native reward amount for calling harvest
+    function callReward() public view returns (uint256) {
+        uint256 outputBal = rewardsAvailable();
+        uint256 nativeOut;
+        if (outputBal > 0) {
+            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
+                returns (uint256[] memory amountOut) 
+            {
+                nativeOut = amountOut[amountOut.length -1];
+            }
+            catch {}
+        }
+
+        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
+
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+
+        if (harvestOnDeposit) {
+            setWithdrawalFee(0);
+        } else {
+            setWithdrawalFee(10);
+        }
+    }
+
+    function setShouldGasThrottle(bool _shouldGasThrottle) external onlyManager {
+        shouldGasThrottle = _shouldGasThrottle;
+    }
+
     // called as part of strat migration. Sends all the available funds back to the vault.
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
@@ -218,15 +274,11 @@ contract StrategyCommonChefSingle is StratManager, FeeManager {
         IERC20(output).safeApprove(unirouter, 0);
     }
 
-    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
-        harvestOnDeposit = _harvestOnDeposit;
-    }
-
-    function outputToNative() public view returns (address[] memory) {
+    function outputToNative() external view returns (address[] memory) {
         return outputToNativeRoute;
     }
 
-    function outputToWant() public view returns (address[] memory) {
+    function outputToWant() external view returns (address[] memory) {
         return outputToWantRoute;
     }
 }
