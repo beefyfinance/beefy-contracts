@@ -64,7 +64,6 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
         poolId = _poolId;
         chef = _chef;
 
-        require(_outputToNativeRoute.length >= 2);
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
@@ -228,10 +227,12 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
     // returns secondary rewards unharvested
     function secondaryRewardsAvailable() public view returns (uint256[] memory) {
         address rewarder = IPangolinMiniChef(chef).rewarder(poolId);
-        require(rewarder != nullAddress, "rewarder == nullAddress");
+        // checks if there is a rewarder associated with the pool, if not will return an empty array.
+        if (rewarder != nullAddress) {
         uint256 pngReward = rewardsAvailable();
         (, uint256[] memory amounts) = IPangolinRewarder(rewarder).pendingTokens(poolId, address(this), pngReward);
         return amounts;
+        }
     }
 
     function callReward() public view returns (uint256) {
