@@ -72,6 +72,15 @@ contract StrategyOXDxBOO is StratManager, FeeManager, GasThrottler {
 
     // puts the funds to work
     function deposit() public whenNotPaused {
+        uint256 xWantBal = balanceOfXWant();
+
+        if (xWantBal > 0) {
+            IMasterChef(chef).deposit(poolId, xWantBal);
+            emit Deposit(balanceOf());
+        }
+    }
+
+    function stakeAndDeposit() public whenNotPaused {
         uint256 wantBal = balanceOfWant();
 
         if (wantBal > 0) {
@@ -85,23 +94,23 @@ contract StrategyOXDxBOO is StratManager, FeeManager, GasThrottler {
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 xWantBal = IERC20(xWant).balanceOf(address(this));
 
-        if (wantBal < _amount) {
-            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
-            wantBal = IERC20(want).balanceOf(address(this));
+        if (xWantBal < _amount) {
+            IMasterChef(chef).withdraw(poolId, _amount.sub(xWantBal));
+            xWantBal = IERC20(xWant).balanceOf(address(this));
         }
 
-        if (wantBal > _amount) {
-            wantBal = _amount;
+        if (xWantBal > _amount) {
+            xWantBal = _amount;
         }
 
         if (tx.origin != owner() && !paused()) {
-            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            wantBal = wantBal.sub(withdrawalFeeAmount);
+            uint256 withdrawalFeeAmount = xWantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
+            xWantBal = xWantBal.sub(withdrawalFeeAmount);
         }
 
-        IERC20(want).safeTransfer(vault, wantBal);
+        IERC20(xWant).safeTransfer(vault, xWantBal);
 
         emit Withdraw(balanceOf());
     }
@@ -133,7 +142,7 @@ contract StrategyOXDxBOO is StratManager, FeeManager, GasThrottler {
             chargeFees(callFeeRecipient);
             swapRewards();
             uint256 wantHarvested = balanceOfWant();
-            deposit();
+            stakeAndDeposit();
 
             lastHarvest = block.timestamp;
             emit StratHarvest(msg.sender, wantHarvested, balanceOf());
@@ -240,8 +249,8 @@ contract StrategyOXDxBOO is StratManager, FeeManager, GasThrottler {
 
         IMasterChef(chef).emergencyWithdraw(poolId);
 
-        uint256 wantBal = balanceOfWant();
-        IERC20(want).transfer(vault, wantBal);
+        uint256 xWantBal = balanceOfWant();
+        IERC20(xWant).transfer(vault, xWantBal);
     }
 
     // pauses deposits and withdraws all funds from third party systems.
@@ -265,12 +274,12 @@ contract StrategyOXDxBOO is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, uint256(-1));
+        IERC20(xWant).safeApprove(chef, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(chef, 0);
+        IERC20(xWant).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
     }
 
