@@ -174,9 +174,9 @@ contract StrategyOXDxBOO is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    // calculate the total underlaying 'want' held by the strat.
+    // calculate the total underlaying 'xWant' held by the strat.
     function balanceOf() public view returns (uint256) {
-        return balanceOfWant().add(balanceOfPool());
+        return balanceOfXWant().add(balanceOfPool());
     }
 
     // it calculates how much 'want' this contract holds.
@@ -249,7 +249,7 @@ contract StrategyOXDxBOO is StratManager, FeeManager, GasThrottler {
 
         IMasterChef(chef).emergencyWithdraw(poolId);
 
-        uint256 xWantBal = balanceOfWant();
+        uint256 xWantBal = balanceOfXWant();
         IERC20(xWant).transfer(vault, xWantBal);
     }
 
