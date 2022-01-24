@@ -80,17 +80,6 @@ contract StrategyOXDxBOO is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function stakeAndDeposit() public whenNotPaused {
-        uint256 wantBal = balanceOfWant();
-
-        if (wantBal > 0) {
-            IXPool(xWant).enter(wantBal);
-            uint256 xWantBal = balanceOfXWant();
-            IMasterChef(chef).deposit(poolId, xWantBal);
-            emit Deposit(balanceOf());
-        }
-    }
-
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
@@ -142,7 +131,7 @@ contract StrategyOXDxBOO is StratManager, FeeManager, GasThrottler {
             chargeFees(callFeeRecipient);
             swapRewards();
             uint256 wantHarvested = balanceOfWant();
-            stakeAndDeposit();
+            deposit();
 
             lastHarvest = block.timestamp;
             emit StratHarvest(msg.sender, wantHarvested, balanceOf());
@@ -171,6 +160,12 @@ contract StrategyOXDxBOO is StratManager, FeeManager, GasThrottler {
         if (want != output) {
             uint256 outputBal = IERC20(output).balanceOf(address(this));
             IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), now);
+        }
+
+        uint256 wantBal = balanceOfWant();
+
+        if (wantBal > 0) {
+            IXPool(xWant).enter(wantBal);
         }
     }
 
@@ -275,11 +270,13 @@ contract StrategyOXDxBOO is StratManager, FeeManager, GasThrottler {
 
     function _giveAllowances() internal {
         IERC20(xWant).safeApprove(chef, uint256(-1));
+        IERC20(want).safeApprove(xWant, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(xWant).safeApprove(chef, 0);
+        IERC20(want).safeApprove(xWant, 0);
         IERC20(output).safeApprove(unirouter, 0);
     }
 
