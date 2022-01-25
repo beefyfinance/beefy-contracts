@@ -62,7 +62,7 @@ contract StrategyOXDxBOO is StratManager, FeeManager, GasThrottler {
         unstakedWant = _outputToUnstakedWantRoute[_outputToUnstakedWantRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
 
-        require(outputToUnstakedWantRoute[0] == output, "outputToUnstakedWantRoute[0] != output");
+        require(_outputToUnstakedWantRoute[0] == output, "outputToUnstakedWantRoute[0] != output");
         outputToUnstakedWantRoute = _outputToUnstakedWantRoute;
 
         _giveAllowances();
