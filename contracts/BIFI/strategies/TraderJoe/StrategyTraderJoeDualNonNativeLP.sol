@@ -140,7 +140,8 @@ contract StrategyTraderJoeDualNonNativeLP is StratManager, FeeManager {
     function _harvest(address callFeeRecipient) internal {
         IMasterChef(chef).deposit(poolId, 0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        if (outputBal > 0) {
+        uint256 secondOutputBal = IERC20(secondOutput).balanceOf(address(this));
+        if (outputBal > 0 || secondOutputBal > 0) {
             chargeFees(callFeeRecipient);
             addLiquidity();
             uint256 wantHarvested = balanceOfWant();
@@ -154,10 +155,14 @@ contract StrategyTraderJoeDualNonNativeLP is StratManager, FeeManager {
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
         uint256 toNative = IERC20(output).balanceOf(address(this));
-        IUniswapRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        if (toNative > 0) {
+            IUniswapRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        }
 
         uint256 secondToNative = IERC20(secondOutput).balanceOf(address(this));
-        try IUniswapRouter(unirouter).swapExactTokensForTokens(secondToNative, 0, secondOutputToNativeRoute, address(this), now) {} catch {}
+        if (secondToNative > 0) {
+            IUniswapRouter(unirouter).swapExactTokensForTokens(secondToNative, 0, secondOutputToNativeRoute, address(this), now);
+        }
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000);
 
