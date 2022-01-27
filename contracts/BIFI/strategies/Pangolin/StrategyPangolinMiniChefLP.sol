@@ -220,25 +220,24 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
         IERC20(want).transfer(vault, wantBal);
     }
 
-    function rewardsAvailable() public view returns (uint256) {
-        return IPangolinMiniChef(chef).pendingReward(poolId, address(this));
-    }
-
     // returns secondary rewards unharvested
-    function secondaryRewardsAvailable() public view returns (uint256[] memory) {
-        address rewarder = IPangolinMiniChef(chef).rewarder(poolId);
+    function rewardsAvailable() public view returns (uint256, uint256[] memory) {
+        uint256 pngReward = IPangolinMiniChef(chef).pendingReward(poolId, address(this));
+        uint256[] memory secondaryRewards;
         // checks if there is a rewarder associated with the pool, if not will return an empty array.
+        address rewarder = IPangolinMiniChef(chef).rewarder(poolId);
         if (rewarder != nullAddress) {
-        uint256 pngReward = rewardsAvailable();
         (, uint256[] memory amounts) = IPangolinRewarder(rewarder).pendingTokens(poolId, address(this), pngReward);
-        return amounts;
+            secondaryRewards = amounts;
         }
+
+        return (pngReward, secondaryRewards);
     }
 
     function callReward() public view returns (uint256) {
-        uint256 outputBalance = rewardsAvailable();
+        (uint256 pngReward, uint256[] memory secondaryRewards) = rewardsAvailable();
         uint256 nativeBal;
-        try IUniswapRouterETH(unirouter).getAmountsOut(outputBalance, outputToNativeRoute)
+        try IUniswapRouterETH(unirouter).getAmountsOut(pngReward, outputToNativeRoute)
             returns (uint256[] memory amountOut) 
         {
             nativeBal = amountOut[amountOut.length -1];
@@ -246,7 +245,6 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
         catch {}
 
         if (rewardToOutputRoute.length != 0) {
-            uint256[] memory secondaryRewards = secondaryRewardsAvailable();
             for (uint i; i < rewardToOutputRoute.length; i++) {
                 try IUniswapRouterETH(unirouter).getAmountsOut(secondaryRewards[i], rewardToOutputRoute[i])
                 returns (uint256[] memory initialAmountOut)
