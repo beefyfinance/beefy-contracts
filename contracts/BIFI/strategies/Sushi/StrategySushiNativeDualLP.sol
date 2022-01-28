@@ -151,7 +151,7 @@ contract StrategySushiNativeDualLP is StratManager, FeeManager {
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
         uint256 toNative = IERC20(output).balanceOf(address(this));
-        if (output != native){
+        if (toNative > 0){
             IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
         }
 
