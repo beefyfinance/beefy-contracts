@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -9,12 +10,15 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/pangolin/IPangolinMiniChef.sol";
+import "../../interfaces/pangolin/IPangolinRewarder.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
 contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
+
+    address constant nullAddress = address(0);
 
     // Tokens used
     address public native;
@@ -34,6 +38,7 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
     address[] public outputToNativeRoute;
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
+    address[][] public rewardToOutputRoute;
 
     /**
      * @dev Event that is fired each time someone harvests the strat.
@@ -59,20 +64,19 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
         poolId = _poolId;
         chef = _chef;
 
-        require(_outputToNativeRoute.length >= 2);
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
 
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
-        require(_outputToLp0Route[0] == output);
-        require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0);
+        require(_outputToLp0Route[0] == output, "outputToLp0Route[0] != output");
+        require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0, "outputToLp0Route[last] != lpToken0");
         outputToLp0Route = _outputToLp0Route;
 
         lpToken1 = IUniswapV2Pair(want).token1();
-        require(_outputToLp1Route[0] == output);
-        require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1);
+        require(_outputToLp1Route[0] == output, "outputToLp1Route[0] != output");
+        require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1, "outputToLp1Route[last] != lpToken1");
         outputToLp1Route = _outputToLp1Route;
 
         _giveAllowances();
@@ -123,7 +127,7 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
         _harvest(tx.origin);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -135,6 +139,7 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
     function _harvest(address callFeeRecipient) internal whenNotPaused {
         IPangolinMiniChef(chef).harvest(poolId, address(this));
         uint256 outputBal = IERC20(output).balanceOf(address(this));
+
         if (outputBal > 0) {
             chargeFees(callFeeRecipient);
             addLiquidity();
@@ -148,6 +153,15 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
+        if (rewardToOutputRoute.length != 0) {
+            for (uint i; i < rewardToOutputRoute.length; i++) {
+                uint256 rewardBal = IERC20(rewardToOutputRoute[i][0]).balanceOf(address(this));
+                if (rewardBal > 0) {
+                    IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardBal, 0, rewardToOutputRoute[i], address(this), now);
+                }
+            }
+        }
+
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
@@ -206,25 +220,46 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
         IERC20(want).transfer(vault, wantBal);
     }
 
-    // returns rewards unharvested
-    function rewardsAvailable() public view returns (uint256) {
-        return IPangolinMiniChef(chef).pendingReward(poolId, address(this));
-    }
-
-    // native reward amount for calling harvest
-    function callReward() public view returns (uint256) {
-        uint256 outputBal = rewardsAvailable();
-        uint256 nativeOut;
-         if (outputBal > 0) {
-            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
-                returns (uint256[] memory amountOut) 
-            {
-                nativeOut = amountOut[amountOut.length -1];
-            }
-            catch {}
+    // returns secondary rewards unharvested
+    function rewardsAvailable() public view returns (uint256, uint256[] memory) {
+        uint256 pngReward = IPangolinMiniChef(chef).pendingReward(poolId, address(this));
+        uint256[] memory secondaryRewards;
+        // checks if there is a rewarder associated with the pool, if not will return an empty array.
+        address rewarder = IPangolinMiniChef(chef).rewarder(poolId);
+        if (rewarder != nullAddress) {
+        (, uint256[] memory amounts) = IPangolinRewarder(rewarder).pendingTokens(poolId, address(this), pngReward);
+            secondaryRewards = amounts;
         }
 
-        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+        return (pngReward, secondaryRewards);
+    }
+
+    function callReward() public view returns (uint256) {
+        (uint256 pngReward, uint256[] memory secondaryRewards) = rewardsAvailable();
+        uint256 nativeBal;
+        try IUniswapRouterETH(unirouter).getAmountsOut(pngReward, outputToNativeRoute)
+            returns (uint256[] memory amountOut) 
+        {
+            nativeBal = amountOut[amountOut.length -1];
+        }
+        catch {}
+
+        if (rewardToOutputRoute.length != 0) {
+            for (uint i; i < rewardToOutputRoute.length; i++) {
+                try IUniswapRouterETH(unirouter).getAmountsOut(secondaryRewards[i], rewardToOutputRoute[i])
+                returns (uint256[] memory initialAmountOut)
+                {
+                    uint256 outputBal = initialAmountOut[initialAmountOut.length - 1];
+                    try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
+                    returns (uint256[] memory finalAmountOut)
+                    {
+                        nativeBal += finalAmountOut[finalAmountOut.length - 1];
+                    } catch {}
+                } catch {}
+            }
+        }
+
+        return nativeBal.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
@@ -258,21 +293,49 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, type(uint256).max);
-        IERC20(output).safeApprove(unirouter, type(uint256).max);
+        IERC20(want).safeApprove(chef, uint256(-1));
+        IERC20(output).safeApprove(unirouter, uint256(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, type(uint256).max);
+        IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, type(uint256).max);
+        IERC20(lpToken1).safeApprove(unirouter, uint256(-1));
+
+        if (rewardToOutputRoute.length != 0) {
+            for (uint i; i < rewardToOutputRoute.length; i++) {
+                IERC20(rewardToOutputRoute[i][0]).safeApprove(unirouter, 0);
+                IERC20(rewardToOutputRoute[i][0]).safeApprove(unirouter, uint256(-1));
+            }
+        }
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
+
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
+
+        if (rewardToOutputRoute.length != 0) {
+            for (uint i; i < rewardToOutputRoute.length; i++) {
+                IERC20(rewardToOutputRoute[i][0]).safeApprove(unirouter, 0);
+            }
+        }
+    }
+
+    function addRewardRoute(address[] memory _rewardToOutputRoute) external onlyOwner {
+        IERC20(_rewardToOutputRoute[0]).safeApprove(unirouter, 0);
+        IERC20(_rewardToOutputRoute[0]).safeApprove(unirouter, uint256(-1));
+        rewardToOutputRoute.push(_rewardToOutputRoute);
+    }
+
+    function removeLastRewardRoute() external onlyOwner {
+        address reward = rewardToOutputRoute[rewardToOutputRoute.length - 1][0];
+        if (reward != lpToken0 && reward != lpToken1) {
+            IERC20(reward).safeApprove(unirouter, 0);
+        }
+        rewardToOutputRoute.pop();
     }
 
     function outputToNative() external view returns (address[] memory) {
@@ -285,5 +348,9 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
 
     function outputToLp1() external view returns (address[] memory) {
         return outputToLp1Route;
+    }
+    
+    function rewardToOutput() external view returns (address[][] memory) {
+        return rewardToOutputRoute;
     }
 }
