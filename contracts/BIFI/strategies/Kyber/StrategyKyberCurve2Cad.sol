@@ -210,7 +210,7 @@ contract StrategyKyberCurve2Cad is StratManager, FeeManager {
                 returns (uint256[] memory amountOutFromOutput)
             {
                 uint256 wantOut = amountOutFromOutput[amountOutFromOutput.length -1];
-                uint256 tokenFromWantOut = ICurveSwap(want).calc_withdraw_one_coin(wantOut, tokenId);
+                uint256 tokenFromWantOut = ICurveSwap(want).calc_withdraw_one_coin(wantOut, int128(tokenId));
                 uint256 stableBal = IDfxRouter(unirouter2).viewOriginSwap(stable, tokenFromWant, stable, tokenFromWantOut);
                 try IDMMRouter(unirouter).getAmountsOut(stableBal, stableToNativePoolsPath, stableToNativeRoute)
                     returns (uint256[] memory amountOutFromStable)
