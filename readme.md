@@ -34,7 +34,7 @@ Once you are confident that everything works as expected you can do the official
 9. Harvest again. 
 10. Transfer Ownership of the Vault and Strategy contracts to the Vault and Strat owners for the respective chains. 
 
-Check for more addresses at https://github.com/beefyfinance/address-book
+Check for more addresses in [the address book](https://github.com/beefyfinance/beefy-api/tree/master/packages/address-book)
 This is required so that we can review everything before the vault is actually live on the app and manage it after its live.
 
 ### 4.  Update App
