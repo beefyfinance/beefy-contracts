@@ -7,12 +7,12 @@ const { delay } = require("../../utils/timeHelpers");
 
 const TIMEOUT = 10 * 60 * 1000000;
 
-const chainName = "fantom";
+const chainName = "bsc";
 const chainData = addressBook[chainName];
 const { beefyfinance } = chainData.platforms;
 
 const config = {
-  vault: "0xC62Bec8168404CcDE75Db95F5cED342C1AD770a5",
+  vault: "0x42376cd79F916Fdae6225Dd647f154D055165d83",
   vaultContract: "BeefyVaultV6",
   strategyContract: "StrategyCommonChefLP",
   testAmount: ethers.utils.parseEther("5"),

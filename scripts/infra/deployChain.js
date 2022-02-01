@@ -18,9 +18,9 @@ const {
     } },
   tokens: {
     BIFI: { address: BIFI },
-    WNATIVE: { address: WNATIVE },
+    WNATIVE: { address: ETH },
   },
-} = addressBook.metis;
+} = addressBook.aurora;
 
 const TIMELOCK_ADMIN_ROLE = "0x5f58e3a2316349923ce3780f8d587db2d72378aed66a8261c916544fa6846ca5";
 const STRAT_OWNER_DELAY = 21600;
@@ -30,20 +30,20 @@ const KEEPER = keeper;
 const chainName = "metis";
 
 const config = {
-  bifi: BIFI, // addressBook[chainName].tokens.BIFI.address,
-  wnative: WNATIVE,
-  rpc: "https://andromeda.metis.io/?owner=1088",
-  chainName: "metis",
-  chainId: 1088,
-  devMultisig: devMultisig,
-  treasuryMultisig: treasury,
+  bifi: "0x218c3c3D49d0E7B37aff0D8bB079de36Ae61A4c0", // addressBook[chainName].tokens.BIFI.address,
+  wnative: ETH,
+  rpc: "https://mainnet.aurora.dev/Fon6fPMs5rCdJc4mxX4kiSK1vsKdzc3D8k6UF8aruek",
+  chainName: "aurora",
+  chainId: 1313161554,
+  devMultisig: null,
+  treasuryMultisig: null,
   multicall: multicall,
-  vaultOwner: "0x41D44B276904561Ac51855159516FD4cB2c90968",
-  stratOwner: "0xdf68Bf80D427A5827Ff2c06A9c70D407e17DC041",
-  treasury: treasury,
+  vaultOwner: "0x19642aDA958632f5e574A6d13eAd0679BD435c20",
+  stratOwner: "0x2d04969ED7D1b186797C44dF5F5634Eb9C89aF6b",
+  treasury: "0x8c2d54BA94f4638f1bb91f623F378B66d6023324",
   unirouterHasBifiLiquidity: false,
   unirouter: ethers.constants.AddressZero,
-  rewardPool: "0x2a30C5e0d577108F694d2A96179cd73611Ee069b",
+  rewardPool: "0xE6ab45f5e93FA377D0c4cC097187Ab7256c2AEBf",
 };
 
 const proposer = config.devMultisig || TRUSTED_EOA;
