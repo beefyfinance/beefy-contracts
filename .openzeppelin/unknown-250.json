@@ -39,6 +39,11 @@
       "address": "0x502C107ae28d300fDAedE1CBd7ee8096C1ab4a3C",
       "txHash": "0x4d24121122fc4062b4d1a79b693954697f037cacfe22596ca10fc684fdadde56",
       "kind": "transparent"
+    },
+    {
+      "address": "0x44e314190D9E4cE6d4C0903459204F8E21ff940A",
+      "txHash": "0x179d0fd9f2558e7e095914eb02a71a020a394ed5b0eb97a30388055ed7be4b5d",
+      "kind": "transparent"
     }
   ],
   "impls": {
@@ -150,6 +155,196 @@
           },
           "t_array(t_uint256)49_storage": {
             "label": "uint256[49]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "94b8dec7c42aa61474807d1a0f9ea175340938aa9222a72a71ea7f47d67e0f9a": {
+      "address": "0x263b107824061C717Fd758770b167530e87fF89c",
+      "txHash": "0xc0a7daaa230f35802bd6fd008650b1f304d31738dcc39708897c178d2cf4d596",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:21"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:26"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:30"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_balances",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "@openzeppelin\\contracts-upgradeable\\token\\ERC20\\ERC20Upgradeable.sol:36"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_allowances",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+            "src": "@openzeppelin\\contracts-upgradeable\\token\\ERC20\\ERC20Upgradeable.sol:38"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_totalSupply",
+            "type": "t_uint256",
+            "src": "@openzeppelin\\contracts-upgradeable\\token\\ERC20\\ERC20Upgradeable.sol:40"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_name",
+            "type": "t_string_storage",
+            "src": "@openzeppelin\\contracts-upgradeable\\token\\ERC20\\ERC20Upgradeable.sol:42"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_symbol",
+            "type": "t_string_storage",
+            "src": "@openzeppelin\\contracts-upgradeable\\token\\ERC20\\ERC20Upgradeable.sol:43"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)45_storage",
+            "src": "@openzeppelin\\contracts-upgradeable\\token\\ERC20\\ERC20Upgradeable.sol:361"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "_status",
+            "type": "t_uint256",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:37"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:67"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:21"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:77"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\PausableUpgradeable.sol:28"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\PausableUpgradeable.sol:96"
+          },
+          {
+            "contract": "GaugeManager",
+            "label": "feeDistributor",
+            "type": "t_contract(IVeWantFeeDistributor)5484",
+            "src": "contracts\\BIFI\\strategies\\Gauge\\GaugeManager.sol:24"
+          },
+          {
+            "contract": "GaugeManager",
+            "label": "gaugeProxy",
+            "type": "t_contract(IGauge)5421",
+            "src": "contracts\\BIFI\\strategies\\Gauge\\GaugeManager.sol:25"
+          },
+          {
+            "contract": "GaugeManager",
+            "label": "keeper",
+            "type": "t_address",
+            "src": "contracts\\BIFI\\strategies\\Gauge\\GaugeManager.sol:26"
+          },
+          {
+            "contract": "GaugeManager",
+            "label": "rewardPool",
+            "type": "t_address",
+            "src": "contracts\\BIFI\\strategies\\Gauge\\GaugeManager.sol:27"
+          },
+          {
+            "contract": "GaugeManager",
+            "label": "whitelistedStrategy",
+            "type": "t_mapping(t_address,t_address)",
+            "src": "contracts\\BIFI\\strategies\\Gauge\\GaugeManager.sol:29"
+          },
+          {
+            "contract": "GaugeManager",
+            "label": "replacementStrategy",
+            "type": "t_mapping(t_address,t_address)",
+            "src": "contracts\\BIFI\\strategies\\Gauge\\GaugeManager.sol:30"
+          },
+          {
+            "contract": "GaugeStaker",
+            "label": "want",
+            "type": "t_contract(IERC20Upgradeable)1011",
+            "src": "contracts\\BIFI\\strategies\\Gauge\\GaugeStaker.sol:17"
+          },
+          {
+            "contract": "GaugeStaker",
+            "label": "veWant",
+            "type": "t_contract(IVeWant)5478",
+            "src": "contracts\\BIFI\\strategies\\Gauge\\GaugeStaker.sol:18"
+          }
+        ],
+        "types": {
+          "t_contract(IERC20Upgradeable)1011": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_contract(IVeWant)5478": {
+            "label": "contract IVeWant"
+          },
+          "t_contract(IVeWantFeeDistributor)5484": {
+            "label": "contract IVeWantFeeDistributor"
+          },
+          "t_contract(IGauge)5421": {
+            "label": "contract IGauge"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))"
+          },
+          "t_string_storage": {
+            "label": "string"
+          },
+          "t_array(t_uint256)45_storage": {
+            "label": "uint256[45]"
           },
           "t_array(t_uint256)50_storage": {
             "label": "uint256[50]"
