@@ -8,19 +8,21 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IMasterChef.sol";
+import "../../interfaces/tri/ITriChef.sol";
+import "../../interfaces/tri/ITriRewarder.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 import "../../utils/StringUtils.sol";
 import "../../utils/GasThrottler.sol";
 
-contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
+contract StrategyTriMiniChefDualLP is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
     address public native;
     address public output;
+    address public reward;
     address public want;
     address public lpToken0;
     address public lpToken1;
@@ -32,11 +34,14 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
     uint256 public lastHarvest;
     uint256 public liquidityBal;
     bool public feesCharged = false;
+    bool public harvestAndSwapped = false;
     bool public swapped = false;
-    string public pendingRewardsFunctionName;
+    bool public liquidityAdded = false;
+    bool public harvested = false;
 
     // Routes
     address[] public outputToNativeRoute;
+    address[] public rewardToOutputRoute;
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
 
@@ -55,6 +60,7 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
         address _strategist,
         address _beefyFeeRecipient,
         address[] memory _outputToNativeRoute,
+        address[] memory _rewardToOutputRoute,
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
@@ -65,6 +71,9 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
+
+        reward = _rewardToOutputRoute[0];
+        rewardToOutputRoute = _rewardToOutputRoute;
 
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
@@ -80,15 +89,16 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
         _giveAllowances();
     }
 
-    // puts the funds to work
-    function deposit() public whenNotPaused {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+    // Grabs deposits from vault
+    function deposit() public whenNotPaused {} 
 
-        if (wantBal > 0) {
-                IMasterChef(chef).deposit(poolId, wantBal);
-                emit Deposit(balanceOf());
+    // Puts the funds to work
+    function sweep() public whenNotPaused {
+        if (balanceOfWant() > 0) {
+                ITriChef(chef).deposit(poolId, balanceOfWant(), address(this));
+                emit Deposit(balanceOfWant());
         }
-    } 
+    }
 
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
@@ -96,7 +106,7 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            ITriChef(chef).withdraw(poolId, _amount.sub(wantBal), address(this));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -130,21 +140,34 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
     function _harvest(address callFeeRecipient) internal whenNotPaused {
             if (feesCharged) {
                 if (swapped){
-                    addLiquidity();
-                    uint256 wantHarvested = balanceOfWant();
-                    IMasterChef(chef).deposit(poolId, wantHarvested);
-                    feesCharged = false;
-                    swapped = false;
-                    lastHarvest = block.timestamp;
-                    emit StratHarvest(msg.sender, wantHarvested, balanceOf());
+                    if (liquidityAdded) {
+                        ITriChef(chef).deposit(poolId, balanceOfWant(), address(this));
+                        toggleHarvest();
+                        lastHarvest = block.timestamp;
+                        emit StratHarvest(msg.sender, balanceOfWant(), balanceOf());
+                    } else {
+                        addLiquidity();
+                    }
                 } else {
                     swap();
                 }
             } else {
-                IMasterChef(chef).deposit(poolId, 0);
-                uint256 outputBal = IERC20(output).balanceOf(address(this));
-                  if (outputBal > 0) {
-                    chargeFees(callFeeRecipient);
+                if (harvestAndSwapped) {
+                    uint256 outputBal = IERC20(output).balanceOf(address(this));
+                    if (outputBal > 0) {
+                        chargeFees(callFeeRecipient);
+                    }
+                } else {
+                    if (harvested) {
+                        uint256 rewardBal = IERC20(reward).balanceOf(address(this));
+                        if (rewardBal > 0) {
+                        IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardBal, 0, rewardToOutputRoute, address(this), now);
+                        }
+                        harvestAndSwapped = true;
+                    } else {
+                        ITriChef(chef).harvest(poolId, address(this));
+                        harvested = true;
+                    }
                 }
             }
     }
@@ -187,10 +210,20 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
-        uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
+        uint256 lpBal0 = IERC20(lpToken0).balanceOf(address(this));
+        uint256 lpBal1 = IERC20(lpToken1).balanceOf(address(this));
+        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lpBal0, lpBal1, 1, 1, address(this), now);
         liquidityBal = 0;
+        liquidityAdded = true;
+    }
+
+    // Toggle harvest cycle to false to start again 
+    function toggleHarvest() internal {
+        feesCharged = false;
+        swapped = false;
+        harvestAndSwapped = false;
+        liquidityAdded = false;
+        harvested = false;
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -205,26 +238,27 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount,) = IMasterChef(chef).userInfo(poolId, address(this));
+        (uint256 _amount,) = ITriChef(chef).userInfo(poolId, address(this));
         return _amount;
-    }
-
-    function setPendingRewardsFunctionName(string calldata _pendingRewardsFunctionName) external onlyManager {
-        pendingRewardsFunctionName = _pendingRewardsFunctionName;
     }
 
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        string memory signature = StringUtils.concat(pendingRewardsFunctionName, "(uint256,address)");
-        bytes memory result = Address.functionStaticCall(
-            chef, 
-            abi.encodeWithSignature(
-                signature,
-                poolId,
-                address(this)
-            )
-        );  
-        return abi.decode(result, (uint256));
+        uint256 first = ITriChef(chef).pendingTri(poolId, address(this));
+        uint256 second;
+        address rewarder = ITriChef(chef).rewarder(poolId);
+        if (rewarder != address(0)) {
+            uint256[] memory rewards = new uint256[](1);
+            (, rewards) = ITriRewarder(rewarder).pendingTokens(poolId, address(this), 0);
+
+            try IUniswapRouterETH(unirouter).getAmountsOut(rewards[0], rewardToOutputRoute)
+            returns (uint256[] memory amountOut)
+        {
+            second = amountOut[amountOut.length -1];
+        }
+            catch {} 
+        }
+        return first.add(second);
     }
 
     // Validates if we can trade because of decimals
@@ -245,17 +279,16 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
         uint256 outputBal = rewardsAvailable();
-        uint256 nativeOut;
-        if (outputBal > 0) {
-            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
-                returns (uint256[] memory amountOut) 
-            {
-                nativeOut = amountOut[amountOut.length -1];
-            }
-            catch {}
-        }
+        uint256 nativeBal;
 
-        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+        try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
+            returns (uint256[] memory amountOut)
+        {
+            nativeBal = nativeBal.add(amountOut[amountOut.length -1]);
+        }
+        catch {}
+
+        return nativeBal.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
 
     function setShouldGasThrottle(bool _shouldGasThrottle) external onlyManager {
@@ -266,7 +299,7 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        ITriChef(chef).emergencyWithdraw(poolId, address(this));
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -275,7 +308,7 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        ITriChef(chef).emergencyWithdraw(poolId, address(this));
     }
 
     function pause() public onlyManager {
@@ -289,12 +322,13 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
 
         _giveAllowances();
 
-        deposit();
+        sweep();
     }
 
     function _giveAllowances() internal {
         IERC20(want).safeApprove(chef, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(reward).safeApprove(unirouter, uint256(-1));
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
@@ -306,6 +340,7 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
+        IERC20(reward).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
     }
@@ -320,5 +355,9 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
 
     function outputToLp1() external view returns (address[] memory) {
         return outputToLp1Route;
+    }
+
+    function rewardToOutput() external view returns (address[] memory) {
+        return rewardToOutputRoute;
     }
 }
