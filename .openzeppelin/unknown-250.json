@@ -44,6 +44,21 @@
       "address": "0x44e314190D9E4cE6d4C0903459204F8E21ff940A",
       "txHash": "0x179d0fd9f2558e7e095914eb02a71a020a394ed5b0eb97a30388055ed7be4b5d",
       "kind": "transparent"
+    },
+    {
+      "address": "0xe6282B52cDA2b104ea1ab491DEeb75B5b3aD2741",
+      "txHash": "0x87af8a710131c198e90423607353e690cfa4f35a9648e805c5cb32224c5fd9bc",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x81d647d84cE47AD5148758AeA817e94B21b25009",
+      "txHash": "0x537b3583e9b1394c23e258f56f04d42b019235a09cb5e2f2b5123f42f47fb345",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xaE4243D4634E5EeF68E1E380bafddaF0fe2944C2",
+      "txHash": "0xda28d2ff74fc40161fbcdf3352f3edbf01804e1531244b0aaed036121cfd55a3",
+      "kind": "transparent"
     }
   ],
   "impls": {
@@ -333,6 +348,579 @@
           },
           "t_uint256": {
             "label": "uint256"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))"
+          },
+          "t_string_storage": {
+            "label": "string"
+          },
+          "t_array(t_uint256)45_storage": {
+            "label": "uint256[45]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "3ad582aa38cbee71af1a4de290295d6ee28a303b5bd3a8f31dc17c00eb74875f": {
+      "address": "0x50f1BF2feA8c4c0f2130893D6652BFC1cb15350A",
+      "txHash": "0x42d04ed3900de3e3491b122c0d79c434c0652d9b843b92ac93ea258fff0c2c99",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_balances",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:37"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_allowances",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:39"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_totalSupply",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:41"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_name",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:43"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_symbol",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:44"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)45_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:362"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "_status",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:68"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:97"
+          },
+          {
+            "contract": "LockedAssetManager",
+            "label": "keeper",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/Locked/LockedAssetManager.sol:19"
+          },
+          {
+            "contract": "LockedAssetManager",
+            "label": "rewardPool",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/Locked/LockedAssetManager.sol:20"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "want",
+            "type": "t_contract(IERC20Upgradeable)1040",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:23"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "stakingContract",
+            "type": "t_contract(ISRC)9173",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:24"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "validatorID",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:25"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "validator",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:26"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "wrID",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:29"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "withdrawalTime",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:30"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "withdrawalPeriodTime",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:31"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "withdrawEnabled",
+            "type": "t_bool",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:32"
+          }
+        ],
+        "types": {
+          "t_contract(IERC20Upgradeable)1040": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_contract(ISRC)9173": {
+            "label": "contract ISRC"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))"
+          },
+          "t_string_storage": {
+            "label": "string"
+          },
+          "t_array(t_uint256)45_storage": {
+            "label": "uint256[45]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "acda197c546effb388400d3aa39e32e8e99258a0b21ef100a68427068a257ed7": {
+      "address": "0x75F5dc03C3e6faf1f16bc876012e39f90944775D",
+      "txHash": "0x77db7f24e44cb90d49d6ee93bbea53545f1a869e13820978e9068fc1c6757fb3",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_balances",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:37"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_allowances",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:39"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_totalSupply",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:41"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_name",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:43"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_symbol",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:44"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)45_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:362"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "_status",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:68"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:97"
+          },
+          {
+            "contract": "LockedAssetManager",
+            "label": "keeper",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/Locked/LockedAssetManager.sol:19"
+          },
+          {
+            "contract": "LockedAssetManager",
+            "label": "rewardPool",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/Locked/LockedAssetManager.sol:20"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "want",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:22"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "stakingContract",
+            "type": "t_contract(ISRC)9213",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:23"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "validatorID",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:24"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "validator",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:25"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "wrID",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:28"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "withdrawalTime",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:29"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "withdrawalPeriodTime",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:30"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "withdrawEnabled",
+            "type": "t_bool",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:31"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address"
+          },
+          "t_contract(ISRC)9213": {
+            "label": "contract ISRC"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))"
+          },
+          "t_string_storage": {
+            "label": "string"
+          },
+          "t_array(t_uint256)45_storage": {
+            "label": "uint256[45]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "18dad33ffae29b7eb608aec1612aff44a72b9aaaf3c87fde675a499976786b79": {
+      "address": "0x08880a0DB3C44709c2B8E7429498bb7Ac206a297",
+      "txHash": "0xf60e07f9f770a8d8e5d70ee62a91b53d19ec901189487b2122cb855f8a1267fd",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_balances",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:37"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_allowances",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:39"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_totalSupply",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:41"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_name",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:43"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_symbol",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:44"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)45_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:362"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "_status",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:68"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:97"
+          },
+          {
+            "contract": "LockedAssetManager",
+            "label": "keeper",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/Locked/LockedAssetManager.sol:19"
+          },
+          {
+            "contract": "LockedAssetManager",
+            "label": "rewardPool",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/Locked/LockedAssetManager.sol:20"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "want",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:22"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "stakingContract",
+            "type": "t_contract(ISFC)9248",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:23"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "validatorID",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:24"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "validator",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:25"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "wrID",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:28"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "withdrawalTime",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:29"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "withdrawalPeriodTime",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:30"
+          },
+          {
+            "contract": "BeefyStakedFantom",
+            "label": "withdrawEnabled",
+            "type": "t_bool",
+            "src": "contracts/BIFI/strategies/Locked/BeefyStakedFantom.sol:31"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address"
+          },
+          "t_contract(ISFC)9248": {
+            "label": "contract ISFC"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
           },
           "t_mapping(t_address,t_uint256)": {
             "label": "mapping(address => uint256)"

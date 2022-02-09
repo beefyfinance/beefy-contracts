@@ -44,7 +44,7 @@ const config: DeploymentConfig = {
       accounts,
     },
     fantom: {
-      url: "https://rpc.ftm.tools",
+      url: "https://ftmrpc.ultimatenodes.io/",
       chainId: 250,
       accounts,
     },
