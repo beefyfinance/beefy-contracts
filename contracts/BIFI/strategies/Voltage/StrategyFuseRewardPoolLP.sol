@@ -48,7 +48,6 @@ contract StrategyFuseRewardPoolLP is StratManager, FeeManager {
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
 
-
     constructor(
         address _want,
         address _rewardPool,
@@ -113,7 +112,7 @@ contract StrategyFuseRewardPoolLP is StratManager, FeeManager {
             IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
         }
 
-         emit Withdraw(balanceOf());
+        emit Withdraw(balanceOf());
     }
 
     function beforeDeposit() external override {
@@ -127,7 +126,7 @@ contract StrategyFuseRewardPoolLP is StratManager, FeeManager {
         _harvest(tx.origin);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -216,14 +215,10 @@ contract StrategyFuseRewardPoolLP is StratManager, FeeManager {
        if (rewardToOutputRoute.length != 0) {
             for (uint i; i < rewardToOutputRoute.length; i++) {
                 try IMultiRewards(rewardPool).earned(address(this), rewardToOutputRoute[i][0])
-                returns (uint256 initialAmountOut)
-                {
+                returns(uint256 initialAmountOut) {
                     uint256 outputBal = initialAmountOut;
-                    try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, rewardToOutputRoute[i])
-                    returns (uint256[] memory finalAmountOut)
-                    {
-                        nativeBal += finalAmountOut[finalAmountOut.length - 1];
-                    } catch {}
+                    uint256[] memory finalAmountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, rewardToOutputRoute[i]);
+                    nativeBal += finalAmountOut[finalAmountOut.length - 1];
                 } catch {}
             }
         }
@@ -231,7 +226,7 @@ contract StrategyFuseRewardPoolLP is StratManager, FeeManager {
 
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
-        uint256 nativeOut = rewardsAvailable();       
+        uint256 nativeOut = rewardsAvailable();
 
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
@@ -308,19 +303,19 @@ contract StrategyFuseRewardPoolLP is StratManager, FeeManager {
     }
 
     function addRewardRoute(address[] memory _rewardToOutputRoute) external onlyOwner {
+        require(_rewardToOutputRoute[_rewardToOutputRoute.length -1] == output, '!output');
         IERC20(_rewardToOutputRoute[0]).safeApprove(unirouter, 0);
         IERC20(_rewardToOutputRoute[0]).safeApprove(unirouter, uint256(-1));
         rewardToOutputRoute.push(_rewardToOutputRoute);
     }
 
-    function removeLastRewardRoute() external onlyOwner {
+    function removeLastRewardRoute() external onlyManager {
         address reward = rewardToOutputRoute[rewardToOutputRoute.length - 1][0];
         if (reward != lpToken0 && reward != lpToken1) {
             IERC20(reward).safeApprove(unirouter, 0);
         }
         rewardToOutputRoute.pop();
     }
-
 
     function outputToNative() external view returns (address[] memory) {
         return outputToNativeRoute;
@@ -332,5 +327,9 @@ contract StrategyFuseRewardPoolLP is StratManager, FeeManager {
 
     function outputToLp1() external view returns (address[] memory) {
         return outputToLp1Route;
+    }
+
+    function rewardToOutput() external view returns (address[][] memory) {
+        return rewardToOutputRoute;
     }
 }
