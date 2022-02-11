@@ -658,15 +658,29 @@
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-3.4.2.tgz#d81f786fda2871d1eb8a8c5a73e455753ba53527"
   integrity sha512-z0zMCjyhhp4y7XKAcDAi3Vgms4T2PstwBdahiO0+9NaGICQKjynK3wduSRplTgk4LXmoO1yfDGO5RbjKYxtuxA==
 
-"@openzeppelin/hardhat-upgrades@^1.10.0":
-  version "1.13.0"
-  resolved "https://registry.yarnpkg.com/@openzeppelin/hardhat-upgrades/-/hardhat-upgrades-1.13.0.tgz#c2b6a3e0a1694f877b501003b159cf4550452a8b"
-  integrity sha512-0pSSUimzd4JL/mKhdNcczDGhv6ELPcI8cWWyCYjTwKoI3wL+AnRrbIQ+yrpHVpia3dAmI/+1sLOz70HvFKNzNQ==
+"@openzeppelin/hardhat-upgrades@^1.14.0":
+  version "1.14.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/hardhat-upgrades/-/hardhat-upgrades-1.14.0.tgz#a84c4088061959164468ae10a2ae53faaa3163fd"
+  integrity sha512-dWLC+cgawHcZ5AbEblA3nTrBpcG9J7Z7J5UmM7qdsc/Yc97USJjXfcD6uYOQ+PhyFVBY0Ni83WGVll48d4QRWQ==
   dependencies:
-    "@openzeppelin/upgrades-core" "^1.11.0"
+    "@openzeppelin/upgrades-core" "^1.12.0"
     chalk "^4.1.0"
 
-"@openzeppelin/upgrades-core@^1.11.0", "@openzeppelin/upgrades-core@^1.9.2":
+"@openzeppelin/upgrades-core@^1.12.0":
+  version "1.12.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/upgrades-core/-/upgrades-core-1.12.0.tgz#847aeeba38780040672f8288795c824a4c9d97e6"
+  integrity sha512-gu/ijQW+RJqGlniNkpNmiwBus3R1cuJNT0/MEJASWRFNr4Qvn0d7LZONaAkhnvlBpxdiiPenMcFIrRlwvZL4iw==
+  dependencies:
+    bn.js "^5.1.2"
+    cbor "^8.0.0"
+    chalk "^4.1.0"
+    compare-versions "^4.0.0"
+    debug "^4.1.1"
+    ethereumjs-util "^7.0.3"
+    proper-lockfile "^4.1.1"
+    solidity-ast "^0.4.15"
+
+"@openzeppelin/upgrades-core@^1.9.2":
   version "1.11.1"
   resolved "https://registry.yarnpkg.com/@openzeppelin/upgrades-core/-/upgrades-core-1.11.1.tgz#fc15ff4b247225fa5cad1ad1495a85612b920913"
   integrity sha512-CgzE5+/PE8wVHEv5F+PJtE+s2grccM0l8k07yCluSi3qeE+68IK/sv2VLlMYAjsHtJTZyI5WpkwPZK/h3QVhvQ==
@@ -2337,10 +2351,10 @@ blakejs@^1.1.0:
   resolved "https://registry.yarnpkg.com/blakejs/-/blakejs-1.1.1.tgz#bf313053978b2cd4c444a48795710be05c785702"
   integrity sha512-bLG6PHOCZJKNshTjGRBvET0vTciwQE6zFKOKKXPDJfwFBd4Ac0yBfPZqcGvGJap50l7ktvlpFqc2jGVaUgbJgg==
 
-blockchain-addressbook@^0.10.9:
-  version "0.10.8"
-  resolved "https://registry.yarnpkg.com/blockchain-addressbook/-/blockchain-addressbook-0.10.8.tgz#e75361ffd0e7b181ce4504b14f8e619c9f87257a"
-  integrity sha512-cHRCRcNWmCRm1wwMwNQvJMJOQRMASYhEqSLxi4lL+1+WAYeKDY4bzCpHpCyQta5glgPFszKr1ptNa+DNJjbCVw==
+blockchain-addressbook@^0.13.3:
+  version "0.13.3"
+  resolved "https://registry.yarnpkg.com/blockchain-addressbook/-/blockchain-addressbook-0.13.3.tgz#66c65e0bbdfb35592b13b060615773c2a8189448"
+  integrity sha512-B5OI5qjFSpQqVhDbiFrAoRobVqYj8m4o+I5HK8f5vmbd8p6wbgHIWwZNILnaBxqGOuRNtHG+v6uYyxX0mx8zBA==
 
 bluebird@^3.5.0, bluebird@^3.5.2:
   version "3.7.2"

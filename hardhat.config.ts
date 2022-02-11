@@ -104,11 +104,16 @@ const config: DeploymentConfig = {
       chainId: 1088,
       accounts,
     },
+    moonbeam: {
+      url: "https://rpc.api.moonbeam.network",
+      chainId: 1284,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: "",
+    apiKey: "8THZGIQCVDJ86DTNDBZ8WB5G4F4DH9NZCQ",
   },
   solidity: {
     compilers: [

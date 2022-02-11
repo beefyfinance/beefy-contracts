@@ -27,23 +27,23 @@ const STRAT_OWNER_DELAY = 21600;
 const VAULT_OWNER_DELAY = 0;
 const TRUSTED_EOA = "0x3Eb7fB70C03eC4AEEC97C6C6C1B59B014600b7F7";
 const KEEPER = keeper;
-const chainName = "metis";
+const chainName = "moonbeam";
 
 const config = {
-  bifi: "0x218c3c3D49d0E7B37aff0D8bB079de36Ae61A4c0", // addressBook[chainName].tokens.BIFI.address,
-  wnative: ETH,
-  rpc: "https://mainnet.aurora.dev/Fon6fPMs5rCdJc4mxX4kiSK1vsKdzc3D8k6UF8aruek",
-  chainName: "aurora",
-  chainId: 1313161554,
-  devMultisig: null,
-  treasuryMultisig: null,
-  multicall: multicall,
-  vaultOwner: "0x19642aDA958632f5e574A6d13eAd0679BD435c20",
-  stratOwner: "0x2d04969ED7D1b186797C44dF5F5634Eb9C89aF6b",
-  treasury: "0x8c2d54BA94f4638f1bb91f623F378B66d6023324",
+  bifi: "0x595c8481c48894771CE8FaDE54ac6Bf59093F9E8", // addressBook[chainName].tokens.BIFI.address,
+  wnative: "0xAcc15dC74880C9944775448304B263D191c6077F",
+  rpc: "https://rpc.api.moonbeam.network",
+  chainName: "moonbeam",
+  chainId: 1284,
+  devMultisig: "0x1db98f5D37E6e0E53DCb24F558F0410086920a6e",
+  treasuryMultisig: "0x3E7F60B442CEAE0FE5e48e07EB85Cfb1Ed60e81A",
+  multicall: "0x922f8807E781739DDefEe51df990457B522cBCf5",
+  vaultOwner: "0xc8F3D9994bb1670F5f3d78eBaBC35FA8FdEEf8a2",
+  stratOwner: "0xfcDD5a02C611ba6Fe2802f885281500EC95805d7",
+  treasury: "0x3E7F60B442CEAE0FE5e48e07EB85Cfb1Ed60e81A",
   unirouterHasBifiLiquidity: false,
   unirouter: ethers.constants.AddressZero,
-  rewardPool: "0xE6ab45f5e93FA377D0c4cC097187Ab7256c2AEBf",
+  rewardPool: "0x1198f78efd67DFc917510aaA07d49545f4B24f11",
 };
 
 const proposer = config.devMultisig || TRUSTED_EOA;
