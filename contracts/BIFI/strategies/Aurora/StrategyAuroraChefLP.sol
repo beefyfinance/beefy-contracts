@@ -85,8 +85,8 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-                IMasterChef(chef).deposit(poolId, wantBal);
-                emit Deposit(balanceOf());
+            IMasterChef(chef).deposit(poolId, wantBal);
+            emit Deposit(balanceOf());
         }
     } 
 
@@ -128,25 +128,25 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-            if (feesCharged) {
-                if (swapped){
-                    addLiquidity();
-                    uint256 wantHarvested = balanceOfWant();
-                    IMasterChef(chef).deposit(poolId, wantHarvested);
-                    feesCharged = false;
-                    swapped = false;
-                    lastHarvest = block.timestamp;
-                    emit StratHarvest(msg.sender, wantHarvested, balanceOf());
-                } else {
-                    swap();
-                }
+        if (feesCharged) {
+            if (swapped){
+                addLiquidity();
+                uint256 wantHarvested = balanceOfWant();
+                IMasterChef(chef).deposit(poolId, wantHarvested);
+                feesCharged = false;
+                swapped = false;
+                lastHarvest = block.timestamp;
+                emit StratHarvest(msg.sender, wantHarvested, balanceOf());
             } else {
-                IMasterChef(chef).deposit(poolId, 0);
-                uint256 outputBal = IERC20(output).balanceOf(address(this));
-                  if (outputBal > 0) {
-                    chargeFees(callFeeRecipient);
-                }
+                swap();
             }
+        } else {
+            IMasterChef(chef).deposit(poolId, 0);
+            uint256 outputBal = IERC20(output).balanceOf(address(this));
+            if (outputBal > 0) {
+                chargeFees(callFeeRecipient);
+            }
+        }
     }
 
     // performance fees
@@ -229,17 +229,8 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
 
     // Validates if we can trade because of decimals
     function canTrade(uint256 tradeableOutput, address[] memory route) internal view returns (bool tradeable) {
-        try IUniswapRouterETH(unirouter).getAmountsOut(tradeableOutput, route)
-            returns (uint256[] memory amountOut) 
-            {
-                uint256 amount = amountOut[amountOut.length -1];
-                if (amount > 0) {
-                    tradeable = true;
-                }
-            }
-            catch { 
-                tradeable = false; 
-            }
+        uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(tradeableOutput, route);
+        tradeable = amountOut[amountOut.length -1] > 0;
     }
 
     // native reward amount for calling harvest
@@ -247,14 +238,9 @@ contract StrategyCommonAuroraChefLP is StratManager, FeeManager, GasThrottler {
         uint256 outputBal = rewardsAvailable();
         uint256 nativeOut;
         if (outputBal > 0) {
-            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
-                returns (uint256[] memory amountOut) 
-            {
-                nativeOut = amountOut[amountOut.length -1];
-            }
-            catch {}
+            uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
+            nativeOut = amountOut[amountOut.length -1];
         }
-
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
 
