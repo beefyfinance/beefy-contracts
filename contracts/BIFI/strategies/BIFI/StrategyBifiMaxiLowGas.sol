@@ -28,7 +28,7 @@ contract StrategyBifiMaxiLowGas is StratManager, FeeManager, GasThrottler {
     address[] public outputToWantRoute;
 
     uint256 public lastHarvest;
-    uint256 public chargedBal;
+    uint256 public wantHarvested;
     bool public feesCharged;
     bool public swapped;
 
@@ -107,8 +107,10 @@ contract StrategyBifiMaxiLowGas is StratManager, FeeManager, GasThrottler {
     function _harvest(address callFeeRecipient) internal whenNotPaused {
         if (feesCharged) {
             if (swapped) {
-                uint256 wantHarvested = balanceOfWant();
-                IRewardPool(rewardPool).stake(wantHarvested);
+                uint256 wantBal = balanceOfWant();
+                if (wantBal > 0) {
+                    IRewardPool(rewardPool).stake(wantBal);
+                }
                 feesCharged = false;
                 swapped = false;
                 lastHarvest = block.timestamp;
@@ -130,15 +132,17 @@ contract StrategyBifiMaxiLowGas is StratManager, FeeManager, GasThrottler {
         uint256 callFeeAmount = IERC20(output).balanceOf(address(this)).mul(45).div(1000).mul(callFee).div(MAX_FEE);
         IERC20(output).safeTransfer(callFeeRecipient, callFeeAmount);
         feesCharged = true;
-        chargedBal = IERC20(output).balanceOf(address(this));
-        require(canTrade(chargedBal, outputToWantRoute), 'Not enough output');
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        require(canTrade(outputBal, outputToWantRoute), 'Not enough output');
         emit ChargedFees(callFeeAmount, 0, 0);
     }
 
     // swaps rewards to 'want'
     function swapRewards() internal {
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(chargedBal, 0, outputToWantRoute, address(this), now);
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), now);
         swapped = true;
+        wantHarvested = balanceOfWant();
     }
 
     // calculate the total underlaying 'want' held by the strat.
