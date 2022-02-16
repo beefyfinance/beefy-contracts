@@ -31,6 +31,10 @@ contract BeefyStakedFantom is ERC20, ReentrancyGuard, LockedAssetManager {
     uint256 public withdrawalPeriodTime = 60 * 60 * 24 * 7;
     bool public withdrawEnabled = false;
 
+    // Validator share so that limit is never hit
+    uint256 public validatorShare = 1000;
+    uint256 public validatorMax = 15000;
+
     event DepositWant(uint256 tvl);
     event ClaimRewards(uint256 rewardsClaimed);
     event RecoverTokens(address token, uint256 amount);
@@ -74,12 +78,21 @@ contract BeefyStakedFantom is ERC20, ReentrancyGuard, LockedAssetManager {
     // deposit 'want' and lock
     function _deposit(address _user, uint256 _amount) internal nonReentrant whenNotPaused {
         if (_amount > 0) {
-            stakingContract.delegate{value: _amount}(validatorID);
-            if (balanceOfLocked() > 0) {
-                stakingContract.relockStake(validatorID, lockTime(), _amount);
-            } else {
-                stakingContract.lockStake(validatorID, lockTime(), _amount);
+            uint256 valAmt = _amount.mul(validatorShare).div(validatorMax);
+            (bool sent,) = validator.call{value: valAmt}("");
+            require(sent, "Failed to send Ether");
+
+            uint256 remaining = _amount.sub(valAmt);
+            stakingContract.delegate{value: remaining}(validatorID);
+
+            if (validatorLockDuration() > currentLockDuration()){
+                if (balanceOfLocked() > 0) {
+                    stakingContract.relockStake(validatorID, lockTime(), balanceOfUnlocked());
+                } else {
+                    stakingContract.lockStake(validatorID, lockTime(), balanceOfUnlocked());
+                }
             }
+
             _mint(_user, _amount);
             emit DepositWant(balanceOfLocked());
         }
@@ -108,6 +121,11 @@ contract BeefyStakedFantom is ERC20, ReentrancyGuard, LockedAssetManager {
     // validators end lock time 
     function validatorUnlockTime() public view returns (uint256 time) {
         (,,time,) = stakingContract.getLockupInfo(validator, validatorID);
+    }
+
+     //  duration at which 'want' is unlocked
+    function validatorLockDuration() public view returns (uint256 time) {
+        (,,,time) = stakingContract.getLockupInfo(validator, validatorID);
     }
 
     // calculate how much duration we should lock 
@@ -161,12 +179,18 @@ contract BeefyStakedFantom is ERC20, ReentrancyGuard, LockedAssetManager {
         withdrawEnabled = true;
     }
 
+    // lock if we can lock and if there is a balanceOfUnlocked
+    function lockFunds() external {
+        require(validatorLockDuration() > currentLockDuration(), "Validator needs more lock time");
+        stakingContract.relockStake(validatorID, lockTime(), balanceOfUnlocked());
+    }
+
     // Relock stake 
     function relockFunds() external onlyOwner {
         _unpause();
         uint256 relockAmount = balanceOfWant();
         stakingContract.delegate{value: relockAmount}(validatorID);
-        stakingContract.relockStake(validatorID, lockTime(), relockAmount);
+        stakingContract.relockStake(validatorID, lockTime(), balanceOfUnlocked());
         withdrawEnabled = false;
     }
 
