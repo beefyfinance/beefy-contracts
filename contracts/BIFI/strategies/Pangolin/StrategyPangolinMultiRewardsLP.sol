@@ -71,7 +71,7 @@ contract StrategyPangolinMultiRewardsLP is StratManager, FeeManager {
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
         require(_nativeToLp0Route[0] == native, "nativeToLp0Route[0] != native");
-        require(_nativeToLp0Route[_nativeToLp1Route.length - 1] == lpToken1, "nativeToLp0Route[last] != lpToken0");
+        require(_nativeToLp0Route[_nativeToLp0Route.length - 1] == lpToken0, "nativeToLp0Route[last] != lpToken0");
         nativeToLp0Route = _nativeToLp0Route;
 
         lpToken1 = IUniswapV2Pair(want).token1();
@@ -183,7 +183,7 @@ contract StrategyPangolinMultiRewardsLP is StratManager, FeeManager {
     function addLiquidity() internal {
         uint256 nativeHalf = IERC20(native).balanceOf(address(this)).div(2);
 
-         if (lpToken0 != native) {
+        if (lpToken0 != native) {
             IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeHalf, 0, nativeToLp0Route, address(this), block.timestamp);
         }
 
@@ -355,9 +355,5 @@ contract StrategyPangolinMultiRewardsLP is StratManager, FeeManager {
 
     function reward1ToNative() external view returns (address[] memory) {
         return rewardToNativeRoutes[1];
-    }
-
-    function reward2ToNative() external view returns (address[] memory) {
-        return rewardToNativeRoutes[2];
     }
 }
