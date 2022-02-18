@@ -324,13 +324,13 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
         }
     }
 
-    function addRewardRoute(address[] memory _rewardToOutputRoute) external onlyOwner {
+    function addRewardRoute(address[] memory _rewardToOutputRoute) external onlyManager {
         IERC20(_rewardToOutputRoute[0]).safeApprove(unirouter, 0);
         IERC20(_rewardToOutputRoute[0]).safeApprove(unirouter, uint256(-1));
         rewardToOutputRoute.push(_rewardToOutputRoute);
     }
 
-    function removeLastRewardRoute() external onlyOwner {
+    function removeLastRewardRoute() external onlyManager {
         address reward = rewardToOutputRoute[rewardToOutputRoute.length - 1][0];
         if (reward != lpToken0 && reward != lpToken1) {
             IERC20(reward).safeApprove(unirouter, 0);
