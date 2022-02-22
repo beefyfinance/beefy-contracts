@@ -160,7 +160,7 @@ contract StrategyTriMiniChefDualLP is StratManager, FeeManager, GasThrottler {
             } else {
                 if (harvested) {
                     uint256 rewardBal = IERC20(reward).balanceOf(address(this));
-                    if (rewardBal > 0) {
+                    if (rewardBal > 0 && canTrade(rewardBal, rewardToOutputRoute)) {
                         IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardBal, 0, rewardToOutputRoute, address(this), now);
                     }
                     harvestAndSwapped = true;
