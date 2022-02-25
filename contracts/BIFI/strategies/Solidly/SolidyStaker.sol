@@ -182,7 +182,7 @@ contract SolidlyStaker is Ownable, Pausable, ReentrancyGuard {
                 uint256 _accRewardPerShare = pool.accRewardPerShare[_rewards[i]];
                 _accRewardPerShare = _accRewardPerShare.add((_rewardBal.mul(1e18).div(pool.totalDepositedAmount)));
                 _amounts[i] = user.amount
-                    .mul(pool.accRewardPerShare[_rewards[i]])
+                    .mul(_accRewardPerShare)
                     .div(1e18)
                     .sub(user.rewardDebt[_rewards[i]]);
             }
@@ -217,7 +217,6 @@ contract SolidlyStaker is Ownable, Pausable, ReentrancyGuard {
     // Deposit tokens.
     function deposit(uint256 _pid, uint256 _amount) external whenNotPaused {
         require(veTokenId > 0, "!veTokenId");
-        require(_amount > 0, "amount == 0");
 
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
