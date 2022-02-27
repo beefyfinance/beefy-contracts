@@ -438,7 +438,7 @@ contract SolidlyStaker is ERC20, Ownable, Pausable, ReentrancyGuard {
     // merge voting power of two veTokens by burning the _from veToken, _from must be detached and not voted with
     // reward token is minted to specified user
     function _merge(address _user, uint256 _fromId) internal nonReentrant {
-        uint256 _amount = veToken.locked(_fromId);
+        (uint256 _amount,) = veToken.locked(_fromId);
         veToken.merge(_fromId, veTokenId);
         _mint(_user, _amount);
 
@@ -481,7 +481,7 @@ contract SolidlyStaker is ERC20, Ownable, Pausable, ReentrancyGuard {
 
     // whitelist new token
     function whitelist(address _token) external onlyManager {
-        want.safeTransferFrom(msg.sender, address(this), voter.listingFee());
+        want.safeTransferFrom(msg.sender, address(this), voter.listing_fee());
         voter.whitelist(_token, veTokenId);
     }
 
