@@ -33,9 +33,10 @@ interface IVeToken {
     function increase_amount(uint _tokenId, uint _value) external;
     function increase_unlock_time(uint _tokenId, uint _lock_duration) external;
     function merge(uint _from, uint _to) external;
-    function locked(uint) external view returns (uint256, uint256);
+    function locked(uint) external view returns (uint, uint);
     function safeTransferFrom(address from, address to, uint tokenId) external;
     function isApprovedOrOwner(address spender, uint256 tokenId) external view returns (bool);
+    function balanceOfNFT(uint256 tokenId) external view returns (uint);
 }
 
 interface IGauge {
@@ -60,8 +61,12 @@ interface IVeDist {
     function claim(uint tokenId) external returns (uint);
 }
 
-interface IMinter{
+interface IMinter {
     function _ve_dist() external view returns (address);
+}
+
+interface IBaseV1Pair {
+    function claimFees() external returns (uint claimed0, uint claimed1);
 }
 
 // SolidlyStaker
@@ -379,10 +384,11 @@ contract SolidlyStaker is ERC20, Ownable, Pausable, ReentrancyGuard {
         address[] memory _bribes;
         for (uint256 i; i < _tokenVote.length; i++) {
             _bribes[i] = voter.bribes(_tokenVote[i]);
+            IBaseV1Pair(_tokenVote[i]).claimFees();
         }
-
         voter.claimBribes(_bribes, _tokens, _veTokenId);
-        for (uint256 i; i < _tokenVote.length; i++) {
+
+        for (uint256 i; i < _tokens.length; i++) {
             for (uint256 j; j < _tokens[i].length; j++) {
                 address _reward = _tokens[i][j];
                 uint256 _rewardBal = IERC20(_reward).balanceOf(address(this)).sub(storedRewardBalance[_reward]);
@@ -481,7 +487,10 @@ contract SolidlyStaker is ERC20, Ownable, Pausable, ReentrancyGuard {
 
     // whitelist new token
     function whitelist(address _token) external onlyManager {
-        want.safeTransferFrom(msg.sender, address(this), voter.listing_fee());
+        uint256 _fee = voter.listing_fee();
+        if (veToken.balanceOfNFT(veTokenId) <= _fee) {
+            want.safeTransferFrom(msg.sender, address(this), _fee);
+        }
         voter.whitelist(_token, veTokenId);
     }
 
