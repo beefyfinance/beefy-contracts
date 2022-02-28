@@ -23,17 +23,24 @@ contract ProdVaultTest is BaseTestHarness {
     address constant keeper = 0x10aee6B5594942433e7Fc2783598c979B030eF3D;
 
     IERC20Like want;
+    uint256 slot; // Storage slot that holds `balanceOf` mapping.
+    bool slotSet;
+    // Input amount of test want.
     uint256 wantStartingAmount = 100 ether;
 
     function setUp() public {
-        console.log("Begin setup");
         want = IERC20Like(vault.want());
-        console.log("strat", vault.strategy());
         strategy = IStrategyComplete(vault.strategy());
         
         user = new VaultUser();
-        modifyBalance(vault.want(), address(user), wantStartingAmount);
-        console.log("End setup");
+
+        // Slot set is for performance speed up.
+        if (slotSet) {
+            modifyBalanceWithKnownSlot(vault.want(), address(user), wantStartingAmount, slot);
+        } else {
+            slot = modifyBalance(vault.want(), address(user), wantStartingAmount);
+            slotSet = true;
+        }
     }
 
     function test_depositAndWithdraw() external {
@@ -82,6 +89,38 @@ contract ProdVaultTest is BaseTestHarness {
         assertTrue(wantBalanceFinal > wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
         assertTrue(lastHarvestAfterHarvest > lastHarvest, "Expected lastHarvestAfterHarvest > lastHarvest");
         assertTrue(lastHarvestAfterHarvest == timestampBeforeHarvest + delay, "Expected lastHarvestAfterHarvest == timestampBeforeHarvest + delay");
+    }
+
+    function test_panic() external {
+        _unpauseIfPaused();
+        
+        _depositIntoVault();
+
+        uint256 vaultBalance = vault.balance();
+        uint256 balanceOfPool = strategy.balanceOfPool();
+        uint256 balanceOfWant = strategy.balanceOfWant();
+
+        assertTrue(balanceOfPool > balanceOfWant);
+        
+        FORGE_VM.prank(keeper);
+        strategy.panic();
+
+        uint256 vaultBalanceAfterPanic = vault.balance();
+        uint256 balanceOfPoolAfterPanic = strategy.balanceOfPool();
+        uint256 balanceOfWantAfterPanic = strategy.balanceOfWant();
+
+        assertTrue(vaultBalanceAfterPanic > vaultBalance, "Expected vaultBalanceAfterPanic > vaultBalance");
+        assertTrue(balanceOfWantAfterPanic > balanceOfPoolAfterPanic, "Expected balanceOfWantAfterPanic > balanceOfPoolAfterPanic");
+
+        // Users can't deposit.
+        modifyBalanceWithKnownSlot(vault.want(), address(user), wantStartingAmount, slot);
+        FORGE_VM.expectRevert("Pausable: paused");
+        user.depositAll(vault);
+        
+        // User can still withdraw
+        user.withdrawAll(vault);
+        uint256 wantBalanceFinal = want.balanceOf(address(user));
+        assertTrue(wantBalanceFinal > wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
     }
 
     /*         */
