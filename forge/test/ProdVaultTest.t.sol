@@ -23,7 +23,7 @@ contract ProdVaultTest is BaseTestHarness {
     address constant keeper = 0x10aee6B5594942433e7Fc2783598c979B030eF3D;
 
     IERC20Like want;
-    uint256 wantStartingAmount = 1 ether;
+    uint256 wantStartingAmount = 100 ether;
 
     function setUp() public {
         console.log("Begin setup");
@@ -73,7 +73,7 @@ contract ProdVaultTest is BaseTestHarness {
         uint256 lastHarvestAfterHarvest = strategy.lastHarvest();
 
         console.log("Withdrawing all want.");
-        vault.withdrawAll();
+        user.withdrawAll(vault);
 
         uint256 wantBalanceFinal = want.balanceOf(address(user));
 
