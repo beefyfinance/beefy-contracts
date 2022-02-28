@@ -15,16 +15,15 @@ contract BaseTestHarness is DSTest {
     /* Forge Hacks */
     /*             */
 
-    function modifyBalance(address token_, address user_, uint256 amount_) internal {
+    function modifyBalance(address token_, address user_, uint256 amount_) internal returns (uint256 slot_) {
         IERC20Like erc20 = IERC20Like(token_);
-        uint256 slotToTest;
         bool found;
         for (uint256 i = 0; i < 10; i++) {  
             // Get before value in case the slot is wrong, so can restore the value.
-            bytes32 beforeValue = FORGE_VM.load(address(token_), keccak256(abi.encode(user_, slotToTest)));
+            bytes32 beforeValue = FORGE_VM.load(address(token_), keccak256(abi.encode(user_, slot_)));
             
             // Modify storage slot.
-            FORGE_VM.store(address(token_), keccak256(abi.encode(user_, slotToTest)), bytes32(amount_));
+            FORGE_VM.store(address(token_), keccak256(abi.encode(user_, slot_)), bytes32(amount_));
 
             uint256 balance = erc20.balanceOf(user_);
             
@@ -34,24 +33,17 @@ contract BaseTestHarness is DSTest {
             }
 
             // Restore value.
-            FORGE_VM.store(address(token_), keccak256(abi.encode(user_, slotToTest)), beforeValue);
-            slotToTest += 1;
+            FORGE_VM.store(address(token_), keccak256(abi.encode(user_, slot_)), beforeValue);
+            slot_ += 1;
         }
 
         if (!found) {
             assertTrue(false, "Never found storage slot to modify for ERC20 balance hack.");
-        } 
+        }
     }
 
-    function erc20MintHack(
-        IERC20Like token_,
-        address account_,
-        uint256 slot_,
-        uint256 amountToMint_
-    ) public {
-        uint256 currentBalance = token_.balanceOf(account_);
-        uint256 newBalance = currentBalance + amountToMint_;
-        FORGE_VM.store(address(token_), keccak256(abi.encode(account_, slot_)), bytes32(newBalance));
+    function modifyBalanceWithKnownSlot(address token_, address user_, uint256 amount_, uint256 slot) internal {
+        FORGE_VM.store(address(token_), keccak256(abi.encode(user_, slot)), bytes32(amount_));
     }
 
     /**
