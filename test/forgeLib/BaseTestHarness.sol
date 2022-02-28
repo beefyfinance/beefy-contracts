@@ -5,7 +5,7 @@ import {DSTest} from "./test.sol";
 import {Vm} from "./Vm.sol";
 import {console} from "./console.sol";
 
-interface ERC20Like {
+interface IERC20Like {
     function balanceOf(address account_) external view returns (uint256 balance_);
 }
 
@@ -17,8 +17,29 @@ contract BaseTestHarness is DSTest {
     /* Forge Hacks */
     /*             */
 
+    function modifyBalance(address token_, uint256 amount_, address user_) internal {
+        IERC20Like erc20 = IERC20Like(token_);
+        uint256 slotToTest;
+        while (true) {
+            // Get before value in case the slot is wrong, so can restore the value.
+            bytes32 beforeValue = FORGE_VM.load(address(token_), keccak256(abi.encode(user_, slotToTest)));
+            
+            // Modify storage slot.
+            FORGE_VM.store(address(token_), keccak256(abi.encode(user_, amount_)), bytes32(amount_));
+            
+            if (erc20.balanceOf(user_) == amount_) {
+                console.log("SLOT FOUND", slotToTest);
+                break;
+            }
+
+            // Restore value.
+            FORGE_VM.store(address(token_), keccak256(abi.encode(user_, amount_)), beforeValue);
+            slotToTest += 1;
+        }
+    }
+
     function erc20MintHack(
-        ERC20Like token_,
+        IERC20Like token_,
         address account_,
         uint256 slot_,
         uint256 amountToMint_
