@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.12;
 
 // Interfaces
 import {IBeefyVaultV6} from "../interfaces/IBeefyVaultV6.sol";
