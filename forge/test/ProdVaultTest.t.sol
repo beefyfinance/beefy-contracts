@@ -113,10 +113,13 @@ contract ProdVaultTest is BaseTestHarness {
         assertTrue(vaultBalanceAfterPanic > vaultBalance, "Expected vaultBalanceAfterPanic > vaultBalance");
         assertTrue(balanceOfWantAfterPanic > balanceOfPoolAfterPanic, "Expected balanceOfWantAfterPanic > balanceOfPoolAfterPanic");
 
+        console.log("Getting user more want.");
+        modifyBalanceWithKnownSlot(vault.want(), address(user), wantStartingAmount, slot);
+        console.log("Approving more want.");
+        user.approve(address(want), address(vault), wantStartingAmount);
+        
         // Users can't deposit.
         console.log("Trying to deposit while panicked.");
-        modifyBalanceWithKnownSlot(vault.want(), address(user), wantStartingAmount, slot);
-        user.approve(address(want), address(vault), wantStartingAmount);
         FORGE_VM.expectRevert("Pausable: paused");
         user.depositAll(vault);
         
