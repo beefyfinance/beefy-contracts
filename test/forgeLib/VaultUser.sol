@@ -5,10 +5,29 @@ pragma solidity ^0.6.0;
 import {IBeefyVaultV6} from "../../contracts/BIFI/interfaces/beefy/IBeefyVaultV6.sol";
 
 interface IERC20Like {
+
+    function approve(address spender_, uint256 amount_) external;
+
     function balanceOf(address account_) external view returns (uint256 balance_);
 }
 
 contract VaultUser {
+
+    /*                 */
+    /* ERC20 Functions */
+    /*                 */
+
+    function infiniteApprove(address token_, address spender_) external {
+        approve(token_, spender_, type(uint256).max);
+    }
+
+    function approve(address token_, address spender_, uint256 amount_) public {
+        IERC20Like(token_).approve(spender_, amount_);
+    }
+
+    /*                 */
+    /* Vault Functions */
+    /*                 */
 
     function deposit(IBeefyVaultV6 vault_, uint256 amount_) external returns (uint256 mooShares_) {
         vault_.deposit(amount_);
