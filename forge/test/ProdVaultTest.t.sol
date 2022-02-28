@@ -39,10 +39,7 @@ contract ProdVaultTest is BaseTestHarness {
     function test_depositAndWithdraw() external {
         _unpauseIfPaused();
 
-        console.log("Approving want spend.");
-        user.approve(address(want), address(vault), wantStartingAmount);
-        console.log("Depositing all want into vault", wantStartingAmount);
-        user.depositAll(vault);
+        _depositIntoVault();
         
         shift(100 seconds);
 
@@ -51,8 +48,40 @@ contract ProdVaultTest is BaseTestHarness {
 
         uint256 wantBalanceFinal = want.balanceOf(address(user));
         console.log("Final user want balance", wantBalanceFinal);
-        assertTrue(wantBalanceFinal <= wantStartingAmount);
-        assertTrue(wantBalanceFinal > wantStartingAmount * 99 / 100);
+        assertTrue(wantBalanceFinal <= wantStartingAmount, "Expected wantBalanceFinal <= wantStartingAmount");
+        assertTrue(wantBalanceFinal > wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
+    }
+
+    function test_harvest() external {
+        _unpauseIfPaused();
+        
+        _depositIntoVault();
+
+        uint256 vaultBalance = vault.balance();
+        uint256 pricePerFullShare = vault.getPricePerFullShare();
+        uint256 lastHarvest = strategy.lastHarvest();
+
+        uint256 delay = 100 seconds;
+        uint256 timestampBeforeHarvest = block.timestamp;
+        shift(delay);
+
+        console.log("Harvesting vault.");
+        strategy.harvest(address(user));
+
+        uint256 vaultBalanceAfterHarvest = vault.balance();
+        uint256 pricePerFullShareAfterHarvest = vault.getPricePerFullShare();
+        uint256 lastHarvestAfterHarvest = strategy.lastHarvest();
+
+        console.log("Withdrawing all want.");
+        vault.withdrawAll();
+
+        uint256 wantBalanceFinal = want.balanceOf(address(user));
+
+        assertTrue(vaultBalanceAfterHarvest > vaultBalance, "Expected vaultBalanceAfterHarvest > vaultBalance");
+        assertTrue(pricePerFullShareAfterHarvest > pricePerFullShare, "Expected pricePerFullShareAfterHarvest > pricePerFullShare");
+        assertTrue(wantBalanceFinal > wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
+        assertTrue(lastHarvestAfterHarvest > lastHarvest, "Expected lastHarvestAfterHarvest > lastHarvest");
+        assertTrue(lastHarvestAfterHarvest == timestampBeforeHarvest + delay, "Expected lastHarvestAfterHarvest == timestampBeforeHarvest + delay");
     }
 
     /*         */
@@ -65,5 +94,12 @@ contract ProdVaultTest is BaseTestHarness {
             FORGE_VM.prank(keeper);
             strategy.unpause();
         }
+    }
+
+    function _depositIntoVault() internal {
+        console.log("Approving want spend.");
+        user.approve(address(want), address(vault), wantStartingAmount);
+        console.log("Depositing all want into vault", wantStartingAmount);
+        user.depositAll(vault);
     }
 }
