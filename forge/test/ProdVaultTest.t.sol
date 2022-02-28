@@ -15,7 +15,7 @@ import {VaultUser} from "./users/VaultUser.sol";
 contract ProdVaultTest is BaseTestHarness {
 
     // Input your vault to test here.
-    IBeefyVaultV6 constant vault = IBeefyVaultV6(0x453054B9C2CD3dF1c57E0866241f460B78eE3ebB);
+    IBeefyVaultV6 constant vault = IBeefyVaultV6(0x1313b9C550bbDF55Fc06f63a41D8BDC719d056A6);
     IStrategyComplete strategy;
 
     // Users
@@ -32,7 +32,7 @@ contract ProdVaultTest is BaseTestHarness {
         strategy = IStrategyComplete(vault.strategy());
         
         user = new VaultUser();
-        modifyBalance(vault.want(), wantStartingAmount, address(user));
+        modifyBalance(vault.want(), address(user), wantStartingAmount);
         console.log("End setup");
     }
 

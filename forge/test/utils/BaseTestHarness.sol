@@ -15,7 +15,7 @@ contract BaseTestHarness is DSTest {
     /* Forge Hacks */
     /*             */
 
-    function modifyBalance(address token_, uint256 amount_, address user_) internal {
+    function modifyBalance(address token_, address user_, uint256 amount_) internal {
         IERC20Like erc20 = IERC20Like(token_);
         uint256 slotToTest;
         bool found;
