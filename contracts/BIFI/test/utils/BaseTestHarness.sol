@@ -52,6 +52,7 @@ contract BaseTestHarness is DSTest {
      * @param seconds_ to shift block.timestamp and block.number ahead.
      */
     function shift(uint256 seconds_) public {
+        console.log("Shifting forward seconds", seconds_);
         FORGE_VM.warp(block.timestamp + seconds_);
         FORGE_VM.roll(block.number + getApproximateBlocksFromSeconds(seconds_));
     }
