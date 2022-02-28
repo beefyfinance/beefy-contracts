@@ -1,10 +1,10 @@
 [default]
-src = 'src'
+src = 'contracts/BIFI'
 test = 'test'
 out = 'artifacts'
 libs = ['node_modules']
 remappings = [
-    '@chainlink/=node_modules/@chainlink/contracts/src/',
+    '@chainlink/=node_modules/@chainlink/',
     '@ensdomains/=node_modules/@ensdomains/',
     '@openzeppelin-2/=node_modules/@openzeppelin-2/contracts/',
     '@openzeppelin-4/=node_modules/@openzeppelin-4/contracts/',
