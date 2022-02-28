@@ -14,10 +14,13 @@ import {IStrategyComplete} from "../../contracts/BIFI/interfaces/beefy/IStrategy
 
 contract ProdVaultTest is DSTest {
 
-    IBeefyVaultV6 vault;
+    // Input your vault to test here.
+    IBeefyVaultV6 vault = IBeefyVaultV6(0x1313b9C550bbDF55Fc06f63a41D8BDC719d056A6);
     IStrategyComplete strategy;
     
     function setup() external {
+        strategy = IStrategyComplete(vault.strategy());
+
 
     }
 }
