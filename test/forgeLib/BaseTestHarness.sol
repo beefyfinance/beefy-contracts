@@ -1,13 +1,11 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 import {DSTest} from "./test.sol";
 import {Vm} from "./Vm.sol";
 import {console} from "./console.sol";
 
-interface IERC20Like {
-    function balanceOf(address account_) external view returns (uint256 balance_);
-}
+import {IERC20Like} from "./IERC20Like.sol";
 
 contract BaseTestHarness is DSTest {
     // Api to modify test vm state.

@@ -4,12 +4,7 @@ pragma solidity ^0.6.0;
 // Interfaces
 import {IBeefyVaultV6} from "../../contracts/BIFI/interfaces/beefy/IBeefyVaultV6.sol";
 
-interface IERC20Like {
-
-    function approve(address spender_, uint256 amount_) external;
-
-    function balanceOf(address account_) external view returns (uint256 balance_);
-}
+import {IERC20Like} from "./IERC20Like.sol";
 
 contract VaultUser {
 

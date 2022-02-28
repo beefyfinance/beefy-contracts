@@ -11,6 +11,7 @@ import {StrategyCommonChefLP} from "../../contracts/BIFI/strategies/Common/Strat
 // Interfaces
 import {IBeefyVaultV6} from "../../contracts/BIFI/interfaces/beefy/IBeefyVaultV6.sol";
 import {IStrategyComplete} from "../../contracts/BIFI/interfaces/beefy/IStrategyComplete.sol";
+import {IERC20Like} from "../forgeLib/IERC20Like.sol";
 
 // Users
 import {VaultUser} from "../forgeLib/VaultUser.sol";
@@ -25,17 +26,28 @@ contract ProdVaultTest is BaseTestHarness {
     VaultUser user;
     address constant keeper = 0x10aee6B5594942433e7Fc2783598c979B030eF3D;
 
-    uint256 wantAmount = 1 ether;
+    uint256 wantStartingAmount = 1 ether;
 
     function setup() external {
         strategy = IStrategyComplete(vault.strategy());
         
         user = new VaultUser();
-        modifyBalance(vault.want(), wantAmount, address(user));
+        modifyBalance(vault.want(), wantStartingAmount, address(user));
     }
 
     function test_depositAndWithdraw() external {
         _unpauseIfPaused();
+
+        user.approve(vault.want(), address(vault), wantStartingAmount);
+        user.depositAll(vault);
+        
+        shift(100 seconds);
+
+        user.withdrawAll(vault);
+
+        uint256 wantBalanceFinal = IERC20Like(vault.want()).balanceOf(address(user));
+        assertTrue(wantBalanceFinal <= wantStartingAmount);
+        assertTrue(wantBalanceFinal > wantStartingAmount * 99 / 100);
     }
 
     /*         */
