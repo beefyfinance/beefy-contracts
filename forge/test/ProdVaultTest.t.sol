@@ -4,13 +4,9 @@ pragma solidity ^0.6.0;
 
 import {BaseTestHarness, console} from "./utils/BaseTestHarness.sol";
 
-// Contracts
-import {BeefyVaultV6} from "../vaults/BeefyVaultV6.sol";
-import {StrategyCommonChefLP} from "../strategies/Common/StrategyCommonChefLP.sol";
-
 // Interfaces
-import {IBeefyVaultV6} from "../interfaces/beefy/IBeefyVaultV6.sol";
-import {IStrategyComplete} from "../interfaces/beefy/IStrategyComplete.sol";
+import {IBeefyVaultV6} from "./interfaces/IBeefyVaultV6.sol";
+import {IStrategyComplete} from "./interfaces/IStrategyComplete.sol";
 import {IERC20Like} from "./interfaces/IERC20Like.sol";
 
 // Users

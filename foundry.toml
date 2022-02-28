@@ -1,5 +1,5 @@
 [default]
-src = 'contracts/BIFI'
+src = 'forge'
 test = 'test'
 out = 'artifacts'
 libs = ['node_modules']
