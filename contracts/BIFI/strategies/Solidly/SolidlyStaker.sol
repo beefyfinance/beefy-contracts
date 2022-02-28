@@ -49,6 +49,7 @@ interface IGauge {
     function withdraw(uint amount) external;
     function withdrawToken(uint amount, uint tokenId) external;
     function tokenIds(address owner) external view returns (uint256 tokenId);
+    function claimFees() external;
 }
 
 interface IBribe {
@@ -63,10 +64,6 @@ interface IVeDist {
 
 interface IMinter {
     function _ve_dist() external view returns (address);
-}
-
-interface IBaseV1Pair {
-    function claimFees() external returns (uint claimed0, uint claimed1);
 }
 
 // SolidlyStaker
@@ -375,6 +372,30 @@ contract SolidlyStaker is ERC20, Ownable, Pausable, ReentrancyGuard {
         voter.reset(_veTokenId);
     }
 
+    // notify bribe contract that it has fees to distribute
+    function notifyTradingFees(address[] memory _tokenVote) public {
+        for (uint256 i; i < _tokenVote.length; i++) {
+            IGauge _gauge = IGauge(voter.gauges(_tokenVote[i]));
+            _gauge.claimFees();
+        }
+    }
+
+    // view amount of pending fees and bribe rewards to be claimed from the bribe contracts
+    function pendingOwnerRewards(
+        uint256 _veTokenId,
+        address[] memory _tokenVote,
+        address[][] memory _tokens
+    ) external view returns (uint256[][] memory) {
+        uint256[][] memory _amounts;
+        for (uint256 i; i < _tokenVote.length; i++) {
+            IBribe _bribe = IBribe(voter.bribes(_tokenVote[i]));
+            for (uint256 j; j < _tokens.length; j++) {
+                _amounts[i][j] = _bribe.earned(_tokens[i][j], _veTokenId);
+            }
+        }
+        return _amounts;
+    }
+
     // claim owner rewards such as trading fees and bribes from gauges, transferred to rewardPool
     function claimOwnerRewards(
         uint256 _veTokenId,
@@ -384,7 +405,6 @@ contract SolidlyStaker is ERC20, Ownable, Pausable, ReentrancyGuard {
         address[] memory _bribes;
         for (uint256 i; i < _tokenVote.length; i++) {
             _bribes[i] = voter.bribes(_tokenVote[i]);
-            IBaseV1Pair(_tokenVote[i]).claimFees();
         }
         voter.claimBribes(_bribes, _tokens, _veTokenId);
 
@@ -431,13 +451,13 @@ contract SolidlyStaker is ERC20, Ownable, Pausable, ReentrancyGuard {
 
     // merge veToken with the main veToken on this contract to mint reward
     function merge(uint256 _fromId) external {
-        require(veToken.isApprovedOrOwner(msg.sender, _fromId), "!veToken owner or approved");
+        veToken.safeTransferFrom(msg.sender, address(this), _fromId);
         _merge(msg.sender, _fromId);
     }
 
     // merge veToken with the main veToken on this contract to mint reward for another user
     function mergeFor(address _user, uint256 _fromId) external {
-        require(veToken.isApprovedOrOwner(msg.sender, _fromId), "!veToken owner or approved");
+        veToken.safeTransferFrom(msg.sender, address(this), _fromId);
         _merge(_user, _fromId);
     }
 
