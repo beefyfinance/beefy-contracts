@@ -32,12 +32,12 @@ contract ProdVaultTest is BaseTestHarness {
         strategy = IStrategyComplete(vault.strategy());
         
         user = new VaultUser();
-        // modifyBalance(vault.want(), wantStartingAmount, address(user));
+        modifyBalance(vault.want(), wantStartingAmount, address(user));
         console.log("End setup");
     }
 
     function test_depositAndWithdraw() external {
-        // _unpauseIfPaused();
+        _unpauseIfPaused();
 
         console.log("Approving want spend.");
         user.approve(address(want), address(vault), wantStartingAmount);
