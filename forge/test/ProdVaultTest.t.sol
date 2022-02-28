@@ -26,7 +26,7 @@ contract ProdVaultTest is BaseTestHarness {
     uint256 slot; // Storage slot that holds `balanceOf` mapping.
     bool slotSet;
     // Input amount of test want.
-    uint256 wantStartingAmount = 100 ether;
+    uint256 wantStartingAmount = 10 ether;
 
     function setUp() public {
         want = IERC20Like(vault.want());
@@ -102,6 +102,7 @@ contract ProdVaultTest is BaseTestHarness {
 
         assertTrue(balanceOfPool > balanceOfWant);
         
+        console.log("Calling panic()");
         FORGE_VM.prank(keeper);
         strategy.panic();
 
@@ -113,7 +114,9 @@ contract ProdVaultTest is BaseTestHarness {
         assertTrue(balanceOfWantAfterPanic > balanceOfPoolAfterPanic, "Expected balanceOfWantAfterPanic > balanceOfPoolAfterPanic");
 
         // Users can't deposit.
+        console.log("Trying to deposit while panicked.");
         modifyBalanceWithKnownSlot(vault.want(), address(user), wantStartingAmount, slot);
+        user.approve(address(want), address(vault), wantStartingAmount);
         FORGE_VM.expectRevert("Pausable: paused");
         user.depositAll(vault);
         
