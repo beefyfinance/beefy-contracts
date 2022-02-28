@@ -21,6 +21,8 @@ contract ProdVaultTest is BaseTestHarness {
     // Users
     VaultUser user;
     address constant keeper = 0x10aee6B5594942433e7Fc2783598c979B030eF3D;
+    address constant vaultOwner = 0x4560a83b7eED32EB78C48A5bedE9B608F3184df0; // fantom
+    address constant strategyOwner = 0x847298aC8C28A9D66859E750456b92C2A67b876D; // fantom
 
     IERC20Like want;
     uint256 slot; // Storage slot that holds `balanceOf` mapping.
@@ -127,9 +129,23 @@ contract ProdVaultTest is BaseTestHarness {
         // User can still withdraw
         console.log("User withdraws all.");
         user.withdrawAll(vault);
-        
+
         uint256 wantBalanceFinal = want.balanceOf(address(user));
         assertTrue(wantBalanceFinal > wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
+    }
+
+    function test_correctOwnerAndKeeper() external {
+        assertTrue(vault.owner() == vaultOwner, "Wrong vault owner.");
+        assertTrue(strategy.owner() == strategyOwner, "Wrong strategy owner.");
+        assertTrue(strategy.keeper() == keeper, "Wrong keeper.");
+    }
+
+    function test_harvestOnDeposit() external {
+        if (strategy.harvestOnDeposit()) {
+            assertTrue(strategy.withdrawalFee() == 0, "Vault is harvestOnDeposit but has withdrawal fee.");
+        } else {
+            assertTrue(strategy.keeper() == keeper, "Vault is not harvestOnDeposit but doesn't have withdrawal fee.");
+        }
     }
 
     /*         */
