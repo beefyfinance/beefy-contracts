@@ -76,7 +76,8 @@ contract ProdVaultTest is BaseTestHarness {
         shift(delay);
 
         console.log("Harvesting vault.");
-        strategy.harvest(address(user));
+        bool didHarvest = _harvest();
+        assertTrue(didHarvest, "Harvest failed.");
 
         uint256 vaultBalanceAfterHarvest = vault.balance();
         uint256 pricePerFullShareAfterHarvest = vault.getPricePerFullShare();
@@ -200,5 +201,17 @@ contract ProdVaultTest is BaseTestHarness {
         user_.approve(address(want), address(vault), wantStartingAmount);
         console.log("Depositing all want into vault", wantStartingAmount);
         user_.depositAll(vault);
+    }
+
+    function _harvest() internal returns (bool didHarvest_) {
+        // Retry a few times
+        for (uint256 index = 0; index < 5; index++) {
+            try strategy.harvest(address(user)) {
+                didHarvest_ = true;
+                break;
+            } catch {
+                shift(delay);
+            }
+        }
     }
 }
