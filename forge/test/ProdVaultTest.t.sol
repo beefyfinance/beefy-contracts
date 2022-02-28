@@ -146,18 +146,24 @@ contract ProdVaultTest is BaseTestHarness {
 
         uint256 pricePerFullShare = vault.getPricePerFullShare();
 
+        shift(delay);
+
+        console.log("User2 depositAll.");
         _depositIntoVault(user2);
         
         uint256 pricePerFullShareAfterUser2Deposit = vault.getPricePerFullShare();
 
+        shift(delay);
+
+        console.log("User1 withdrawAll.");
         user.withdrawAll(vault);
 
         uint256 user1WantBalanceFinal = want.balanceOf(address(user));
         uint256 pricePerFullShareAfterUser1Withdraw = vault.getPricePerFullShare();
 
-        assertTrue(pricePerFullShareAfterUser2Deposit > pricePerFullShare);
-        assertTrue(pricePerFullShareAfterUser1Withdraw > pricePerFullShareAfterUser2Deposit);
-        assertTrue(user1WantBalanceFinal > wantStartingAmount * 99 / 100);
+        assertTrue(pricePerFullShareAfterUser2Deposit >= pricePerFullShare, "Expected pricePerFullShareAfterUser2Deposit > pricePerFullShare");
+        assertTrue(pricePerFullShareAfterUser1Withdraw >= pricePerFullShareAfterUser2Deposit, "Expected pricePerFullShareAfterUser1Withdraw > pricePerFullShareAfterUser2Deposit");
+        assertTrue(user1WantBalanceFinal > wantStartingAmount * 99 / 100, "Expected user1WantBalanceFinal > wantStartingAmount * 99 / 100");
     }
 
     function test_correctOwnerAndKeeper() external {
