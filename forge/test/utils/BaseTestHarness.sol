@@ -20,7 +20,6 @@ contract BaseTestHarness is DSTest {
         uint256 slotToTest;
         bool found;
         for (uint256 i = 0; i < 10; i++) {  
-            console.log("Testing slot", i);
             // Get before value in case the slot is wrong, so can restore the value.
             bytes32 beforeValue = FORGE_VM.load(address(token_), keccak256(abi.encode(user_, slotToTest)));
             
@@ -28,11 +27,8 @@ contract BaseTestHarness is DSTest {
             FORGE_VM.store(address(token_), keccak256(abi.encode(user_, slotToTest)), bytes32(amount_));
 
             uint256 balance = erc20.balanceOf(user_);
-            console.log("balance", balance);
-            console.log("amount", amount_);
             
             if (balance == amount_) {
-                console.log("SLOT FOUND", slotToTest);
                 found = true;
                 break;
             }
@@ -43,7 +39,7 @@ contract BaseTestHarness is DSTest {
         }
 
         if (!found) {
-            assertTrue(false, "Never found slot.");
+            assertTrue(false, "Never found storage slot to modify for ERC20 balance hack.");
         } 
     }
 
