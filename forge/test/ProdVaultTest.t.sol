@@ -141,9 +141,12 @@ contract ProdVaultTest is BaseTestHarness {
     }
 
     function test_harvestOnDeposit() external {
-        if (strategy.harvestOnDeposit()) {
+        bool harvestOnDeposit = strategy.harvestOnDeposit();
+        if (harvestOnDeposit) {
+            console.log("Vault is harvestOnDeposit.");
             assertTrue(strategy.withdrawalFee() == 0, "Vault is harvestOnDeposit but has withdrawal fee.");
         } else {
+            console.log("Vault is NOT harvestOnDeposit.");
             assertTrue(strategy.keeper() == keeper, "Vault is not harvestOnDeposit but doesn't have withdrawal fee.");
         }
     }
