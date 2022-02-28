@@ -18,22 +18,33 @@ contract BaseTestHarness is DSTest {
     function modifyBalance(address token_, uint256 amount_, address user_) internal {
         IERC20Like erc20 = IERC20Like(token_);
         uint256 slotToTest;
-        while (true) {
+        bool found;
+        for (uint256 i = 0; i < 10; i++) {  
+            console.log("Testing slot", i);
             // Get before value in case the slot is wrong, so can restore the value.
             bytes32 beforeValue = FORGE_VM.load(address(token_), keccak256(abi.encode(user_, slotToTest)));
             
             // Modify storage slot.
-            FORGE_VM.store(address(token_), keccak256(abi.encode(user_, amount_)), bytes32(amount_));
+            FORGE_VM.store(address(token_), keccak256(abi.encode(user_, slotToTest)), bytes32(amount_));
+
+            uint256 balance = erc20.balanceOf(user_);
+            console.log("balance", balance);
+            console.log("amount", amount_);
             
-            if (erc20.balanceOf(user_) == amount_) {
+            if (balance == amount_) {
                 console.log("SLOT FOUND", slotToTest);
+                found = true;
                 break;
             }
 
             // Restore value.
-            FORGE_VM.store(address(token_), keccak256(abi.encode(user_, amount_)), beforeValue);
+            FORGE_VM.store(address(token_), keccak256(abi.encode(user_, slotToTest)), beforeValue);
             slotToTest += 1;
         }
+
+        if (!found) {
+            assertTrue(false, "Never found slot.");
+        } 
     }
 
     function erc20MintHack(
