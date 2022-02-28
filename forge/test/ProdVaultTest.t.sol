@@ -50,7 +50,7 @@ contract ProdVaultTest is BaseTestHarness {
     function test_depositAndWithdraw() external {
         _unpauseIfPaused();
 
-        _depositIntoVault();
+        _depositIntoVault(user);
         
         shift(100 seconds);
 
@@ -66,7 +66,7 @@ contract ProdVaultTest is BaseTestHarness {
     function test_harvest() external {
         _unpauseIfPaused();
         
-        _depositIntoVault();
+        _depositIntoVault(user);
 
         uint256 vaultBalance = vault.balance();
         uint256 pricePerFullShare = vault.getPricePerFullShare();
@@ -97,7 +97,7 @@ contract ProdVaultTest is BaseTestHarness {
     function test_panic() external {
         _unpauseIfPaused();
         
-        _depositIntoVault();
+        _depositIntoVault(user);
 
         uint256 vaultBalance = vault.balance();
         uint256 balanceOfPool = strategy.balanceOfPool();
@@ -134,6 +134,32 @@ contract ProdVaultTest is BaseTestHarness {
         assertTrue(wantBalanceFinal > wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
     }
 
+    function test_multipleUsers() external {
+        _unpauseIfPaused();
+        
+        _depositIntoVault(user);
+
+        // Setup second user.
+        VaultUser user2 = new VaultUser();
+        console.log("Getting want for user2.");
+        modifyBalanceWithKnownSlot(address(want), address(user2), wantStartingAmount, slot);
+
+        uint256 pricePerFullShare = vault.getPricePerFullShare();
+
+        _depositIntoVault(user2);
+        
+        uint256 pricePerFullShareAfterUser2Deposit = vault.getPricePerFullShare();
+
+        user.withdrawAll(vault);
+
+        uint256 user1WantBalanceFinal = want.balanceOf(address(user));
+        uint256 pricePerFullShareAfterUser1Withdraw = vault.getPricePerFullShare();
+
+        assertTrue(pricePerFullShareAfterUser2Deposit > pricePerFullShare);
+        assertTrue(pricePerFullShareAfterUser1Withdraw > pricePerFullShareAfterUser2Deposit);
+        assertTrue(user1WantBalanceFinal > wantStartingAmount * 99 / 100);
+    }
+
     function test_correctOwnerAndKeeper() external {
         assertTrue(vault.owner() == vaultOwner, "Wrong vault owner.");
         assertTrue(strategy.owner() == strategyOwner, "Wrong strategy owner.");
@@ -163,10 +189,10 @@ contract ProdVaultTest is BaseTestHarness {
         }
     }
 
-    function _depositIntoVault() internal {
+    function _depositIntoVault(VaultUser user_) internal {
         console.log("Approving want spend.");
-        user.approve(address(want), address(vault), wantStartingAmount);
+        user_.approve(address(want), address(vault), wantStartingAmount);
         console.log("Depositing all want into vault", wantStartingAmount);
-        user.depositAll(vault);
+        user_.depositAll(vault);
     }
 }
