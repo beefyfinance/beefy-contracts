@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.12;
 
 import {BaseTestHarness, console} from "./utils/BaseTestHarness.sol";
 
@@ -15,7 +15,7 @@ import {VaultUser} from "./users/VaultUser.sol";
 contract ProdVaultTest is BaseTestHarness {
 
     // Input your vault to test here.
-    IBeefyVaultV6 constant vault = IBeefyVaultV6(0x1313b9C550bbDF55Fc06f63a41D8BDC719d056A6);
+    IBeefyVaultV6 constant vault = IBeefyVaultV6(0x453054B9C2CD3dF1c57E0866241f460B78eE3ebB);
     IStrategyComplete strategy;
 
     // Users
@@ -25,16 +25,19 @@ contract ProdVaultTest is BaseTestHarness {
     IERC20Like want;
     uint256 wantStartingAmount = 1 ether;
 
-    function setup() external {
+    function setUp() public {
+        console.log("Begin setup");
         want = IERC20Like(vault.want());
+        console.log("strat", vault.strategy());
         strategy = IStrategyComplete(vault.strategy());
         
         user = new VaultUser();
-        modifyBalance(vault.want(), wantStartingAmount, address(user));
+        // modifyBalance(vault.want(), wantStartingAmount, address(user));
+        console.log("End setup");
     }
 
     function test_depositAndWithdraw() external {
-        _unpauseIfPaused();
+        // _unpauseIfPaused();
 
         console.log("Approving want spend.");
         user.approve(address(want), address(vault), wantStartingAmount);
