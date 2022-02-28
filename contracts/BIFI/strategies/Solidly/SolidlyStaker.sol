@@ -380,31 +380,16 @@ contract SolidlyStaker is ERC20, Ownable, Pausable, ReentrancyGuard {
         }
     }
 
-    // view amount of pending fees and bribe rewards to be claimed from the bribe contracts
-    function pendingOwnerRewards(
-        uint256 _veTokenId,
-        address[] memory _tokenVote,
-        address[][] memory _tokens
-    ) external view returns (uint256[][] memory) {
-        uint256[][] memory _amounts;
-        for (uint256 i; i < _tokenVote.length; i++) {
-            IBribe _bribe = IBribe(voter.bribes(_tokenVote[i]));
-            for (uint256 j; j < _tokens.length; j++) {
-                _amounts[i][j] = _bribe.earned(_tokens[i][j], _veTokenId);
-            }
-        }
-        return _amounts;
-    }
-
     // claim owner rewards such as trading fees and bribes from gauges, transferred to rewardPool
     function claimOwnerRewards(
         uint256 _veTokenId,
         address[] memory _tokenVote,
         address[][] memory _tokens
     ) external onlyVoter {
-        address[] memory _bribes;
+        address[] memory _bribes = new address[](_tokenVote.length);
         for (uint256 i; i < _tokenVote.length; i++) {
-            _bribes[i] = voter.bribes(_tokenVote[i]);
+            address _gauge = voter.gauges(_tokenVote[i]);
+            _bribes[i] = voter.bribes(_gauge);
         }
         voter.claimBribes(_bribes, _tokens, _veTokenId);
 
