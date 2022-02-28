@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
-import {DSTest} from "./test.sol";
-import {Vm} from "./Vm.sol";
-import {console} from "./console.sol";
+import {DSTest} from "../forge/test.sol";
+import {Vm} from "../forge/Vm.sol";
+import {console} from "../forge/console.sol";
 
-import {IERC20Like} from "./IERC20Like.sol";
+import {IERC20Like} from "../interfaces/IERC20Like.sol";
 
 contract BaseTestHarness is DSTest {
     // Api to modify test vm state.

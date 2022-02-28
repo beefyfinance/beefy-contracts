@@ -2,9 +2,9 @@
 pragma solidity ^0.6.0;
 
 // Interfaces
-import {IBeefyVaultV6} from "../../contracts/BIFI/interfaces/beefy/IBeefyVaultV6.sol";
+import {IBeefyVaultV6} from "../../BIFI/interfaces/beefy/IBeefyVaultV6.sol";
 
-import {IERC20Like} from "./IERC20Like.sol";
+import {IERC20Like} from "../interfaces/IERC20Like.sol";
 
 contract VaultUser {
 
