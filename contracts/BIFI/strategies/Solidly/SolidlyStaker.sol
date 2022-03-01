@@ -111,6 +111,8 @@ contract SolidlyStaker is ERC20, Ownable, Pausable, ReentrancyGuard {
     IVeToken public veToken;
     IVeDist public veDist;
     uint256 public veTokenId;
+    bool internal veTokenInitialized;
+
     IERC20 public want;
     address public treasury;
     address public rewardPool;
@@ -156,7 +158,7 @@ contract SolidlyStaker is ERC20, Ownable, Pausable, ReentrancyGuard {
         want.safeApprove(address(voter), uint256(-1));
     }
 
-    function setVeTokenId(uint256 _veTokenId) external onlyManager {
+    function setVeTokenId(uint256 _veTokenId) public onlyManager {
         require(_veTokenId == 0 || veToken.ownerOf(_veTokenId) == address(this), "!veTokenId");
         veTokenId = _veTokenId;
     }
@@ -213,7 +215,7 @@ contract SolidlyStaker is ERC20, Ownable, Pausable, ReentrancyGuard {
     }
 
     // View function to see pending reward.
-    function pendingReward(address _user, uint256 _pid) external view returns (address[] memory, uint256[] memory) {
+    function pendingReward(uint256 _pid, address _user) external view returns (address[] memory, uint256[] memory) {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256[] memory _amounts;
@@ -516,6 +518,17 @@ contract SolidlyStaker is ERC20, Ownable, Pausable, ReentrancyGuard {
         veToken.safeTransferFrom(address(this), _to, _veTokenId);
 
         emit TransferVeToken(msg.sender, _to, _veTokenId);
+    }
+
+    // transfer veToken and mint initial supply of wrapped token
+    function initializeVeToken(uint256 _veTokenId) external onlyManager {
+        require(veTokenInitialized == false, "initialized");
+        veTokenInitialized = true;
+        (uint256 _amount,) = veToken.locked(_veTokenId);
+        veToken.safeTransferFrom(msg.sender, address(this), _veTokenId);
+        setVeTokenId(_veTokenId);
+
+        _mint(msg.sender, _amount);
     }
 
     // Safe erc20 transfer function, just in case if rounding error causes pool to not have enough reward tokens.
