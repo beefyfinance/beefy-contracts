@@ -162,8 +162,8 @@ contract ProdVaultTest is BaseTestHarness {
         uint256 user1WantBalanceFinal = want.balanceOf(address(user));
         uint256 pricePerFullShareAfterUser1Withdraw = vault.getPricePerFullShare();
 
-        assertTrue(pricePerFullShareAfterUser2Deposit >= pricePerFullShare, "Expected pricePerFullShareAfterUser2Deposit > pricePerFullShare");
-        assertTrue(pricePerFullShareAfterUser1Withdraw >= pricePerFullShareAfterUser2Deposit, "Expected pricePerFullShareAfterUser1Withdraw > pricePerFullShareAfterUser2Deposit");
+        assertTrue(pricePerFullShareAfterUser2Deposit >= pricePerFullShare, "Expected pricePerFullShareAfterUser2Deposit >= pricePerFullShare");
+        assertTrue(pricePerFullShareAfterUser1Withdraw >= pricePerFullShareAfterUser2Deposit, "Expected pricePerFullShareAfterUser1Withdraw >= pricePerFullShareAfterUser2Deposit");
         assertTrue(user1WantBalanceFinal > wantStartingAmount * 99 / 100, "Expected user1WantBalanceFinal > wantStartingAmount * 99 / 100");
     }
 
