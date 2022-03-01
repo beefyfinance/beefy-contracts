@@ -205,11 +205,20 @@ contract ProdVaultTest is BaseTestHarness {
 
     function _harvest() internal returns (bool didHarvest_) {
         // Retry a few times
-        for (uint256 index = 0; index < 5; index++) {
+        uint256 retryTimes = 5;
+        for (uint256 i = 0; i < retryTimes; i++) {
             try strategy.harvest(address(user)) {
                 didHarvest_ = true;
                 break;
-            } catch {
+            } catch Error(string memory reason) {
+                console.log("Harvest failed with", reason);
+            } catch Panic(uint256 errorCode) {
+                console.log("Harvest panicked, failed with", errorCode);
+            } catch (bytes memory) {
+                console.log("Harvest failed.");
+            }
+            if (i != retryTimes - 1) {
+                console.log("Trying harvest again.");
                 shift(delay);
             }
         }
