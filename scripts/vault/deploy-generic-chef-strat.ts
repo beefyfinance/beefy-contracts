@@ -9,44 +9,44 @@ import { BeefyChain } from "../../utils/beefyChain";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: { trisolaris, beefyfinance },
+  platforms: {  solarflare, beefyfinance },
   tokens: {
-    TRI: { address: TRI },
-    NEAR: { address: NEAR },
-    ETH: { address: ETH },
-    WBTC: { address: WBTC },
+    FLARE: { address: FLARE },
+    GLMR: { address: GLMR },
+    UST: { address: UST },
+    LUNA: { address: LUNA },
     USDT: { address: USDT },
     USDC: { address: USDC }
   },
-} = addressBook.aurora;
+} = addressBook.moonbeam;
 
 const shouldVerifyOnEtherscan = false;
-0x84b123875F0F36B966d0B6Ca14b31121bd9676AD
-const want = web3.utils.toChecksumAddress("0x84b123875F0F36B966d0B6Ca14b31121bd9676AD");
+
+const want = web3.utils.toChecksumAddress("0x26A2abD79583155EA5d34443b62399879D42748A");
 
 const vaultParams = {
-  mooName: "Moo Tri NEAR-TRI",
-  mooSymbol: "mooTriNEAR-TRI",
+  mooName: "Moo Solarflare FLARE-GLMR",
+  mooSymbol: "mooSolarflareFLARE-GLMR",
   delay: 21600,
 };
 
 const strategyParams = {
   want,
-  poolId: 5,
-  chef: trisolaris.masterchef,
-  unirouter: trisolaris.router,
-  strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
+  poolId: 0,
+  chef: solarflare.masterchef,
+  unirouter: solarflare.router,
+  strategist: "0xb2e4A61D99cA58fB8aaC58Bb2F8A59d63f552fC0", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [TRI, NEAR, ETH],
-  outputToLp0Route: [TRI, NEAR],
-  outputToLp1Route: [TRI],
-  pendingRewardsFunctionName: "pendingTri", // used for rewardsAvailable(), use correct function name from masterchef
+  outputToNativeRoute: [FLARE, GLMR],
+  outputToLp0Route: [FLARE, GLMR],
+  outputToLp1Route: [FLARE],
+ // pendingRewardsFunctionName: "pendingTri", // used for rewardsAvailable(), use correct function name from masterchef
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonAuroraChefLP",
+  strategy: "StrategySolarbeamV2",
 };
 
 async function main() {
@@ -113,7 +113,7 @@ async function main() {
       verifyContract(strategy.address, strategyConstructorArguments)
     );
   }
-  await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
+ // await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
   await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
   console.log(`Transfering Vault Owner to ${beefyfinance.vaultOwner}`)
   await vault.transferOwnership(beefyfinance.vaultOwner);
