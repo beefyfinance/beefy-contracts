@@ -10,40 +10,37 @@ const registerSubsidy = require("../../utils/registerSubsidy");
 const {
   platforms: { quickswap, beefyfinance },
   tokens: {
-    QUICK: { address: QUICK },
-    HBAR: { address: HBAR },
-    TOMB: { address: TOMB },
-    MAI: { address: MAI },
-    MATIC: { address: MATIC},
+    beFTM: { address: beFTM },
+    FTM: { address: FTM },
   },
-} = addressBook.polygon;
+} = addressBook.fantom;
 
 const shouldVerifyOnEtherscan = false;
 
-const rewardPool = web3.utils.toChecksumAddress("0xCa379470379fCb2daBff4eECF975a2b6733bdF9E");
-const lp = web3.utils.toChecksumAddress("0x71952D09Aa093aCCCAe0c1d5612D7FE26F20517f");
+const rewardPool = web3.utils.toChecksumAddress("0xE00D25938671525C2542A689e42D1cfA56De5888");
+const lp = web3.utils.toChecksumAddress("0x7381eD41F6dE418DdE5e84B55590422a57917886");
 
 const vaultParams = {
-  mooName: "Moo Quick HBAR-MAI",
-  mooSymbol: "mooQuickHBAR-MAI",
+  mooName: "Moo beFTM",
+  mooSymbol: "moobeFTM",
   delay: 21600,
 };
 
 const strategyParams = {
   want: lp,
   rewardPool: rewardPool,
-  unirouter: quickswap.router,
-  strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
+  unirouter: "0xa38cd27185a464914D3046f0AB9d43356B34829D",
+  strategist: "0xb2e4A61D99cA58fB8aaC58Bb2F8A59d63f552fC0", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [QUICK, MATIC],
-  outputToLp0Route: [QUICK, MATIC, MAI, HBAR],
-  outputToLp1Route: [QUICK, MATIC, MAI],
+  outputToNativeRoute: [FTM],
+  outputToLp0Route: [FTM, beFTM],
+ // outputToLp1Route: [QUICK, MATIC, MAI],
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyPolygonQuickLP",
+  strategy: "StrategyCommonRewardPool",
 };
 
 async function main() {
@@ -86,7 +83,7 @@ async function main() {
     strategyParams.beefyFeeRecipient,
     strategyParams.outputToNativeRoute,
     strategyParams.outputToLp0Route,
-    strategyParams.outputToLp1Route,
+//   strategyParams.outputToLp1Route,
   ];
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();
