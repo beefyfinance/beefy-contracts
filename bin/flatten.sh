@@ -3,13 +3,8 @@
 rm tmp/*.sol
 
 echo "// SPDX-License-Identifier: MIT" > tmp/BeefyVaultV6.sol
-<<<<<<< HEAD
-echo "// SPDX-License-Identifier: MIT" > tmp/BeefyFeeBatchV2.sol
-echo "// SPDX-License-Identifier: MIT" > tmp/TimelockV4.sol
-=======
 echo "// SPDX-License-Identifier: MIT" > tmp/BeefyEscrowedFantom.sol
 # echo "// SPDX-License-Identifier: MIT" > tmp/TimelockV4.sol
->>>>>>> deploy locked
 # echo "// SPDX-License-Identifier: MIT" > tmp/Treasury.sol
 # echo "// SPDX-License-Identifier: MIT" > tmp/Multicall.sol
 echo "// SPDX-License-Identifier: MIT" > tmp/StrategyCommonRewardPool.sol
