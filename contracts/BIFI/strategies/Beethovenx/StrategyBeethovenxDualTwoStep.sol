@@ -153,8 +153,8 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
 
         uint256 rewardBal = IERC20(reward).balanceOf(address(this));
         if (rewardBal > 0) {
-            balancerSwap(rewardToInputSwapPoolId, reward, input, rewardBal);
-            balancerSwap(inputToNativeSwapPoolId, input, native, rewardBal);
+            balancerSwap(rewardInputSwapPoolId, reward, input, rewardBal);
+            balancerSwap(inputNativeSwapPoolId, input, native, rewardBal);
         }
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000);
@@ -179,7 +179,7 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
         // swap remaining native after charging fees back to input 
         uint256 inputBal = IERC20(input).balanceOf(address(this));
         if (inputBal > 0) {
-            balancerSwap(inputToNativeSwapPoolId, native, input, inputBal);
+            balancerSwap(inputNativeSwapPoolId, native, input, inputBal);
         }
 
         uint256 inputBal = IERC20(input).balanceOf(address(this));
@@ -233,7 +233,8 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
             nativeOut = balancerSwap(nativeSwapPoolId, output, native, outputBal);
         }
         if (rewardBal > 0) {
-            nativeOut += balancerSwap(rewardSwapPoolId, reward, native, rewardBal);
+            inputBal = balancerSwap(rewardInputSwapPoolId, reward, input, rewardBal);
+            nativeOut += balancerSwap(inputNativeSwapPoolId, input, native, inputBal);
         }
 
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
