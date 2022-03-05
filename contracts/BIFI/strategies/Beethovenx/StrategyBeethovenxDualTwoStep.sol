@@ -30,7 +30,7 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
     uint256 public chefPoolId;
     address public rewarder;
     bytes32 public wantPoolId;
-    bytes32 public nativeSwapPoolId;
+    bytes32 public outputNativeSwapPoolId;
     bytes32 public inputOutputSwapPoolId;
     bytes32 public rewardSwapPoolId;
 
@@ -56,9 +56,10 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
         address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         wantPoolId = _balancerPoolIds[0];
-        nativeSwapPoolId = _balancerPoolIds[1];
+        outputNativeSwapPoolId = _balancerPoolIds[1];
         inputOutputSwapPoolId = _balancerPoolIds[2];
-        rewardSwapPoolId = _balancerPoolIds[3];
+        rewardInputOutputSwapPoolId = _balancerPoolIds[3];
+        inputNativeSwapPoolId = _balancerPoolIds[4];
         chefPoolId = _chefPoolId;
         chef = _chef;
 
@@ -148,7 +149,7 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
         // swap output and reward to native to pay fees
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
-            balancerSwap(nativeSwapPoolId, output, native, outputBal);
+            balancerSwap(outputNativeSwapPoolId, output, native, outputBal);
         }
 
         uint256 rewardBal = IERC20(reward).balanceOf(address(this));
