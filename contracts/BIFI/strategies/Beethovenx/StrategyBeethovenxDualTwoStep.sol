@@ -145,6 +145,7 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
+        // swap output and reward to native to pay fees
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
             balancerSwap(nativeSwapPoolId, output, native, outputBal);
@@ -152,7 +153,8 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
 
         uint256 rewardBal = IERC20(reward).balanceOf(address(this));
         if (rewardBal > 0) {
-            balancerSwap(rewardSwapPoolId, reward, native, rewardBal);
+            balancerSwap(rewardToInputSwapPoolId, reward, input, rewardBal);
+            balancerSwap(inputToNativeSwapPoolId, input, native, rewardBal);
         }
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000);
@@ -172,6 +174,12 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
         if (input != native) {
             uint256 outputBal = IERC20(output).balanceOf(address(this));
             balancerSwap(inputSwapPoolId, output, input, outputBal);
+        }
+
+        // swap remaining native after charging fees back to input 
+        uint256 inputBal = IERC20(input).balanceOf(address(this));
+        if (inputBal > 0) {
+            balancerSwap(inputToNativeSwapPoolId, native, input, inputBal);
         }
 
         uint256 inputBal = IERC20(input).balanceOf(address(this));
