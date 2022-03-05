@@ -31,7 +31,7 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
     address public rewarder;
     bytes32 public wantPoolId;
     bytes32 public nativeSwapPoolId;
-    bytes32 public inputSwapPoolId;
+    bytes32 public inputOutputSwapPoolId;
     bytes32 public rewardSwapPoolId;
 
     IBalancerVault.SwapKind public swapKind;
@@ -57,7 +57,7 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         wantPoolId = _balancerPoolIds[0];
         nativeSwapPoolId = _balancerPoolIds[1];
-        inputSwapPoolId = _balancerPoolIds[2];
+        inputOutputSwapPoolId = _balancerPoolIds[2];
         rewardSwapPoolId = _balancerPoolIds[3];
         chefPoolId = _chefPoolId;
         chef = _chef;
@@ -153,7 +153,7 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
 
         uint256 rewardBal = IERC20(reward).balanceOf(address(this));
         if (rewardBal > 0) {
-            balancerSwap(rewardInputSwapPoolId, reward, input, rewardBal);
+            balancerSwap(rewardInputOutputSwapPoolId, reward, input, rewardBal);
             balancerSwap(inputNativeSwapPoolId, input, native, rewardBal);
         }
 
@@ -173,7 +173,7 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
     function addLiquidity() internal {
         if (input != native) {
             uint256 outputBal = IERC20(output).balanceOf(address(this));
-            balancerSwap(inputSwapPoolId, output, input, outputBal);
+            balancerSwap(inputOutputSwapPoolId, output, input, outputBal);
         }
 
         // swap remaining native after charging fees back to input 
@@ -233,7 +233,7 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
             nativeOut = balancerSwap(nativeSwapPoolId, output, native, outputBal);
         }
         if (rewardBal > 0) {
-            inputBal = balancerSwap(rewardInputSwapPoolId, reward, input, rewardBal);
+            inputBal = balancerSwap(rewardInputOutputSwapPoolId, reward, input, rewardBal);
             nativeOut += balancerSwap(inputNativeSwapPoolId, input, native, inputBal);
         }
 
