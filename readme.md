@@ -19,6 +19,10 @@ If you decided to do a simple LP vault, or a single asset vault, the most likely
 ### 3. Test the contracts
 If you're doing something completely custom you should add automated tests to facilitate review and diminish risks. If it's a copy/paste from another strategy you can get by with manual testing for now as everything has been battle tested tested quite a bit.
 
+For extra help in debugging a deployed vault during development, you can use the [ProdVaultTest.t.sol](./forge/test/ProdVaultTest.t.sol), which is written using the `forge` framework. Run `yarn installForge` to install if you don't have `forge` installed.
+
+To prep to run the test suite, input the correct vault address, vaultOwner and stratOwner for the chain your testing in `ProdVaultTest.t.sol`, and modify the `yarn forgeTest:vault` script in package.json to pass in the correct RPC url of the chain your vault is on. Then run `yarn forgeTest:vault` to execute the test run. You can use `console.log` within the tests in `ProdVaultTest.t.sol` to output to the console.
+
 ### 3. Deploy the smart contracts
 Once you are confident that everything works as expected you can do the official deploy of the vault + strategy contracts. There are [some scripts](https://github.com/beefyfinance/beefy-contracts/blob/master/scripts/) to help make deploying easier.
 

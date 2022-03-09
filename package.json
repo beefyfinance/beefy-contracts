@@ -38,7 +38,9 @@
     "flat-hardhat": "hardhat flatten contracts/BIFI/infra/BeefyFeeBatchV2.sol > tmp/flattened.sol",
     "flat": "bin/flatten.sh",
     "flat:chain": "bin/flattenChainContracts.sh",
-    "abi-to-sol": "abi-to-sol"
+    "abi-to-sol": "abi-to-sol",
+    "installForge": ". scripts/forge/installForge.sh",
+    "forgeTest:vault": "forge test --force --fork-url https://rpc.ftm.tools --match-contract ProdVaultTest"
   },
   "devDependencies": {
     "@chainlink/contracts": "^0.2.1",
