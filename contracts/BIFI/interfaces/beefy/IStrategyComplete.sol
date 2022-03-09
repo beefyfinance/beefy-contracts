@@ -28,3 +28,4 @@ interface IStrategyComplete {
     function strategist() external view returns (address);
     function setStrategist(address) external;
 }
+
