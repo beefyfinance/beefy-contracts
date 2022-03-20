@@ -6,7 +6,7 @@
     "@uniswap/lib": "^4.0.1-alpha",
     "@uniswap/v2-core": "^1.0.1",
     "bignumber.js": "^9.0.1",
-    "blockchain-addressbook": "^0.19.2",
+    "blockchain-addressbook": "^0.21.1",
     "keccak": "^3.0.1",
     "rlp": "^2.2.6",
     "ts-node": "^10.1.0",
@@ -38,7 +38,9 @@
     "flat-hardhat": "hardhat flatten contracts/BIFI/infra/BeefyFeeBatchV2.sol > tmp/flattened.sol",
     "flat": "bin/flatten.sh",
     "flat:chain": "bin/flattenChainContracts.sh",
-    "abi-to-sol": "abi-to-sol"
+    "abi-to-sol": "abi-to-sol",
+    "installForge": ". scripts/forge/installForge.sh",
+    "forgeTest:vault": "forge test --force --fork-url https://rpc.ftm.tools --match-contract ProdVaultTest"
   },
   "devDependencies": {
     "@chainlink/contracts": "^0.2.1",
