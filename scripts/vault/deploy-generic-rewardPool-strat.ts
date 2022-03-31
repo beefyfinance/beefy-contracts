@@ -8,39 +8,39 @@ import { BeefyChain } from "../../utils/beefyChain";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: { quickswap, beefyfinance },
+  platforms: { pancake, beefyfinance },
   tokens: {
-    beFTM: { address: beFTM },
-    FTM: { address: FTM },
+    BIFI: { address: BIFI },
+    WBNB: { address: WBNB },
   },
-} = addressBook.fantom;
+} = addressBook.bsc;
 
-const shouldVerifyOnEtherscan = false;
+const shouldVerifyOnEtherscan = true;
 
-const rewardPool = web3.utils.toChecksumAddress("0xE00D25938671525C2542A689e42D1cfA56De5888");
-const lp = web3.utils.toChecksumAddress("0x7381eD41F6dE418DdE5e84B55590422a57917886");
+const rewardPool = web3.utils.toChecksumAddress("0x0d5761D9181C7745855FC985f646a842EB254eB9");
+const lp = web3.utils.toChecksumAddress("0xCa3F508B8e4Dd382eE878A314789373D80A5190A");
 
 const vaultParams = {
-  mooName: "Moo beFTM",
-  mooSymbol: "moobeFTM",
+  mooName: "MooBIFIV2",
+  mooSymbol: "mooBIFIV2",
   delay: 21600,
 };
 
 const strategyParams = {
-  want: lp,
+  want: BIFI,
   rewardPool: rewardPool,
-  unirouter: "0xa38cd27185a464914D3046f0AB9d43356B34829D",
-  strategist: "0xb2e4A61D99cA58fB8aaC58Bb2F8A59d63f552fC0", // some address
+  unirouter: pancake.router,
+  strategist: ethers.constants.AddressZero, // some address
   keeper: beefyfinance.keeper,
-  beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [FTM],
-  outputToLp0Route: [FTM, beFTM],
+  beefyFeeRecipient: "0x7E3D8b6E70Bbe8796f7db3229e49564E0180CB37",
+ // outputToNativeRoute: [FTM],
+  outputToLp0Route: [WBNB, BIFI],
  // outputToLp1Route: [QUICK, MATIC, MAI],
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonRewardPool",
+  strategy: "StrategyBifiMaxiV4",
 };
 
 async function main() {
@@ -81,7 +81,7 @@ async function main() {
     strategyParams.keeper,
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
-    strategyParams.outputToNativeRoute,
+   // strategyParams.outputToNativeRoute,
     strategyParams.outputToLp0Route,
 //   strategyParams.outputToLp1Route,
   ];

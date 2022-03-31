@@ -113,7 +113,7 @@ const config: DeploymentConfig = {
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: "",
+    apiKey: "931ZD7WPFEITATN5P1YPEHBMK38TVKIKDI",
   },
   solidity: {
     compilers: [

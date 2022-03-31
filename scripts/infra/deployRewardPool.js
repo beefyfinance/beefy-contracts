@@ -3,20 +3,20 @@ const hardhat = require("hardhat");
 const ethers = hardhat.ethers;
 
 const config = {
-  staked: "0x7381eD41F6dE418DdE5e84B55590422a57917886",
-  rewards: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",
-  bsFTM: '0x7381eD41F6dE418DdE5e84B55590422a57917886',
+  staked: "0xCa3F508B8e4Dd382eE878A314789373D80A5190A",
+  rewards: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
 };
 
 async function main() {
   await hardhat.run("compile");
 
-  const Pool = await ethers.getContractFactory("beFTMRewardPool");
-  const pool = await Pool.deploy(config.staked, config.rewards, config.bsFTM);
+  const Pool = await ethers.getContractFactory("BeefyRewardPool");
+  const pool = await Pool.deploy(config.staked, config.rewards);
   await pool.deployed();
 
   console.log("Reward pool deployed to:", pool.address);
 }
+
 
 main()
   .then(() => process.exit(0))
