@@ -38,7 +38,8 @@ Once you are confident that everything works as expected you can do the official
 8. Deposit the withdrawn amount. 
 9. Harvest again. 
 10. Switch to harvest-on-deposit depednding on chain gas fees. 
-11. Transfer Ownership of the Vault and Strategy contracts to the Vault and Strat owners for the respective chains. 
+11. `setPendingRewardName`, or else call reward shows 0.
+12. Transfer Ownership of the Vault and Strategy contracts to the Vault and Strat owners for the respective chains. 
 
 Check for more addresses at https://github.com/beefyfinance/beefy-api/tree/master/packages/address-book
 This is required so that we can review everything before the vault is actually live on the app and manage it after its live.
