@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/common/IUniswapRouterETH.sol";
+import "../../interfaces/common/ITridentRouter.sol";
 import "../../interfaces/common/IMasterChef.sol";
 import "../../interfaces/stargate/IStargateRouter.sol";
 import "../Common/StratManager.sol";
