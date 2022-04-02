@@ -162,6 +162,12 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
+    function tridentSwap(address _tokenIn, uint256 _amountIn, uint256 _amountOutMinimum, address _pool) internal returns (uint256) {
+        ITridentRouter.Path memory path = ITridentRouter.Path(_pool, ""); // unsure whether `data` arg is needed
+        ITridentRouter.ExactInputParams memory exactInputParams = ITridentRouter.ExactInputParams(_tokenIn, _amountIn, _amountOutMinimum, path);
+        ITridentRouter(tridentRouter).exactInput(exactInputParams);
+    }
+
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
