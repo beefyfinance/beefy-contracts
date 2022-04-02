@@ -37,7 +37,8 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
     // Routes
     address[] public outputToNativeRoute;
     address[] public outputToLp0Route;
-    address[] public outputToLp1Route;
+    ITridentRouter.Path[] public outputToNativePath;
+    ITridentRouter.Path[] public outputToLp0Path;
 
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
@@ -64,13 +65,22 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
         chef = _chef;
         stargateRouter = _stargateRouter;
 
+        // setup native routing 
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
 
-        // setup lp routing
+        for (uint256 i; i < outputToNativeRoute.length; ) {
+            outputToNativePath[i] = ITridentRouter.Path(outputToNativeRoute[i], ""); // unsure whether `data` arg is needed
+        }
+        
+        // setup lp routing 
         outputToLp0Route = _outputToLp0Route;
         lpToken0 = _outputToLp0Route[_outputToLp0Route.length - 1];
+
+        for (uint256 i; i < outputToLp0Route.length; ) {
+            outputToLp0Path[i] = ITridentRouter.Path(outputToLp0Route[i], "");
+        }
 
         _giveAllowances();
     }
@@ -162,10 +172,10 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
-    function tridentSwap(address _tokenIn, uint256 _amountIn, uint256 _amountOutMinimum, address _pool) internal returns (uint256) {
-        ITridentRouter.Path memory path = ITridentRouter.Path(_pool, ""); // unsure whether `data` arg is needed
-        ITridentRouter.ExactInputParams memory exactInputParams = ITridentRouter.ExactInputParams(_tokenIn, _amountIn, _amountOutMinimum, path);
-        ITridentRouter(tridentRouter).exactInput(exactInputParams);
+    // swap tokens 
+    function tridentSwap(address _tokenIn, uint256 _amountIn, uint256 _amountOutMinimum, Path[] _path) internal returns (uint256) {
+        ITridentRouter.ExactInputParams memory exactInputParams = ITridentRouter.ExactInputParams(_tokenIn, _amountIn, _amountOutMinimum, _path);
+        ITridentRouter(unirouter).exactInput(exactInputParams);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
