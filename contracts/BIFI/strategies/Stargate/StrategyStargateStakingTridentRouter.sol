@@ -71,7 +71,7 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
         outputToNativeRoute = _outputToNativeRoute;
 
         for (uint256 i; i < outputToNativeRoute.length; ) {
-            outputToNativePath[i] = ITridentRouter.Path(outputToNativeRoute[i], ""); // unsure whether `data` arg is needed
+            outputToNativePath[i] = ITridentRouter.Path(outputToNativeRoute[i], ""); // unsure whether (second) `data` arg is needed
         }
         
         // setup lp routing 
@@ -156,7 +156,8 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        // IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        tridentSwap(output, toNative, 0, outputToNativePath);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
@@ -173,7 +174,7 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
     }
 
     // swap tokens 
-    function tridentSwap(address _tokenIn, uint256 _amountIn, uint256 _amountOutMinimum, Path[] _path) internal returns (uint256) {
+    function tridentSwap(address _tokenIn, uint256 _amountIn, uint256 _amountOutMinimum, ITridentRouter.Path[] _path) internal returns (uint256) {
         ITridentRouter.ExactInputParams memory exactInputParams = ITridentRouter.ExactInputParams(_tokenIn, _amountIn, _amountOutMinimum, _path);
         ITridentRouter(unirouter).exactInput(exactInputParams);
     }
@@ -183,7 +184,8 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
 
         if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToLp0Route, address(this), now);
+            // IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToLp0Route, address(this), now);
+            tridentSwap(output, outputBal, 0, outputToLp0Path);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
