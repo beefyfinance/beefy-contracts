@@ -178,6 +178,9 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
                 _poolRoute[i], 
                 abi.encode(_route[i][0],poolRoute[i+1],unwrapBento)
             ); 
+            unchecked {
+                ++i;
+            }
         }
         // The last pool should transfer its output tokens to the user.
         path[poolRoute.length - 1] = ITridentRouter.Path(
