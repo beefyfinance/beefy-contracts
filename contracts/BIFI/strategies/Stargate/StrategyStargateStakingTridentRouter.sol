@@ -71,7 +71,9 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
         outputToNativeRoute = _outputToNativeRoute;
 
         for (uint256 i; i < outputToNativeRoute.length; ) {
-            outputToNativePath[i] = ITridentRouter.Path(outputToNativeRoute[i], ""); // unsure whether (second) `data` arg is needed
+            // @todo: abi encode `(address tokenIn, address recipient, bool unwrapBento)` 
+            // pass as bytes data to path constructor
+            outputToNativePath[i] = ITridentRouter.Path(outputToNativeRoute[i], ""); 
         }
         
         // setup lp routing 
@@ -79,6 +81,8 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
         lpToken0 = _outputToLp0Route[_outputToLp0Route.length - 1];
 
         for (uint256 i; i < outputToLp0Route.length; ) {
+            // @todo: abi encode `(address tokenIn, address recipient, bool unwrapBento)` 
+            // pass as bytes data to path constructor
             outputToLp0Path[i] = ITridentRouter.Path(outputToLp0Route[i], "");
         }
 
