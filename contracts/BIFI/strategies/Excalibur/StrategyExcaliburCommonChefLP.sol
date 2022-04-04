@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/excalibur/IExcaliburRouterETH.sol";
+import "../../interfaces/excalibur/IExcaliburRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/common/IMasterChef.sol";
 import "../Common/StratManager.sol";
@@ -14,7 +14,7 @@ import "../Common/FeeManager.sol";
 import "../../utils/StringUtils.sol";
 import "../../utils/GasThrottler.sol";
 
-contract StrategyCommonChefLP is StratManager, FeeManager, GasThrottler {
+contract StrategyExcaliburCommonChefLP is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -149,7 +149,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager, GasThrottler {
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IExcaliburRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toNative, 0, outputToNativeRoute, address(this), beefyFeeRecipient, now);
+        IExcaliburRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toNative, 0, outputToNativeRoute, address(this), address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
@@ -170,16 +170,16 @@ contract StrategyCommonChefLP is StratManager, FeeManager, GasThrottler {
         uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
 
         if (lpToken0 != output) {
-            IExcaliburRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(outputHalf, 0, outputToLp0Route, address(this), beefyFeeRecipient, now);
+            IExcaliburRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(outputHalf, 0, outputToLp0Route, address(this), address(this), now);
         }
 
         if (lpToken1 != output) {
-            IExcaliburRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(outputHalf, 0, outputToLp1Route, address(this), beefyFeeRecipient, now);
+            IExcaliburRouter(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(outputHalf, 0, outputToLp1Route, address(this), address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IExcaliburRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
+        IExcaliburRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -221,7 +221,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager, GasThrottler {
         uint256 outputBal = rewardsAvailable();
         uint256 nativeOut;
         if (outputBal > 0) {
-            uint256[] memory amountOut = IExcaliburRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
+            uint256[] memory amountOut = IExcaliburRouter(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
             nativeOut = amountOut[amountOut.length -1];
         }
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.6.2;
 
 interface IUniswapV2Router01 {
@@ -87,6 +88,7 @@ interface IUniswapV2Router01 {
 
   function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut, uint feeAmount) external pure returns (uint amountOut);
   function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut, uint feeAmount) external pure returns (uint amountIn);
+  function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
 }
 
 interface IExcaliburRouter is IUniswapV2Router01 {
