@@ -6,48 +6,44 @@ import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
+import "./IJoeChef.sol";
 import "./IVeJoe.sol";
-import "./GaugeManager.sol";
+import "./ChefManager.sol";
 
-interface IERC1271 {
-    function isValidSignature(
-        bytes32 hash,
-        bytes signature
-    ) external returns (bytes4 magicValue);
-}
-
-contract VeJoeStaker is ERC20Upgradeable, IERC1271, ReentrancyGuardUpgradeable, GaugeManager {
+contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManager {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using SafeMathUpgradeable for uint256;
 
-    // Tokens used
+    // Addresses used
     IERC20Upgradeable public want;
-    IVeJoe public veWant;
-    IJoeChef public joeChef;
+    IVeJoe public veJoe;
 
-    uint256 public max = 1000;
-    uint256 public reserveRate = 800; 
+    // Our reserve integers 
+    uint256 public constant MAX = 1000;
+    uint256 public reserveRate; 
 
     event DepositWant(uint256 tvl);
-    event Withdraw(uint26 tvl);
+    event Withdraw(uint256 tvl);
     event RecoverTokens(address token, uint256 amount);
+    event UpdatedReserveRate(uint256 newRate);
 
     function initialize(
-        address _veWant,
+        address _veJoe,
         address _keeper,
         address _rewardPool,
         address _joeChef,
+        uint256 _reserveRate,
         string memory _name,
         string memory _symbol
     ) public initializer {
-        managerInitialize(_keeper, _rewardPool);
-        veWant = IVeWant(_veWant);
-        want = IERC20Upgradeable(veWant.token());
-        joeChef = IJoeChef(_joeChef);
+        managerInitialize(_joeChef, _keeper, _rewardPool);
+        veJoe = IVeJoe(_veJoe);
+        want = IERC20Upgradeable(veJoe.joe());
+        reserveRate = _reserveRate;
 
         __ERC20_init(_name, _symbol);
 
-        want.safeApprove(address(veWant), type(uint256).max);
+        want.safeApprove(address(veJoe), type(uint256).max);
     }
 
     // helper function for depositing full balance of want
@@ -65,7 +61,7 @@ contract VeJoeStaker is ERC20Upgradeable, IERC1271, ReentrancyGuardUpgradeable, 
         _deposit(_user, _amount);
     }
 
-    // deposit 'want' and lock
+    // Deposits Joes and mint beJOE, harvests and checks for veJOE deposit opportunities first. 
     function _deposit(address _user, uint256 _amount) internal nonReentrant whenNotPaused {
         harvestAndDepositJoe();
         uint256 _pool = balanceOfWant();
@@ -75,16 +71,19 @@ contract VeJoeStaker is ERC20Upgradeable, IERC1271, ReentrancyGuardUpgradeable, 
 
         if (_amount > 0) {
             _mint(_user, _amount);
-            emit DepositWant(balanceOfVe());
+            emit DepositWant(totalJoes());
         }
     }
 
+    // Withdraw capable if we have enough JOEs in the contract. 
     function withdraw(uint256 _amount) public {
         require(_amount > balanceOfWant(), "Not enough Joes to withdraw");
-        _burn(msg.sender, _amounts);
-        want().safeTransfer(msg.sender, _amount);
+        _burn(msg.sender, _amount);
+        want.safeTransfer(msg.sender, _amount);
+        emit Withdraw(totalJoes());
     }
 
+    // We harvest veJOE on every deposit, if we can deposit to earn more veJOE we deposit based on required reserve and bonus
     function harvestAndDepositJoe() public { 
         if (totalJoes() > 0) {
             if (balanceOfWant() > requiredReserve()) {
@@ -104,11 +103,13 @@ contract VeJoeStaker is ERC20Upgradeable, IERC1271, ReentrancyGuardUpgradeable, 
         veJoe.claim();
     }
 
+    // Our required JOEs held in the contract to enable withdraw capabilities
     function requiredReserve() public view returns (uint256 reqReserve) {
         // We calculate allocation for 20% or the total supply of contract to the reserve.
-        reqReserve = totalJoes().mul(reserveRate).div(max);
+        reqReserve = totalJoes().mul(reserveRate).div(MAX);
     }
 
+    // Total Joes in veJOE contract and beJOE contract. 
     function totalJoes() public view returns (uint256) {
         return balanceOfWant().add(balanceOfJoeInVe());
     }
@@ -120,63 +121,68 @@ contract VeJoeStaker is ERC20Upgradeable, IERC1271, ReentrancyGuardUpgradeable, 
 
     // calculate how much 'veWant' is held by this contract
     function balanceOfVe() public view returns (uint256) {
-        return veWant.balanceOf(address(this));
+        return IERC20Upgradeable(veJoe.veJoe()).balanceOf(address(this));
     }
 
     // how many joes we got earning ve? 
     function balanceOfJoeInVe() public view returns (uint256 joes) {
-        (joes,,,) = veWant.userInfos(address(this));
+        (joes,,,) = veJoe.userInfos(address(this));
     }
 
     // prevent any further 'want' deposits and remove approval
     function pause() public onlyManager {
         _pause();
-        want.safeApprove(address(veWant), 0);
+        want.safeApprove(address(veJoe), 0);
     }
 
     // allow 'want' deposits again and reinstate approval
     function unpause() external onlyManager {
         _unpause();
-        want.safeApprove(address(veWant), type(uint256).max);
-        uint256 reserveAmt = balanceOfWant().mul(reserveRate).div(max);
+        want.safeApprove(address(veJoe), type(uint256).max);
+        uint256 reserveAmt = balanceOfWant().mul(reserveRate).div(MAX);
         veJoe.deposit(balanceOfWant().sub(reserveAmt));
     }
 
-    // panic the veJoe losing all accrued veJOE 
+    // panic beJOE, pause deposits and withdraw JOEs from veJoe, we lose all accrued veJOE 
     function panic() external onlyManager {
         pause();
-        veJoe.withdraw(balanceOfJoeInVe);
+        veJoe.withdraw(balanceOfJoeInVe());
     }
 
-    // pass through a deposit to a gauge
+    // pass through a deposit to a boosted chef 
     function deposit(uint256 _pid, uint256 _amount) external onlyWhitelist(_pid) {
-        address _underlying = IGauge(_gauge).TOKEN();
+        (address _underlying,,,,,,,,) = joeChef.poolInfo(_pid);
+        uint256 joeBefore = balanceOfWant(); // How many Joe's strategy holds
         IERC20Upgradeable(_underlying).safeTransferFrom(msg.sender, address(this), _amount);
-        IGauge(_gauge).deposit(_amount);
+        joeChef.deposit(_pid, _amount);
+        uint256 joeDiff = balanceOfWant().sub(joeBefore); // Amount of Joes the Chef sent us
+        want.safeTransfer(msg.sender, joeDiff); 
     }
 
-    // pass through a withdrawal from a gauge
-    function withdraw(address _gauge, uint256 _amount) external onlyWhitelist(_pid) {
-        address _underlying = IGauge(_gauge).TOKEN();
-        IGauge(_gauge).withdraw(_amount);
+    // pass through a withdrawal from boosted chef
+    function withdraw(uint256 _pid, uint256 _amount) external onlyWhitelist(_pid) {
+        (address _underlying,,,,,,,,) = joeChef.poolInfo(_pid);
+        uint256 joeBefore = balanceOfWant(); // How many Joe's strategy holds
+        joeChef.withdraw(_pid, _amount);
+        uint256 joeDiff = balanceOfWant().sub(joeBefore); // Amount of Joes the Chef sent us
         IERC20Upgradeable(_underlying).safeTransfer(msg.sender, _amount);
+        want.safeTransfer(msg.sender, joeDiff); 
     }
 
-    // pass through a full withdrawal from a gauge
-    function withdrawAll(address _gauge) external onlyWhitelist(_pid) {
-        address _underlying = IGauge(_gauge).TOKEN();
+    // emergency withdraw losing all JOE rewards from boosted chef
+    function emergencyWithdraw(uint256 _pid) external onlyWhitelist(_pid) {
+        (address _underlying,,,,,,,,) = joeChef.poolInfo(_pid);
         uint256 _before = IERC20Upgradeable(_underlying).balanceOf(address(this));
-        IGauge(_gauge).withdrawAll();
+        joeChef.emergencyWithdraw(_pid);
         uint256 _balance = IERC20Upgradeable(_underlying).balanceOf(address(this)).sub(_before);
         IERC20Upgradeable(_underlying).safeTransfer(msg.sender, _balance);
     }
 
-    // pass through rewards from a gauge
-    function claimGaugeReward(address _gauge) external onlyWhitelist(_pid) {
-        uint256 _before = balanceOfWant();
-        IGauge(_gauge).getReward();
-        uint256 _balance = balanceOfWant().sub(_before);
-        want.safeTransfer(msg.sender, _balance);
+    // Adjust reserve rate 
+    function adjustReserve(uint256 _rate) external onlyOwner { 
+        require(_rate <= MAX, "Higher than max");
+        reserveRate = _rate;
+        emit UpdatedReserveRate(_rate);
     }
 
     // recover any unknown tokens
@@ -188,19 +194,4 @@ contract VeJoeStaker is ERC20Upgradeable, IERC1271, ReentrancyGuardUpgradeable, 
 
         emit RecoverTokens(_token, _amount);
     }
-
-    /**
-    * @notice Verifies that the signer is the owner of the signing contract.
-    */
-    function isValidSignature(
-        bytes32 _hash,
-        bytes calldata _signature
-    ) external override view returns (bytes4) {
-        // Validate signatures
-        if (recoverSigner(_hash, _signature) == keeper) {
-            return 0x1626ba7e;
-        } else {
-            return 0xffffffff;
-    }   
-  }
 }
