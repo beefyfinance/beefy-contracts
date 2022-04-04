@@ -19,7 +19,7 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
     IVeJoe public veJoe;
 
     // Our reserve integers 
-    uint256 public constant MAX = 1000;
+    uint16 public constant MAX = 10000;
     uint256 public reserveRate; 
 
     event DepositWant(uint256 tvl);
@@ -30,13 +30,12 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
     function initialize(
         address _veJoe,
         address _keeper,
-        address _rewardPool,
         address _joeChef,
         uint256 _reserveRate,
         string memory _name,
         string memory _symbol
     ) public initializer {
-        managerInitialize(_joeChef, _keeper, _rewardPool);
+        managerInitialize(_joeChef, _keeper);
         veJoe = IVeJoe(_veJoe);
         want = IERC20Upgradeable(veJoe.joe());
         reserveRate = _reserveRate;
@@ -77,7 +76,7 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
 
     // Withdraw capable if we have enough JOEs in the contract. 
     function withdraw(uint256 _amount) public {
-        require(_amount > balanceOfWant(), "Not enough Joes to withdraw");
+        require(_amount < balanceOfWant(), "Not enough JOEs to withdraw");
         _burn(msg.sender, _amount);
         want.safeTransfer(msg.sender, _amount);
         emit Withdraw(totalJoes());

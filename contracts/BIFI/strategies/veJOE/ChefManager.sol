@@ -6,12 +6,15 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/interfaces/IERC1271Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 
 import "./IJoeChef.sol";
 import "./IJoeStrategy.sol";
 
-contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable {
+contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, IERC1271Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
+    using ECDSAUpgradeable for bytes32;
 
     /**
      * @dev Beefy Contracts:
@@ -21,7 +24,6 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable {
      */
     IJoeChef public joeChef;
     address public keeper;
-    address public rewardPool;
 
     mapping(uint256 => address) public whitelistedStrategy;
     mapping(address => address) public replacementStrategy;
@@ -30,18 +32,15 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable {
      * @dev Initializes the base strategy.
      * @param _joeChef address of the boosted chef.
      * @param _keeper address to use as alternative owner.
-     * @param _rewardPool address of reward pool.
      */
     function managerInitialize(
         address _joeChef,
-        address _keeper,
-        address _rewardPool
+        address _keeper
     ) internal initializer {
         __Ownable_init();
 
         joeChef = IJoeChef(_joeChef);
         keeper = _keeper;
-        rewardPool = _rewardPool;
     }
 
     // checks that caller is either owner or keeper.
@@ -56,12 +55,6 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable {
         _;
     }
 
-    // checks that caller is the reward pool.
-    modifier onlyRewardPool() {
-        require(msg.sender == rewardPool, "!rewardPool");
-        _;
-    }
-
     /**
      * @dev Updates address of the strat keeper.
      * @param _keeper new keeper address.
@@ -70,16 +63,8 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable {
         keeper = _keeper;
     }
 
-    /**
-     * @dev Updates address where reward pool where want is rewarded.
-     * @param _rewardPool new reward pool address.
-     */
-    function setRewardPool(address _rewardPool) external onlyOwner {
-        rewardPool = _rewardPool;
-    }
-
      /**
-     * @dev Whitelists a strategy address to interact with the Gauge Staker and gives approvals.
+     * @dev Whitelists a strategy address to interact with the Boosted Chef and gives approvals.
      * @param _strategy new strategy address.
      */
     function whitelistStrategy(address _strategy) external onlyManager {
@@ -123,20 +108,18 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable {
     }
 
     /**
-    * WIP 
     * Will give us an opportunity to vote via snapshot with veJOE
     */
-   // function isValidSignature(
-   //     bytes32 _hash,
-   //     bytes calldata _signature
-   //) external override view returns (bytes4) {
-   //     // Validate signatures
-   //     if (recoverSigner(_hash, _signature) == keeper) {
-   //         return 0x1626ba7e;
-   //     } else {
-   //         return 0xffffffff;
-   //     }  
-   // } 
-
-   
+    function isValidSignature(
+        bytes32 _messageHash,
+        bytes calldata _signature
+   ) external override view returns (bytes4) {
+        // Validate signatures
+        address signer = _messageHash.recover(_signature);
+        if (signer == keeper || signer == owner()) {
+            return 0x1626ba7e;
+        } else {
+            return 0xffffffff;
+        }  
+    }    
 }

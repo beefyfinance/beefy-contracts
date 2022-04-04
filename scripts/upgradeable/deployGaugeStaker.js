@@ -5,16 +5,15 @@ import { predictAddresses } from "../../utils/predictAddresses";
 
 const ethers = hardhat.ethers;
 
-const chain = "fantom";
+const chain = "avax";
 
 const config = {
-  veWant: '0x2FBFf41a9efAEAE77538bd63f1ea489494acdc08',
-  feeDistributor: '0x18CeF75C2b032D7060e9Cf96F29aDF74a9a17ce6',
-  gaugeProxy: '0x420b17f69618610DE18caCd1499460EFb29e1d8f',
+  veWant: '0x25D85E17dD9e544F6E9F8D44F99602dbF5a97341',
+  joeChef: '0x4483f0b6e2F5486D06958C20f8C39A7aBe87bf8F',
   keeper: '0x10aee6B5594942433e7Fc2783598c979B030eF3D',
-  rewardPool: '0x0000000000000000000000000000000000000000',
-  name: 'binSPIRIT',
-  symbol: 'binSPIRIT',
+  reserve: 2000,
+  name: 'testVe',
+  symbol: 'testVe',
 };
 
 async function main() {
@@ -24,7 +23,7 @@ async function main() {
   const provider = deployer.provider;
 
   const contractNames = {
-    gaugeStaker: "GaugeStaker",
+    gaugeStaker: "VeJoeStaker",
   };
 
   const GaugeStaker = await ethers.getContractFactory(contractNames.gaugeStaker);
@@ -33,10 +32,9 @@ async function main() {
 
   const staker = await upgrades.deployProxy(GaugeStaker, [
     config.veWant,
-    config.feeDistributor,
-    config.gaugeProxy,
     config.keeper,
-    config.rewardPool,
+    config.joeChef, 
+    config.reserve,
     config.name,
     config.symbol
   ]);
