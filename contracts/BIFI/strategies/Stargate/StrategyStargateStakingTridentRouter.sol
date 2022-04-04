@@ -171,18 +171,17 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
     // @dev Ensure pools are tristed before calling this function
     function tridentSwap(address _tokenIn, uint256 _amountIn, uint256 _amountOutMinimum, address[] memory _poolRoute, address[][] memory _route) internal returns (uint256) {
         
-        ITridentRouter.Path[] path;
+        ITridentRouter.Path[poolRoute.length] path;
         // Pool `N` should transfer its output tokens to pool `N+1` directly.
-        for (uint256 i; i < poolRoute.length; ) {
-            path[i] = ITridentRouter.Path(poolRoute[i], 
-            "" // abi encode `(address tokenIn, address poolRoute[i+1], bool unwrapBento)` 
+        for (uint256 i; i < _poolRoute.length; ) {
+            path[i] = ITridentRouter.Path(_poolRoute[i], 
+            "" // abi encode `(address _route[i][0], address poolRoute[i+1], bool unwrapBento)` 
             ); 
-            tokenIn = Ipool(poolRoute[i+1]).getAssets()[0]; // assuming ordered 
         }
         // The last pool should transfer its output tokens to the user.
         path[poolRoute.length - 1] = ITridentRouter.Path(
             poolRoute[poolRoute.length - 1], 
-            "" // abi encode `(address tokenIn, address recipient, bool unwrapBento)` 
+            "" // abi encode `(address _route[poolRoute.length - 1][0], address this, bool unwrapBento)` 
             );
         //
         ITridentRouter.ExactInputParams memory exactInputParams = ITridentRouter.ExactInputParams(_tokenIn, _amountIn, _amountOutMinimum, path);
