@@ -151,7 +151,7 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        tridentSwap(output, toNative, 0, outputToNativePoolRoute);
+        tridentSwap(output, toNative, 0, outputToNativePoolRoute, outputToNativeRoute);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
@@ -193,7 +193,7 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
 
         if (lpToken0 != output) {
-            tridentSwap(output, outputBal, 0, outputToLp0PoolRoute);
+            tridentSwap(output, outputBal, 0, outputToLp0PoolRoute, outputToLp0Route);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
