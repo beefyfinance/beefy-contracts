@@ -56,8 +56,8 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient,
-        address[] memory _outputToNativeRoute,
-        address[] memory _outputToLp0Route
+        address[] memory _outputToNativePools,
+        address[] memory _outputToLp0Pools
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         poolId = _poolId;
@@ -65,26 +65,14 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
         chef = _chef;
         stargateRouter = _stargateRouter;
 
-        // setup native routing 
-        output = _outputToNativeRoute[0];
-        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
-        outputToNativeRoute = _outputToNativeRoute;
-
-        for (uint256 i; i < outputToNativeRoute.length; ) {
-            // @todo: abi encode `(address tokenIn, address recipient, bool unwrapBento)` 
-            // pass as bytes data to path constructor
-            outputToNativePath[i] = ITridentRouter.Path(outputToNativeRoute[i], ""); 
-        }
+        // Native routing 
+        output = _outputToNativePools[0]; // fix
+        native = _outputToNativePools[_outputToNativePools.length - 1]; // fix
+        outputToNativePools = _outputToNativePools; 
         
-        // setup lp routing 
-        outputToLp0Route = _outputToLp0Route;
-        lpToken0 = _outputToLp0Route[_outputToLp0Route.length - 1];
-
-        for (uint256 i; i < outputToLp0Route.length; ) {
-            // @todo: abi encode `(address tokenIn, address recipient, bool unwrapBento)` 
-            // pass as bytes data to path constructor
-            outputToLp0Path[i] = ITridentRouter.Path(outputToLp0Route[i], "");
-        }
+        // LP routing 
+        outputToLp0Pools = _outputToLp0Pools;
+        lpToken0 = _outputToLp0Pools[_outputToLp0Pools.length - 1];
 
         _giveAllowances();
     }
@@ -160,7 +148,6 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        // IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
         tridentSwap(output, toNative, 0, outputToNativePath);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
@@ -179,6 +166,16 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
 
     // swap tokens 
     function tridentSwap(address _tokenIn, uint256 _amountIn, uint256 _amountOutMinimum, ITridentRouter.Path[] _path) internal returns (uint256) {
+        // Pool `N` should transfer its output tokens to pool `N+1` directly.
+        for (uint256 i; i < outputToNativePools.length; ) {
+            outputToNativePath[i] = ITridentRouter.Path(outputToNativePools[i], ""); 
+        }
+        // The last pool should transfer its output tokens to the user.
+        outputToNativePath[outputToNativePools.length - 1] = ITridentRouter.Path(
+            outputToNativePools[outputToNativePools.length - 1], 
+            "" // abi encode `(address tokenIn, address recipient, bool unwrapBento)` 
+        );
+        //
         ITridentRouter.ExactInputParams memory exactInputParams = ITridentRouter.ExactInputParams(_tokenIn, _amountIn, _amountOutMinimum, _path);
         ITridentRouter(unirouter).exactInput(exactInputParams);
     }
