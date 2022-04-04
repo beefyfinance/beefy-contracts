@@ -35,6 +35,8 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
     string public pendingRewardsFunctionName;
 
     // Routes
+    address[][] public outputToNativeRoute;
+    address[][] public outputToLp0Route;
     address[] public outputToNativePoolRoute;
     address[] public outputToLp0PoolRoute;
 
@@ -54,8 +56,10 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient,
-        address[] memory _outputToNativePoolRoute,
-        address[] memory _outputToLp0PoolRoute
+        address[][] memory _outputToNativeRoute, // [[output,tokenX],[tokenX,tokenY],[tokenY,native]]
+        address[][] memory _outputToLp0Route, // [[output,tokenX],[tokenX,tokenY],[tokenY,native]]
+        address[] memory _outputToNativePoolRoute, // [pool_with_output, ..., pool_with_native]
+        address[] memory _outputToLp0PoolRoute // [pool_with_output, ..., pool_with_lp0]
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         poolId = _poolId;
@@ -65,12 +69,13 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
 
         // Native routing 
         outputToNativePoolRoute = _outputToNativePoolRoute;
-        output = Ipool(outputToNativePoolRoute).getAssets()[0]; // assuming ordered 
-        native = Ipool(outputToNativePoolRoute).getAssets()[outputToNativePoolRoute.length - 1]; // assuming ordered 
+        outputToNativeRoute = _outputToNativeRoute;
+        output = outputToNativeRoute[0];
+        native = outputToNativeRoute[outputToNativeRoute.length - 1];
         
         // LP routing 
         outputToLp0PoolRoute = _outputToLp0PoolRoute;
-        lpToken0 = Ipool(outputToLp0PoolRoute).getAssets()[outputToLp0PoolRoute.length - 1]; // assuming ordered 
+        lpToken0 = outputToLp0Route[outputToLp0Route.length - 1];
 
         _giveAllowances();
     }
@@ -164,7 +169,7 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
 
     // swap tokens 
     // @dev Ensure pools are tristed before calling this function
-    function tridentSwap(address _tokenIn, uint256 _amountIn, uint256 _amountOutMinimum, address[] memory poolRoute) internal returns (uint256) {
+    function tridentSwap(address _tokenIn, uint256 _amountIn, uint256 _amountOutMinimum, address[] memory _poolRoute, address[] memory _route) internal returns (uint256) {
         
         ITridentRouter.Path[] path;
         address tokenIn = _tokenIn;
