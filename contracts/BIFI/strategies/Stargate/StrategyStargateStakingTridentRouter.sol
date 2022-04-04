@@ -169,10 +169,9 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
 
     // swap tokens 
     // @dev Ensure pools are tristed before calling this function
-    function tridentSwap(address _tokenIn, uint256 _amountIn, uint256 _amountOutMinimum, address[] memory _poolRoute, address[] memory _route) internal returns (uint256) {
+    function tridentSwap(address _tokenIn, uint256 _amountIn, uint256 _amountOutMinimum, address[] memory _poolRoute, address[][] memory _route) internal returns (uint256) {
         
         ITridentRouter.Path[] path;
-        address tokenIn = _tokenIn;
         // Pool `N` should transfer its output tokens to pool `N+1` directly.
         for (uint256 i; i < poolRoute.length; ) {
             path[i] = ITridentRouter.Path(poolRoute[i], 
