@@ -1,14 +1,19 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.11;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin-4/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin-4/contracts/access/Ownable.sol";
+import "@openzeppelin-4/contracts/security/ReentrancyGuard.sol";
 
-import "../interfaces/beefy/IStrategy.sol";
+import "../interfaces/beefy/IStrategy.pragma8.sol";
+
+error NoCandidateStrat(); // trying to upgradeStrat without a new implem
+error ApprovalDelayNotEnded(); // trying to upgradeStrat too soon
+error StrategyInvalidVault(); // proposed strategy do not have the same vault address as this vault
+error TokenIsNotWant(); // calling inCaseTokensGetStuck with a token that is not the want token
 
 /**
  * @dev Implementation of a vault to deposit funds for yield optimizing.
@@ -161,7 +166,7 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
      * @param _implementation The address of the candidate strategy.  
      */
     function proposeStrat(address _implementation) public onlyOwner {
-        require(address(this) == IStrategy(_implementation).vault(), "Proposal not valid for this Vault");
+        if (address(this) == IStrategy(_implementation).vault()) revert StrategyInvalidVault();
         stratCandidate = StratCandidate({
             implementation: _implementation,
             proposedTime: block.timestamp
@@ -177,8 +182,8 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
      */
 
     function upgradeStrat() public onlyOwner {
-        require(stratCandidate.implementation != address(0), "There is no candidate");
-        require(stratCandidate.proposedTime.add(approvalDelay) < block.timestamp, "Delay has not passed");
+        if (stratCandidate.implementation != address(0)) revert NoCandidateStrat();
+        if (stratCandidate.proposedTime.add(approvalDelay) < block.timestamp) revert ApprovalDelayNotEnded();
 
         emit UpgradeStrat(stratCandidate.implementation);
 
@@ -195,7 +200,7 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
      * @param _token address of the token to rescue.
      */
     function inCaseTokensGetStuck(address _token) external onlyOwner {
-        require(_token != address(want()), "!token");
+        if (_token != address(want())) revert TokenIsNotWant();
 
         uint256 amount = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransfer(msg.sender, amount);

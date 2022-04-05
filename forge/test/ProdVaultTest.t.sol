@@ -15,14 +15,15 @@ import {VaultUser} from "./users/VaultUser.sol";
 contract ProdVaultTest is BaseTestHarness {
 
     // Input your vault to test here.
-    IBeefyVaultV6 constant vault = IBeefyVaultV6(0x1313b9C550bbDF55Fc06f63a41D8BDC719d056A6);
+    IBeefyVaultV6 constant vault = IBeefyVaultV6(0x263A2E7BCcd8DE4D9253e263550Eda3007684BD1);
     IStrategyComplete strategy;
 
     // Users
     VaultUser user;
-    address constant keeper = 0x10aee6B5594942433e7Fc2783598c979B030eF3D;
-    address constant vaultOwner = 0x4560a83b7eED32EB78C48A5bedE9B608F3184df0; // fantom
-    address constant strategyOwner = 0x847298aC8C28A9D66859E750456b92C2A67b876D; // fantom
+    // node_modules/blockchain-addressbook/build/address-book/<chain>/platforms/beefyfinance.js
+    address constant keeper = 0x340465d9D2EbDE78F15a3870884757584F97aBB4; 
+    address constant vaultOwner = 0xc8F3D9994bb1670F5f3d78eBaBC35FA8FdEEf8a2; // fantom
+    address constant strategyOwner = 0xfcDD5a02C611ba6Fe2802f885281500EC95805d7; // fantom
 
     IERC20Like want;
     uint256 slot; // Storage slot that holds `balanceOf` mapping.
@@ -59,8 +60,8 @@ contract ProdVaultTest is BaseTestHarness {
 
         uint256 wantBalanceFinal = want.balanceOf(address(user));
         console.log("Final user want balance", wantBalanceFinal);
-        assertTrue(wantBalanceFinal <= wantStartingAmount, "Expected wantBalanceFinal <= wantStartingAmount");
-        assertTrue(wantBalanceFinal > wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
+        assertLe(wantBalanceFinal, wantStartingAmount, "Expected wantBalanceFinal <= wantStartingAmount");
+        assertGt(wantBalanceFinal, wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
     }
 
     function test_harvest() external {
@@ -88,11 +89,11 @@ contract ProdVaultTest is BaseTestHarness {
 
         uint256 wantBalanceFinal = want.balanceOf(address(user));
 
-        assertTrue(vaultBalanceAfterHarvest > vaultBalance, "Expected vaultBalanceAfterHarvest > vaultBalance");
-        assertTrue(pricePerFullShareAfterHarvest > pricePerFullShare, "Expected pricePerFullShareAfterHarvest > pricePerFullShare");
-        assertTrue(wantBalanceFinal > wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
-        assertTrue(lastHarvestAfterHarvest > lastHarvest, "Expected lastHarvestAfterHarvest > lastHarvest");
-        assertTrue(lastHarvestAfterHarvest == timestampBeforeHarvest + delay, "Expected lastHarvestAfterHarvest == timestampBeforeHarvest + delay");
+        assertGt(vaultBalanceAfterHarvest, vaultBalance, "Expected vaultBalanceAfterHarvest > vaultBalance");
+        assertGt(pricePerFullShareAfterHarvest, pricePerFullShare, "Expected pricePerFullShareAfterHarvest > pricePerFullShare");
+        assertGt(wantBalanceFinal, wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
+        assertGt(lastHarvestAfterHarvest, lastHarvest, "Expected lastHarvestAfterHarvest > lastHarvest");
+        assertEq(lastHarvestAfterHarvest, timestampBeforeHarvest + delay, "Expected lastHarvestAfterHarvest == timestampBeforeHarvest + delay");
     }
 
     function test_panic() external {
@@ -104,7 +105,7 @@ contract ProdVaultTest is BaseTestHarness {
         uint256 balanceOfPool = strategy.balanceOfPool();
         uint256 balanceOfWant = strategy.balanceOfWant();
 
-        assertTrue(balanceOfPool > balanceOfWant);
+        assertGt(balanceOfPool, balanceOfWant);
         
         console.log("Calling panic()");
         FORGE_VM.prank(keeper);
@@ -114,8 +115,8 @@ contract ProdVaultTest is BaseTestHarness {
         uint256 balanceOfPoolAfterPanic = strategy.balanceOfPool();
         uint256 balanceOfWantAfterPanic = strategy.balanceOfWant();
 
-        assertTrue(vaultBalanceAfterPanic > vaultBalance  * 99 / 100, "Expected vaultBalanceAfterPanic > vaultBalance");
-        assertTrue(balanceOfWantAfterPanic > balanceOfPoolAfterPanic, "Expected balanceOfWantAfterPanic > balanceOfPoolAfterPanic");
+        assertGt(vaultBalanceAfterPanic, vaultBalance  * 99 / 100, "Expected vaultBalanceAfterPanic > vaultBalance");
+        assertGt(balanceOfWantAfterPanic, balanceOfPoolAfterPanic, "Expected balanceOfWantAfterPanic > balanceOfPoolAfterPanic");
 
         console.log("Getting user more want.");
         modifyBalanceWithKnownSlot(vault.want(), address(user), wantStartingAmount, slot);
@@ -132,7 +133,7 @@ contract ProdVaultTest is BaseTestHarness {
         user.withdrawAll(vault);
 
         uint256 wantBalanceFinal = want.balanceOf(address(user));
-        assertTrue(wantBalanceFinal > wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
+        assertGt(wantBalanceFinal, wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
     }
 
     function test_multipleUsers() external {
@@ -162,25 +163,25 @@ contract ProdVaultTest is BaseTestHarness {
         uint256 user1WantBalanceFinal = want.balanceOf(address(user));
         uint256 pricePerFullShareAfterUser1Withdraw = vault.getPricePerFullShare();
 
-        assertTrue(pricePerFullShareAfterUser2Deposit >= pricePerFullShare, "Expected pricePerFullShareAfterUser2Deposit >= pricePerFullShare");
-        assertTrue(pricePerFullShareAfterUser1Withdraw >= pricePerFullShareAfterUser2Deposit, "Expected pricePerFullShareAfterUser1Withdraw >= pricePerFullShareAfterUser2Deposit");
-        assertTrue(user1WantBalanceFinal > wantStartingAmount * 99 / 100, "Expected user1WantBalanceFinal > wantStartingAmount * 99 / 100");
+        assertGe(pricePerFullShareAfterUser2Deposit, pricePerFullShare, "Expected pricePerFullShareAfterUser2Deposit >= pricePerFullShare");
+        assertGe(pricePerFullShareAfterUser1Withdraw, pricePerFullShareAfterUser2Deposit, "Expected pricePerFullShareAfterUser1Withdraw >= pricePerFullShareAfterUser2Deposit");
+        assertGt(user1WantBalanceFinal, wantStartingAmount * 99 / 100, "Expected user1WantBalanceFinal > wantStartingAmount * 99 / 100");
     }
 
     function test_correctOwnerAndKeeper() external {
-        assertTrue(vault.owner() == vaultOwner, "Wrong vault owner.");
-        assertTrue(strategy.owner() == strategyOwner, "Wrong strategy owner.");
-        assertTrue(strategy.keeper() == keeper, "Wrong keeper.");
+        assertEq(vault.owner(), vaultOwner, "Wrong vault owner.");
+        assertEq(strategy.owner(), strategyOwner, "Wrong strategy owner.");
+        assertEq(strategy.keeper(), keeper, "Wrong keeper.");
     }
 
     function test_harvestOnDeposit() external {
         bool harvestOnDeposit = strategy.harvestOnDeposit();
         if (harvestOnDeposit) {
             console.log("Vault is harvestOnDeposit.");
-            assertTrue(strategy.withdrawalFee() == 0, "Vault is harvestOnDeposit but has withdrawal fee.");
+            assertEq(strategy.withdrawalFee(), 0, "Vault is harvestOnDeposit but has withdrawal fee.");
         } else {
             console.log("Vault is NOT harvestOnDeposit.");
-            assertTrue(strategy.keeper() == keeper, "Vault is not harvestOnDeposit but doesn't have withdrawal fee.");
+            assertEq(strategy.keeper(), keeper, "Vault is not harvestOnDeposit but doesn't have withdrawal fee.");
         }
     }
 
