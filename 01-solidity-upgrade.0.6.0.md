@@ -1,7 +1,7 @@
-# solidity 0.8.0
+# solidity 0.6.0
 
-Vault: 0x44Dfa74Ee2B56c1004980B3CD1fBc69bfC04A206
-Strategy: 0xdafF49F1bdBe7b1e3Bea83E2B4E0e40CE11E2e86
+Vault: 0x263A2E7BCcd8DE4D9253e263550Eda3007684BD1
+Strategy: 0x6E4016F744C2A44f3D74a2764Eda7F13480542D3
 Want: 0x26A2abD79583155EA5d34443b62399879D42748A
 PoolId: 0
 
@@ -9,7 +9,7 @@ Running post deployment
 Setting call fee to '11'
 Transfering Vault Owner to 0xc8F3D9994bb1670F5f3d78eBaBC35FA8FdEEf8a2
 
-# tests with fuzzing, no console log
+# tests with fuzzing
 
 Running 6 tests for forge/test/ProdVaultTest.t.sol:ProdVaultTest
 [PASS] test_correctOwnerAndKeeper(uint8) (runs: 256, μ: 16711, ~: 16711)
@@ -17,25 +17,14 @@ Running 6 tests for forge/test/ProdVaultTest.t.sol:ProdVaultTest
 [PASS] test_harvest(uint8) (runs: 256, μ: 866346, ~: 866348)
 [PASS] test_harvestOnDeposit(uint8) (runs: 256, μ: 14239, ~: 14239)
 [PASS] test_multipleUsers(uint8) (runs: 256, μ: 1016293, ~: 1016293)
-[PASS] test_panic(uint8) (runs: 256, μ: 592803, ~: 592804)
-Test result: ok. 6 passed; 0 failed; finished in 5.14s
-
-# tests with fuzzing, console log
-
-Running 6 tests for forge/test/ProdVaultTest.t.sol:ProdVaultTest
-[PASS] test_correctOwnerAndKeeper(uint8) (runs: 256, μ: 19562, ~: 19562)
-[PASS] test_depositAndWithdraw(uint8) (runs: 256, μ: 516053, ~: 516052)
-[PASS] test_harvest(uint8) (runs: 256, μ: 866624, ~: 866624)
-[PASS] test_harvestOnDeposit(uint8) (runs: 256, μ: 14587, ~: 14587)
-[PASS] test_multipleUsers(uint8) (runs: 256, μ: 1016641, ~: 1016641)
-[PASS] test_panic(uint8) (runs: 256, μ: 593082, ~: 593081)
-Test result: ok. 6 passed; 0 failed; finished in 5.40s
+[PASS] test_panic(uint8) (runs: 256, μ: 592802, ~: 592802)
+Test result: ok. 6 passed; 0 failed; finished in 5.20s
 
 # tests without fuzzing
 
 ```
 Running 6 tests for forge/test/ProdVaultTest.t.sol:ProdVaultTest
-[PASS] test_correctOwnerAndKeeper() (gas: 16597)
+[PASS] test_correctOwnerAndKeeper(uint8) (runs: 256, μ: 16733, ~: 16733)
 [PASS] test_depositAndWithdraw() (gas: 515677)
 Logs:
   Approving want spend.
@@ -56,7 +45,7 @@ Logs:
 Logs:
   Vault is NOT harvestOnDeposit.
 
-[PASS] test_multipleUsers() (gas: 1016159)
+[PASS] test_multipleUsers() (gas: 1016181)
 Logs:
   Approving want spend.
   Depositing all want into vault, 50000000000000000000
@@ -78,7 +67,7 @@ Logs:
   Trying to deposit while panicked.
   User withdraws all.
 
-Test result: ok. 6 passed; 0 failed; finished in 1.13s
+Test result: ok. 6 passed; 0 failed; finished in 832.38ms
 ╭────────────────────┬─────────────────┬────────┬────────┬────────┬─────────╮
 │ VaultUser contract ┆                 ┆        ┆        ┆        ┆         │
 ╞════════════════════╪═════════════════╪════════╪════════╪════════╪═════════╡

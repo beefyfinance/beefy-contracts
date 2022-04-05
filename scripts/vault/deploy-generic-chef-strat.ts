@@ -9,14 +9,14 @@ import { BeefyChain } from "../../utils/beefyChain";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: {  solarflare, beefyfinance },
+  platforms: { solarflare, beefyfinance },
   tokens: {
     FLARE: { address: FLARE },
     GLMR: { address: GLMR },
     UST: { address: UST },
     LUNA: { address: LUNA },
     USDT: { address: USDT },
-    USDC: { address: USDC }
+    USDC: { address: USDC },
   },
 } = addressBook.moonbeam;
 
@@ -41,7 +41,7 @@ const strategyParams = {
   outputToNativeRoute: [FLARE, GLMR],
   outputToLp0Route: [FLARE, GLMR],
   outputToLp1Route: [FLARE],
- // pendingRewardsFunctionName: "pendingTri", // used for rewardsAvailable(), use correct function name from masterchef
+  // pendingRewardsFunctionName: "pendingTri", // used for rewardsAvailable(), use correct function name from masterchef
 };
 
 const contractNames = {
@@ -113,9 +113,9 @@ async function main() {
       verifyContract(strategy.address, strategyConstructorArguments)
     );
   }
- // await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
+  // await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
   await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
-  console.log(`Transfering Vault Owner to ${beefyfinance.vaultOwner}`)
+  console.log(`Transfering Vault Owner to ${beefyfinance.vaultOwner}`);
   await vault.transferOwnership(beefyfinance.vaultOwner);
   console.log();
 
