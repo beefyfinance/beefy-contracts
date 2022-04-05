@@ -12,6 +12,7 @@ import "./ChefManager.sol";
 
 interface IRewarder {
     function rewardToken() external view returns (address);
+    function isNative() external view returns (bool);
 }
 
 contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManager {
@@ -21,7 +22,7 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
     // Addresses used
     IERC20Upgradeable public want;
     IVeJoe public veJoe;
-    address public immutable native = 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7;
+    address public native;
 
     // Our reserve integers 
     uint16 public constant MAX = 10000;
@@ -35,17 +36,18 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
     function initialize(
         address _veJoe,
         address _keeper,
-        address _joeChef,
         uint256 _reserveRate,
         address _joeBatch, 
         uint256 _beJoeShare,
+        address _native,
         string memory _name,
         string memory _symbol
     ) public initializer {
-        managerInitialize(_joeChef, _keeper, _joeBatch, _beJoeShare);
+        managerInitialize(_keeper, _joeBatch, _beJoeShare);
         veJoe = IVeJoe(_veJoe);
         want = IERC20Upgradeable(veJoe.joe());
         reserveRate = _reserveRate;
+        native = _native;
 
         __ERC20_init(_name, _symbol);
 
@@ -83,10 +85,10 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
 
     // Withdraw capable if we have enough JOEs in the contract. 
     function withdraw(uint256 _amount) public {
-        require(_amount < balanceOfWant(), "Not enough JOEs to withdraw");
-        _burn(msg.sender, _amount);
-        want.safeTransfer(msg.sender, _amount);
-        emit Withdraw(totalJoes());
+        require(_amount <= balanceOfWant(), "Not enough JOEs");
+            _burn(msg.sender, _amount);
+            want.safeTransfer(msg.sender, _amount);
+            emit Withdraw(totalJoes());
     }
 
     // We harvest veJOE on every deposit, if we can deposit to earn more veJOE we deposit based on required reserve and bonus
@@ -111,8 +113,8 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
 
     // Our required JOEs held in the contract to enable withdraw capabilities
     function requiredReserve() public view returns (uint256 reqReserve) {
-        // We calculate allocation for 20% or the total supply of contract to the reserve.
-        reqReserve = totalJoes().mul(reserveRate).div(MAX);
+        // We calculate allocation for reserve of the total staked JOEs.
+        reqReserve = balanceOfJoeInVe().mul(reserveRate).div(MAX);
     }
 
     // Total Joes in veJOE contract and beJOE contract. 
@@ -135,7 +137,7 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
         (joes,,,) = veJoe.userInfos(address(this));
     }
 
-     // how many joes we got earning ve? 
+     // whats the speed up timing
     function speedUpTimestamp() public view returns (uint256 time) {
         (,,,time) = veJoe.userInfos(address(this));
     }
@@ -161,9 +163,9 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
     }
 
     // pass through a deposit to a boosted chef 
-    function deposit(uint256 _pid, uint256 _amount) external onlyWhitelist(_pid) {
+    function deposit(address _joeChef, uint256 _pid, uint256 _amount) external onlyWhitelist(_joeChef, _pid) {
         // Grab needed pool info
-        (address _underlying,,,,, address _rewarder,,,) = joeChef.poolInfo(_pid);
+        (address _underlying,,,,, address _rewarder,,,) = IJoeChef(_joeChef).poolInfo(_pid);
 
         // Take before balances snapshot and transfer want from strat
         uint256 joeBefore = balanceOfWant(); // How many Joe's strategy hold    
@@ -176,24 +178,26 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
         if (_rewarder != address(0)) {
             rewardToken = IRewarder(_rewarder).rewardToken();
             rewardBefore = IERC20Upgradeable(rewardToken).balanceOf(address(this));
-            if (rewardToken == native) {
+            if (IRewarder(_rewarder).isNative()) {
                 nativeBefore = address(this).balance;
             } 
         }
 
-        joeChef.deposit(_pid, _amount);
+        IJoeChef(_joeChef).deposit(_pid, _amount);
         uint256 joeDiff = balanceOfWant().sub(joeBefore); // Amount of Joes the Chef sent us
         
         // Send beJoe Batch their JOEs
-        uint256 batchJoes = joeDiff.mul(beJoeShare).div(MAX);
-        want.safeTransfer(joeBatch, batchJoes);
+        if (joeDiff > 0) {
+            uint256 batchJoes = joeDiff.mul(beJoeShare).div(MAX);
+            want.safeTransfer(joeBatch, batchJoes);
 
-        uint256 remaining = joeDiff.sub(batchJoes);
-        want.safeTransfer(msg.sender, remaining);
+            uint256 remaining = joeDiff.sub(batchJoes);
+            want.safeTransfer(msg.sender, remaining);
+        }
 
         // Transfer the second reward
         if (_rewarder != address(0)) {
-            if (rewardToken == native) {
+            if (IRewarder(_rewarder).isNative()) {
                 uint256 nativeDiff = address(this).balance.sub(nativeBefore);
                 (bool sent,) = msg.sender.call{value: nativeDiff}("");
                 require(sent, "Failed to send Ether");
@@ -205,9 +209,9 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
     }
 
     // pass through a withdrawal from boosted chef
-    function withdraw(uint256 _pid, uint256 _amount) external onlyWhitelist(_pid) {
+    function withdraw(address _joeChef, uint256 _pid, uint256 _amount) external onlyWhitelist(_joeChef, _pid) {
         // Grab needed pool info
-        (address _underlying,,,,, address _rewarder,,,) = joeChef.poolInfo(_pid);
+        (address _underlying,,,,, address _rewarder,,,) = IJoeChef(_joeChef).poolInfo(_pid);
 
         uint256 joeBefore = balanceOfWant(); // How many Joe's strategy hold  
 
@@ -218,18 +222,18 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
         if (_rewarder != address(0)) {
             rewardToken = IRewarder(_rewarder).rewardToken();
             rewardBefore = IERC20Upgradeable(rewardToken).balanceOf(address(this));
-            if (rewardToken == native) {
+            if (IRewarder(_rewarder).isNative()) {
                 nativeBefore = address(this).balance;
             } 
         }
         
-        joeChef.withdraw(_pid, _amount);
+        IJoeChef(_joeChef).withdraw(_pid, _amount);
         uint256 joeDiff = balanceOfWant().sub(joeBefore); // Amount of Joes the Chef sent us
         IERC20Upgradeable(_underlying).safeTransfer(msg.sender, _amount);
 
         // Transfer the second reward
         if (_rewarder != address(0)) {
-            if (rewardToken == native) {
+            if (IRewarder(_rewarder).isNative()) {
                 uint256 nativeDiff = address(this).balance.sub(nativeBefore);
                 (bool sent,) = msg.sender.call{value: nativeDiff}("");
                 require(sent, "Failed to send Ether");
@@ -239,19 +243,21 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
             }
         }
 
-          // Send beJoe Batch their JOEs
-        uint256 batchJoes = joeDiff.mul(beJoeShare).div(MAX);
-        want.safeTransfer(joeBatch, batchJoes);
+        if (joeDiff > 0) {
+            // Send beJoe Batch their JOEs
+            uint256 batchJoes = joeDiff.mul(beJoeShare).div(MAX);
+            want.safeTransfer(joeBatch, batchJoes);
 
-        uint256 remaining = joeDiff.sub(batchJoes);
-        want.safeTransfer(msg.sender, remaining); 
+            uint256 remaining = joeDiff.sub(batchJoes);
+            want.safeTransfer(msg.sender, remaining); 
+        }
     }
 
     // emergency withdraw losing all JOE rewards from boosted chef
-    function emergencyWithdraw(uint256 _pid) external onlyWhitelist(_pid) {
-        (address _underlying,,,,,,,,) = joeChef.poolInfo(_pid);
+    function emergencyWithdraw(address _joeChef, uint256 _pid) external onlyWhitelist(_joeChef, _pid) {
+        (address _underlying,,,,,,,,) = IJoeChef(_joeChef).poolInfo(_pid);
         uint256 _before = IERC20Upgradeable(_underlying).balanceOf(address(this));
-        joeChef.emergencyWithdraw(_pid);
+        IJoeChef(_joeChef).emergencyWithdraw(_pid);
         uint256 _balance = IERC20Upgradeable(_underlying).balanceOf(address(this)).sub(_before);
         IERC20Upgradeable(_underlying).safeTransfer(msg.sender, _balance);
     }
@@ -265,7 +271,7 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
 
     // recover any tokens sent on error
     function inCaseTokensGetStuck(address _token, bool _native) external onlyOwner {
-         require(_token != address(want), "!token");
+        require(_token != address(want), "!token");
 
         if (_native) {
             uint256 _nativeAmount = address(this).balance;

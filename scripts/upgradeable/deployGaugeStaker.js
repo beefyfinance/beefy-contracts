@@ -11,6 +11,9 @@ const config = {
   veWant: '0x25D85E17dD9e544F6E9F8D44F99602dbF5a97341',
   joeChef: '0x4483f0b6e2F5486D06958C20f8C39A7aBe87bf8F',
   keeper: '0x10aee6B5594942433e7Fc2783598c979B030eF3D',
+  native: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
+  joeBach: ethers.constants.AddressZero,
+  fee: 500,
   reserve: 2000,
   name: 'testVe',
   symbol: 'testVe',
@@ -33,8 +36,10 @@ async function main() {
   const staker = await upgrades.deployProxy(GaugeStaker, [
     config.veWant,
     config.keeper,
-    config.joeChef, 
     config.reserve,
+    config.joeBach,
+    config.fee,
+    config.native,
     config.name,
     config.symbol
   ]);

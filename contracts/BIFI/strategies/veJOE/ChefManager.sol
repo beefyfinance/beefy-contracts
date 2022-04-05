@@ -22,14 +22,13 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * {keeper} - Address to manage a few lower risk features of the strat.
      * {rewardPool} - Address for distributing locked want rewards.
      */
-    IJoeChef public joeChef;
     address public keeper;
     address public joeBatch;
 
     // Fee integers
     uint256 public beJoeShare;
 
-    mapping(uint256 => address) public whitelistedStrategy;
+    mapping(address => mapping (uint256 => address)) public whitelistedStrategy;
     mapping(address => address) public replacementStrategy;
 
     event NewKeeper(address oldKeeper, address newKeeper);
@@ -38,23 +37,20 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 
     /**
      * @dev Initializes the base strategy.
-     * @param _joeChef address of the boosted chef.
      * @param _keeper address to use as alternative owner.
      */
     function managerInitialize(
-        address _joeChef,
         address _keeper,
         address _joeBatch,
         uint256 _beJoeShare
     ) internal initializer {
         __Ownable_init();
 
-        joeChef = IJoeChef(_joeChef);
         keeper = _keeper;
         joeBatch = _joeBatch;
 
-        // Cannot be more than 5%
-        require(_beJoeShare <= 500, "Too Much");
+        // Cannot be more than 10%
+        require(_beJoeShare <= 1000, "Too Much");
         beJoeShare = _beJoeShare;
     }
 
@@ -65,8 +61,8 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
     }
 
     // checks that caller is the strategy assigned to a specific gauge.
-    modifier onlyWhitelist(uint256 _pid) {
-        require(whitelistedStrategy[_pid] == msg.sender, "!whitelisted");
+    modifier onlyWhitelist(address _joeChef, uint256 _pid) {
+        require(whitelistedStrategy[_joeChef][_pid] == msg.sender, "!whitelisted");
         _;
     }
 
@@ -90,11 +86,11 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
     }
 
     /**
-     * @dev Updates address of the Joe Batch.
-     * @param _newBeJoeShare new Joe.
+     * @dev Updates share for the Joe Batch.
+     * @param _newBeJoeShare new Joe share.
      */
     function setbeJoeShare(uint256 _newBeJoeShare) external onlyManager {
-        require(_newBeJoeShare <= 500, "too much");
+        require(_newBeJoeShare <= 1000, "too much");
         emit NewBeJoeShare(beJoeShare, _newBeJoeShare);
         beJoeShare = _newBeJoeShare;
     }
@@ -105,13 +101,14 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      */
     function whitelistStrategy(address _strategy) external onlyManager {
         IERC20Upgradeable _want = IJoeStrategy(_strategy).want();
-        uint256 _pid = IJoeStrategy(_strategy).pid();
-        (uint256 stratBal,,) = joeChef.userInfo(_pid, address(this));
+        uint256 _pid = IJoeStrategy(_strategy).poolId();
+        address _joeChef = IJoeStrategy(_strategy).chef();
+        (uint256 stratBal,,) = IJoeChef(_joeChef).userInfo(_pid, address(this));
         require(stratBal == 0, "!inactive");
 
-        _want.safeApprove(address(joeChef), 0);
-        _want.safeApprove(address(joeChef), type(uint256).max);
-        whitelistedStrategy[_pid] = _strategy;
+        _want.safeApprove(_joeChef, 0);
+        _want.safeApprove(_joeChef, type(uint256).max);
+        whitelistedStrategy[_joeChef][_pid] = _strategy;
     }
 
     /**
@@ -120,9 +117,10 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      */
     function blacklistStrategy(address _strategy) external onlyManager {
         IERC20Upgradeable _want = IJoeStrategy(_strategy).want();
-        uint256 _pid = IJoeStrategy(_strategy).pid();
-        _want.safeApprove(address(joeChef), 0);
-        whitelistedStrategy[_pid] = address(0);
+        uint256 _pid = IJoeStrategy(_strategy).poolId();
+        address _joeChef = IJoeStrategy(_strategy).chef();
+        _want.safeApprove(_joeChef, 0);
+        whitelistedStrategy[_joeChef][_pid] = address(0);
     }
 
     /**
@@ -131,7 +129,7 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param _newStrategy strategy to be implemented.
      */
     function proposeStrategy(address _oldStrategy, address _newStrategy) external onlyManager {
-        require(IJoeStrategy(_oldStrategy).pid() == IJoeStrategy(_newStrategy).pid(), "!pid");
+        require(IJoeStrategy(_oldStrategy).poolId() == IJoeStrategy(_newStrategy).poolId(), "!pid");
         replacementStrategy[_oldStrategy] = _newStrategy;
     }
 
@@ -139,8 +137,8 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @dev Switch over whitelist from one strategy to another for a gauge.
      * @param _pid pid for which the new strategy will be whitelisted.
      */
-    function upgradeStrategy(uint256 _pid) external onlyWhitelist(_pid) {
-        whitelistedStrategy[_pid] = replacementStrategy[msg.sender];
+    function upgradeStrategy(address _joeChef, uint256 _pid) external onlyWhitelist(_joeChef, _pid) {
+        whitelistedStrategy[_joeChef][_pid] = replacementStrategy[msg.sender];
     }
 
     /**
