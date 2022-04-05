@@ -24,9 +24,17 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      */
     IJoeChef public joeChef;
     address public keeper;
+    address public joeBatch;
+
+    // Fee integers
+    uint256 public beJoeShare;
 
     mapping(uint256 => address) public whitelistedStrategy;
     mapping(address => address) public replacementStrategy;
+
+    event NewKeeper(address oldKeeper, address newKeeper);
+    event NewBeJoeShare(uint256 oldShare, uint256 newShare);
+    event NewJoeBatch(address oldBatch, address newBatch);
 
     /**
      * @dev Initializes the base strategy.
@@ -35,12 +43,19 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      */
     function managerInitialize(
         address _joeChef,
-        address _keeper
+        address _keeper,
+        address _joeBatch,
+        uint256 _beJoeShare
     ) internal initializer {
         __Ownable_init();
 
         joeChef = IJoeChef(_joeChef);
         keeper = _keeper;
+        joeBatch = _joeBatch;
+
+        // Cannot be more than 5%
+        require(_beJoeShare <= 500, "Too Much");
+        beJoeShare = _beJoeShare;
     }
 
     // checks that caller is either owner or keeper.
@@ -60,7 +75,28 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param _keeper new keeper address.
      */
     function setKeeper(address _keeper) external onlyManager {
+        emit NewKeeper(keeper, _keeper);
         keeper = _keeper;
+    }
+
+    /**
+     * @dev Updates address of the Joe Batch.
+     * @param _joeBatch new joeBatch address.
+     */
+    function setJoeBatch(address _joeBatch) external onlyOwner {
+        emit NewJoeBatch(joeBatch, _joeBatch);
+        joeBatch = _joeBatch;
+        
+    }
+
+    /**
+     * @dev Updates address of the Joe Batch.
+     * @param _newBeJoeShare new Joe.
+     */
+    function setbeJoeShare(uint256 _newBeJoeShare) external onlyManager {
+        require(_newBeJoeShare <= 500, "too much");
+        emit NewBeJoeShare(beJoeShare, _newBeJoeShare);
+        beJoeShare = _newBeJoeShare;
     }
 
      /**

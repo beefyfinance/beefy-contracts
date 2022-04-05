@@ -37,10 +37,12 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
         address _keeper,
         address _joeChef,
         uint256 _reserveRate,
+        address _joeBatch, 
+        uint256 _beJoeShare,
         string memory _name,
         string memory _symbol
     ) public initializer {
-        managerInitialize(_joeChef, _keeper);
+        managerInitialize(_joeChef, _keeper, _joeBatch, _beJoeShare);
         veJoe = IVeJoe(_veJoe);
         want = IERC20Upgradeable(veJoe.joe());
         reserveRate = _reserveRate;
@@ -98,12 +100,12 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
                     veJoe.deposit(avaialableBalance);
                 } 
             }
-            harvestVeJoe();
+            _harvestVeJoe();
         }
     }
 
     // claim the veJoes
-    function harvestVeJoe() public {
+    function _harvestVeJoe() internal {
         veJoe.claim();
     }
 
@@ -131,6 +133,11 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
     // how many joes we got earning ve? 
     function balanceOfJoeInVe() public view returns (uint256 joes) {
         (joes,,,) = veJoe.userInfos(address(this));
+    }
+
+     // how many joes we got earning ve? 
+    function speedUpTimestamp() public view returns (uint256 time) {
+        (,,,time) = veJoe.userInfos(address(this));
     }
 
     // prevent any further 'want' deposits and remove approval
@@ -176,7 +183,13 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
 
         joeChef.deposit(_pid, _amount);
         uint256 joeDiff = balanceOfWant().sub(joeBefore); // Amount of Joes the Chef sent us
-        want.safeTransfer(msg.sender, joeDiff);
+        
+        // Send beJoe Batch their JOEs
+        uint256 batchJoes = joeDiff.mul(beJoeShare).div(MAX);
+        want.safeTransfer(joeBatch, batchJoes);
+
+        uint256 remaining = joeDiff.sub(batchJoes);
+        want.safeTransfer(msg.sender, remaining);
 
         // Transfer the second reward
         if (_rewarder != address(0)) {
@@ -226,7 +239,12 @@ contract VeJoeStaker is ERC20Upgradeable, ReentrancyGuardUpgradeable, ChefManage
             }
         }
 
-        want.safeTransfer(msg.sender, joeDiff); 
+          // Send beJoe Batch their JOEs
+        uint256 batchJoes = joeDiff.mul(beJoeShare).div(MAX);
+        want.safeTransfer(joeBatch, batchJoes);
+
+        uint256 remaining = joeDiff.sub(batchJoes);
+        want.safeTransfer(msg.sender, remaining); 
     }
 
     // emergency withdraw losing all JOE rewards from boosted chef
