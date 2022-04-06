@@ -84,7 +84,7 @@ contract StrategyTraderJoeDualLP is StratManager, FeeManager {
 
         if (wantBal > 0) {
             IMasterChef(chef).deposit(poolId, wantBal);
-            uint256 _toWrap = msg.value;
+            uint256 _toWrap = address(this).balance;
             IWrappedNative(native).deposit{value: _toWrap}();
             emit Deposit(balanceOf());
         }
@@ -97,7 +97,7 @@ contract StrategyTraderJoeDualLP is StratManager, FeeManager {
 
         if (wantBal < _amount) {
             IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
-            uint256 _toWrap = msg.value;
+            uint256 _toWrap = address(this).balance;
             IWrappedNative(native).deposit{value: _toWrap}();
             wantBal = IERC20(want).balanceOf(address(this));
         }
@@ -138,7 +138,7 @@ contract StrategyTraderJoeDualLP is StratManager, FeeManager {
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal {
         IMasterChef(chef).deposit(poolId, 0);
-        uint256 _toWrap = msg.value;
+        uint256 _toWrap = address(this).balance;
         IWrappedNative(native).deposit{value: _toWrap}();
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
