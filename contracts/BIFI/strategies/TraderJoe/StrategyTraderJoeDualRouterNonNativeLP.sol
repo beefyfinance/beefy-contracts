@@ -38,12 +38,10 @@ contract StrategyTraderJoeDualRouterNonNativeLP is StratManager, FeeManager {
     address[] public nativeToLp0Route;
     address[] public nativeToLp1Route;
 
-    /**
-     * @dev Event that is fired each time someone harvests the strat.
-     */
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
+    event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
     constructor(
         address _want,
@@ -175,8 +173,10 @@ contract StrategyTraderJoeDualRouterNonNativeLP is StratManager, FeeManager {
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        uint256 strategistFeeAmount = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(native).safeTransfer(strategist, strategistFeeAmount);
+
+        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
@@ -221,19 +221,11 @@ contract StrategyTraderJoeDualRouterNonNativeLP is StratManager, FeeManager {
         (uint256 outputBal, uint256 secondBal) = rewardsAvailable();
         uint256 nativeBal;
 
-        try IUniswapRouter(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
-            returns (uint256[] memory amountOut)
-        {
-            nativeBal = nativeBal.add(amountOut[amountOut.length -1]);
-        }
-        catch {}
+        uint256[] memory amountOut = IUniswapRouter(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
+        nativeBal = amountOut[amountOut.length -1];
 
-        try IUniswapRouter(secondUnirouter).getAmountsOut(secondBal, secondOutputToNativeRoute)
-            returns (uint256[] memory amountOut)
-        {
-            nativeBal = nativeBal.add(amountOut[amountOut.length -1]);
-        }
-        catch {}
+        amountOut = IUniswapRouter(secondUnirouter).getAmountsOut(secondBal, secondOutputToNativeRoute);
+        nativeBal = nativeBal.add(amountOut[amountOut.length -1]);
 
         return nativeBal.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
