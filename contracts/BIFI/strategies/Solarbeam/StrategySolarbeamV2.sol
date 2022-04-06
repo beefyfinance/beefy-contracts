@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/solar/ISolarRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
+import "../../interfaces/common/IWrappedNative.sol";
 import "../../interfaces/solar/ISolarChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
@@ -43,6 +44,7 @@ contract StrategySolarbeamV2 is StratManager, FeeManager {
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
+    event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
     constructor(
         address _want,
@@ -151,6 +153,12 @@ contract StrategySolarbeamV2 is StratManager, FeeManager {
     function chargeFees(address callFeeRecipient) internal {
         if (rewardToOutputRoute.length != 0) {
             for (uint i; i < rewardToOutputRoute.length; i++) {
+                if(rewardToOutputRoute[i][0] == native) {
+                    uint256 nativeBal = address(this).balance;
+                    if(nativeBal > 0) {
+                        IWrappedNative(native).deposit{value: nativeBal}();
+                    }   
+                }
                 uint256 rewardBal = IERC20(rewardToOutputRoute[i][0]).balanceOf(address(this));
                 if (rewardBal > 0) {
                     ISolarRouter(unirouter).swapExactTokensForTokens(rewardBal, 0, rewardToOutputRoute[i], address(this), now);
@@ -171,6 +179,8 @@ contract StrategySolarbeamV2 is StratManager, FeeManager {
 
         uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
         IERC20(native).safeTransfer(strategist, strategistFee);
+
+        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFee);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
@@ -339,4 +349,6 @@ contract StrategySolarbeamV2 is StratManager, FeeManager {
     function rewardToOutput() external view returns (address[][] memory) {
         return rewardToOutputRoute;
     }
+     
+    receive () external payable {}
 }

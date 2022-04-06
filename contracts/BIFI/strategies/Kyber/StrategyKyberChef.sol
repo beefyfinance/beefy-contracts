@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/kyber/IDMMRouter.sol";
-import "../../interfaces/common/IUniswapV2Pair.sol";
+import "../../interfaces/kyber/IDMMPool.sol";
 import "../../interfaces/common/IMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
@@ -40,12 +40,11 @@ contract StrategyKyberChef is StratManager, FeeManager {
     address[] public outputToLp0PoolsPath;
     address[] public outputToLp1PoolsPath;
 
-    /**
-     * @dev Event that is fired each time someone harvests the strat.
-     */
+    // Events
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
+    event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
     constructor(
         address _want,
@@ -74,14 +73,14 @@ contract StrategyKyberChef is StratManager, FeeManager {
         }
 
         // setup lp routing
-        lpToken0 = IUniswapV2Pair(want).token0();
+        lpToken0 = IDMMPool(want).token0();
         require(_outputToLp0Route[0] == output, "outputToLp0Route[0] != output");
         require(_outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0, "outputToLp0Route[last] != lpToken0");
         for (uint i = 0; i < _outputToLp0Route.length; i++) {
             outputToLp0Route.push(IERC20(_outputToLp0Route[i]));
         }
 
-        lpToken1 = IUniswapV2Pair(want).token1();
+        lpToken1 = IDMMPool(want).token1();
         require(_outputToLp1Route[0] == output, "outputToLp1Route[0] != output");
         require(_outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1, "outputToLp1Route[last] != lpToken1");
         for (uint i = 0; i < _outputToLp1Route.length; i++) {
@@ -172,20 +171,22 @@ contract StrategyKyberChef is StratManager, FeeManager {
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        uint256 strategistFeeAmount = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(native).safeTransfer(strategist, strategistFeeAmount);
+
+        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
+        (uint256 output0Bal, uint256 output1Bal) = getLiquiditySplit();
 
         if (lpToken0 != output) {
-            IDMMRouter(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0PoolsPath, outputToLp0Route, address(this), now);
+            IDMMRouter(unirouter).swapExactTokensForTokens(output0Bal, 0, outputToLp0PoolsPath, outputToLp0Route, address(this), now);
         }
 
         if (lpToken1 != output) {
-            IDMMRouter(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1PoolsPath, outputToLp1Route, address(this), now);
+            IDMMRouter(unirouter).swapExactTokensForTokens(output1Bal, 0, outputToLp1PoolsPath, outputToLp1Route, address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
@@ -203,6 +204,18 @@ contract StrategyKyberChef is StratManager, FeeManager {
             address(this),
             now
         );
+    }
+
+    // Adding liquidity is not 50/50, so determining the amount of output is required for each LP token is calculated
+    // from combining the normal and virtual reserves.
+    function getLiquiditySplit() internal view returns (uint256 output0Bal, uint256 output1Bal) {
+        (uint256 reserve0, uint256 reserve1, uint256 vReserve0, uint256 vReserve1,) = IDMMPool(want).getTradeInfo();
+        uint256 addRatio = reserve0.mul(1e18).div(reserve1);
+        uint256 priceRatio = vReserve0.mul(1e18).div(vReserve1);
+        uint256 splitRatio = addRatio.mul(1e18).div(priceRatio);
+
+        output0Bal = IERC20(output).balanceOf(address(this)).mul(splitRatio).div(splitRatio.add(1e18));
+        output1Bal = IERC20(output).balanceOf(address(this)).sub(output0Bal);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -242,15 +255,8 @@ contract StrategyKyberChef is StratManager, FeeManager {
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
         uint256 outputBal = rewardsAvailable();
-        uint256 nativeOut;
-        if (outputBal > 0) {
-            try IDMMRouter(unirouter).getAmountsOut(outputBal, outputToNativePoolsPath, outputToNativeRoute)
-                returns (uint256[] memory amountOut)
-            {
-                nativeOut = amountOut[amountOut.length -1];
-            }
-            catch {}
-        }
+        uint256[] memory amountOut = IDMMRouter(unirouter).getAmountsOut(outputBal, outputToNativePoolsPath, outputToNativeRoute);
+        uint256 nativeOut = amountOut[amountOut.length -1];
 
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }

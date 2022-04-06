@@ -99,6 +99,16 @@ const config: DeploymentConfig = {
       chainId: 122,
       accounts,
     },
+    metis: {
+      url: "https://andromeda.metis.io/?owner=1088",
+      chainId: 1088,
+      accounts,
+    },
+    moonbeam: {
+      url: "https://rpc.api.moonbeam.network",
+      chainId: 1284,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
@@ -107,6 +117,15 @@ const config: DeploymentConfig = {
   },
   solidity: {
     compilers: [
+      {
+        version: "0.8.11",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
       {
         version: "0.8.4",
         settings: {

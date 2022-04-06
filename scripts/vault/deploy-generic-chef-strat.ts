@@ -1,50 +1,52 @@
 import hardhat, { ethers, web3 } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
 import { predictAddresses } from "../../utils/predictAddresses";
-// import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
-// import { setPendingRewardsFunctionName } from "../../utils/setPendingRewardsFunctionName";
+import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
+import { setPendingRewardsFunctionName } from "../../utils/setPendingRewardsFunctionName";
 import { verifyContract } from "../../utils/verifyContract";
 import { BeefyChain } from "../../utils/beefyChain";
 
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: { mdex, beefyfinance },
+  platforms: {  solarflare, beefyfinance },
   tokens: {
-    MDX: { address: MDX },
-    BUSD: { address: BUSD },
-    LAC: { address: LAC },
-    WBNB: { address: WBNB },
+    FLARE: { address: FLARE },
+    GLMR: { address: GLMR },
+    UST: { address: UST },
+    LUNA: { address: LUNA },
+    USDT: { address: USDT },
+    USDC: { address: USDC }
   },
-} = addressBook.bsc;
+} = addressBook.moonbeam;
 
 const shouldVerifyOnEtherscan = false;
 
-const want = web3.utils.toChecksumAddress("0xa269E050DD2262E7BdC8A481D76880A562dD1d5E");
+const want = web3.utils.toChecksumAddress("0x26A2abD79583155EA5d34443b62399879D42748A");
 
 const vaultParams = {
-  mooName: "Moo Mdex LAC-BUSD",
-  mooSymbol: "mooMdexLAC-BUSD",
+  mooName: "Moo Solarflare FLARE-GLMR",
+  mooSymbol: "mooSolarflareFLARE-GLMR",
   delay: 21600,
 };
 
 const strategyParams = {
   want,
-  poolId: 136,
-  chef: mdex.masterchef,
-  unirouter: mdex.router,
-  strategist: "0x010dA5FF62B6e45f89FA7B2d8CEd5a8b5754eC1b", // some address
+  poolId: 0,
+  chef: solarflare.masterchef,
+  unirouter: solarflare.router,
+  strategist: "0xb2e4A61D99cA58fB8aaC58Bb2F8A59d63f552fC0", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [MDX, WBNB],
-  outputToLp0Route: [MDX, BUSD, LAC],
-  outputToLp1Route: [MDX, BUSD],
-//  pendingRewardsFunctionName: "pendingCake", // used for rewardsAvailable(), use correct function name from masterchef
+  outputToNativeRoute: [FLARE, GLMR],
+  outputToLp0Route: [FLARE, GLMR],
+  outputToLp1Route: [FLARE],
+ // pendingRewardsFunctionName: "pendingTri", // used for rewardsAvailable(), use correct function name from masterchef
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyMdexChefLP",
+  strategy: "StrategySolarbeamV2",
 };
 
 async function main() {
@@ -112,7 +114,9 @@ async function main() {
     );
   }
  // await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
- // await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
+  await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
+  console.log(`Transfering Vault Owner to ${beefyfinance.vaultOwner}`)
+  await vault.transferOwnership(beefyfinance.vaultOwner);
   console.log();
 
   await Promise.all(verifyContractsPromises);
@@ -129,4 +133,3 @@ main()
     console.error(error);
     process.exit(1);
   });
-  

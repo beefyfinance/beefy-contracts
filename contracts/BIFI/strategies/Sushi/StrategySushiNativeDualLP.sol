@@ -151,7 +151,9 @@ contract StrategySushiNativeDualLP is StratManager, FeeManager {
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
         uint256 toNative = IERC20(output).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
+        if (toNative > 0){
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
+        }
 
         uint256 feeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000);
 
@@ -270,6 +272,8 @@ contract StrategySushiNativeDualLP is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(chef, type(uint256).max);
         IERC20(native).safeApprove(unirouter, type(uint256).max);
+
+        IERC20(output).safeApprove(unirouter, 0);
         IERC20(output).safeApprove(unirouter, type(uint256).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
