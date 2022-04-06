@@ -38,6 +38,7 @@ contract StrategyKyberCurve is StratManager, FeeManager {
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
+    event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
     constructor(
         address _want,
@@ -121,7 +122,7 @@ contract StrategyKyberCurve is StratManager, FeeManager {
         _harvest(tx.origin);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -161,8 +162,10 @@ contract StrategyKyberCurve is StratManager, FeeManager {
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        uint256 strategistFeeAmount = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(native).safeTransfer(strategist, strategistFeeAmount);
+
+        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
@@ -197,20 +200,11 @@ contract StrategyKyberCurve is StratManager, FeeManager {
         uint256 outputBal = rewardsAvailable();
         uint256 nativeOut;
         if (outputBal > 0) {
-            try IDMMRouter(unirouter).getAmountsOut(outputBal, outputToWantPoolsPath, outputToWantRoute)
-                returns (uint256[] memory amountOutFromOutput)
-            {
-                uint256 wantOut = amountOutFromOutput[amountOutFromOutput.length -1];
-                ICurveSwap(want).calc_withdraw_one_coin(wantOut, 0);
-                uint256 stableBal = IERC20(stable).balanceOf(address(this));
-                try IDMMRouter(unirouter).getAmountsOut(stableBal, stableToNativePoolsPath, stableToNativeRoute)
-                    returns (uint256[] memory amountOutFromStable)
-                {
-                    nativeOut = amountOutFromStable[amountOutFromStable.length -1];
-                }
-                catch {}
-            }
-            catch {}
+            uint256[] memory amountOutFromOutput = IDMMRouter(unirouter).getAmountsOut(outputBal, outputToWantPoolsPath, outputToWantRoute);
+            uint256 wantOut = amountOutFromOutput[amountOutFromOutput.length -1];
+            uint256 stableBal = ICurveSwap(want).calc_withdraw_one_coin(wantOut, 0);
+            uint256[] memory amountOutFromStable = IDMMRouter(unirouter).getAmountsOut(stableBal, stableToNativePoolsPath, stableToNativeRoute);
+            nativeOut = amountOutFromStable[amountOutFromStable.length -1];
         }
 
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);

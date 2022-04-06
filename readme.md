@@ -23,7 +23,7 @@ For extra help in debugging a deployed vault during development, you can use the
 
 To prep to run the test suite, input the correct vault address, vaultOwner and stratOwner for the chain your testing in `ProdVaultTest.t.sol`, and modify the `yarn forgeTest:vault` script in package.json to pass in the correct RPC url of the chain your vault is on. Then run `yarn forgeTest:vault` to execute the test run. You can use `console.log` within the tests in `ProdVaultTest.t.sol` to output to the console.
 
-### 3. Deploy the smart contracts
+### 4. Deploy the smart contracts
 Once you are confident that everything works as expected you can do the official deploy of the vault + strategy contracts. There are [some scripts](https://github.com/beefyfinance/beefy-contracts/blob/master/scripts/) to help make deploying easier.
 
 ** Manual Testing Is Required for All Live Vaults **
@@ -41,7 +41,7 @@ Once you are confident that everything works as expected you can do the official
 11. `setPendingRewardName`, or else call reward shows 0.
 12. Transfer Ownership of the Vault and Strategy contracts to the Vault and Strat owners for the respective chains. 
 
-Check for more addresses at https://github.com/beefyfinance/beefy-api/tree/master/packages/address-book
+Check for more addresses in [the address book](https://github.com/beefyfinance/beefy-api/tree/master/packages/address-book)
 This is required so that we can review everything before the vault is actually live on the app and manage it after its live.
 
 ### 5.  Update App
