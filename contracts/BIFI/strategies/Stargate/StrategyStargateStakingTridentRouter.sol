@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -14,7 +15,7 @@ import "../Common/FeeManager.sol";
 import "../../utils/StringUtils.sol";
 import "../../utils/GasThrottler.sol";
 
-contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
+contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasThrottler {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -39,6 +40,10 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
     address[][] public outputToLp0Route;
     address[] public outputToNativePoolRoute;
     address[] public outputToLp0PoolRoute;
+
+    // paths
+    ITridentRouter.Path[] public outputToNativePath;
+    ITridentRouter.Path[] public outputToLp0Path;
 
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
@@ -67,15 +72,59 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
         chef = _chef;
         stargateRouter = _stargateRouter;
 
-        // Native routing 
+        //// Native routing 
         outputToNativePoolRoute = _outputToNativePoolRoute;
         outputToNativeRoute = _outputToNativeRoute;
-        output = outputToNativeRoute[0];
-        native = outputToNativeRoute[outputToNativeRoute.length - 1];
+        output = outputToNativeRoute[0][0];
+        native = outputToNativeRoute[outputToNativeRoute.length - 1][1];
         
-        // LP routing 
+        // Setup Native "path" object required by exactInput
+        for (uint256 i; i < outputToNativePoolRoute.length - 1; ) {
+            outputToNativePath[i] = ITridentRouter.Path(
+                // pool address
+                outputToNativePoolRoute[i], 
+                // user data used by pool (tokenIN,recipient,unwrapBento) 
+                // pool `N` should transfer its output tokens to pool `N+1` directly.
+                abi.encode(outputToNativeRoute[i][0], outputToNativePoolRoute[i+1], true) 
+                // NB unwrap bento might be false for all except last trade
+            ); 
+            ++i;
+        }
+        // The last pool should transfer its output tokens to the user.
+        outputToNativePath[outputToNativePoolRoute.length - 1] = ITridentRouter.Path(
+            // pool address
+            outputToNativePoolRoute[outputToNativePoolRoute.length - 1], 
+            // user data used by pool (tokenIN, recipient, unwrapBento) 
+            // last pool should transfer to user address(this)
+            abi.encode(outputToNativeRoute[outputToNativePoolRoute.length - 1][0], address(this), true)
+            );
+        //
+
+        //// LP routing 
         outputToLp0PoolRoute = _outputToLp0PoolRoute;
-        lpToken0 = outputToLp0Route[outputToLp0Route.length - 1];
+        lpToken0 = outputToLp0Route[outputToLp0Route.length - 1][1];
+
+        // Setup Native "path" object required by exactInput
+        for (uint256 i; i < outputToLp0PoolRoute.length - 1; ) {
+            outputToLp0Path[i] = ITridentRouter.Path(
+                // pool address
+                outputToLp0PoolRoute[i], 
+                // user data used by pool (tokenIN,recipient,unwrapBento) 
+                // pool `N` should transfer its output tokens to pool `N+1` directly.
+                abi.encode(outputToLp0Route[i][0], outputToLp0PoolRoute[i+1], true) 
+                // NB unwrap bento might be false for all except last trade
+            ); 
+            ++i;
+        }
+        // The last pool should transfer its output tokens to the user.
+        outputToLp0Path[outputToLp0PoolRoute.length - 1] = ITridentRouter.Path(
+            // pool address
+            outputToLp0PoolRoute[outputToLp0PoolRoute.length - 1], 
+            // user data used by pool (tokenIN, recipient, unwrapBento) 
+            // last pool should transfer to user address(this)
+            abi.encode(outputToLp0Route[outputToLp0PoolRoute.length - 1][0], address(this), true)
+            );
+        //
 
         _giveAllowances();
     }
@@ -151,7 +200,7 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        tridentSwap(output, toNative, 0, outputToNativePoolRoute, outputToNativeRoute);
+        tridentSwap(output, toNative, outputToNativePath);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
@@ -169,26 +218,8 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
 
     // swap tokens 
     // @dev Ensure pools are tristed before calling this function
-    function tridentSwap(address _tokenIn, uint256 _amountIn, uint256 _amountOutMinimum, address[] memory _poolRoute, address[][] memory _route) internal returns (uint256) {
-        
-        ITridentRouter.Path[poolRoute.length] path;
-        // Pool `N` should transfer its output tokens to pool `N+1` directly.
-        for (uint256 i; i < _poolRoute.length; ) {
-            path[i] = ITridentRouter.Path(
-                _poolRoute[i], 
-                abi.encode(_route[i][0],poolRoute[i+1],unwrapBento)
-            ); 
-            unchecked {
-                ++i;
-            }
-        }
-        // The last pool should transfer its output tokens to the user.
-        path[poolRoute.length - 1] = ITridentRouter.Path(
-            poolRoute[poolRoute.length - 1], 
-            abi.encode(_route[poolRoute.length - 1][0],address(this),True)
-            );
-        //
-        ITridentRouter.ExactInputParams memory exactInputParams = ITridentRouter.ExactInputParams(_tokenIn, _amountIn, _amountOutMinimum, path);
+    function tridentSwap(address _tokenIn, uint256 _amountIn, ITridentRouter.Path[] memory _path) internal returns (uint256) {
+        ITridentRouter.ExactInputParams memory exactInputParams = ITridentRouter.ExactInputParams(_tokenIn, _amountIn, 0, _path);
         ITridentRouter(unirouter).exactInput(exactInputParams);
     }
 
@@ -197,7 +228,7 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
 
         if (lpToken0 != output) {
-            tridentSwap(output, outputBal, 0, outputToLp0PoolRoute, outputToLp0Route);
+            tridentSwap(output, outputBal, outputToLp0Path);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
@@ -238,17 +269,17 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
         return abi.decode(result, (uint256));
     }
 
-    // native reward amount for calling harvest
-    function callReward() public view returns (uint256) {
-        uint256 outputBal = rewardsAvailable();
-        uint256 nativeOut;
-        if (outputBal > 0) {
-            uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
-            nativeOut = amountOut[amountOut.length -1];
-        }
+    //// native reward amount for calling harvest
+    // function callReward() public view returns (uint256) {
+    //     uint256 outputBal = rewardsAvailable();
+    //     uint256 nativeOut;
+    //     if (outputBal > 0) {
+    //         uint256[] memory amountOut = ITridentRouter(unirouter).getAmountOut(outputBal, outputToNativeRoute);
+    //         nativeOut = amountOut[amountOut.length -1];
+    //     }
 
-        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
-    }
+    //     return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    // }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
@@ -308,11 +339,11 @@ contract StrategyStargateStaking is StratManager, FeeManager, GasThrottler {
         IERC20(lpToken0).safeApprove(stargateRouter, 0);
     }
 
-    function outputToNative() external view returns (address[] memory) {
-        return outputToNativeRoute; // fix
-    }
+    // function outputToNative() external view returns (address[] memory) {
+    //     return outputToNativeRoute; // fix
+    // }
 
-    function outputToLp0() external view returns (address[] memory) {
-        return outputToLp0Route; // fix
-    }
+    // function outputToLp0() external view returns (address[] memory) {
+    //     return outputToLp0Route; // fix
+    // }
 }
