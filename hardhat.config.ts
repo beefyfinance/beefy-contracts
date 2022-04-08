@@ -34,7 +34,7 @@ const config: DeploymentConfig = {
       accounts,
     },
     avax: {
-      url: "https://api.avax.network/ext/bc/C/rpc",
+      url: "https://rpc.ankr.com/avalanche",
       chainId: 43114,
       accounts,
     },
@@ -115,7 +115,7 @@ const config: DeploymentConfig = {
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: "",
+    apiKey: process.env.API_KEY,
   },
   solidity: {
     compilers: [
