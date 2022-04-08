@@ -138,38 +138,38 @@ contract StrategyTriMiniChefDualLP is StratManager, FeeManager, GasThrottler {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-            if (feesCharged) {
-                if (swapped){
-                    if (liquidityAdded) {
-                        ITriChef(chef).deposit(poolId, balanceOfWant(), address(this));
-                        toggleHarvest();
-                        lastHarvest = block.timestamp;
-                        emit StratHarvest(msg.sender, balanceOfWant(), balanceOf());
-                    } else {
-                        addLiquidity();
-                    }
+        if (feesCharged) {
+            if (swapped){
+                if (liquidityAdded) {
+                    ITriChef(chef).deposit(poolId, balanceOfWant(), address(this));
+                    toggleHarvest();
+                    lastHarvest = block.timestamp;
+                    emit StratHarvest(msg.sender, balanceOfWant(), balanceOf());
                 } else {
-                    swap();
+                    addLiquidity();
                 }
             } else {
-                if (harvestAndSwapped) {
-                    uint256 outputBal = IERC20(output).balanceOf(address(this));
-                    if (outputBal > 0) {
-                        chargeFees(callFeeRecipient);
-                    }
-                } else {
-                    if (harvested) {
-                        uint256 rewardBal = IERC20(reward).balanceOf(address(this));
-                        if (rewardBal > 0) {
+                swap();
+            }
+        } else {
+            if (harvestAndSwapped) {
+                uint256 outputBal = IERC20(output).balanceOf(address(this));
+                if (outputBal > 0) {
+                    chargeFees(callFeeRecipient);
+                }
+            } else {
+                if (harvested) {
+                    uint256 rewardBal = IERC20(reward).balanceOf(address(this));
+                    if (rewardBal > 0 && canTrade(rewardBal, rewardToOutputRoute)) {
                         IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardBal, 0, rewardToOutputRoute, address(this), now);
-                        }
-                        harvestAndSwapped = true;
-                    } else {
-                        ITriChef(chef).harvest(poolId, address(this));
-                        harvested = true;
                     }
+                    harvestAndSwapped = true;
+                } else {
+                    ITriChef(chef).harvest(poolId, address(this));
+                    harvested = true;
                 }
             }
+        }
     }
 
     // performance fees
