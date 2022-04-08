@@ -2,32 +2,33 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/interfaces/IERC1271Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
+import "@openzeppelin-4/contracts/access/Ownable.sol";
+import "@openzeppelin-4/contracts/security/Pausable.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin-4/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin-4/contracts/interfaces/IERC1271.sol";
+import "@openzeppelin-4/contracts/utils/cryptography/ECDSA.sol";
 
 import "./IJoeChef.sol";
 import "./IJoeStrategy.sol";
 
-contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, IERC1271Upgradeable {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-    using ECDSAUpgradeable for bytes32;
+contract ChefManager is Ownable, Pausable, IERC1271 {
+    using SafeERC20 for IERC20;
+    using ECDSA for bytes32;
 
     /**
      * @dev Beefy Contracts:
-     * {joeChef} - Address of the boosted chef
+     * {JoeChef} - Address of the boosted chef
      * {keeper} - Address to manage a few lower risk features of the strat.
-     * {rewardPool} - Address for distributing locked want rewards.
+     * {joeBatch} - Address for distributing locked want rewards.
      */
     address public keeper;
     address public joeBatch;
 
-    // Fee integers
+    // beJOE fee taken from strats
     uint256 public beJoeShare;
 
+    // Strategy mapping 
     mapping(address => mapping (uint256 => address)) public whitelistedStrategy;
     mapping(address => address) public replacementStrategy;
 
@@ -39,12 +40,11 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @dev Initializes the base strategy.
      * @param _keeper address to use as alternative owner.
      */
-    function managerInitialize(
+   constructor(
         address _keeper,
         address _joeBatch,
         uint256 _beJoeShare
-    ) internal initializer {
-        __Ownable_init();
+    ) {
 
         keeper = _keeper;
         joeBatch = _joeBatch;
@@ -54,13 +54,13 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         beJoeShare = _beJoeShare;
     }
 
-    // checks that caller is either owner or keeper.
+    // Checks that caller is either owner or keeper.
     modifier onlyManager() {
         require(msg.sender == owner() || msg.sender == keeper, "!manager");
         _;
     }
 
-    // checks that caller is the strategy assigned to a specific gauge.
+    // Checks that caller is the strategy assigned to a specific PoolId in a boosted chef.
     modifier onlyWhitelist(address _joeChef, uint256 _pid) {
         require(whitelistedStrategy[_joeChef][_pid] == msg.sender, "!whitelisted");
         _;
@@ -100,7 +100,7 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param _strategy new strategy address.
      */
     function whitelistStrategy(address _strategy) external onlyManager {
-        IERC20Upgradeable _want = IJoeStrategy(_strategy).want();
+        IERC20 _want = IJoeStrategy(_strategy).want();
         uint256 _pid = IJoeStrategy(_strategy).poolId();
         address _joeChef = IJoeStrategy(_strategy).chef();
         (uint256 stratBal,,) = IJoeChef(_joeChef).userInfo(_pid, address(this));
@@ -116,7 +116,7 @@ contract ChefManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param _strategy remove strategy address from whitelist.
      */
     function blacklistStrategy(address _strategy) external onlyManager {
-        IERC20Upgradeable _want = IJoeStrategy(_strategy).want();
+        IERC20 _want = IJoeStrategy(_strategy).want();
         uint256 _pid = IJoeStrategy(_strategy).poolId();
         address _joeChef = IJoeStrategy(_strategy).chef();
         _want.safeApprove(_joeChef, 0);

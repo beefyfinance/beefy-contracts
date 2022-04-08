@@ -34,7 +34,7 @@ const config: DeploymentConfig = {
       accounts,
     },
     avax: {
-      url: "https://api.avax.network/ext/bc/C/rpc",
+      url: "https://rpc.ankr.com/avalanche",
       chainId: 43114,
       accounts,
     },
