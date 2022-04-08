@@ -52,25 +52,22 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
 
     constructor(
         address _want,
-        uint256 _poolId,
-        uint256 _routerPoolId,
+        uint256[] memory _poolIdAndRouterPoolId,
         address _chef,
         address _vault,
-        address _unirouter,
-        address _stargateRouter,
-        address _keeper,
+        address[] memory _unirouterAndStargateRouter,
         address _strategist,
-        address _beefyFeeRecipient,
+        address[] memory _beefyFeeRecipientAndKeeper,
         address[][] memory _outputToNativeRoute, // [[output,tokenX],[tokenX,tokenY],[tokenY,native]]
         address[][] memory _outputToLp0Route, // [[output,tokenX],[tokenX,tokenY],[tokenY,native]]
         address[] memory _outputToNativePoolRoute, // [pool_with_output, ..., pool_with_native]
         address[] memory _outputToLp0PoolRoute // [pool_with_output, ..., pool_with_lp0]
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratManager(_beefyFeeRecipientAndKeeper[1], _strategist, _unirouterAndStargateRouter[0], _vault, _beefyFeeRecipientAndKeeper[0]) public {
         want = _want;
-        poolId = _poolId;
-        routerPoolId = _routerPoolId;
+        poolId = _poolIdAndRouterPoolId[0];
+        routerPoolId = _poolIdAndRouterPoolId[1];
         chef = _chef;
-        stargateRouter = _stargateRouter;
+        stargateRouter = _unirouterAndStargateRouter[1];
 
         //// Native routing 
         outputToNativePoolRoute = _outputToNativePoolRoute;
@@ -102,6 +99,7 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
 
         //// LP routing 
         outputToLp0PoolRoute = _outputToLp0PoolRoute;
+        outputToLp0Route = _outputToLp0Route;
         lpToken0 = outputToLp0Route[outputToLp0Route.length - 1][1];
 
         // Setup Native "path" object required by exactInput
