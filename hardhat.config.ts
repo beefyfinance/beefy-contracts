@@ -3,7 +3,7 @@ import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
 import "@openzeppelin/hardhat-upgrades";
-import "@typechain/hardhat";
+// import "@typechain/hardhat";
 import "./tasks";
 
 import { HardhatUserConfig } from "hardhat/src/types/config";
@@ -44,7 +44,8 @@ const config: DeploymentConfig = {
       accounts,
     },
     fantom: {
-      url: "https://rpc.ftm.tools",
+      // url: "https://rpc.ftm.tools",
+      url: "https://rpc.ankr.com/fantom",
       chainId: 250,
       accounts,
     },
@@ -70,7 +71,8 @@ const config: DeploymentConfig = {
     },
     cronos: {
       // url: "https://evm-cronos.crypto.org",
-      url: "https://rpc.vvs.finance/",
+      // url: "https://rpc.vvs.finance/",
+      url: "https://cronosrpc-1.xstaking.sg/",
       chainId: 25,
       accounts,
     },
