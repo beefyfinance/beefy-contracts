@@ -30,9 +30,9 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
     uint256 public chefPoolId;
     address public rewarder;
     bytes32 public wantPoolId;
-    bytes32 public outputNativeSwapPoolId;
-    bytes32 public inputOutputSwapPoolId;
-    bytes32 public rewardSwapPoolId;
+    bytes32 public outputNativeId;
+    bytes32 public rewardInputId;
+    bytes32 public inputNativeId;
 
     IBalancerVault.SwapKind public swapKind;
     IBalancerVault.FundManagement public funds;
@@ -43,6 +43,7 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
+    event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
     constructor(
         bytes32[] memory _balancerPoolIds,
@@ -56,10 +57,9 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
         address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         wantPoolId = _balancerPoolIds[0];
-        outputNativeSwapPoolId = _balancerPoolIds[1];
-        inputOutputSwapPoolId = _balancerPoolIds[2];
-        rewardInputOutputSwapPoolId = _balancerPoolIds[3];
-        inputNativeSwapPoolId = _balancerPoolIds[4];
+        outputNativeId = _balancerPoolIds[1];
+        rewardInputId = _balancerPoolIds[2];
+        inputNativeId = _balancerPoolIds[3];
         chefPoolId = _chefPoolId;
         chef = _chef;
 
@@ -149,13 +149,14 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
         // swap output and reward to native to pay fees
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
-            balancerSwap(outputNativeSwapPoolId, output, native, outputBal);
+            balancerSwap(outputNativeId, output, native, outputBal);
         }
 
         uint256 rewardBal = IERC20(reward).balanceOf(address(this));
         if (rewardBal > 0) {
-            balancerSwap(rewardInputOutputSwapPoolId, reward, input, rewardBal);
-            balancerSwap(inputNativeSwapPoolId, input, native, rewardBal);
+            balancerSwap(rewardInputId, reward, input, rewardBal);
+            uint256 inputBal = IERC20(input).balanceOf(address(this));
+            balancerSwap(inputNativeId, input, native, inputBal);
         }
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000);
@@ -166,21 +167,17 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        uint256 strategistFeeAmount = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(native).safeTransfer(strategist, strategistFeeAmount);
+
+        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
         if (input != native) {
-            uint256 outputBal = IERC20(output).balanceOf(address(this));
-            balancerSwap(inputOutputSwapPoolId, output, input, outputBal);
-        }
-
-        // swap remaining native after charging fees back to input 
-        uint256 inputBal = IERC20(input).balanceOf(address(this));
-        if (inputBal > 0) {
-            balancerSwap(inputNativeSwapPoolId, native, input, inputBal);
+            uint256 nativeBal = IERC20(native).balanceOf(address(this));
+            balancerSwap(inputNativeId, native, input, nativeBal);
         }
 
         uint256 inputBal = IERC20(input).balanceOf(address(this));
@@ -231,11 +228,11 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
         (uint256 outputBal, uint256 rewardBal) = rewardsAvailable();
         uint256 nativeOut;
         if (outputBal > 0) {
-            nativeOut = balancerSwap(nativeSwapPoolId, output, native, outputBal);
+            nativeOut = balancerSwap(outputNativeId, output, native, outputBal);
         }
         if (rewardBal > 0) {
-            inputBal = balancerSwap(rewardInputOutputSwapPoolId, reward, input, rewardBal);
-            nativeOut += balancerSwap(inputNativeSwapPoolId, input, native, inputBal);
+            uint256 inputBal = balancerSwap(rewardInputId, reward, input, rewardBal);
+            nativeOut += balancerSwap(inputNativeId, input, native, inputBal);
         }
 
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
@@ -284,6 +281,7 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(chef, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(native).safeApprove(unirouter, uint256(-1));
         IERC20(reward).safeApprove(unirouter, uint256(-1));
 
         IERC20(input).safeApprove(unirouter, 0);
@@ -293,6 +291,7 @@ contract StrategyBeethovenxDual is StratManager, FeeManager {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
+        IERC20(native).safeApprove(unirouter, 0);
         IERC20(reward).safeApprove(unirouter, 0);
         IERC20(input).safeApprove(unirouter, 0);
     }
