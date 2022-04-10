@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
+//pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -8,14 +9,14 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IUniswapRouter.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/traderjoe/IMasterChef.sol";
+import "../../interfaces/stellaswap/IMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
 /**
  * Used to compound StellaDistributorV2
  */
-contract StrategyStellaswapDualNonNativeLP is StratManager, FeeManager {
+contract StrategyStellaswapDualRewardLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -46,6 +47,7 @@ contract StrategyStellaswapDualNonNativeLP is StratManager, FeeManager {
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
+    event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
     constructor(
         address _want,
@@ -68,9 +70,13 @@ contract StrategyStellaswapDualNonNativeLP is StratManager, FeeManager {
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
         outputToNativeRoute = _outputToNativeRoute;
+        require(outputToNativeRoute[0] == output, "outputToNativeRoute[0] != output");
+        require(outputToNativeRoute[outputToNativeRoute.length - 1] == native, "outputToNativeRoute[last] != native");
 
         secondOutput = _secondOutputToNativeRoute[0];
         secondOutputToNativeRoute = _secondOutputToNativeRoute;
+        require(secondOutputToNativeRoute[0] == secondOutput, "secondOutputToNativeRoute[0] != secondOutput");
+        require(secondOutputToNativeRoute[secondOutputToNativeRoute.length - 1] == native, "secondOutputToNativeRoute[last] != native");
 
         // setup lp routing
         lpToken0 = IUniswapV2Pair(want).token0();
@@ -158,14 +164,14 @@ contract StrategyStellaswapDualNonNativeLP is StratManager, FeeManager {
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
 
-        if (outputToNativeRoute.length > 1) {
+        if (output != native) {
             uint256 toNative = IERC20(output).balanceOf(address(this));
             if (toNative > 0) {
                 IUniswapRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
             }
         }
 
-        if (secondOutputToNativeRoute.length > 1) {
+        if (secondOutput != native) {
             uint256 secondToNative = IERC20(secondOutput).balanceOf(address(this));
             if (secondToNative > 0) {
                 IUniswapRouter(unirouter).swapExactTokensForTokens(secondToNative, 0, secondOutputToNativeRoute, address(this), now);
@@ -180,8 +186,10 @@ contract StrategyStellaswapDualNonNativeLP is StratManager, FeeManager {
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        uint256 strategistFeeAmount = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(native).safeTransfer(strategist, strategistFeeAmount);
+
+        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
@@ -213,13 +221,16 @@ contract StrategyStellaswapDualNonNativeLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount,) = IMasterChef(chef).userInfo(poolId, address(this));
+        (uint256 _amount,,,) = IMasterChef(chef).userInfo(poolId, address(this));
         return _amount;
     }
 
     function rewardsAvailable() public view returns (uint256, uint256) {
-        (uint256 outputBal,,,uint256 secondBal) = IMasterChef(chef).pendingTokens(poolId, address(this));
-        return (outputBal, secondBal);
+        // TODO: this does not compile: Nested arrays not yet implemented
+        (,,,uint256[] memory amounts) = IMasterChef(chef).pendingTokens(poolId, address(this));
+        // first output is always stella according to the contract
+        // we only support dual rewards so second output is idx 1
+        return (amounts[0], amounts[1]);
     }
 
     function callReward() public view returns (uint256) {
