@@ -226,7 +226,6 @@ contract StrategyStellaswapDualRewardLP is StratManager, FeeManager {
     }
 
     function rewardsAvailable() public view returns (uint256, uint256) {
-        // TODO: this does not compile: Nested arrays not yet implemented
         (,,,uint256[] memory amounts) = IMasterChef(chef).pendingTokens(poolId, address(this));
         // first output is always stella according to the contract
         // we only support dual rewards so second output is idx 1
