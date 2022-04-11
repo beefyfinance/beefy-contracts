@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity >=0.5.0;
+pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 /// @notice Trident pool interface.
@@ -61,10 +61,6 @@ interface IPool {
         uint256 amount;
     }
 }
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-
-pragma solidity >=0.8.0;
 
 /// @notice Trident pool router interface.
 interface ITridentRouter {
