@@ -264,17 +264,23 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
         return abi.decode(result, (uint256));
     }
 
-    // // native reward amount for calling harvest
-    // function callReward() public view returns (uint256) {
-    //     uint256 outputBal = rewardsAvailable();
-    //     uint256 nativeOut;
-    //     if (outputBal > 0) {
-    //         uint256[] memory amountOut = ITridentRouter(unirouter).getAmountOut(abi.encode(***POOL_ARGS));
-    //         nativeOut = amountOut[amountOut.length -1];
-    //     }
-
-    //     return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
-    // }
+    // native reward amount for calling harvest
+    function callReward() public view returns (uint256) {
+        uint256 outputBal = rewardsAvailable();
+        uint256 nativeOut;
+        uint256 amountOut;
+        if (outputBal > 0) {
+            uint256 amountIn = outputBal;
+            address tokenIn = output;
+            for (uint256 i; i < outputToNativePoolRoute.length - 1; ) {
+                amountOut = IPool(outputToNativePoolRoute[i]).getAmountOut(abi.encode(tokenIn,amountIn));
+                amountIn = amountOut;
+                ++i;
+            }
+        }
+        nativeOut = amountOut;
+        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
@@ -342,11 +348,11 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
         return outputToLp0PoolRoute; 
     }
 
-    function outputToNative() external view returns (address[] memory) {
+    function outputToNative() external view returns (address[][] memory) {
         return outputToNativeRoute; 
     }
 
-    function outputToLp0() external view returns (address[] memory) {
+    function outputToLp0() external view returns (address[][] memory) {
         return outputToLp0Route; 
     }
 }
