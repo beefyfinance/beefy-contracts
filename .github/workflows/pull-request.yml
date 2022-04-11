@@ -1,0 +1,22 @@
+name: Pull-request actions
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # get repo code
+      - uses: actions/checkout@v2
+      # install node
+      - name: Use Node.js 16.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: '16.x'
+      # install packages
+      - run: yarn --frozen-lockfile
+      # run compile test
+      - run: yarn compile

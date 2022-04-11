@@ -132,7 +132,7 @@ contract StrategySushiLP is StratManager, FeeManager, GasThrottler {
         _harvest(tx.origin);
     }
 
-    function harvestWithCallFeeRecipient(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 

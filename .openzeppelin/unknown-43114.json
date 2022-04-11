@@ -39,6 +39,31 @@
       "address": "0x8Ef7C232470f85Af0809ce5E43888F989eFcAF47",
       "txHash": "0x7372e539bc6b3c6f6c0cf558718c4674a665217612dcdb9ff5b68bc23e671e2d",
       "kind": "transparent"
+    },
+    {
+      "address": "0x200a26572948e689d6bd19b3d3C03d87A6F3BAca",
+      "txHash": "0xee74ee2443569c52b486dfb2dafe04d9d71511ef523b54e6c7e3da4fa8256a1e",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x5Fb2b79c85A750103303b20A6470811DF37ed9EA",
+      "txHash": "0x3186f063c414f1fc8e754c4eb0b8240cbc83de4b291dc0849354fcc39e067374",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xA2aDE169aBEFd8A5DE2D1376AfbCbee352D5E7fe",
+      "txHash": "0xd861a0844ad1b21a030aaaa6f87752f0abd919c9dd0532bca43389a60b4e2ba5",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xab489Cd74b16Eb50D470c3470E85B40B56a5969b",
+      "txHash": "0x83167eb5292ed23be39ac8d1be137471e89b983997112b209ddf8c295c954528",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x8330C83583829074BA6FF96b4A6377966D80edbf",
+      "txHash": "0xe0ed1d267719d650020ea909a75237017238b62d47c2ec2234fdffd9905bcff0",
+      "kind": "transparent"
     }
   ],
   "impls": {
@@ -150,6 +175,1378 @@
           },
           "t_array(t_uint256)49_storage": {
             "label": "uint256[49]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "5cfb482d6a465b74370b5807de342e4395fc033fd3f8a5613b5c23ecd1d0d166": {
+      "address": "0x87e14872f7B93F5622636535c529AC991D5b7418",
+      "txHash": "0x1fb531c333f5ea5945f7c33386868640498464f13cf8761b270ce63875658337",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_balances",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:37"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_allowances",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:39"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_totalSupply",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:41"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_name",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:43"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_symbol",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:44"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)45_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:362"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "_status",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:68"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:97"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "joeChef",
+            "type": "t_contract(IJoeChef)9454",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:25"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "keeper",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:26"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "whitelistedStrategy",
+            "type": "t_mapping(t_uint256,t_address)",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:28"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "replacementStrategy",
+            "type": "t_mapping(t_address,t_address)",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:29"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "want",
+            "type": "t_contract(IERC20Upgradeable)1054",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:18"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "veJoe",
+            "type": "t_contract(IVeJoe)9520",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:19"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "reserveRate",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:23"
+          }
+        ],
+        "types": {
+          "t_contract(IERC20Upgradeable)1054": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_contract(IVeJoe)9520": {
+            "label": "contract IVeJoe"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_contract(IJoeChef)9454": {
+            "label": "contract IJoeChef"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_mapping(t_uint256,t_address)": {
+            "label": "mapping(uint256 => address)"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))"
+          },
+          "t_string_storage": {
+            "label": "string"
+          },
+          "t_array(t_uint256)45_storage": {
+            "label": "uint256[45]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "b7cd29d6c296293d32943eb124ff2aa9552112cd6ac48289782b02d9ddbd5753": {
+      "address": "0xf592b531d81b38a58107D6F6bfb2cd45f5536EA9",
+      "txHash": "0xf683ae639eb555b9f714d3ea3b238934f554ea1094c57fbbe0d11a216d2ac18e",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_balances",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:37"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_allowances",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:39"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_totalSupply",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:41"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_name",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:43"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_symbol",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:44"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)45_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:362"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "_status",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:68"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:97"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "joeChef",
+            "type": "t_contract(IJoeChef)9543",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:25"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "keeper",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:26"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "joeBatch",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:27"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "beJoeShare",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:30"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "whitelistedStrategy",
+            "type": "t_mapping(t_uint256,t_address)",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:32"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "replacementStrategy",
+            "type": "t_mapping(t_address,t_address)",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:33"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "want",
+            "type": "t_contract(IERC20Upgradeable)1054",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:22"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "veJoe",
+            "type": "t_contract(IVeJoe)9609",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:23"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "native",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:24"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "reserveRate",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:28"
+          }
+        ],
+        "types": {
+          "t_contract(IERC20Upgradeable)1054": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_contract(IVeJoe)9609": {
+            "label": "contract IVeJoe"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_contract(IJoeChef)9543": {
+            "label": "contract IJoeChef"
+          },
+          "t_mapping(t_uint256,t_address)": {
+            "label": "mapping(uint256 => address)"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))"
+          },
+          "t_string_storage": {
+            "label": "string"
+          },
+          "t_array(t_uint256)45_storage": {
+            "label": "uint256[45]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "5c0ce7f41c04216776436d7892bd182066f9ee66ab109010094ae3dbf880e59e": {
+      "address": "0x02E3779139816e7aCD5492AD4376A52607Ca3B21",
+      "txHash": "0xed3c00118af43151d73eb5db29bbeb58d8603e1ba36fb597061e6a551773841d",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_balances",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:37"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_allowances",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:39"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_totalSupply",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:41"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_name",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:43"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_symbol",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:44"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)45_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:362"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "_status",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:68"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:97"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "joeChef",
+            "type": "t_contract(IJoeChef)9543",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:25"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "keeper",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:26"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "joeBatch",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:27"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "beJoeShare",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:30"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "whitelistedStrategy",
+            "type": "t_mapping(t_uint256,t_address)",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:32"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "replacementStrategy",
+            "type": "t_mapping(t_address,t_address)",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:33"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "want",
+            "type": "t_contract(IERC20Upgradeable)1054",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:23"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "veJoe",
+            "type": "t_contract(IVeJoe)9609",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:24"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "native",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:25"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "reserveRate",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:29"
+          }
+        ],
+        "types": {
+          "t_contract(IERC20Upgradeable)1054": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_contract(IVeJoe)9609": {
+            "label": "contract IVeJoe"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_contract(IJoeChef)9543": {
+            "label": "contract IJoeChef"
+          },
+          "t_mapping(t_uint256,t_address)": {
+            "label": "mapping(uint256 => address)"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))"
+          },
+          "t_string_storage": {
+            "label": "string"
+          },
+          "t_array(t_uint256)45_storage": {
+            "label": "uint256[45]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "dbda75b0c5f5276c2c07372a71bfe68f5d10b89d82e918691142f93dcdf620e5": {
+      "address": "0xE10DC912Bf833c72D4229Ce212Dae8c3f4B345f6",
+      "txHash": "0xeebdc5bb22cc49ef2bee68cfd179242671661bf865f2e4ba5ad2d6058e67828a",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_balances",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:37"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_allowances",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:39"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_totalSupply",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:41"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_name",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:43"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_symbol",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:44"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)45_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:362"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "_status",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:68"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:97"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "keeper",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:25"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "joeBatch",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:26"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "beJoeShare",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:29"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "whitelistedStrategy",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_address))",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:31"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "replacementStrategy",
+            "type": "t_mapping(t_address,t_address)",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:32"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "want",
+            "type": "t_contract(IERC20Upgradeable)1035",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:23"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "veJoe",
+            "type": "t_contract(IVeJoe)3007",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:24"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "native",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:25"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "reserveRate",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:29"
+          }
+        ],
+        "types": {
+          "t_contract(IERC20Upgradeable)1035": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_contract(IVeJoe)3007": {
+            "label": "contract IVeJoe"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_address))": {
+            "label": "mapping(address => mapping(uint256 => address))"
+          },
+          "t_mapping(t_uint256,t_address)": {
+            "label": "mapping(uint256 => address)"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))"
+          },
+          "t_string_storage": {
+            "label": "string"
+          },
+          "t_array(t_uint256)45_storage": {
+            "label": "uint256[45]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "4978d8a51b8eee316b7924af831ff462929699d5a0e783da196af16cbd4ad8f4": {
+      "address": "0x84Be8871F625E63ADE7214D64025DDd8B79e88C2",
+      "txHash": "0x43a0ffe65b03a2cae3d2e27cecdbdce2ef8d531abe73d621bc3810bc0cbdc020",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_balances",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:37"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_allowances",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:39"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_totalSupply",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:41"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_name",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:43"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_symbol",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:44"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)45_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:362"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "_status",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:68"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:97"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "keeper",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:25"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "joeBatch",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:26"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "beJoeShare",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:29"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "whitelistedStrategy",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_address))",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:31"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "replacementStrategy",
+            "type": "t_mapping(t_address,t_address)",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:32"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "want",
+            "type": "t_contract(IERC20Upgradeable)1054",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:23"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "veJoe",
+            "type": "t_contract(IVeJoe)9610",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:24"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "native",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:25"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "reserveRate",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:29"
+          }
+        ],
+        "types": {
+          "t_contract(IERC20Upgradeable)1054": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_contract(IVeJoe)9610": {
+            "label": "contract IVeJoe"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_address))": {
+            "label": "mapping(address => mapping(uint256 => address))"
+          },
+          "t_mapping(t_uint256,t_address)": {
+            "label": "mapping(uint256 => address)"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))"
+          },
+          "t_string_storage": {
+            "label": "string"
+          },
+          "t_array(t_uint256)45_storage": {
+            "label": "uint256[45]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "d220abf8f9d77f0229423fd7ffcb1950f33423d5ddfebbd41f1a6eecc73111fd": {
+      "address": "0x149E2782094838A0fC81Fad39C674a42B058A826",
+      "txHash": "0x2be742edb9abec6fe74e7da3227c35d90b3979878752314056e95cbdfc6a45a9",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_balances",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:37"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_allowances",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:39"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_totalSupply",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:41"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_name",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:43"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_symbol",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:44"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)45_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:362"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "_status",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:68"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:97"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "keeper",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:25"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "joeBatch",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:26"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "beJoeShare",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:29"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "whitelistedStrategy",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_address))",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:31"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "replacementStrategy",
+            "type": "t_mapping(t_address,t_address)",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:32"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "want",
+            "type": "t_contract(IERC20Upgradeable)1035",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:23"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "veJoe",
+            "type": "t_contract(IVeJoe)3024",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:24"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "native",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:25"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "reserveRate",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:29"
+          }
+        ],
+        "types": {
+          "t_contract(IERC20Upgradeable)1035": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_contract(IVeJoe)3024": {
+            "label": "contract IVeJoe"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_address))": {
+            "label": "mapping(address => mapping(uint256 => address))"
+          },
+          "t_mapping(t_uint256,t_address)": {
+            "label": "mapping(uint256 => address)"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))"
+          },
+          "t_string_storage": {
+            "label": "string"
+          },
+          "t_array(t_uint256)45_storage": {
+            "label": "uint256[45]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "809be34536e8c0fbed3f41e85ee2b1e6eabb57acffa306f395e66a479e3e965b": {
+      "address": "0x81304aDA0D85Ba532FE5aA40873080cc36B7DC6a",
+      "txHash": "0x238595ac1588c1c7696cb6d02874bd58353a930d063207dd08ac2f67cbd81f72",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_balances",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:37"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_allowances",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:39"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_totalSupply",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:41"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_name",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:43"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_symbol",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:44"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)45_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:362"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "_status",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:68"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:97"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "keeper",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:25"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "joeBatch",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:26"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "beJoeShare",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:29"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "whitelistedStrategy",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_address))",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:31"
+          },
+          {
+            "contract": "ChefManager",
+            "label": "replacementStrategy",
+            "type": "t_mapping(t_address,t_address)",
+            "src": "contracts/BIFI/strategies/veJOE/ChefManager.sol:32"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "want",
+            "type": "t_contract(IERC20Upgradeable)1054",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:23"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "veJoe",
+            "type": "t_contract(IVeJoe)9627",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:24"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "native",
+            "type": "t_address",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:25"
+          },
+          {
+            "contract": "VeJoeStaker",
+            "label": "reserveRate",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/strategies/veJOE/VeJoeStaker.sol:29"
+          }
+        ],
+        "types": {
+          "t_contract(IERC20Upgradeable)1054": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_contract(IVeJoe)9627": {
+            "label": "contract IVeJoe"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_address))": {
+            "label": "mapping(address => mapping(uint256 => address))"
+          },
+          "t_mapping(t_uint256,t_address)": {
+            "label": "mapping(uint256 => address)"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))"
+          },
+          "t_string_storage": {
+            "label": "string"
+          },
+          "t_array(t_uint256)45_storage": {
+            "label": "uint256[45]"
           },
           "t_array(t_uint256)50_storage": {
             "label": "uint256[50]"

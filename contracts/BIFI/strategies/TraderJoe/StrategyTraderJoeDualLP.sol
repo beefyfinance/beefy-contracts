@@ -42,6 +42,7 @@ contract StrategyTraderJoeDualLP is StratManager, FeeManager {
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
+    event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
     constructor(
         address _want,
@@ -84,7 +85,7 @@ contract StrategyTraderJoeDualLP is StratManager, FeeManager {
 
         if (wantBal > 0) {
             IMasterChef(chef).deposit(poolId, wantBal);
-            uint256 _toWrap = msg.value;
+            uint256 _toWrap = address(this).balance;
             IWrappedNative(native).deposit{value: _toWrap}();
             emit Deposit(balanceOf());
         }
@@ -97,7 +98,7 @@ contract StrategyTraderJoeDualLP is StratManager, FeeManager {
 
         if (wantBal < _amount) {
             IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
-            uint256 _toWrap = msg.value;
+            uint256 _toWrap = address(this).balance;
             IWrappedNative(native).deposit{value: _toWrap}();
             wantBal = IERC20(want).balanceOf(address(this));
         }
@@ -138,7 +139,7 @@ contract StrategyTraderJoeDualLP is StratManager, FeeManager {
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal {
         IMasterChef(chef).deposit(poolId, 0);
-        uint256 _toWrap = msg.value;
+        uint256 _toWrap = address(this).balance;
         IWrappedNative(native).deposit{value: _toWrap}();
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
@@ -167,6 +168,8 @@ contract StrategyTraderJoeDualLP is StratManager, FeeManager {
 
         uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
         IERC20(native).safeTransfer(strategist, strategistFee);
+
+        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFee);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.

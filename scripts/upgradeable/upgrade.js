@@ -4,12 +4,12 @@ const { addressBook } = require("blockchain-addressbook");
 
 const { ethers, upgrades } = hardhat;
 
-const chain = "fantom";
+const chain = "avax";
 const a = addressBook[chain].platforms.beefyfinance.beefyFeeRecipient;
 
 const config = {
-  impl: "BeefyFeeBatchV2",
-  proxy: "0x32C82EE8Fca98ce5114D2060c5715AEc714152FB",
+  impl: "VeJoeStaker",
+  proxy: "0x8330C83583829074BA6FF96b4A6377966D80edbf",
 };
 
 async function main() {

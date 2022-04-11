@@ -13,8 +13,9 @@ import "../../interfaces/pangolin/IPangolinMiniChef.sol";
 import "../../interfaces/pangolin/IPangolinRewarder.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
+import "../../utils/GasThrottler.sol";
 
-contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
+contract StrategyPangolinMiniChefLP is StratManager, FeeManager, GasThrottler{
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -46,6 +47,7 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
+    event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
     constructor(
         address _want,
@@ -123,11 +125,11 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual {
+    function harvest() external gasThrottle virtual {
         _harvest(tx.origin);
     }
 
-    function harvest(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external gasThrottle virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -173,8 +175,10 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        uint256 strategistFeeAmount = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(native).safeTransfer(strategist, strategistFeeAmount);
+
+        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
@@ -270,6 +274,10 @@ contract StrategyPangolinMiniChefLP is StratManager, FeeManager {
         } else {
             setWithdrawalFee(10);
         }
+    }
+
+    function setShouldGasThrottle(bool _shouldGasThrottle) external onlyManager {
+        shouldGasThrottle = _shouldGasThrottle;
     }
 
     // pauses deposits and withdraws all funds from third party systems.
