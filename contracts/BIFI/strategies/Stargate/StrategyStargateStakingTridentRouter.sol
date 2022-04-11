@@ -59,7 +59,7 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
         address _strategist,
         address[] memory _beefyFeeRecipientAndKeeper,
         address[][] memory _outputToNativeRoute, // [[output,tokenX],[tokenX,tokenY],[tokenY,native]]
-        address[][] memory _outputToLp0Route, // [[output,tokenX],[tokenX,tokenY],[tokenY,native]]
+        address[][] memory _outputToLp0Route, // [[output,tokenX],[tokenX,tokenY],[tokenY,Lp0]]
         address[] memory _outputToNativePoolRoute, // [pool_with_output, ..., pool_with_native]
         address[] memory _outputToLp0PoolRoute // [pool_with_output, ..., pool_with_lp0]
     ) StratManager(_beefyFeeRecipientAndKeeper[1], _strategist, _unirouterAndStargateRouter[0], _vault, _beefyFeeRecipientAndKeeper[0]) public {
@@ -74,29 +74,27 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
         outputToNativeRoute = _outputToNativeRoute;
         output = outputToNativeRoute[0][0];
         native = outputToNativeRoute[outputToNativeRoute.length - 1][1];
-        
         // Setup Native "path" object required by exactInput
         for (uint256 i; i < outputToNativePoolRoute.length - 1; ) {
-            outputToNativePath[i] = ITridentRouter.Path(
-                // pool address
+            outputToNativePath.push(ITridentRouter.Path(
+                // path of pool
                 outputToNativePoolRoute[i], 
                 // user data used by pool (tokenIN,recipient,unwrapBento) 
                 // pool `N` should transfer its output tokens to pool `N+1` directly.
                 abi.encode(outputToNativeRoute[i][0], outputToNativePoolRoute[i+1], true) 
-                // NB unwrap bento might be false for all except last trade
-            ); 
+            )); 
             ++i;
         }
         // The last pool should transfer its output tokens to the user.
-        outputToNativePath[outputToNativePoolRoute.length - 1] = ITridentRouter.Path(
+        outputToNativePath.push(ITridentRouter.Path(
             // pool address
             outputToNativePoolRoute[outputToNativePoolRoute.length - 1], 
             // user data used by pool (tokenIN, recipient, unwrapBento) 
             // last pool should transfer to user address(this)
             abi.encode(outputToNativeRoute[outputToNativePoolRoute.length - 1][0], address(this), true)
-            );
+            ));
         //
-
+        
         //// LP routing 
         outputToLp0PoolRoute = _outputToLp0PoolRoute;
         outputToLp0Route = _outputToLp0Route;
@@ -104,26 +102,25 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
 
         // Setup Native "path" object required by exactInput
         for (uint256 i; i < outputToLp0PoolRoute.length - 1; ) {
-            outputToLp0Path[i] = ITridentRouter.Path(
+            outputToLp0Path.push(ITridentRouter.Path(
                 // pool address
                 outputToLp0PoolRoute[i], 
                 // user data used by pool (tokenIN,recipient,unwrapBento) 
                 // pool `N` should transfer its output tokens to pool `N+1` directly.
                 abi.encode(outputToLp0Route[i][0], outputToLp0PoolRoute[i+1], true) 
                 // NB unwrap bento might be false for all except last trade
-            ); 
+            )); 
             ++i;
         }
         // The last pool should transfer its output tokens to the user.
-        outputToLp0Path[outputToLp0PoolRoute.length - 1] = ITridentRouter.Path(
+        outputToLp0Path.push(ITridentRouter.Path(
             // pool address
             outputToLp0PoolRoute[outputToLp0PoolRoute.length - 1], 
             // user data used by pool (tokenIN, recipient, unwrapBento) 
             // last pool should transfer to user address(this)
             abi.encode(outputToLp0Route[outputToLp0PoolRoute.length - 1][0], address(this), true)
-            );
+            ));
         //
-
         _giveAllowances();
     }
 
@@ -267,12 +264,12 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
         return abi.decode(result, (uint256));
     }
 
-    //// native reward amount for calling harvest
+    // // native reward amount for calling harvest
     // function callReward() public view returns (uint256) {
     //     uint256 outputBal = rewardsAvailable();
     //     uint256 nativeOut;
     //     if (outputBal > 0) {
-    //         uint256[] memory amountOut = ITridentRouter(unirouter).getAmountOut(outputBal, outputToNativeRoute);
+    //         uint256[] memory amountOut = ITridentRouter(unirouter).getAmountOut(abi.encode(***POOL_ARGS));
     //         nativeOut = amountOut[amountOut.length -1];
     //     }
 
@@ -337,11 +334,19 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
         IERC20(lpToken0).safeApprove(stargateRouter, 0);
     }
 
-    // function outputToNative() external view returns (address[] memory) {
-    //     return outputToNativeRoute; // fix
-    // }
+    function outputToNativePool() external view returns (address[] memory) {
+        return outputToNativePoolRoute; 
+    }
 
-    // function outputToLp0() external view returns (address[] memory) {
-    //     return outputToLp0Route; // fix
-    // }
+    function outputToLp0Pool() external view returns (address[] memory) {
+        return outputToLp0PoolRoute; 
+    }
+
+    function outputToNative() external view returns (address[] memory) {
+        return outputToNativeRoute; 
+    }
+
+    function outputToLp0() external view returns (address[] memory) {
+        return outputToLp0Route; 
+    }
 }
