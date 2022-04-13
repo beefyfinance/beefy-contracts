@@ -256,7 +256,7 @@ contract StrategySolaceRewardPool is  StratManager, FeeManager, GasThrottler, IE
         IERC20(output).safeApprove(unirouter, 0);
     }
 
-    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) external override returns (bytes4){
+    function onERC721Received(address, address, uint256, bytes calldata) external override returns (bytes4){
     return IERC721Receiver.onERC721Received.selector;
   }
 }
