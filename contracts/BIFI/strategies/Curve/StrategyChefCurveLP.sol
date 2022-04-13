@@ -177,21 +177,21 @@ contract StrategyChefCurveLP is StratManager, FeeManager, GasThrottler {
         if (poolSize == 2) {
             uint256[2] memory amounts;
             amounts[depositIndex] = depositBal;
-            ICurveSwap2(pool).add_liquidity(amounts, 0);
+            ICurveSwap(pool).add_liquidity(amounts, 0);
         } else if (poolSize == 3) {
             uint256[3] memory amounts;
             amounts[depositIndex] = depositBal;
-            if (useMetapool) ICurveSwap3(pool).add_liquidity(want, amounts, 0);
-            else ICurveSwap3(pool).add_liquidity(amounts, 0);
+            if (useMetapool) ICurveSwap(pool).add_liquidity(want, amounts, 0);
+            else ICurveSwap(pool).add_liquidity(amounts, 0);
         } else if (poolSize == 4) {
             uint256[4] memory amounts;
             amounts[depositIndex] = depositBal;
-            if (useMetapool) ICurveSwap4(pool).add_liquidity(want, amounts, 0);
-            else ICurveSwap4(pool).add_liquidity(amounts, 0);
+            if (useMetapool) ICurveSwap(pool).add_liquidity(want, amounts, 0);
+            else ICurveSwap(pool).add_liquidity(amounts, 0);
         } else if (poolSize == 5) {
             uint256[5] memory amounts;
             amounts[depositIndex] = depositBal;
-            ICurveSwap5(pool).add_liquidity(amounts, 0);
+            ICurveSwap(pool).add_liquidity(amounts, 0);
         }
     }
 

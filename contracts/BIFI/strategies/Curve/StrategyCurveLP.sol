@@ -143,9 +143,8 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
     function _harvest() internal {
         if (gaugeFactory != address(0)) {
             IGaugeFactory(gaugeFactory).mint(rewardsGauge);
-        } else {
-            IRewardsGauge(rewardsGauge).claim_rewards(address(this));
         }
+        IRewardsGauge(rewardsGauge).claim_rewards(address(this));
         uint256 crvBal = IERC20(crv).balanceOf(address(this));
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
         if (nativeBal > 0 || crvBal > 0) {
@@ -178,36 +177,38 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
         uint256 depositBal;
+        uint256 depositNativeAmount;
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
         if (depositToken != native) {
             IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeBal, 0, nativeToDepositRoute, address(this), block.timestamp);
             depositBal = IERC20(depositToken).balanceOf(address(this));
         } else {
             depositBal = nativeBal;
-            IWrappedNative(native).withdraw(depositBal);
+            depositNativeAmount = nativeBal;
+            IWrappedNative(native).withdraw(depositNativeAmount);
         }
 
         if (poolSize == 2) {
             uint256[2] memory amounts;
             amounts[depositIndex] = depositBal;
-            if (useUnderlying) ICurveSwap2(pool).add_liquidity(amounts, 0, true);
-            else ICurveSwap2(pool).add_liquidity{value: depositBal}(amounts, 0);
+            if (useUnderlying) ICurveSwap(pool).add_liquidity(amounts, 0, true);
+            else ICurveSwap(pool).add_liquidity{value: depositNativeAmount}(amounts, 0);
         } else if (poolSize == 3) {
             uint256[3] memory amounts;
             amounts[depositIndex] = depositBal;
-            if (useUnderlying) ICurveSwap3(pool).add_liquidity(amounts, 0, true);
-            else if (useMetapool) ICurveSwap3(pool).add_liquidity(want, amounts, 0);
-            else ICurveSwap3(pool).add_liquidity(amounts, 0);
+            if (useUnderlying) ICurveSwap(pool).add_liquidity(amounts, 0, true);
+            else if (useMetapool) ICurveSwap(pool).add_liquidity(want, amounts, 0);
+            else ICurveSwap(pool).add_liquidity(amounts, 0);
         } else if (poolSize == 4) {
             uint256[4] memory amounts;
             amounts[depositIndex] = depositBal;
-            if (useMetapool) ICurveSwap4(pool).add_liquidity(want, amounts, 0);
-            else ICurveSwap4(pool).add_liquidity(amounts, 0);
+            if (useMetapool) ICurveSwap(pool).add_liquidity(want, amounts, 0);
+            else ICurveSwap(pool).add_liquidity(amounts, 0);
         } else if (poolSize == 5) {
             uint256[5] memory amounts;
             amounts[depositIndex] = depositBal;
-            ICurveSwap5(pool).add_liquidity(amounts, 0);
+            ICurveSwap(pool).add_liquidity(amounts, 0);
         }
     }
 

@@ -179,7 +179,7 @@ contract StrategyKyberCurve5Eur is StratManager, FeeManager {
 
         uint256[2] memory amounts;
         amounts[0] = depositBal;
-        ICurveSwap2(want).add_liquidity(amounts, 0);
+        ICurveSwap(want).add_liquidity(amounts, 0);
     }
 
     // calculate the total underlaying 'want' held by the strat.

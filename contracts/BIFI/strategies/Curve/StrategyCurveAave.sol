@@ -126,7 +126,7 @@ contract StrategyCurveAave is StratManager, FeeManager {
 
         uint256 usdcBal = IERC20(usdc).balanceOf(address(this));
         uint256[3] memory amounts = [0, usdcBal, 0];
-        ICurveSwap3(swapToken).add_liquidity(amounts, 0, true);
+        ICurveSwap(swapToken).add_liquidity(amounts, 0, true);
     }
 
     // calculate the total underlaying 'want' held by the strat.
