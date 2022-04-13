@@ -42,7 +42,9 @@ const zapNativeToToken = async ({ amount, want, nativeTokenAddr, unirouter, swap
       });
 
       const token0Bal = await token0.balanceOf(recipient);
+      //console.log("DEBUG token0Bal after swap =>" + token0Bal);
       const token1Bal = await token1.balanceOf(recipient);
+      //console.log("DEBUG token1Bal after swap =>" + token1Bal);
 
       await token0.approve(unirouter.address, token0Bal);
       await token1.approve(unirouter.address, token1Bal);
@@ -113,6 +115,11 @@ const getUnirouterData = address => {
         interface: "IUniswapRouterAVAX",
         swapSignature: "swapExactAVAXForTokens",
       };
+    case "0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106":
+      return {
+        interface: "IUniswapRouterAVAX",
+        swapSignature: "swapExactAVAXForTokens",
+      };
     case "0xf38a7A7Ac2D745E2204c13F824c00139DF831FFf":
       return {
         interface: "IUniswapRouterMATIC",
@@ -132,7 +139,7 @@ const getUnirouterData = address => {
 };
 
 const wrapNative = async (amount, wNativeAddr) => {
-  const wNative = await ethers.getContractAt("IWrappedNative", wNativeAddr);
+  const wNative = await ethers.getContractAt("contracts/BIFI/interfaces/common/IWrappedNative.sol:IWrappedNative", wNativeAddr);
   await wNative.deposit({ value: amount });
 };
 
