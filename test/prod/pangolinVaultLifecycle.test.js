@@ -37,7 +37,7 @@ describe("PangolinVaultLifecycleTest", () => {
     unirouter = await ethers.getContractAt(unirouterData.interface, unirouterAddr);
     want = await getVaultWant(vault, config.wnative);
 
-    const customSwapSignature={
+    const customSwapSignature = {
       interface: "IUniswapRouterAVAX",
       swapSignature: "swapExactAVAXForTokens",
     };

@@ -21,17 +21,17 @@ const {
   },
 } = avax;
 
-const shouldCheckGas = false; // You can use this on a live deployment to delay until gas is cheap
+const shouldCheckGas = true; // You can use this on a live deployment to delay until gas is cheap
 const shouldVerifyOnEtherscan = true; // Always verify on live deployment
-const shouldTransferOwner = true; // Always
+const shouldTransferOwner = false; // Always
 const shouldSetPendingRewardsFunctionName = false; // Used for some strats and not others
 const shouldHarvestOnDeposit = false; // Used for low fee chains (callFee = 11)
 
-const gasLimit = BigNumber.from(web3.utils.toWei("30", "Gwei"));
+const gasLimit = BigNumber.from(web3.utils.toWei("40", "Gwei"));
 
 const vaultParams = {
   mooName: "Moo Pangolin LOST-AVAX",
-  mooSymbol: "MooPangolinLOST-AVAX",
+  mooSymbol: "mooPangolinLOST-AVAX",
   delay: 21600,
 };
 
@@ -43,7 +43,7 @@ const strategyParams = {
   chef: pangolin.minichef,
   poolId: 	105,
   unirouter: pangolin.router,
-  strategist: "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", // insert your wallet here
+  strategist: "0x5577d38C6Ae74C73b33061e4886a262f88cdF45d", // insert your wallet here
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   outputToNativeRoute: [PNG, WAVAX],
@@ -66,23 +66,22 @@ async function main() {
     console.error("one of config values undefined");
     return;
   }
-//   if (!checksumAddresses()) {
-//     console.error("one of address checksums is invalid");
-//     return;
-//   }
+  
+  if (!checksumAddresses()) {
+    console.error("one of address checksums is invalid");
+    return;
+  }
 
   await hardhat.run("compile");
-
-  console.log("1");
 
   const Vault = await ethers.getContractFactory(contractNames.vault);
   const Strategy = await ethers.getContractFactory(contractNames.strategy);
 
   const [deployer] = await ethers.getSigners();
 
-//   if (shouldCheckGas) {
-//     await checkGasLimits();
-//   }
+  if (shouldCheckGas) {
+    await checkGasLimits();
+  }
 
   console.log("Deploying:", vaultParams.mooName);
 
@@ -164,18 +163,26 @@ const checksumAddresses = () => {
   return result;
 };
 
-// const checkGasLimits = async () => {
-//   console.log(`Checking gas price against limit ${gasLimit}`);
-//   let gasPrice = await checkGas();
-//   while (gasPrice >= gasLimit) {
-//     console.log(
-//       `Gas price ${ethers.utils.formatEther(gasPrice)} is higher than limit ${ethers.utils.formatEther(gasLimit)}`
-//     );
-//     await new Promise(resolve => setTimeout(resolve, 15 * 1000)); // sleep 60 seconds
-//     gasPrice = await checkGas();
-//   }
-//   return gasPrice;
-// };
+const checkGas = async () => {
+  const gasPrice = await ethers.provider.getGasPrice();
+  const gasPriceGwei = ethers.utils.formatUnits(gasPrice, "gwei");
+
+  console.log(`Current gas: ${gasPriceGwei} gwei`);
+  return gasPrice;
+};
+
+const checkGasLimits = async () => {
+  console.log(`Checking gas price against limit ${gasLimit}`);
+  let gasPrice = await checkGas();
+  while (gasPrice >= gasLimit) {
+    console.log(
+      `Gas price ${ethers.utils.formatEther(gasPrice)} is higher than limit ${ethers.utils.formatEther(gasLimit)}`
+    );
+    await new Promise(resolve => setTimeout(resolve, 15 * 1000)); // sleep 60 seconds
+    gasPrice = await checkGas();
+  }
+  return gasPrice;
+};
 
 main()
   .then(() => process.exit(0))
