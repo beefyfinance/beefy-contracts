@@ -192,7 +192,7 @@ contract StrategyRoseLP is StratManager, FeeManager, GasThrottler {
         uint256 lpBal = IERC20(lp).balanceOf(address(this));
         uint256[2] memory amounts;
         amounts[1] = lpBal;
-        ICurveSwap2(metaRouter).add_liquidity(amounts, 0);
+        ICurveSwap(metaRouter).add_liquidity(amounts, 0);
         
         liquidityAdded = true;
     }
@@ -202,7 +202,7 @@ contract StrategyRoseLP is StratManager, FeeManager, GasThrottler {
         uint256 stableBal = IERC20(stable).balanceOf(address(this));
         uint256[3] memory amounts;
         amounts[1] = stableBal;
-        ICurveSwap3(roseRouter).add_liquidity(amounts, 0);
+        ICurveSwap(roseRouter).add_liquidity(amounts, 0);
         
         createdLp = true;
     }

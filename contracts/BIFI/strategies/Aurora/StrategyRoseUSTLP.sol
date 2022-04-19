@@ -196,7 +196,7 @@ contract StrategyRoseUSTLP is StratManager, FeeManager, GasThrottler {
         uint256 stableBal = IERC20(stable).balanceOf(address(this));
         uint256[2] memory amounts;
         amounts[0] = stableBal;
-        ICurveSwap2(metaRouter).add_liquidity(amounts, 0);
+        ICurveSwap(metaRouter).add_liquidity(amounts, 0);
         
         liquidityAdded = true;
     }
