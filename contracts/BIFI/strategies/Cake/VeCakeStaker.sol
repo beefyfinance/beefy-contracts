@@ -66,9 +66,9 @@ contract VeCakeStaker is ERC20, ReentrancyGuard, CakeChefManager {
         _amount = _after.sub(_pool); // Additional check for deflationary tokens
 
         if (_amount > 0) {
-            uint256 reserve = requiredReserve();
-            if (_amount > reserve) {
-                veCake.deposit(_amount.sub(reserve), DURATION);
+            uint256 reserve = withdrawalReserve().add(rewardReserve());
+            if (balanceOfWant() > reserve) {
+                veCake.deposit(balanceOfWant().sub(reserve), DURATION);
             }
 
             _mint(msg.sender, _amount);
@@ -84,10 +84,36 @@ contract VeCakeStaker is ERC20, ReentrancyGuard, CakeChefManager {
         emit Withdraw(totalCakes());
     }
 
-    // Our required Cakes held in the contract to enable withdraw capabilities
-    function requiredReserve() public view returns (uint256 reqReserve) {
+    // Our reserve Cakes held in the contract to enable withdraw capabilities
+    function withdrawalReserve() public view returns (uint256 withdrawReserve) {
         // We calculate allocation for reserve of the total staked Cakes.
-        reqReserve = balanceOfCakeInVe().mul(reserveRate).div(MAX);
+        withdrawReserve = balanceOfCakeInVe().mul(reserveRate).div(MAX);
+    }
+
+    // Extra Cakes are rewarded back to stakers
+    function rewardReserve() public view returns (uint256 rewardReserve) {
+        if (totalCakes < totalSupply()) {
+            rewardReserve = 0;
+        } else {
+            rewardReserve = totalCakes().sub(totalSupply());
+        }
+    }
+
+    // Send extra Cakes to cakeBatch if above withdrawal reserves
+    function harvest() external {
+        uint256 _cakeBal = balanceOfWant();
+        uint256 _withdrawReserve = withdrawalReserve();
+
+        if (_cakeBal > _withdrawReserve) {
+            uint256 _rewards = _cakeBal.sub(_withdrawReserve);
+            uint256 _rewardReserve = rewardReserve();
+
+            // Don't send more than totalCakes
+            if (_rewards > _rewardReserve) {
+                _rewards = _rewardReserve;
+            }
+            want.safeTransfer(cakeBatch, _rewards);
+        }
     }
 
     // Total Cakes in veCake contract and beCake contract.
