@@ -126,7 +126,7 @@ contract StrategyCurveAaveRen is StratManager, FeeManager {
 
         uint256 btcBal = IERC20(btc).balanceOf(address(this));
         uint256[2] memory amounts = [btcBal, 0];
-        ICurveSwap2(swapToken).add_liquidity(amounts, 0, true);
+        ICurveSwap(swapToken).add_liquidity(amounts, 0, true);
     }
 
     // calculate the total underlaying 'want' held by the strat.

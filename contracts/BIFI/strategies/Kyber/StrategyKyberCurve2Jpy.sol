@@ -182,7 +182,7 @@ contract StrategyKyberCurve2Jpy is StratManager, FeeManager {
 
         uint256[2] memory amounts;
         amounts[1] = depositBal;
-        ICurveSwap2(want).add_liquidity(amounts, 1);
+        ICurveSwap(want).add_liquidity(amounts, 1);
     }
 
     // calculate the total underlaying 'want' held by the strat.

@@ -137,7 +137,7 @@ contract StrategyCurveATricrypto is StratManager, FeeManager {
 
         uint256 ethBal = IERC20(eth).balanceOf(address(this));
         uint256[5] memory amounts = [0, 0, 0, 0, ethBal];
-        ICurveSwap5(swap).add_liquidity(amounts, 0);
+        ICurveSwap(swap).add_liquidity(amounts, 0);
     }
 
     // calculate the total underlaying 'want' held by the strat.
