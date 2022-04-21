@@ -213,7 +213,7 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
 
     // swap tokens 
     // @dev Ensure pools are tristed before calling this function
-    function tridentSwap(address _tokenIn, uint256 _amountIn, ITridentRouter.Path[] memory _path) internal returns (uint256) {
+    function tridentSwap(address _tokenIn, uint256 _amountIn, ITridentRouter.Path[] memory _path) internal {
         ITridentRouter.ExactInputParams memory exactInputParams = ITridentRouter.ExactInputParams(_tokenIn, _amountIn, 0, _path);
         ITridentRouter(unirouter).exactInput(exactInputParams);
     }
