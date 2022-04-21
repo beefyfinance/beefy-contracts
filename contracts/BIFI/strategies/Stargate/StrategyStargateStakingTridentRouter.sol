@@ -15,26 +15,7 @@ import "../Common/FeeManager.sol";
 import "../../utils/StringUtils.sol";
 import "../../utils/GasThrottler.sol";
 
-contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasThrottler {
-    using SafeERC20 for IERC20;
-    using SafeMath for uint256;
-
-    // Tokens used
-    address public native;
-    address public output;
-    address public want;
-    address public lpToken0;
-
-    // Third party contracts
-    address public chef;
-    uint256 public poolId;
-    address public stargateRouter;
-    uint256 public routerPoolId;
-
-    bool public harvestOnDeposit;
-    uint256 public lastHarvest;
-    string public pendingRewardsFunctionName;
-
+abstract contract StrategyTridentRouter {
     // Routes
     address[][] public outputToNativeRoute;
     address[][] public outputToLp0Route;
@@ -45,35 +26,21 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
     ITridentRouter.Path[] public outputToNativePath;
     ITridentRouter.Path[] public outputToLp0Path;
 
-    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
-    event Deposit(uint256 tvl);
-    event Withdraw(uint256 tvl);
-    event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
+    // address
+    address private unirouter; // private scope to prevent clash with unirouter var in StratManager
 
     constructor(
-        address _want,
-        uint256[] memory _poolIdAndRouterPoolId,
-        address _chef,
-        address _vault,
-        address[] memory _unirouterAndStargateRouter,
-        address _strategist,
-        address[] memory _beefyFeeRecipientAndKeeper,
+        address _unirouter,
         address[][] memory _outputToNativeRoute, // [[output,tokenX],[tokenX,tokenY],[tokenY,native]]
         address[][] memory _outputToLp0Route, // [[output,tokenX],[tokenX,tokenY],[tokenY,Lp0]]
         address[] memory _outputToNativePoolRoute, // [pool_with_output, ..., pool_with_native]
         address[] memory _outputToLp0PoolRoute // [pool_with_output, ..., pool_with_lp0]
-    ) StratManager(_beefyFeeRecipientAndKeeper[1], _strategist, _unirouterAndStargateRouter[0], _vault, _beefyFeeRecipientAndKeeper[0]) public {
-        want = _want;
-        poolId = _poolIdAndRouterPoolId[0];
-        routerPoolId = _poolIdAndRouterPoolId[1];
-        chef = _chef;
-        stargateRouter = _unirouterAndStargateRouter[1];
-
+    ) public {
         //// Native routing 
         outputToNativePoolRoute = _outputToNativePoolRoute;
         outputToNativeRoute = _outputToNativeRoute;
-        output = outputToNativeRoute[0][0];
-        native = outputToNativeRoute[outputToNativeRoute.length - 1][1];
+        unirouter = _unirouter;
+        
         // Setup Native "path" object required by exactInput
         for (uint256 i; i < outputToNativePoolRoute.length - 1; ) {
             outputToNativePath.push(ITridentRouter.Path(
@@ -98,7 +65,7 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
         //// LP routing 
         outputToLp0PoolRoute = _outputToLp0PoolRoute;
         outputToLp0Route = _outputToLp0Route;
-        lpToken0 = outputToLp0Route[outputToLp0Route.length - 1][1];
+        
 
         // Setup Native "path" object required by exactInput
         for (uint256 i; i < outputToLp0PoolRoute.length - 1; ) {
@@ -120,7 +87,69 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
             // last pool should transfer to user address(this)
             abi.encode(outputToLp0Route[outputToLp0PoolRoute.length - 1][0], address(this), true)
             ));
-        //
+    }
+
+    // swap tokens 
+    // @dev Ensure pools are tristed before calling this function
+    function tridentSwap(address _tokenIn, uint256 _amountIn, ITridentRouter.Path[] memory _path) internal {
+        ITridentRouter.ExactInputParams memory exactInputParams = ITridentRouter.ExactInputParams(_tokenIn, _amountIn, 0, _path);
+        ITridentRouter(unirouter).exactInput(exactInputParams);
+    }
+}
+
+contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasThrottler, StrategyTridentRouter {
+    using SafeERC20 for IERC20;
+    using SafeMath for uint256;
+
+    // Tokens used
+    address public native;
+    address public output;
+    address public want;
+    address public lpToken0;
+
+    // Third party contracts
+    address public chef;
+    uint256 public poolId;
+    address public stargateRouter;
+    uint256 public routerPoolId;
+
+    bool public harvestOnDeposit;
+    uint256 public lastHarvest;
+    string public pendingRewardsFunctionName;
+
+    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
+    event Deposit(uint256 tvl);
+    event Withdraw(uint256 tvl);
+    event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
+
+    constructor(
+        address _want,
+        uint256[] memory _poolIdAndRouterPoolId,
+        address _chef,
+        address _vault,
+        address[] memory _unirouterAndStargateRouter,
+        address _strategist,
+        address[] memory _beefyFeeRecipientAndKeeper,
+        address[][] memory _outputToNativeRoute, 
+        address[][] memory _outputToLp0Route, 
+        address[] memory _outputToNativePoolRoute, 
+        address[] memory _outputToLp0PoolRoute 
+    ) StratManager(
+        _beefyFeeRecipientAndKeeper[1], _strategist, _unirouterAndStargateRouter[0], _vault, _beefyFeeRecipientAndKeeper[0]
+    ) StrategyTridentRouter(
+        _unirouterAndStargateRouter[0], _outputToNativeRoute, _outputToLp0Route, _outputToNativePoolRoute, _outputToLp0PoolRoute
+    ) public {
+        want = _want;
+        poolId = _poolIdAndRouterPoolId[0];
+        routerPoolId = _poolIdAndRouterPoolId[1];
+        chef = _chef;
+        stargateRouter = _unirouterAndStargateRouter[1];
+        
+        // routes defined in inhereited StrategyTridentRouter
+        output = outputToNativeRoute[0][0];
+        native = outputToNativeRoute[outputToNativeRoute.length - 1][1];
+        lpToken0 = outputToLp0Route[outputToLp0Route.length - 1][1];
+        
         _giveAllowances();
     }
 
@@ -211,12 +240,7 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
-    // swap tokens 
-    // @dev Ensure pools are tristed before calling this function
-    function tridentSwap(address _tokenIn, uint256 _amountIn, ITridentRouter.Path[] memory _path) internal {
-        ITridentRouter.ExactInputParams memory exactInputParams = ITridentRouter.ExactInputParams(_tokenIn, _amountIn, 0, _path);
-        ITridentRouter(unirouter).exactInput(exactInputParams);
-    }
+    
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
