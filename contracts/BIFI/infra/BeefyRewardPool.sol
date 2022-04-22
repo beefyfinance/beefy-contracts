@@ -8,7 +8,7 @@ import "../utils/LPTokenWrapper.sol";
 
 contract BeefyRewardPool is LPTokenWrapper, Ownable {
     IERC20 public rewardToken;
-    uint256 public constant DURATION = 1 days;
+    uint256 public constant DURATION = 7 days;
 
     uint256 public periodFinish = 0;
     uint256 public rewardRate = 0;
