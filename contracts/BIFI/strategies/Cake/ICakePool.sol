@@ -6,6 +6,9 @@ interface ICakePool {
     function deposit(uint256 _amount, uint256 _lockDuration) external;
     function withdrawByAmount(uint256 _amount) external;
     function unlock(address _user) external;
+    function token() external view returns (address);
+    function MIN_DEPOSIT_AMOUNT() external view returns (uint256);
+    function getPricePerFullShare() external view returns (uint256);
 
     function userInfo(address _user)
         external view returns (uint256, uint256, uint256, uint256, uint256, uint256, uint256, bool, uint256);

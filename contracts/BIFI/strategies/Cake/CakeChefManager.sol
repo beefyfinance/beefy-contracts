@@ -5,25 +5,30 @@ pragma solidity ^0.8.0;
 import "@openzeppelin-4/contracts/access/Ownable.sol";
 import "@openzeppelin-4/contracts/security/Pausable.sol";
 import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin-4/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin-4/contracts/interfaces/IERC1271.sol";
-import "@openzeppelin-4/contracts/utils/cryptography/ECDSA.sol";
 
 import "./ICakeV2Chef.sol";
 import "./ICakeBoostStrategy.sol";
 
-contract CakeChefManager is Ownable, Pausable, IERC1271 {
+interface IDelegateManager {
+    function setDelegate(bytes32 _id, address _voter) external;
+    function clearDelegate(bytes32 _id) external;
+    function delegation(address _voteHolder, bytes32 _id) external view returns (address);
+}
+
+contract CakeChefManager is Ownable, Pausable {
     using SafeERC20 for IERC20;
-    using ECDSA for bytes32;
 
     /**
      * @dev Beefy Contracts:
      * {CakeChef} - Address of the boosted chef
      * {keeper} - Address to manage a few lower risk features of the strat.
      * {cakeBatch} - Address for distributing locked want rewards.
+     * {delegateManager} - Address for Snapshot delegation
      */
     address public keeper;
     address public cakeBatch;
+    IDelegateManager public delegateManager = IDelegateManager(0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446);
+    bytes32 public id = bytes32("cake.eth"); // Cake's Snapshot ENS
 
     // beCake fee taken from strats
     uint256 public beCakeShare;
@@ -32,9 +37,12 @@ contract CakeChefManager is Ownable, Pausable, IERC1271 {
     mapping(address => mapping (uint256 => address)) public whitelistedStrategy;
     mapping(address => address) public replacementStrategy;
 
+    // Contract Events
     event NewKeeper(address oldKeeper, address newKeeper);
     event NewBeCakeShare(uint256 oldShare, uint256 newShare);
     event NewCakeBatch(address oldBatch, address newBatch);
+    event NewVoter(address newVoter);
+    event NewVoterParams(IDelegateManager newDelegatManager, bytes32 newId);
 
     /**
      * @dev Initializes the base strategy.
@@ -52,6 +60,9 @@ contract CakeChefManager is Ownable, Pausable, IERC1271 {
         // Cannot be more than 10%
         require(_beCakeShare <= 1000, "Too Much");
         beCakeShare = _beCakeShare;
+
+        // Keeper is the default voter
+        _setVoteDelegation(_keeper);
     }
 
     // Checks that caller is either owner or keeper.
@@ -141,19 +152,28 @@ contract CakeChefManager is Ownable, Pausable, IERC1271 {
         whitelistedStrategy[_cakeChef][_pid] = replacementStrategy[msg.sender];
     }
 
-    /**
-    * Will give us an opportunity to vote via snapshot with veCake
-    */
-    function isValidSignature(
-        bytes32 _messageHash,
-        bytes calldata _signature
-   ) external override view returns (bytes4) {
-        // Validate signatures
-        address signer = _messageHash.recover(_signature);
-        if (signer == keeper || signer == owner()) {
-            return 0x1626ba7e;
-        } else {
-            return 0xffffffff;
-        }  
-    }    
+    // set voter params 
+    function setVoterParams(IDelegateManager _delegationManager, bytes32 _newId) external onlyManager {
+        emit NewVoterParams(_delegationManager, _newId);
+        delegateManager = _delegationManager;
+        id = _newId;
+    }
+
+     // set vote delegation 
+    function setVoteDelegation (address _voter) external onlyManager {
+        _setVoteDelegation(_voter);
+    }
+    function _setVoteDelegation(address _voter) internal {
+        emit NewVoter(_voter);
+        delegateManager.setDelegate(id, _voter);
+    }
+
+    // clear vote delegation 
+    function clearVoteDelegation() external onlyManager {
+        delegateManager.clearDelegate(id);
+    }
+
+    function currentVoter() external view returns (address) {
+        return delegateManager.delegation(address(this), id);
+    }
 }
