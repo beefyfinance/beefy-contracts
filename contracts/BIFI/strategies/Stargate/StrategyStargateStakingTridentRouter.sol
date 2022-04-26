@@ -112,6 +112,7 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
     uint256 public poolId;
     address public stargateRouter;
     uint256 public routerPoolId;
+    address public bento;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -144,6 +145,7 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
         routerPoolId = _poolIdAndRouterPoolId[1];
         chef = _chef;
         stargateRouter = _unirouterAndStargateRouter[1];
+        bento = address(0x0319000133d3AdA02600f0875d2cf03D442C3367); // bento V1 matic
         
         // routes defined in inhereited StrategyTridentRouter
         output = outputToNativeRoute[0][0];
@@ -239,8 +241,6 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
-
-    
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
@@ -356,6 +356,8 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
 
         IERC20(lpToken0).safeApprove(stargateRouter, 0);
         IERC20(lpToken0).safeApprove(stargateRouter, uint256(-1));
+
+        IBentoBoxMinimal(bento).setMasterContractApproval(address(this),unirouter,true,0,0,0);
     }
 
     function _removeAllowances() internal {
@@ -379,4 +381,88 @@ contract StrategyStargateStakingTridentRouter is StratManager, FeeManager, GasTh
     function outputToLp0() external view returns (address[][] memory) {
         return outputToLp0Route; 
     }
+}
+
+/// @notice Minimal BentoBox vault interface.
+/// @dev `token` is aliased as `address` from `IERC20` for simplicity.
+interface IBentoBoxMinimal {
+    /// @notice Balance per ERC-20 token per account in shares.
+    function balanceOf(address, address) external view returns (uint256);
+
+    /// @dev Helper function to represent an `amount` of `token` in shares.
+    /// @param token The ERC-20 token.
+    /// @param amount The `token` amount.
+    /// @param roundUp If the result `share` should be rounded up.
+    /// @return share The token amount represented in shares.
+    function toShare(
+        address token,
+        uint256 amount,
+        bool roundUp
+    ) external view returns (uint256 share);
+
+    /// @dev Helper function to represent shares back into the `token` amount.
+    /// @param token The ERC-20 token.
+    /// @param share The amount of shares.
+    /// @param roundUp If the result should be rounded up.
+    /// @return amount The share amount back into native representation.
+    function toAmount(
+        address token,
+        uint256 share,
+        bool roundUp
+    ) external view returns (uint256 amount);
+
+    /// @notice Registers this contract so that users can approve it for BentoBox.
+    function registerProtocol() external;
+
+    /// @notice Deposit an amount of `token` represented in either `amount` or `share`.
+    /// @param token The ERC-20 token to deposit.
+    /// @param from which account to pull the tokens.
+    /// @param to which account to push the tokens.
+    /// @param amount Token amount in native representation to deposit.
+    /// @param share Token amount represented in shares to deposit. Takes precedence over `amount`.
+    /// @return amountOut The amount deposited.
+    /// @return shareOut The deposited amount represented in shares.
+    function deposit(
+        address token,
+        address from,
+        address to,
+        uint256 amount,
+        uint256 share
+    ) external payable returns (uint256 amountOut, uint256 shareOut);
+
+    /// @notice Withdraws an amount of `token` from a user account.
+    /// @param token_ The ERC-20 token to withdraw.
+    /// @param from which user to pull the tokens.
+    /// @param to which user to push the tokens.
+    /// @param amount of tokens. Either one of `amount` or `share` needs to be supplied.
+    /// @param share Like above, but `share` takes precedence over `amount`.
+    function withdraw(
+        address token_,
+        address from,
+        address to,
+        uint256 amount,
+        uint256 share
+    ) external returns (uint256 amountOut, uint256 shareOut);
+
+    /// @notice Transfer shares from a user account to another one.
+    /// @param token The ERC-20 token to transfer.
+    /// @param from which user to pull the tokens.
+    /// @param to which user to push the tokens.
+    /// @param share The amount of `token` in shares.
+    function transfer(
+        address token,
+        address from,
+        address to,
+        uint256 share
+    ) external;
+
+    /// @dev Approves users' BentoBox assets to a "master" contract.
+    function setMasterContractApproval(
+        address user,
+        address masterContract,
+        bool approved,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
 }
