@@ -10,37 +10,40 @@ const registerSubsidy = require("../../utils/registerSubsidy");
 const {
   platforms: { quickswap, beefyfinance },
   tokens: {
-    beFTM: { address: beFTM },
-    FTM: { address: FTM },
+    QUICK: { address: QUICK },
+    SD: { address: SD },
+    MaticX: { address: MaticX },
+    WMATIC: { address: WMATIC }, 
+    USDC: { address: USDC }
   },
-} = addressBook.fantom;
+} = addressBook.polygon;
 
 const shouldVerifyOnEtherscan = false;
 
-const rewardPool = web3.utils.toChecksumAddress("0xE00D25938671525C2542A689e42D1cfA56De5888");
-const lp = web3.utils.toChecksumAddress("0x7381eD41F6dE418DdE5e84B55590422a57917886");
+const rewardPool = web3.utils.toChecksumAddress("0x1E16eCc4F912d8dB04b8177b4186bb597267fc25");
+const lp = web3.utils.toChecksumAddress("0xb0e69f24982791dd49e316313fD3A791020B8bF7");
 
 const vaultParams = {
-  mooName: "Moo beFTM",
-  mooSymbol: "moobeFTM",
+  mooName: "Moo Quick MaticX-MATIC",
+  mooSymbol: "mooQuickMaticX-MATIC",
   delay: 21600,
 };
 
 const strategyParams = {
   want: lp,
   rewardPool: rewardPool,
-  unirouter: "0xa38cd27185a464914D3046f0AB9d43356B34829D",
+  unirouter: quickswap.router,
   strategist: "0xb2e4A61D99cA58fB8aaC58Bb2F8A59d63f552fC0", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [FTM],
-  outputToLp0Route: [FTM, beFTM],
- // outputToLp1Route: [QUICK, MATIC, MAI],
+  outputToNativeRoute: [QUICK, WMATIC],
+  outputToLp0Route: [WMATIC],
+  outputToLp1Route: [WMATIC, MaticX],
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonRewardPool",
+  strategy: "StrategyQuickswapDualRewardLP",
 };
 
 async function main() {
@@ -83,7 +86,7 @@ async function main() {
     strategyParams.beefyFeeRecipient,
     strategyParams.outputToNativeRoute,
     strategyParams.outputToLp0Route,
-//   strategyParams.outputToLp1Route,
+    strategyParams.outputToLp1Route,
   ];
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();

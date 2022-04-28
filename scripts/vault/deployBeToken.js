@@ -6,11 +6,14 @@ const {
     platforms: { beefyfinance },
   } = addressBook.bsc;
 
+const ensID = ethers.utils.formatBytes32String('cake.eth');
+
 const config = {
   stakingContract: '0x45c54210128a065de780C4B0Df3d16664f7f859e',
   reserveRate: 2000,
   batch: '0xB47aff175ac9dbc11aCf628F8F3d0B483F3D3194',
   share: 500,
+  id: ensID,
   keeper: beefyfinance.keeper,
   name: 'test',
   symbol: 'test',
@@ -35,28 +38,30 @@ async function main() {
     config.reserveRate,
     config.batch,
     config.share, 
+    config.id,
     config.keeper,
     config.name,
     config.symbol,
   ];
-
+/*
   const staker = await BeToken.deploy(...lockerArguments);
 
   await staker.deployed();
 
   console.log(`Deployed at ${staker.address}`);
-
+*/
   await hardhat.run("verify:verify", {
-    address: staker.address,
+    address: "0x6fC8F8675434d88b50aafcc86d0fe1AfC75727b2",
     constructorArguments: [
-    config.stakingContract,
-    config.validatorID,
-    config.validator,
-    config.share, 
-    config.keeper,
-    config.name,
-    config.symbol,
-    ],
+      config.stakingContract,
+      config.reserveRate,
+      config.batch,
+      config.share, 
+      config.id,
+      config.keeper,
+      config.name,
+      config.symbol,
+    ]
   })
 }
 
