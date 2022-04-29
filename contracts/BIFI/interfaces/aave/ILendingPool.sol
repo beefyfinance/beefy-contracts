@@ -20,4 +20,16 @@ interface ILendingPool {
         uint256 ltv,
         uint256 healthFactor
     );
+
+    function setUserEMode(uint8 categoryId) external;
+
+    function getUserEMode(address user) external view returns (uint256);
+
+    function getEModeCategoryData(uint8 categoryId) external view returns (
+        uint16 ltv,
+        uint16 liquidationThreshold,
+        uint16 liquidationBonus,
+        address priceSource,
+        string memory label
+    );
 }

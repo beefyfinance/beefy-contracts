@@ -62,6 +62,7 @@ contract StrategyAaveNative is StratManager, FeeManager {
     event Withdraw(uint256 tvl);
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
     event StratRebalance(uint256 _borrowRate, uint256 _borrowDepth);
+    event SetEMode(uint8 eMode, uint256 borrowRateMax);
 
     constructor(
         address _want,
@@ -69,6 +70,7 @@ contract StrategyAaveNative is StratManager, FeeManager {
         uint256 _borrowRateMax,
         uint256 _borrowDepth,
         uint256 _minLeverage,
+        uint8 _eMode,
         address _dataProvider,
         address _lendingPool,
         address _incentivesController,
@@ -89,6 +91,10 @@ contract StrategyAaveNative is StratManager, FeeManager {
         incentivesController = _incentivesController;
 
         (aToken,,varDebtToken) = IDataProvider(dataProvider).getReserveTokensAddresses(want);
+
+        if (_eMode != 0) {
+            ILendingPool(lendingPool).setUserEMode(_eMode);
+        }
 
         _giveAllowances();
     }
@@ -179,7 +185,7 @@ contract StrategyAaveNative is StratManager, FeeManager {
      * @param _borrowRate percent to borrow on each leverage level.
      * @param _borrowDepth how many levels to leverage the funds.
      */
-    function rebalance(uint256 _borrowRate, uint256 _borrowDepth) external onlyManager {
+    function rebalance(uint256 _borrowRate, uint256 _borrowDepth) public onlyManager {
         require(_borrowRate <= borrowRateMax, "!rate");
         require(_borrowDepth <= BORROW_DEPTH_MAX, "!depth");
 
@@ -331,6 +337,30 @@ contract StrategyAaveNative is StratManager, FeeManager {
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
         return rewardsAvailable().mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
+
+    // returns strategy's eMode
+    function eMode() external view returns (uint256) {
+        return ILendingPool(lendingPool).getUserEMode(address(this));
+    }
+
+    // set strategy to a new eMode and set borrowRateMax to the loan-to-value of the new eMode category
+    function setEMode(uint8 _eMode, uint256 _borrowRateMax, uint256 _borrowRate, uint256 _borrowDepth) external onlyManager {
+        _deleverage();
+        ILendingPool(lendingPool).setUserEMode(_eMode);
+
+        if (_eMode != 0) {
+            (uint16 ltv,,,,) = ILendingPool(lendingPool).getEModeCategoryData(_eMode);
+            borrowRateMax = uint256(ltv).div(100);
+        } else {
+            borrowRateMax = _borrowRateMax;
+        }
+
+        if (_borrowRate != borrowRate || _borrowDepth != borrowDepth) {
+            rebalance(_borrowRate, _borrowDepth);
+        }
+
+        emit SetEMode(_eMode, borrowRateMax);
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
