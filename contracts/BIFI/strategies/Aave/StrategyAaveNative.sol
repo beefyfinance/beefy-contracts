@@ -221,19 +221,19 @@ contract StrategyAaveNative is StratManager, FeeManager {
         IAaveV3Incentives(incentivesController).claimRewards(assets, type(uint).max, address(this), want);
         uint256 afterBal = balanceOfWant();
 
-        uint256 harvestedBal = afterBal.sub(beforeBal);
-        if (harvestedBal > 0) {
-            chargeFees(harvestedBal, callFeeRecipient);
+        uint256 wantHarvested = afterBal.sub(beforeBal);
+        if (wantHarvested > 0) {
+            chargeFees(wantHarvested, callFeeRecipient);
             deposit();
 
             lastHarvest = block.timestamp;
-            emit StratHarvest(msg.sender, harvestedBal.mul(955).div(1000), balanceOf());
+            emit StratHarvest(msg.sender, wantHarvested.mul(955).div(1000), balanceOf());
         }
     }
 
     // performance fees
-    function chargeFees(uint256 harvestedBal, address callFeeRecipient) internal {
-        uint256 feeBal = harvestedBal.mul(45).div(1000);
+    function chargeFees(uint256 wantHarvested, address callFeeRecipient) internal {
+        uint256 feeBal = wantHarvested.mul(45).div(1000);
 
         uint256 callFeeAmount = feeBal.mul(callFee).div(MAX_FEE);
         IERC20(want).safeTransfer(callFeeRecipient, callFeeAmount);
