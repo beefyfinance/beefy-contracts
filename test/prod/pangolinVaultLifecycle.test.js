@@ -12,7 +12,7 @@ const chainName = "avax";
 const { beefyfinance } = avax.platforms;
 
 const config = {
-  vault: "0x3772Ec5Cca70A7ff691E5A4348b4d22bb4ED0e76", // Set this to the address of your vault after it deploys
+  vault: "0xe7Ec21F490efa6a9Ab9550be05Bc811827CD26ED", // Set this to the address of your vault after it deploys
   vaultContract: "BeefyVaultV6",
   strategyContract: "StrategyPangolinMiniChefLP",
   testAmount: ethers.utils.parseEther("5"),
@@ -186,7 +186,6 @@ describe("PangolinVaultLifecycleTest", () => {
         break;
       }
     }
-
     // outputToLp1Route
     console.log("outputToLp1Route:");
     for (let i = 0; i < 10; ++i) {
@@ -205,9 +204,20 @@ describe("PangolinVaultLifecycleTest", () => {
         break;
       }
     }
+
   }).timeout(TIMEOUT);
 
-  it("Has correct call fee", async () => {
+  it("Displays output routing correctly", async () => {
+
+
+    let rewardToOutput = await strategy.rewardToOutput();
+
+    // outputToLp0Route
+    console.log("rewardToOutput:" + rewardToOutput);
+
+  }).timeout(TIMEOUT);
+
+  it.skip("Has correct call fee", async () => {
     const callFee = await strategy.callFee();
 
     const expectedCallFee = chainCallFeeMap[chainName];

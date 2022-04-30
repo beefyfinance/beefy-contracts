@@ -27,7 +27,7 @@ const shouldTransferOwner = false; // Always
 const shouldSetPendingRewardsFunctionName = false; // Used for some strats and not others
 const shouldHarvestOnDeposit = false; // Used for low fee chains (callFee = 11)
 
-const gasLimit = BigNumber.from(web3.utils.toWei("40", "Gwei"));
+const gasLimit = BigNumber.from(web3.utils.toWei("30", "Gwei"));
 
 const vaultParams = {
   mooName: "Moo Pangolin LOST-AVAX",
@@ -41,7 +41,7 @@ const strategyOwner = beefyfinance.strategyOwner;
 const strategyParams = {
   want: "0x8461681211B49c15e20B3Cfd4c63BE258878B7D9",
   chef: pangolin.minichef,
-  poolId: 	105,
+  poolId: 105,
   unirouter: pangolin.router,
   strategist: "0x5577d38C6Ae74C73b33061e4886a262f88cdF45d", // insert your wallet here
   keeper: beefyfinance.keeper,
@@ -66,7 +66,7 @@ async function main() {
     console.error("one of config values undefined");
     return;
   }
-  
+
   if (!checksumAddresses()) {
     console.error("one of address checksums is invalid");
     return;
@@ -97,6 +97,8 @@ async function main() {
   const vault = await Vault.deploy(...vaultConstructorArguments);
   await vault.deployed();
 
+  
+
   const strategyConstructorArguments = [
     strategyParams.want,
     strategyParams.poolId,
@@ -110,8 +112,11 @@ async function main() {
     strategyParams.outputToLp0Route,
     strategyParams.outputToLp1Route,
   ];
+
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();
+
+  await strategy.addRewardRoute(["0x449674B82F05d498E126Dd6615a1057A9c088f2C",  "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7"]);
 
   // add this info to PR
   console.log();
@@ -134,6 +139,7 @@ async function main() {
   if (shouldSetPendingRewardsFunctionName) {
     await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
   }
+  console.log("hardhat.network.name:"+hardhat.network.name);
   await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
   if (shouldHarvestOnDeposit) {
     await strategy.setHarvestOnDeposit(true);
