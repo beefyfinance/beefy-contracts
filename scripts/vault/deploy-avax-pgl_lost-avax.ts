@@ -66,7 +66,7 @@ async function main() {
     console.error("one of config values undefined");
     return;
   }
-
+  
   if (!checksumAddresses()) {
     console.error("one of address checksums is invalid");
     return;
