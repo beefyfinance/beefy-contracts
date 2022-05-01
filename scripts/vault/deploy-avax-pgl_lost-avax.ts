@@ -116,7 +116,7 @@ async function main() {
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();
 
-  await strategy.addRewardRoute(["0x449674B82F05d498E126Dd6615a1057A9c088f2C",  "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7"]);
+  await strategy.addRewardRoute(["0x449674B82F05d498E126Dd6615a1057A9c088f2C",  "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7","0x60781C2586D68229fde47564546784ab3fACA982"]);
 
   // add this info to PR
   console.log();
