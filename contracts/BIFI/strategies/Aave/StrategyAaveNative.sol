@@ -62,7 +62,7 @@ contract StrategyAaveNative is StratManager, FeeManager {
     event Withdraw(uint256 tvl);
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
     event StratRebalance(uint256 _borrowRate, uint256 _borrowDepth);
-    event SetEMode(uint8 eMode, uint256 borrowRateMax);
+    event SetEMode(uint8 eMode, uint256 borrowRateMax, uint256 borrowRate, uint256 borrowDepth);
 
     constructor(
         address _want,
@@ -185,7 +185,7 @@ contract StrategyAaveNative is StratManager, FeeManager {
      * @param _borrowRate percent to borrow on each leverage level.
      * @param _borrowDepth how many levels to leverage the funds.
      */
-    function rebalance(uint256 _borrowRate, uint256 _borrowDepth) public onlyManager {
+    function rebalance(uint256 _borrowRate, uint256 _borrowDepth) external onlyManager {
         require(_borrowRate <= borrowRateMax, "!rate");
         require(_borrowDepth <= BORROW_DEPTH_MAX, "!depth");
 
@@ -356,11 +356,14 @@ contract StrategyAaveNative is StratManager, FeeManager {
             borrowRateMax = _borrowRateMax;
         }
 
-        if (_borrowRate != borrowRate || _borrowDepth != borrowDepth) {
-            rebalance(_borrowRate, _borrowDepth);
-        }
+        require(_borrowRate <= borrowRateMax, "!rate");
+        require(_borrowDepth <= BORROW_DEPTH_MAX, "!depth");
+        borrowRate = _borrowRate;
+        borrowDepth = _borrowDepth;
 
-        emit SetEMode(_eMode, borrowRateMax);
+        _leverage(balanceOfWant());
+
+        emit SetEMode(_eMode, borrowRateMax, borrowRate, borrowDepth);
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
