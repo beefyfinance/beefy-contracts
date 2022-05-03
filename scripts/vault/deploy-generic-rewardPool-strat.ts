@@ -8,42 +8,39 @@ import { BeefyChain } from "../../utils/beefyChain";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: { quickswap, beefyfinance },
+  platforms: { pancake, beefyfinance },
   tokens: {
-    QUICK: { address: QUICK },
-    SD: { address: SD },
-    MaticX: { address: MaticX },
-    WMATIC: { address: WMATIC }, 
-    USDC: { address: USDC }
+    CAKE: { address: CAKE },
+    BNB: { address: BNB },
   },
-} = addressBook.polygon;
+} = addressBook.bsc;
 
 const shouldVerifyOnEtherscan = false;
 
-const rewardPool = web3.utils.toChecksumAddress("0x1E16eCc4F912d8dB04b8177b4186bb597267fc25");
-const lp = web3.utils.toChecksumAddress("0xb0e69f24982791dd49e316313fD3A791020B8bF7");
+const rewardPool = web3.utils.toChecksumAddress("0x49fAfAA2d9E32A6Af37A11cEeC50D76A772390Cc");
+const lp = web3.utils.toChecksumAddress("0x42b50A901228fb4C739C19fcd38DC2182B515B66");
 
 const vaultParams = {
-  mooName: "Moo Quick MaticX-MATIC",
-  mooSymbol: "mooQuickMaticX-MATIC",
+  mooName: "Moo beCAKE",
+  mooSymbol: "moobeCAKE",
   delay: 21600,
 };
 
 const strategyParams = {
   want: lp,
   rewardPool: rewardPool,
-  unirouter: quickswap.router,
+  unirouter: pancake.router,
   strategist: "0xb2e4A61D99cA58fB8aaC58Bb2F8A59d63f552fC0", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [QUICK, WMATIC],
-  outputToLp0Route: [WMATIC],
-  outputToLp1Route: [WMATIC, MaticX],
+  outputToNativeRoute: [CAKE, BNB],
+ // outputToLp0Route: [WMATIC],
+ // outputToLp1Route: [WMATIC, MaticX],
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyQuickswapDualRewardLP",
+  strategy: "StrategybeTokenRewardPool",
 };
 
 async function main() {
@@ -85,8 +82,8 @@ async function main() {
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
     strategyParams.outputToNativeRoute,
-    strategyParams.outputToLp0Route,
-    strategyParams.outputToLp1Route,
+   // strategyParams.outputToLp0Route,
+   // strategyParams.outputToLp1Route,
   ];
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();
@@ -110,6 +107,8 @@ async function main() {
     );
   }
   await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
+  console.log(`Transfering Vault Owner to ${beefyfinance.vaultOwner}`)
+  await vault.transferOwnership(beefyfinance.vaultOwner);
   console.log();
 
   await Promise.all(verifyContractsPromises);

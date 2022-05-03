@@ -32,6 +32,7 @@
     "deploy:rewardPool": "hardhat run scripts/vault/deploy-generic-rewardPool-strat.ts --network",
     "deploy:lend": "hardhat run scripts/vault/deploy-strat-lend.ts --network",
     "deploy:beToken": "hardhat run scripts/vault/deployBeToken.js --network",
+    "deploy:beTokenInfra": "hardhat run scripts/infra/deployBeTokenInfra.js --network",
     "deploy:timelock": "hardhat run scripts/infra/deployTimelockController.js --network",
     "deploy:chain": "hardhat run scripts/infra/deployChain.js --network",
     "deploy:registry": "hardhat run scripts/infra/deployRegistry.ts --network",

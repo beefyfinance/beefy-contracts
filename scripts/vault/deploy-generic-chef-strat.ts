@@ -9,44 +9,47 @@ import { BeefyChain } from "../../utils/beefyChain";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: {  solarflare, beefyfinance },
+  platforms: {  pancake, beefyfinance },
   tokens: {
-    FLARE: { address: FLARE },
-    GLMR: { address: GLMR },
-    UST: { address: UST },
-    LUNA: { address: LUNA },
+    BNB: { address: BNB },
+    CAKE: { address: CAKE },
+    DAI: { address: DAI },
+    BUSD: { address: BUSD },
     USDT: { address: USDT },
-    USDC: { address: USDC }
+    USDC: { address: USDC },
+    LINK: { address: LINK},
+    SXP: { address: SXP }
   },
-} = addressBook.moonbeam;
+} = addressBook.bsc;
 
 const shouldVerifyOnEtherscan = false;
 
-const want = web3.utils.toChecksumAddress("0x26A2abD79583155EA5d34443b62399879D42748A");
+const want = web3.utils.toChecksumAddress("0x824eb9faDFb377394430d2744fa7C42916DE3eCe");
 
 const vaultParams = {
-  mooName: "Moo Solarflare FLARE-GLMR",
-  mooSymbol: "mooSolarflareFLARE-GLMR",
+  mooName: "Moo Test",
+  mooSymbol: "mooTest",
   delay: 21600,
 };
 
 const strategyParams = {
   want,
-  poolId: 0,
-  chef: solarflare.masterchef,
-  unirouter: solarflare.router,
+  poolId: 6,
+  chef: "0xa5f8C5Dbd5F286960b9d90548680aE5ebFf07652", //pancake.masterchef,
+  boost: "0xD7C0C12C91750A6ef37580d44B0FD6af1068e615",
+  unirouter: pancake.router,
   strategist: "0xb2e4A61D99cA58fB8aaC58Bb2F8A59d63f552fC0", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [FLARE, GLMR],
-  outputToLp0Route: [FLARE, GLMR],
-  outputToLp1Route: [FLARE],
+  outputToNativeRoute: [CAKE, BNB],
+  outputToLp0Route: [CAKE, BNB],
+  outputToLp1Route: [CAKE, BNB, LINK],
  // pendingRewardsFunctionName: "pendingTri", // used for rewardsAvailable(), use correct function name from masterchef
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategySolarbeamV2",
+  strategy: "StrategyCakeBoostedLP",
 };
 
 async function main() {
@@ -83,6 +86,7 @@ async function main() {
     strategyParams.want,
     strategyParams.poolId,
     strategyParams.chef,
+    strategyParams.boost,
     vault.address,
     strategyParams.unirouter,
     strategyParams.keeper,

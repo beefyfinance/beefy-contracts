@@ -123,21 +123,13 @@ contract VeCakeStaker is ERC20, ReentrancyGuard, DelegateManager {
 
         // Check for additional lock opportunities
         if (lock) {
-            if (totalCakes() > 0) {
-                uint256 cakeBalance = balanceOfWant();
-                uint256 required = requiredReserve();
-                (,,uint256 lockTime) = lockInfo();
-                if (cakeBalance > required) {
-                    // If we have more Cakes then needed in reserve we lock more
-                    uint256 timelockableCakes = cakeBalance - required;
-                    veCake.deposit(timelockableCakes, lockTime);
-            } else {
-                // We have to deposit the min to extend lock
-                uint256 minDeposit = veCake.MIN_DEPOSIT_AMOUNT();
-                    if (cakeBalance > minDeposit) {
-                        veCake.deposit(minDeposit, lockTime);
-                    }
-                }
+            uint256 cakeBalance = balanceOfWant();
+            uint256 required = requiredReserve();
+            (,,uint256 lockTime) = lockInfo();
+            if (cakeBalance > required) {
+                // If we have more Cakes then needed in reserve we lock more
+                uint256 timelockableCakes = cakeBalance - required;
+                veCake.deposit(timelockableCakes, lockTime);
             } 
         }
     }
@@ -162,7 +154,13 @@ contract VeCakeStaker is ERC20, ReentrancyGuard, DelegateManager {
 
      // Withdrawable Balance 
     function withdrawableBalance() public view returns (uint256) {
-        return payRewards ? balanceOfWant() - outstandingReward() : balanceOfWant();
+        uint256 wantBal = balanceOfWant();
+        uint256 rewardBal = outstandingReward();
+        if (payRewards) {
+            return wantBal > rewardBal ? wantBal - rewardBal : 0;
+        } else {
+            return wantBal;
+        }
     }
 
      // Our reserve Cakes held in the contract to enable withdraw capabilities
@@ -184,7 +182,7 @@ contract VeCakeStaker is ERC20, ReentrancyGuard, DelegateManager {
     function lockInfo() public view returns (uint256 endLock, uint256 lockRemaining, uint256 lockExtension) {
         (,,,,,endLock,,,) = veCake.userInfo(address(this));
         lockRemaining = endLock > block.timestamp ? endLock - block.timestamp : 0;
-        lockExtension = duration - lockRemaining >= 0 ? duration - lockRemaining : 0;
+        lockExtension = duration > lockRemaining ? duration - lockRemaining : 0;
     }
 
     // Prevent any further 'want' deposits and remove approval

@@ -15,8 +15,8 @@ const config = {
   share: 500,
   id: ensID,
   keeper: beefyfinance.keeper,
-  name: 'test',
-  symbol: 'test',
+  name: 'beCAKE',
+  symbol: 'beCAKE',
   contractName: 'VeCakeStaker'
 };
 
@@ -43,15 +43,15 @@ async function main() {
     config.name,
     config.symbol,
   ];
-/*
+
   const staker = await BeToken.deploy(...lockerArguments);
 
   await staker.deployed();
 
   console.log(`Deployed at ${staker.address}`);
-*/
+
   await hardhat.run("verify:verify", {
-    address: "0x6fC8F8675434d88b50aafcc86d0fe1AfC75727b2",
+    address: staker.address,
     constructorArguments: [
       config.stakingContract,
       config.reserveRate,

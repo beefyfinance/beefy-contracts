@@ -5,7 +5,7 @@ const ethers = hardhat.ethers;
 async function main() {
   await hardhat.run("compile");
 
-  const Treasury = await ethers.getContractFactory("BeefyTreasury");
+  const Treasury = await ethers.getContractFactory("SaveCake");
 
   const treasury = await Treasury.deploy();
   await treasury.deployed();
