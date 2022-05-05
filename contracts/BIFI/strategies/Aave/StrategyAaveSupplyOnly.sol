@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/aave/IDataProvider.sol";
-import "../../interfaces/aave/IIncentivesController.sol";
+import "../../interfaces/aave/IAaveV3Incentives.sol";
 import "../../interfaces/aave/ILendingPool.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../Common/FeeManager.sol";
@@ -35,10 +35,10 @@ contract StrategyAaveSupplyOnly is StratManager, FeeManager {
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
 
-    /**
-     * @dev Events that the contract emits
-     */
-    event StratHarvest(address indexed harvester);
+    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
+    event Deposit(uint256 tvl);
+    event Withdraw(uint256 tvl);
+    event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
     constructor(
         address _want,
@@ -68,33 +68,34 @@ contract StrategyAaveSupplyOnly is StratManager, FeeManager {
 
     // puts the funds to work
     function deposit() public whenNotPaused {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal > 0) {
             ILendingPool(lendingPool).deposit(want, wantBal, address(this), 0);
+            emit Deposit(balanceOf());
         }
     }
 
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
-
+        uint256 wantBal = balanceOfWant();
         if (wantBal < _amount) {
             ILendingPool(lendingPool).withdraw(want, _amount.sub(wantBal), address(this));
-            wantBal = IERC20(want).balanceOf(address(this));
+            wantBal = balanceOfWant();
         }
 
         if (wantBal > _amount) {
             wantBal = _amount;
         }
 
-        if (tx.origin == owner() || paused()) {
-            IERC20(want).safeTransfer(vault, wantBal);
-        } else {
+        if (tx.origin != owner() && !paused()) {
             uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
+            wantBal = wantBal.sub(withdrawalFeeAmount);
         }
+
+        IERC20(want).safeTransfer(vault, wantBal);
+        emit Withdraw(balanceOf());
     }
 
     function beforeDeposit() external override {
@@ -112,7 +113,6 @@ contract StrategyAaveSupplyOnly is StratManager, FeeManager {
         _harvest(callFeeRecipient);
     }
 
-
     function managerHarvest() external onlyManager {
         _harvest(tx.origin);
     }
@@ -121,16 +121,17 @@ contract StrategyAaveSupplyOnly is StratManager, FeeManager {
     function _harvest(address callFeeRecipient) internal whenNotPaused {
         address[] memory assets = new address[](1);
         assets[0] = aToken;
-        IIncentivesController(incentivesController).claimRewards(assets, type(uint).max, address(this));
+        IAaveV3Incentives(incentivesController).claimRewards(assets, type(uint).max, address(this), native);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
         if (nativeBal > 0) {
             chargeFees(callFeeRecipient);
             swapRewards();
+            uint256 wantHarvested = balanceOfWant();
             deposit();
 
             lastHarvest = block.timestamp;
-            emit StratHarvest(msg.sender);
+            emit StratHarvest(msg.sender, wantHarvested, balanceOf());
         }
     }
 
@@ -144,8 +145,10 @@ contract StrategyAaveSupplyOnly is StratManager, FeeManager {
         uint256 beefyFeeAmount = nativeFeeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeFeeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        uint256 strategistFeeAmount = nativeFeeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(native).safeTransfer(strategist, strategistFeeAmount);
+
+        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
     // swap rewards to {want}
@@ -196,7 +199,7 @@ contract StrategyAaveSupplyOnly is StratManager, FeeManager {
     function rewardsAvailable() public view returns (uint256) {
         address[] memory assets = new address[](1);
         assets[0] = aToken;
-        return IIncentivesController(incentivesController).getRewardsBalance(assets, address(this));
+        return IAaveV3Incentives(incentivesController).getUserRewards(assets, address(this), native);
     }
 
     // native reward amount for calling harvest
@@ -219,7 +222,7 @@ contract StrategyAaveSupplyOnly is StratManager, FeeManager {
 
         ILendingPool(lendingPool).withdraw(want, type(uint).max, address(this));
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
         IERC20(want).transfer(vault, wantBal);
     }
 
