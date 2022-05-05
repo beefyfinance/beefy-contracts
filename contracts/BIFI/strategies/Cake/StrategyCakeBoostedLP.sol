@@ -117,7 +117,7 @@ contract StrategyCakeBoostedLP is StratManager, FeeManager, GasThrottler {
         emit Withdraw(balanceOf());
     }
 
-    function beforeDeposit() external override {
+    function beforeDeposit() external virtual override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
             _harvest(tx.origin);
