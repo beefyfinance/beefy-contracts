@@ -127,6 +127,7 @@ contract StrategyPolygonQuickLP is StratManager, FeeManager {
         _harvest(tx.origin);
     }
 
+
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
         IRewardPool(rewardPool).getReward();
