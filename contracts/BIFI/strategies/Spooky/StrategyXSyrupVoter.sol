@@ -19,7 +19,8 @@ contract StrategyXSyrupVoter is StrategyXSyrup, DelegateManagerCommon {
         address _beefyFeeRecipient,
         address[] memory _outputToNativeRoute,
         address[] memory _outputToWantRoute,
-        bytes32 _id
+        bytes32 _id,
+        address _voter
     ) StrategyXSyrup(
         _want,
         _xWant,
@@ -32,7 +33,7 @@ contract StrategyXSyrupVoter is StrategyXSyrup, DelegateManagerCommon {
         _beefyFeeRecipient,
         _outputToNativeRoute,
         _outputToWantRoute
-    ) DelegateManagerCommon(_id) public {}
+    ) DelegateManagerCommon(_id, _voter) public {}
 
     function beforeDeposit() external virtual override(StratManager, StrategyXSyrup) {
         if (harvestOnDeposit) {

@@ -22,9 +22,9 @@ abstract contract DelegateManagerCommon is StratManager {
     /**
      * @dev Initializes the base strategy.
      */
-    constructor (bytes32 _id) public {
+    constructor (bytes32 _id, address _voter) public {
         id = _id;
-        _setVoteDelegation(keeper);
+        _setVoteDelegation(_voter);
     }
 
     // set voter params 

@@ -19,7 +19,8 @@ contract StrategyNewQuickVoter is StrategyNewQuick, DelegateManagerCommon {
         address[] memory _outputToNativeRoute,
         address[] memory _outputToWantRoute,
         address[] memory _outputToOldWantRoute,
-        bytes32 _id
+        bytes32 _id,
+        address _voter
     ) StrategyNewQuick(
         _want,
         _rewardPool,
@@ -32,7 +33,7 @@ contract StrategyNewQuickVoter is StrategyNewQuick, DelegateManagerCommon {
         _outputToNativeRoute,
         _outputToWantRoute,
         _outputToOldWantRoute
-    ) DelegateManagerCommon(_id) public {}
+    ) DelegateManagerCommon(_id, _voter) public {}
 
     function beforeDeposit() external virtual override(StratManager, StrategyNewQuick) {
         if (harvestOnDeposit) {

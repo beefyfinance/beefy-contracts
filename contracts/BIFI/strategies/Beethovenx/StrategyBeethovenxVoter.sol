@@ -28,7 +28,10 @@ contract StrategyBeethovenxVoter is StrategyBeethovenxfBeets, DelegateManagerCom
         _keeper,
         _strategist,
         _beefyFeeRecipient
-    ) DelegateManagerCommon(bytes32(0x62656574732e6574680000000000000000000000000000000000000000000000)) public {}
+    ) DelegateManagerCommon(
+        bytes32(0x62656574732e6574680000000000000000000000000000000000000000000000),
+        address(0x5e1caC103F943Cd84A1E92dAde4145664ebf692A)
+    ) public {}
 
     function beforeDeposit() external virtual override(StratManager, StrategyBeethovenxfBeets) {
         if (harvestOnDeposit) {

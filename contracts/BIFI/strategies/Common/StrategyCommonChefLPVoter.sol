@@ -19,7 +19,8 @@ contract StrategyCommonChefLPVoter is StrategyCommonChefLP, DelegateManagerCommo
         address[] memory _outputToNativeRoute,
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route,
-        bytes32 _id
+        bytes32 _id,
+        address _voter
     ) StrategyCommonChefLP(
         _want,
         _poolId,
@@ -32,7 +33,7 @@ contract StrategyCommonChefLPVoter is StrategyCommonChefLP, DelegateManagerCommo
         _outputToNativeRoute,
         _outputToLp0Route,
         _outputToLp1Route
-    ) DelegateManagerCommon(_id) public {}
+    ) DelegateManagerCommon(_id, _voter) public {}
 
     function beforeDeposit() external virtual override(StratManager, StrategyCommonChefLP) {
         if (harvestOnDeposit) {
