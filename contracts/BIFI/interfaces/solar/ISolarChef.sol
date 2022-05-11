@@ -11,5 +11,5 @@ interface ISolarChef {
     function pendingTokens(uint256 _pid, address _user)
         external
         view
-        returns (address[] calldata addresses, string[] calldata symbols, uint256[] calldata decimals, uint256[] calldata amounts);
+        returns (address[] calldata addresses, string calldata symbols, uint256[] calldata decimals, uint256[] calldata amounts);
 }

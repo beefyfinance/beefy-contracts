@@ -6,7 +6,7 @@
     "@uniswap/lib": "^4.0.1-alpha",
     "@uniswap/v2-core": "^1.0.1",
     "bignumber.js": "^9.0.1",
-    "blockchain-addressbook": "^0.28.1",
+    "blockchain-addressbook": "^0.31.6",
     "keccak": "^3.0.1",
     "rlp": "^2.2.6",
     "ts-node": "^10.1.0",

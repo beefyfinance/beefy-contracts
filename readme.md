@@ -47,7 +47,7 @@ Run `yarn start` on the local app terminal and test the vault as if you were a u
 7. Unpause.
 8. Deposit the withdrawn amount.
 9. Harvest again.
-10. Switch harvest-on-deposit to `true` for low-cost chains (Polygon, Fantom, Harmony, Celo, Cronos, Moonriver, Moonbeam, Fuse).
+10. Switch harvest-on-deposit to `true` for low-cost chains (Polygon, Fantom, Harmony, Celo, Cronos, Moonriver, Moonbeam, Fuse, Syscoin, Emerald).
 11. Check that `callReward` is not 0, if needed set `pendingRewardsFunctionName` to the relevant function name from the masterchef.
 12. Transfer ownership of the vault and strategy contracts to the owner addresses for the respective chains found in the [address book](https://github.com/beefyfinance/beefy-api/tree/master/packages/address-book).
 13. Leave some funds in the vault until users have deposited after going live, empty vaults will fail validation checks.

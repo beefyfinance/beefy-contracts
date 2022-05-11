@@ -9,18 +9,14 @@ import { BeefyChain } from "../../utils/beefyChain";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: {  pancake, beefyfinance },
+  platforms: {  stellaswap, beefyfinance },
   tokens: {
-    BNB: { address: BNB },
-    CAKE: { address: CAKE },
-    DAI: { address: DAI },
-    BUSD: { address: BUSD },
-    USDT: { address: USDT },
-    USDC: { address: USDC },
-    LINK: { address: LINK},
-    SXP: { address: SXP }
+    GLMR: { address: GLMR },
+    xcDOT: { address: xcDOT },
+    STELLA: { address: STELLA },
+    xSTELLA: { address: xSTELLA }
   },
-} = addressBook.bsc;
+} = addressBook.moonbeam;
 
 const shouldVerifyOnEtherscan = false;
 
@@ -28,8 +24,8 @@ const want = web3.utils.toChecksumAddress("0x0eD7e52944161450477ee417DE9Cd3a859b
 const ensId = ethers.utils.formatBytes32String("cake.eth");
 
 const vaultParams = {
-  mooName: "Moo Test",
-  mooSymbol: "mooTest",
+  mooName: "Moo Stella",
+  mooSymbol: "mooStella",
   delay: 21600,
 };
 
@@ -83,6 +79,9 @@ async function main() {
   const vault = await Vault.deploy(...vaultConstructorArguments);
   await vault.deployed();
 
+  console.log();
+  console.log("Vault:", vault.address);
+
   const strategyConstructorArguments = [
     strategyParams.want,
     strategyParams.poolId,
@@ -101,8 +100,6 @@ async function main() {
   await strategy.deployed();
 
   // add this info to PR
-  console.log();
-  console.log("Vault:", vault.address);
   console.log("Strategy:", strategy.address);
   console.log("Want:", strategyParams.want);
   console.log("PoolId:", strategyParams.poolId);

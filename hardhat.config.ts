@@ -109,6 +109,16 @@ const config: DeploymentConfig = {
       chainId: 1284,
       accounts,
     },
+    sys: {
+      url: process.env.SYS_RPC || "https://rpc.syscoin.org/",
+      chainId: 57,
+      accounts,
+    },
+    emerald: {
+      url: process.env.EMERALD_RPC || "https://emerald.oasis.dev",
+      chainId: 42262,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
