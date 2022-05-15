@@ -42,6 +42,9 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
     bool public crvEnabled = true;
     address public crvRouter;
 
+    // if depositToken should be sent as unwrapped native
+    bool public depositNative;
+
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
 
@@ -185,8 +188,10 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
             depositBal = IERC20(depositToken).balanceOf(address(this));
         } else {
             depositBal = nativeBal;
-            depositNativeAmount = nativeBal;
-            IWrappedNative(native).withdraw(depositNativeAmount);
+            if (depositNative) {
+                depositNativeAmount = nativeBal;
+                IWrappedNative(native).withdraw(depositNativeAmount);
+            }
         }
 
         if (poolSize == 2) {
@@ -247,6 +252,10 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
         crvToNativeRoute = _crvToNative;
         crvRouter = _router;
         _giveAllowances();
+    }
+
+    function setDepositNative(bool _depositNative) external onlyOwner {
+        depositNative = _depositNative;
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
