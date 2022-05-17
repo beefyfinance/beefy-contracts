@@ -14,6 +14,7 @@ interface IDotDotLpDepositor {
         uint256 amount;
     }
 
+    function depositTokens(address pool) external view returns (address);
     function userBalances(address user, address pool) external view returns (uint256);
 
     function deposit(address _user, address _token, uint256 _amount) external;

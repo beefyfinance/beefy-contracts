@@ -31,6 +31,7 @@ contract StrategyDotDotEllipsis is StratManager, FeeManager, GasThrottler {
     address public depxEpxSwap = 0x45859D71D4caFb93694eD43a5ecE05776Fc2465d;
 
     address public want; // ellipsis lpToken
+    address public receiptToken; // receipt token minted/burned by LpDepositor lpDepositor.depositTokens(want)
     address public pool; // swap pool (lpToken minter)
     address public metaPool; // pool to deposit into metaPool, can be 0x0
     address public depositToken;
@@ -55,10 +56,10 @@ contract StrategyDotDotEllipsis is StratManager, FeeManager, GasThrottler {
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
 
-    /**
-     * @dev Event that is fired each time someone harvests the strat.
-     */
-    event StratHarvest(address indexed harvester);
+    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
+    event Deposit(uint256 tvl);
+    event Withdraw(uint256 tvl);
+    event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
     constructor(
         address _want,
@@ -79,6 +80,8 @@ contract StrategyDotDotEllipsis is StratManager, FeeManager, GasThrottler {
         poolSize = _poolSize;
         depositIndex = _depositIndex;
 
+        receiptToken = IDotDotLpDepositor(lpDepositor).depositTokens(want);
+
         require(_nativeToDepositRoute[0] == native, '_nativeToDepositRoute[0] != native');
         depositToken = _nativeToDepositRoute[_nativeToDepositRoute.length - 1];
         nativeToDepositRoute = _nativeToDepositRoute;
@@ -92,6 +95,7 @@ contract StrategyDotDotEllipsis is StratManager, FeeManager, GasThrottler {
 
         if (wantBal > 0) {
             IDotDotLpDepositor(lpDepositor).deposit(address(this), want, wantBal);
+            emit Deposit(balanceOf());
         }
     }
 
@@ -115,6 +119,8 @@ contract StrategyDotDotEllipsis is StratManager, FeeManager, GasThrottler {
             uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
             IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
         }
+
+        emit Withdraw(balanceOf());
     }
 
     function beforeDeposit() external override {
@@ -140,9 +146,10 @@ contract StrategyDotDotEllipsis is StratManager, FeeManager, GasThrottler {
         if (nativeBal > 0) {
             chargeFees();
             addLiquidity();
+            uint256 wantHarvested = balanceOfWant();
             deposit();
             lastHarvest = block.timestamp;
-            emit StratHarvest(msg.sender);
+            emit StratHarvest(msg.sender, wantHarvested, balanceOf());
         }
     }
 
@@ -155,7 +162,7 @@ contract StrategyDotDotEllipsis is StratManager, FeeManager, GasThrottler {
 
         // extras
         if (rewards.length > 0) {
-            IDotDotLpDepositor(lpDepositor).claimableExtraRewards(address(this), want);
+            IDotDotLpDepositor(lpDepositor).claimExtraRewards(address(this), want);
         }
 
         // bonded fees
@@ -166,15 +173,15 @@ contract StrategyDotDotEllipsis is StratManager, FeeManager, GasThrottler {
             // epx + ddd
             IDotDotBondedFeeDistributor fee = IDotDotBondedFeeDistributor(feeDistributor);
             fee.claim(address(this), tokens);
-            // start streaming dEpx
-            uint unbondableBal = fee.unbondableBalance(address(this));
-            if (unbondableBal > 0) {
-                fee.initiateUnbondingStream(unbondableBal);
-            }
             // dEpx
-            (uint256 claimable,) = fee.streamingBalances(address(this));
+            (uint claimable, uint total) = fee.streamingBalances(address(this));
             if (claimable > 0) {
                 fee.withdrawUnbondedTokens(address(this));
+            }
+            // start streaming dEpx
+            uint unbondableBal = fee.unbondableBalance(address(this));
+            if (unbondableBal > total.sub(claimable)) {
+                fee.initiateUnbondingStream(unbondableBal);
             }
         }
     }
@@ -216,6 +223,8 @@ contract StrategyDotDotEllipsis is StratManager, FeeManager, GasThrottler {
 
         uint256 strategistFee = nativeFeeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
         IERC20(native).safeTransfer(strategist, strategistFee);
+
+        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFee);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
@@ -256,6 +265,7 @@ contract StrategyDotDotEllipsis is StratManager, FeeManager, GasThrottler {
         require(token != native, "!native");
         require(token != epx, "!epx");
         require(token != ddd, "!ddd");
+        require(token != receiptToken, "!receipt");
 
         rewards.push(Reward(token, _rewardToNativeRoute, _minAmount));
         IERC20(token).safeApprove(unirouter, 0);
@@ -276,8 +286,10 @@ contract StrategyDotDotEllipsis is StratManager, FeeManager, GasThrottler {
         claimAsBondedEpx = _bond;
     }
 
-    function bondedEpx() external view returns (uint256) {
-        return IDotDotBondedFeeDistributor(feeDistributor).bondedBalance(address(this));
+    function bondedEpx() external view returns (uint bonded, uint unbondable, uint claimable, uint totalStreaming) {
+        bonded = IDotDotBondedFeeDistributor(feeDistributor).bondedBalance(address(this));
+        unbondable = IDotDotBondedFeeDistributor(feeDistributor).unbondableBalance(address(this));
+        (claimable, totalStreaming) = IDotDotBondedFeeDistributor(feeDistributor).streamingBalances(address(this));
     }
 
     // calculate the total underlaying 'want' held by the strat.
