@@ -157,7 +157,9 @@ contract StrategyDotDotEllipsis is StratManager, FeeManager, GasThrottler {
         // epx + ddd
         address[] memory wants = new address[](1);
         wants[0] = want;
-        uint bondedAmount = claimAsBondedEpx ? type(uint).max : 0;
+        IDotDotLpDepositor.Amounts[] memory amounts = IDotDotLpDepositor(lpDepositor).claimable(address(this), wants);
+        uint claimableEpx = amounts[0].epx;
+        uint bondedAmount = claimAsBondedEpx && claimableEpx > 0 ? type(uint).max : 0;
         IDotDotLpDepositor(lpDepositor).claim(address(this), wants, bondedAmount);
 
         // extras
@@ -259,7 +261,7 @@ contract StrategyDotDotEllipsis is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    function addRewardToken(address[] memory _rewardToNativeRoute, uint _minAmount) external onlyManager {
+    function addRewardToken(address[] memory _rewardToNativeRoute, uint _minAmount) external onlyOwner {
         address token = _rewardToNativeRoute[0];
         require(token != want, "!want");
         require(token != native, "!native");
