@@ -38,6 +38,14 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
     address[] public crvToNativeRoute;
     address[] public nativeToDepositRoute;
 
+    struct Reward {
+        address token;
+        address[] toNativeRoute;
+        uint minAmount; // minimum amount to be swapped to native
+    }
+
+    Reward[] public rewards;
+
     // if no CRV rewards yet, can enable later with custom router
     bool public crvEnabled = true;
     address public crvRouter;
@@ -151,9 +159,9 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
             IGaugeFactory(gaugeFactory).mint(rewardsGauge);
         }
         IRewardsGauge(rewardsGauge).claim_rewards(address(this));
-        uint256 crvBal = IERC20(crv).balanceOf(address(this));
+        swapRewardsToNative();
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
-        if (nativeBal > 0 || crvBal > 0) {
+        if (nativeBal > 0) {
             chargeFees();
             addLiquidity();
             uint256 wantHarvested = balanceOfWant();
@@ -163,13 +171,22 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
         }
     }
 
-    // performance fees
-    function chargeFees() internal {
+    function swapRewardsToNative() internal {
         uint256 crvBal = IERC20(crv).balanceOf(address(this));
         if (crvEnabled && crvBal > 0) {
             IUniswapRouterETH(crvRouter).swapExactTokensForTokens(crvBal, 0, crvToNativeRoute, address(this), block.timestamp);
         }
+        // extras
+        for (uint i; i < rewards.length; i++) {
+            uint bal = IERC20(rewards[i].token).balanceOf(address(this));
+            if (bal >= rewards[i].minAmount) {
+                IUniswapRouterETH(unirouter).swapExactTokensForTokens(bal, 0, rewards[i].toNativeRoute, address(this), block.timestamp);
+            }
+        }
+    }
 
+    // performance fees
+    function chargeFees() internal {
         uint256 nativeFeeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000);
 
         uint256 callFeeAmount = nativeFeeBal.mul(callFee).div(MAX_FEE);
@@ -223,6 +240,20 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
         }
     }
 
+    function addRewardToken(address[] memory _rewardToNativeRoute, uint _minAmount) external onlyOwner {
+        address token = _rewardToNativeRoute[0];
+        require(token != want, "!want");
+        require(token != rewardsGauge, "!native");
+
+        rewards.push(Reward(token, _rewardToNativeRoute, _minAmount));
+        IERC20(token).safeApprove(unirouter, 0);
+        IERC20(token).safeApprove(unirouter, type(uint).max);
+    }
+
+    function resetRewardTokens() external onlyManager {
+        delete rewards;
+    }
+
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
         return balanceOfWant().add(balanceOfPool());
@@ -244,6 +275,18 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
 
     function nativeToDeposit() external view returns (address[] memory) {
         return nativeToDepositRoute;
+    }
+
+    function rewardToNative() external view returns (address[] memory) {
+        return rewards[0].toNativeRoute;
+    }
+
+    function rewardToNative(uint i) external view returns (address[] memory) {
+        return rewards[i].toNativeRoute;
+    }
+
+    function rewardsLength() external view returns (uint) {
+        return rewards.length;
     }
 
     function setCrvEnabled(bool _enabled) external onlyManager {
