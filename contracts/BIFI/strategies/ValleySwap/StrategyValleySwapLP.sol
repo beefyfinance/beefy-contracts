@@ -8,11 +8,10 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/valleyswap/IValleySwapRouter.sol";
 import "../../interfaces/valleyswap/IValleySwapLibrary.sol";
+import "../../interfaces/valleyswap/IValleySwapFarm.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
-import "../../interfaces/common/IMasterChef.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
-import "../../utils/StringUtils.sol";
 import "../../utils/GasThrottler.sol";
 
 contract StrategyValleySwapLP is StratManager, FeeManager, GasThrottler {
@@ -34,7 +33,6 @@ contract StrategyValleySwapLP is StratManager, FeeManager, GasThrottler {
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
-    string public pendingRewardsFunctionName;
 
     // Routes
     address[] public outputToNativeRoute;
@@ -87,7 +85,7 @@ contract StrategyValleySwapLP is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IMasterChef(chef).deposit(poolId, wantBal);
+            IValleySwapFarm(chef).deposit(poolId, wantBal);
             emit Deposit(balanceOf());
         }
     }
@@ -98,7 +96,7 @@ contract StrategyValleySwapLP is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            IValleySwapFarm(chef).withdraw(poolId, _amount.sub(wantBal));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -137,7 +135,7 @@ contract StrategyValleySwapLP is StratManager, FeeManager, GasThrottler {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        IMasterChef(chef).deposit(poolId, 0);
+        IValleySwapFarm(chef).deposit(poolId, 0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
             chargeFees(callFeeRecipient);
@@ -198,26 +196,13 @@ contract StrategyValleySwapLP is StratManager, FeeManager, GasThrottler {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount,) = IMasterChef(chef).userInfo(poolId, address(this));
+        (uint256 _amount,) = IValleySwapFarm(chef).userInfo(poolId, address(this));
         return _amount;
-    }
-
-    function setPendingRewardsFunctionName(string calldata _pendingRewardsFunctionName) external onlyManager {
-        pendingRewardsFunctionName = _pendingRewardsFunctionName;
     }
 
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        string memory signature = StringUtils.concat(pendingRewardsFunctionName, "(uint256,address)");
-        bytes memory result = Address.functionStaticCall(
-            chef, 
-            abi.encodeWithSignature(
-                signature,
-                poolId,
-                address(this)
-            )
-        );  
-        return abi.decode(result, (uint256));
+        return IValleySwapFarm(chef).pendingVS(poolId, address(this));
     }
 
     // native reward amount for calling harvest
@@ -250,7 +235,7 @@ contract StrategyValleySwapLP is StratManager, FeeManager, GasThrottler {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IValleySwapFarm(chef).emergencyWithdraw(poolId);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -259,7 +244,7 @@ contract StrategyValleySwapLP is StratManager, FeeManager, GasThrottler {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IMasterChef(chef).emergencyWithdraw(poolId);
+        IValleySwapFarm(chef).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {
