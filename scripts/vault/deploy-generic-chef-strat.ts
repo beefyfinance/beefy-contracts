@@ -9,44 +9,46 @@ import { BeefyChain } from "../../utils/beefyChain";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: {  stellaswap, beefyfinance },
+  platforms: {  yuzu, beefyfinance },
   tokens: {
-    GLMR: { address: GLMR },
-    xcDOT: { address: xcDOT },
-    STELLA: { address: STELLA },
-    xSTELLA: { address: xSTELLA }
+    YUZU: { address: YUZU },
+    ROSE: { address: ROSE },
+    ceUSDC: { address: ceUSDC },
+    USDT: { address: USDT },
+    WETH: { address: WETH },
+
   },
-} = addressBook.moonbeam;
+} = addressBook.emerald;
 
 const shouldVerifyOnEtherscan = false;
 
-const want = web3.utils.toChecksumAddress("0x0eD7e52944161450477ee417DE9Cd3a859b14fD0");
+const want = web3.utils.toChecksumAddress("0x63217aC1600Fb337a3B7A70533dc71870E6b68cc");
 const ensId = ethers.utils.formatBytes32String("cake.eth");
 
 const vaultParams = {
-  mooName: "Moo Stella",
-  mooSymbol: "mooStella",
+  mooName: "Moo Yuzu ceUSDC-YUZU",
+  mooSymbol: "mooYuzuceUSDC-YUZU",
   delay: 21600,
 };
 
 const strategyParams = {
   want,
-  poolId: 2,
-  chef: "0xa5f8C5Dbd5F286960b9d90548680aE5ebFf07652", //pancake.masterchef,
-  unirouter: pancake.router,
-  strategist: "0x4cC72219fc8aEF162FC0c255D9B9C3Ff93B10882", // some address
+  poolId: 4,
+  chef: yuzu.masterchef, //pancake.masterchef,
+  unirouter: yuzu.router,
+  strategist: process.env.STRATEGIST_ADDRESS, // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [CAKE, BNB],
-  outputToLp0Route: [CAKE],
-  outputToLp1Route: [CAKE, BNB],
-  ensId
- // pendingRewardsFunctionName: "pendingTri", // used for rewardsAvailable(), use correct function name from masterchef
+  outputToNativeRoute: [YUZU, ROSE],
+  outputToLp0Route: [YUZU, ceUSDC],
+  outputToLp1Route: [YUZU],
+  //ensId
+  pendingRewardsFunctionName: "pendingYuzu", // used for rewardsAvailable(), use correct function name from masterchef
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonChefLPVoter",
+  strategy: "StrategyYuzuChefSwapMiningLP",
 };
 
 async function main() {
@@ -94,7 +96,7 @@ async function main() {
     strategyParams.outputToNativeRoute,
     strategyParams.outputToLp0Route,
     strategyParams.outputToLp1Route,
-    strategyParams.ensId
+   // strategyParams.ensId
   ];
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();
@@ -115,7 +117,7 @@ async function main() {
       verifyContract(strategy.address, strategyConstructorArguments)
     );
   }
- // await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
+  await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
   await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
   console.log(`Transfering Vault Owner to ${beefyfinance.vaultOwner}`)
   await vault.transferOwnership(beefyfinance.vaultOwner);
