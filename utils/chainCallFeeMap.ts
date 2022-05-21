@@ -19,4 +19,6 @@ export const chainCallFeeMap: Record<BeefyChain, number> = {
   fuse: reducedFee,
   metis: defaultFee,
   moonbeam: reducedFee,
+  sys: reducedFee,
+  emerald: reducedFee,
 };
