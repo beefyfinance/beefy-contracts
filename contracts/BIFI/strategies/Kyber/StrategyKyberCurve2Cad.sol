@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/kyber/IDMMRouter.sol";
 import "../../interfaces/dfx/IDfxRouter.sol";
-import "../../interfaces/common/IUniswapRouter.sol";
+import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/kyber/IElysianFields.sol";
 import "../../interfaces/curve/ICurveSwap.sol";
 import "../Common/StratManager.sol";
@@ -28,15 +28,15 @@ contract StrategyKyberCurve2Cad is StratManager, FeeManager {
     // Third party contracts
     address public chef;
     uint256 public poolId;
+    address public quickRouter;
     address public dfxRouter;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
 
     // Routes
-    IERC20[] public outputToNativeRoute;
     IERC20[] public outputToStableRoute;
-    address[] public outputToNativePoolsPath;
+    address[] public stableToNativeRoute;
     address[] public outputToStablePoolsPath;
 
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
@@ -51,34 +51,31 @@ contract StrategyKyberCurve2Cad is StratManager, FeeManager {
         address _depositToken,
         address _vault,
         address _unirouter,
+        address _quickRouter,
         address _dfxRouter,
         address _keeper,
         address _strategist,
         address _beefyFeeRecipient,
-        address[] memory _outputToNativeRoute,
         address[] memory _outputToStableRoute,
-        address[] memory _outputToNativePoolsPath,
+        address[] memory _stableToNativeRoute,
         address[] memory _outputToStablePoolsPath
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
         poolId = _poolId;
         chef = _chef;
         depositToken = _depositToken;
+        quickRouter = _quickRouter;
         dfxRouter = _dfxRouter;
 
         stable = _outputToStableRoute[_outputToStableRoute.length - 1];
-        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
-        output = _outputToNativeRoute[0];
-
-        for (uint i = 0; i < _outputToNativeRoute.length; i++) {
-            outputToNativeRoute.push(IERC20(_outputToNativeRoute[i]));
-        }
+        native = _stableToNativeRoute[_stableToNativeRoute.length - 1];
+        output = _outputToStableRoute[0];
 
         for (uint i = 0; i < _outputToStableRoute.length; i++) {
             outputToStableRoute.push(IERC20(_outputToStableRoute[i]));
         }
 
-        outputToNativePoolsPath = _outputToNativePoolsPath;
+        stableToNativeRoute = _stableToNativeRoute;
         outputToStablePoolsPath = _outputToStablePoolsPath;
 
         _giveAllowances();
@@ -150,8 +147,11 @@ contract StrategyKyberCurve2Cad is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IDMMRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativePoolsPath, outputToNativeRoute, address(this), now);
+        uint256 toStable = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
+        IDMMRouter(unirouter).swapExactTokensForTokens(toStable, 0, outputToStablePoolsPath, outputToStableRoute, address(this), now);
+
+        uint256 toNative = IERC20(stable).balanceOf(address(this));
+        IUniswapRouterETH(quickRouter).swapExactTokensForTokens(toNative, 0, stableToNativeRoute, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
@@ -206,8 +206,10 @@ contract StrategyKyberCurve2Cad is StratManager, FeeManager {
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
         uint256 outputBal = rewardsAvailable();
-        uint256[] memory amountOutFromOutput = IDMMRouter(unirouter).getAmountsOut(outputBal, outputToNativePoolsPath, outputToNativeRoute);
-        uint256 nativeOut = amountOutFromOutput[amountOutFromOutput.length -1];
+        uint256[] memory amountOutFromOutput = IDMMRouter(unirouter).getAmountsOut(outputBal, outputToStablePoolsPath, outputToStableRoute);
+        uint256 stableOut = amountOutFromOutput[amountOutFromOutput.length -1];
+        uint256[] memory amountOutFromStable = IUniswapRouterETH(quickRouter).getAmountsOut(stableOut, stableToNativeRoute);
+        uint256 nativeOut = amountOutFromStable[amountOutFromStable.length -1];
 
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
     }
@@ -255,6 +257,7 @@ contract StrategyKyberCurve2Cad is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(chef, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(stable).safeApprove(quickRouter, uint256(-1));
         IERC20(stable).safeApprove(dfxRouter, uint256(-1));
         IERC20(depositToken).safeApprove(want, uint256(-1));
     }
@@ -262,20 +265,17 @@ contract StrategyKyberCurve2Cad is StratManager, FeeManager {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
+        IERC20(stable).safeApprove(quickRouter, 0);
         IERC20(stable).safeApprove(dfxRouter, 0);
         IERC20(depositToken).safeApprove(want, 0);
-    }
-
-    function outputToNative() external view returns (IERC20[] memory) {
-        return outputToNativeRoute;
     }
 
     function outputToStable() external view returns (IERC20[] memory) {
         return outputToStableRoute;
     }
 
-    function outputToNativePools() external view returns (address[] memory) {
-        return outputToNativePoolsPath;
+    function stableToNative() external view returns (address[] memory) {
+        return stableToNativeRoute;
     }
 
     function outputToStablePools() external view returns (address[] memory) {
