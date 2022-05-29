@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../../interfaces/common/IUniswapRouter.sol";
+import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/stellaswap/IMasterChef.sol";
 import "../Common/StratManager.sol";
@@ -167,14 +167,14 @@ contract StrategyStellaswapDualRewardLP is StratManager, FeeManager {
         if (output != native) {
             uint256 toNative = IERC20(output).balanceOf(address(this));
             if (toNative > 0) {
-                IUniswapRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+                IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
             }
         }
 
         if (secondOutput != native) {
             uint256 secondToNative = IERC20(secondOutput).balanceOf(address(this));
             if (secondToNative > 0) {
-                IUniswapRouter(unirouter).swapExactTokensForTokens(secondToNative, 0, secondOutputToNativeRoute, address(this), now);
+                IUniswapRouterETH(unirouter).swapExactTokensForTokens(secondToNative, 0, secondOutputToNativeRoute, address(this), now);
             }
         }
 
@@ -197,16 +197,16 @@ contract StrategyStellaswapDualRewardLP is StratManager, FeeManager {
         uint256 nativeHalf = IERC20(native).balanceOf(address(this)).div(2);
 
         if (lpToken0 != native) {
-            IUniswapRouter(unirouter).swapExactTokensForTokens(nativeHalf, 0, nativeToLp0Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeHalf, 0, nativeToLp0Route, address(this), now);
         }
 
         if (lpToken1 != native) {
-            IUniswapRouter(unirouter).swapExactTokensForTokens(nativeHalf, 0, nativeToLp1Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeHalf, 0, nativeToLp1Route, address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
+        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -236,14 +236,14 @@ contract StrategyStellaswapDualRewardLP is StratManager, FeeManager {
         (uint256 outputBal, uint256 secondBal) = rewardsAvailable();
         uint256 nativeBal;
 
-        try IUniswapRouter(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
+        try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
             returns (uint256[] memory amountOut)
         {
             nativeBal = nativeBal.add(amountOut[amountOut.length -1]);
         }
         catch {}
 
-        try IUniswapRouter(unirouter).getAmountsOut(secondBal, secondOutputToNativeRoute)
+        try IUniswapRouterETH(unirouter).getAmountsOut(secondBal, secondOutputToNativeRoute)
             returns (uint256[] memory amountOut)
         {
             nativeBal = nativeBal.add(amountOut[amountOut.length -1]);
