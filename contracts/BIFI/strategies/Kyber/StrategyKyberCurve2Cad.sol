@@ -169,7 +169,7 @@ contract StrategyKyberCurve2Cad is StratManager, FeeManager {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 outputBal = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
         IDMMRouter(unirouter).swapExactTokensForTokens(outputBal, 0, outputToStablePoolsPath, outputToStableRoute, address(this), now);
 
         uint256 stableBal = IERC20(stable).balanceOf(address(this));
