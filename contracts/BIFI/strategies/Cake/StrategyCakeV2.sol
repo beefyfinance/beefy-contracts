@@ -101,7 +101,7 @@ contract StrategyCakeV2 is StratManagerCake, FeeManagerCake {
         IERC20(wrapped).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
     }
 
-    // calculate the total underlaying 'want' held by the strat.
+    // calculate the total underlying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
         return balanceOfWant().add(balanceOfPool());
     }
