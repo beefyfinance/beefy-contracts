@@ -6,32 +6,34 @@ import { verifyContract } from "../../utils/verifyContract";
 import { BeefyChain } from "../../utils/beefyChain";
 
 const {
-  platforms: { pancake, beefyfinance },
+  platforms: { spookyswap, spiritswap, beefyfinance },
   tokens: {
-    VALAS: { address: VALAS },
-    BUSD: { address: BUSD },
-    BNB: { address: BNB },
-    DAI: { address: DAI }
+    TUSD: { address: TUSD },
+    FTM: {address: FTM},
+    USDC: { address: USDC },
+    SCREAM: { address: SCREAM },
   },
-} = addressBook.bsc;
+} = addressBook.fantom;
 
 const shouldVerifyOnEtherscan = false;
 
 const vaultParams = {
-  mooName: "Moo Valas DAI",
-  mooSymbol: "mooValasDAI",
-  delay: 21600,
+  mooName: "Moo Scream Supply Test",
+  mooSymbol: "mooScreamSupplyTest",
+  delay: 0,
 };
 
 const strategyParams = {
-  want: DAI,
+//  want: Frax,
   borrowRate: 72,
   borrowRateMax: 75,
   borrowDepth: 4,
   minLeverage: 1000000000,
-  outputToNativeRoute: [VALAS, BNB],
-  outputToWantRoute: [VALAS, BNB, BUSD, DAI],
-  unirouter: pancake.router,
+  outputToNativeRoute: [SCREAM, FTM],
+  outputToWantRoute: [SCREAM, FTM, USDC, TUSD],
+  markets: ["0x789B5DBd47d7Ca3799f8E9FdcE01bC5E356fcDF1"],
+  unirouter: spookyswap.router,
+  secondUnirouter: spiritswap.router,
   keeper: beefyfinance.keeper,
   strategist: "0xb2e4A61D99cA58fB8aaC58Bb2F8A59d63f552fC0",
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
@@ -41,7 +43,7 @@ const borrowConfig = [strategyParams.borrowRate, strategyParams.borrowRateMax, s
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyValas",
+  strategy: "StrategyScreamSupplyOnly",
 };
 
 async function main() {
@@ -75,15 +77,15 @@ async function main() {
   await vault.deployed();
 
   const strategyConstructorArguments = [
-    strategyParams.want,
-    borrowConfig,
+    strategyParams.markets,
+    strategyParams.outputToNativeRoute,
+    strategyParams.outputToWantRoute,
+   // strategyParams.secondUnirouter,
     vault.address,
     strategyParams.unirouter,
     strategyParams.keeper,
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
-    strategyParams.outputToNativeRoute,
-    strategyParams.outputToWantRoute,
   ];
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();
@@ -108,9 +110,9 @@ async function main() {
   await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
   console.log();
 
-  console.log(`Transfering Vault Owner to ${beefyfinance.vaultOwner}`)
-  await vault.transferOwnership(beefyfinance.vaultOwner);
-  console.log();
+ // console.log(`Transfering Vault Owner to ${beefyfinance.vaultOwner}`)
+ // await vault.transferOwnership(beefyfinance.vaultOwner);
+ // console.log();
 
   await Promise.all(verifyContractsPromises);
 }
