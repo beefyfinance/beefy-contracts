@@ -1,6 +1,12 @@
 # Deployment a PancakeSwap Vault on BSC
 
-This tutorial will take you through the process of 1) setting up the development environment 2) deploying a PancakeSwap vault to your development environment 3) deploying a PancakeSwap vault to BSC. These instructions are meant to aid new Strategy Dev's in deploying their first contract and seeks to complement the [readme.md][readme.md] file. This tutorial assumes the reader has a basic understanding of DeFi, Beefy Finance, Javascript, Solidity and Hardhat. We also assume the user has the following software installed:
+This tutorial will take you through the process of:
+
+1. setting up the development environment
+2. deploying a PancakeSwap vault to your development environment
+3. deploying a PancakeSwap vault to BSC
+
+These instructions are meant to aid new Strategy Dev's in deploying their first contract and seeks to complement the [readme.md][readme.md] file. This tutorial assumes the reader has a basic understanding of DeFi, Beefy Finance, Javascript, Solidity and Hardhat. We also assume the user has the following software installed:
 
 - [node.js][node.js]
 - [yarn][yarn]
