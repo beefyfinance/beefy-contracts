@@ -126,7 +126,7 @@ const getUnirouterData = address => {
       };
     default:
       return {
-        interface: "IUniswapRouterETH",
+        interface: "contracts/BIFI/interfaces/common/IUniswapRouterETH.sol:IUniswapRouterETH",
         swapSignature: "swapExactETHForTokens",
       };
   }
