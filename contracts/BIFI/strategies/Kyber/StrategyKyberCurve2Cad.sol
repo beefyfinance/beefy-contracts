@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -11,6 +12,7 @@ import "../../interfaces/dfx/IDfxRouter.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/kyber/IElysianFields.sol";
 import "../../interfaces/curve/ICurveSwap.sol";
+import "../../interfaces/kyber/IJarvisMinter.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
@@ -18,18 +20,31 @@ contract StrategyKyberCurve2Cad is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
+    struct JarvisContracts {
+        address synth;
+        address minter;
+        address derivative;
+    }
+
+    struct StratManagerParams {
+        address keeper;
+        address strategist;
+        address unirouter;
+        address vault;
+        address beefyFeeRecipient;
+    }
+
     // Tokens used
     address public native;
     address public output;
     address public want;
     address public stable;
-    address public depositToken;
 
     // Third party contracts
     address public chef;
     uint256 public poolId;
-    address public quickRouter;
-    address public dfxRouter;
+    address public quickRouter = address(0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff);
+    JarvisContracts public jarvis;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -48,24 +63,16 @@ contract StrategyKyberCurve2Cad is StratManager, FeeManager {
         address _want,
         uint256 _poolId,
         address _chef,
-        address _depositToken,
-        address _vault,
-        address _unirouter,
-        address _quickRouter,
-        address _dfxRouter,
-        address _keeper,
-        address _strategist,
-        address _beefyFeeRecipient,
+        JarvisContracts memory _jarvis,
+        StratManagerParams memory _stratManager,
         address[] memory _outputToStableRoute,
         address[] memory _stableToNativeRoute,
         address[] memory _outputToStablePoolsPath
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratManager(_stratManager.keeper, _stratManager.strategist, _stratManager.unirouter, _stratManager.vault, _stratManager.beefyFeeRecipient) public {
         want = _want;
         poolId = _poolId;
         chef = _chef;
-        depositToken = _depositToken;
-        quickRouter = _quickRouter;
-        dfxRouter = _dfxRouter;
+        jarvis = _jarvis;
 
         stable = _outputToStableRoute[_outputToStableRoute.length - 1];
         native = _stableToNativeRoute[_stableToNativeRoute.length - 1];
@@ -173,12 +180,20 @@ contract StrategyKyberCurve2Cad is StratManager, FeeManager {
         IDMMRouter(unirouter).swapExactTokensForTokens(outputBal, 0, outputToStablePoolsPath, outputToStableRoute, address(this), now);
 
         uint256 stableBal = IERC20(stable).balanceOf(address(this));
-        IDfxRouter(dfxRouter).originSwap(stable, stable, depositToken, stableBal, 1, now.add(1));
+        IJarvisMinter.MintParams memory mintParams =
+            IJarvisMinter.MintParams(
+                jarvis.derivative,
+                1,
+                stableBal,
+                0.1 ether,
+                now,
+                address(this)
+            );
+        IJarvisMinter(jarvis.minter).mint(mintParams);
 
-        uint256 depositBal = IERC20(depositToken).balanceOf(address(this));
-
+        uint256 depositBal = IERC20(jarvis.synth).balanceOf(address(this));
         uint256[2] memory amounts;
-        amounts[1] = depositBal;
+        amounts[0] = depositBal;
         ICurveSwap(want).add_liquidity(amounts, 1);
     }
 
@@ -258,16 +273,16 @@ contract StrategyKyberCurve2Cad is StratManager, FeeManager {
         IERC20(want).safeApprove(chef, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
         IERC20(stable).safeApprove(quickRouter, uint256(-1));
-        IERC20(stable).safeApprove(dfxRouter, uint256(-1));
-        IERC20(depositToken).safeApprove(want, uint256(-1));
+        IERC20(stable).safeApprove(jarvis.minter, uint256(-1));
+        IERC20(jarvis.synth).safeApprove(want, uint256(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
         IERC20(stable).safeApprove(quickRouter, 0);
-        IERC20(stable).safeApprove(dfxRouter, 0);
-        IERC20(depositToken).safeApprove(want, 0);
+        IERC20(stable).safeApprove(jarvis.minter, 0);
+        IERC20(jarvis.synth).safeApprove(want, 0);
     }
 
     function outputToStable() external view returns (IERC20[] memory) {
