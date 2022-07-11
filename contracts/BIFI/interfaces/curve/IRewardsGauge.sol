@@ -8,4 +8,5 @@ interface IRewardsGauge {
     function claim_rewards(address _addr) external;
     function deposit(uint256 _value) external;
     function withdraw(uint256 _value) external;
+    function reward_contract() external view returns (address);
 }

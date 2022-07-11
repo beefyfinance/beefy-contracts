@@ -44,7 +44,7 @@ const config: DeploymentConfig = {
       accounts,
     },
     fantom: {
-      url: process.env.FANTOM_RPC || "https://rpc.ftm.tools",
+      url: process.env.FANTOM_RPC || "https://rpc.ankr.com/fantom",
       chainId: 250,
       accounts,
     },
@@ -120,10 +120,10 @@ const config: DeploymentConfig = {
       accounts,
     },
     optimism: {
-      url: process.env.OPTIMISM_RPC || "https://mainnet.optimism.io",
-      chainId: 10,
+      url:  process.env.OPTIMISM_RPC || "https://mainnet.optimism.io",
+      chainId: 10, 
       accounts,
-    },
+    }
   },
   etherscan: {
     // Your API key for Etherscan

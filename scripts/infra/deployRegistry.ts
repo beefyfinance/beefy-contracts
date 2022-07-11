@@ -4,7 +4,7 @@ import { verifyContract } from "../../utils/verifyContract";
 const shouldVerifyOnEtherscan = true;
 
 const contractNames = {
-  BeefyVaultRegistry: "BeefyVaultRegistry",
+  BeefyVaultRegistry: "BeefyRegistry",
 };
 
 const implementationConstructorArguments: any[] = []; // proxy implementations cannot have constructors

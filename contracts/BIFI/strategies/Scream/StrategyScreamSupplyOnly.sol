@@ -251,7 +251,6 @@ contract StrategyScreamSupplyOnly is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        uint256 balance = balanceOf();
         uint256 iTokenBal = IERC20(iToken).balanceOf(address(this));
         IVToken(iToken).redeem(iTokenBal);
         updateBalance();
