@@ -135,7 +135,10 @@ contract StrategySpookyV2LP is StratManager, FeeManager {
     function _harvest(address callFeeRecipient) internal {
         ISpookyChefV2(chef).deposit(poolId, 0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        uint256 secondOutputBal = IERC20(secondOutput).balanceOf(address(this));
+        uint256 secondOutputBal;
+        if (secondOutput != address(0)) {
+            secondOutputBal = IERC20(secondOutput).balanceOf(address(this));
+        }
         if (outputBal > 0 || secondOutputBal > 0) {
             chargeFees(callFeeRecipient);
             addLiquidity();
@@ -309,7 +312,7 @@ contract StrategySpookyV2LP is StratManager, FeeManager {
     }
 
     function swapRewardRoute(address[] memory _secondOutputToNativeRoute) external onlyOwner {
-        if (secondOutput != native && secondOutput != lpToken0 && secondOutput != lpToken1) {
+        if (secondOutput != address(0) && secondOutput != native && secondOutput != lpToken0 && secondOutput != lpToken1) {
             IERC20(secondOutput).safeApprove(unirouter, 0);
         }
         require(_secondOutputToNativeRoute[_secondOutputToNativeRoute.length - 1] == native,
@@ -323,7 +326,7 @@ contract StrategySpookyV2LP is StratManager, FeeManager {
     }
 
     function removeRewardRoute() external onlyManager {
-        if (secondOutput != native && secondOutput != lpToken0 && secondOutput != lpToken1) {
+        if (secondOutput != address(0) && secondOutput != native && secondOutput != lpToken0 && secondOutput != lpToken1) {
             IERC20(secondOutput).safeApprove(unirouter, 0);
         }
         secondOutput = address(0);
