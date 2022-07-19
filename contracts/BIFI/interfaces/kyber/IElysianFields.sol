@@ -8,4 +8,5 @@ interface IElysianFields {
     function userInfo(uint256 _pid, address _user) external view returns (uint256, uint256);
     function emergencyWithdraw(uint256 _pid) external;
     function pendingRwd(uint256 _pid, address _user) external view returns (uint256);
+    function rwdToken() external view returns (address);
 }

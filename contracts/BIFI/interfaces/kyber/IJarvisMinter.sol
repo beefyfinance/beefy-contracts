@@ -5,10 +5,8 @@ pragma experimental ABIEncoderV2;
 
 interface IJarvisMinter {
     struct MintParams {
-        address derivative;
         uint256 minNumTokens;
         uint256 collateralAmount;
-        uint256 feePercentage;
         uint256 expiration;
         address recipient;
     }
