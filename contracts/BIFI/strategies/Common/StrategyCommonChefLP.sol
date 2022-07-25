@@ -148,7 +148,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager, GasThrottler {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(totalFee).div(1000);
+        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(totalFee).div(MAX_FEE);
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
@@ -159,7 +159,7 @@ contract StrategyCommonChefLP is StratManager, FeeManager, GasThrottler {
         uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFeeAmount = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        uint256 strategistFeeAmount = nativeBal.mul(strategistFee).div(MAX_FEE);
         IERC20(native).safeTransfer(strategist, strategistFeeAmount);
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
