@@ -15,7 +15,7 @@ import "../../interfaces/kyber/IJarvisMinter.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 
-contract StrategyJarvis is StratManager, FeeManager {
+contract StrategyJarvisDMM is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -49,9 +49,9 @@ contract StrategyJarvis is StratManager, FeeManager {
     uint256 public lastHarvest;
 
     // Routes
-    IERC20[] public outputToStableRoute;
+    IERC20[] public outputToWantRoute;
     address[] public stableToNativeRoute;
-    address[] public outputToStablePoolsPath;
+    address[] public outputToWantPoolsPath;
 
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
@@ -65,9 +65,9 @@ contract StrategyJarvis is StratManager, FeeManager {
         uint256 _depositIndex,
         JarvisContracts memory _jarvis,
         StratManagerParams memory _stratManager,
-        address[] memory _outputToStableRoute,
+        address[] memory _outputToWantRoute,
         address[] memory _stableToNativeRoute,
-        address[] memory _outputToStablePoolsPath
+        address[] memory _outputToWantPoolsPath
     ) StratManager(_stratManager.keeper, _stratManager.strategist, _stratManager.unirouter, _stratManager.vault, _stratManager.beefyFeeRecipient) public {
         want = _want;
         poolId = _poolId;
@@ -75,16 +75,16 @@ contract StrategyJarvis is StratManager, FeeManager {
         depositIndex = _depositIndex;
         jarvis = _jarvis;
 
-        stable = _outputToStableRoute[_outputToStableRoute.length - 1];
+        stable = _stableToNativeRoute[0];
         native = _stableToNativeRoute[_stableToNativeRoute.length - 1];
-        output = _outputToStableRoute[0];
+        output = _outputToWantRoute[0];
 
-        for (uint i = 0; i < _outputToStableRoute.length; i++) {
-            outputToStableRoute.push(IERC20(_outputToStableRoute[i]));
+        for (uint i = 0; i < _outputToWantRoute.length; i++) {
+            outputToWantRoute.push(IERC20(_outputToWantRoute[i]));
         }
 
         stableToNativeRoute = _stableToNativeRoute;
-        outputToStablePoolsPath = _outputToStablePoolsPath;
+        outputToWantPoolsPath = _outputToWantPoolsPath;
 
         _giveAllowances();
     }
@@ -144,7 +144,6 @@ contract StrategyJarvis is StratManager, FeeManager {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
             chargeFees(callFeeRecipient);
-            addLiquidity();
             uint256 wantHarvested = balanceOfWant();
             deposit();
 
@@ -155,10 +154,24 @@ contract StrategyJarvis is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        uint256 toStable = IERC20(output).balanceOf(address(this));
-        IDMMRouter(unirouter).swapExactTokensForTokens(toStable, 0, outputToStablePoolsPath, outputToStableRoute, address(this), now);
+        uint256 beforeWantBal = IERC20(want).balanceOf(address(this));
+        uint256 toWant = IERC20(output).balanceOf(address(this));
+        IDMMRouter(unirouter).swapExactTokensForTokens(toWant, 0, outputToWantPoolsPath, outputToWantRoute, address(this), now);
 
-        uint256 toNative = IERC20(stable).balanceOf(address(this)).mul(45).div(1000);
+        uint256 wantBal = IERC20(want).balanceOf(address(this)).sub(beforeWantBal).mul(45).div(1000);
+        ICurveSwap(want).remove_liquidity_one_coin(wantBal, int128(depositIndex), 1);
+
+        uint256 synthBal = IERC20(jarvis.synth).balanceOf(address(this));
+        IJarvisMinter.RedeemParams memory redeemParams =
+            IJarvisMinter.RedeemParams(
+                synthBal,
+                1,
+                now,
+                address(this)
+            );
+        IJarvisMinter(jarvis.minter).redeem(redeemParams);
+
+        uint256 toNative = IERC20(stable).balanceOf(address(this));
         IUniswapRouterETH(quickRouter).swapExactTokensForTokens(toNative, 0, stableToNativeRoute, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
@@ -173,24 +186,6 @@ contract StrategyJarvis is StratManager, FeeManager {
         IERC20(native).safeTransfer(strategist, strategistFeeAmount);
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
-    }
-
-    // Adds liquidity to AMM and gets more LP tokens.
-    function addLiquidity() internal {
-        uint256 stableBal = IERC20(stable).balanceOf(address(this));
-        IJarvisMinter.MintParams memory mintParams =
-            IJarvisMinter.MintParams(
-                1,
-                stableBal,
-                now,
-                address(this)
-            );
-        IJarvisMinter(jarvis.minter).mint(mintParams);
-
-        uint256 depositBal = IERC20(jarvis.synth).balanceOf(address(this));
-        uint256[2] memory amounts;
-        amounts[depositIndex] = depositBal;
-        ICurveSwap(want).add_liquidity(amounts, 1);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -217,8 +212,9 @@ contract StrategyJarvis is StratManager, FeeManager {
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
         uint256 outputBal = rewardsAvailable();
-        uint256[] memory amountOutFromOutput = IDMMRouter(unirouter).getAmountsOut(outputBal, outputToStablePoolsPath, outputToStableRoute);
-        uint256 stableOut = amountOutFromOutput[amountOutFromOutput.length -1];
+        uint256[] memory amountOutFromOutput = IDMMRouter(unirouter).getAmountsOut(outputBal, outputToWantPoolsPath, outputToWantRoute);
+        uint256 wantOut = amountOutFromOutput[amountOutFromOutput.length -1];
+        (uint256 stableOut,) = IJarvisMinter(jarvis.minter).getRedeemTradeInfo(wantOut);
         uint256[] memory amountOutFromStable = IUniswapRouterETH(quickRouter).getAmountsOut(stableOut, stableToNativeRoute);
         uint256 nativeOut = amountOutFromStable[amountOutFromStable.length -1];
 
@@ -268,28 +264,26 @@ contract StrategyJarvis is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(chef, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(jarvis.synth).safeApprove(jarvis.minter, uint256(-1));
         IERC20(stable).safeApprove(quickRouter, uint256(-1));
-        IERC20(stable).safeApprove(jarvis.minter, uint256(-1));
-        IERC20(jarvis.synth).safeApprove(want, uint256(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
+        IERC20(jarvis.synth).safeApprove(jarvis.minter, 0);
         IERC20(stable).safeApprove(quickRouter, 0);
-        IERC20(stable).safeApprove(jarvis.minter, 0);
-        IERC20(jarvis.synth).safeApprove(want, 0);
     }
 
-    function outputToStable() external view returns (IERC20[] memory) {
-        return outputToStableRoute;
+    function outputToWant() external view returns (IERC20[] memory) {
+        return outputToWantRoute;
     }
 
     function stableToNative() external view returns (address[] memory) {
         return stableToNativeRoute;
     }
 
-    function outputToStablePools() external view returns (address[] memory) {
-        return outputToStablePoolsPath;
+    function outputToWantPools() external view returns (address[] memory) {
+        return outputToWantPoolsPath;
     }
 }
