@@ -13,6 +13,7 @@ interface IBlizzMasterChef {
 
 interface IBlizzMultiFeeDistribution {
     function exit(bool _claim) external;
+    function exit(bool claimRewards, address onBehalfOf) external;
 }
 
 interface IBlizzIncentivesController {

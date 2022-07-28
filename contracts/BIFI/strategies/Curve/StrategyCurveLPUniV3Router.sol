@@ -289,7 +289,7 @@ contract StrategyCurveLPUniV3Router is StratManager, FeeManager, GasThrottler {
         return IRewardsGauge(rewardsGauge).balanceOf(address(this));
     }
 
-    function _pathToRoute(bytes memory _path) internal view returns (address[] memory) {
+    function _pathToRoute(bytes memory _path) internal pure returns (address[] memory) {
         uint numPools = _path.numPools();
         address[] memory route = new address[](numPools + 1);
         for (uint i; i < numPools; i++) {
@@ -357,7 +357,7 @@ contract StrategyCurveLPUniV3Router is StratManager, FeeManager, GasThrottler {
     // native reward amount for calling harvest
     // NO "view" functions in Uniswap V3 to quote amounts
     // Curve rewardsAvailable() also returns 0 most of the time
-    function callReward() public view returns (uint256) {
+    function callReward() public pure returns (uint256) {
         return 0;
     }
 
