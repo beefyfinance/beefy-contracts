@@ -27,7 +27,15 @@ contract BeefyFeeConfigurator is OwnableUpgradeable {
     mapping(uint256 => FeeCategory) internal feeCategory;
 
     event UpdateVault(address indexed vault, uint256 indexed id);
-    event SetFeeCategory(uint256 indexed id, FeeCategory category);
+    event SetFeeCategory(
+        uint256 indexed id,
+        uint256 total,
+        uint256 beefy,
+        uint256 call,
+        uint256 strategist,
+        string label,
+        bool active
+    );
     event SetTotalLimit(uint256 totalLimit);
     event Pause(uint256 indexed id);
     event Unpause(uint256 indexed id);
@@ -113,7 +121,7 @@ contract BeefyFeeConfigurator is OwnableUpgradeable {
 
         FeeCategory memory category = FeeCategory(_total, beefy, _call, _strategist, _label, _active);
         feeCategory[_id] = category;
-        emit SetFeeCategory(_id, category);
+        emit SetFeeCategory(_id, _total, beefy, _call, _strategist, _label, _active);
     }
 
     // deactivate a fee category making all vaults with this fee id revert to default fees
