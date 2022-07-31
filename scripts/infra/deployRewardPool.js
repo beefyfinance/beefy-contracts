@@ -3,8 +3,9 @@ const hardhat = require("hardhat");
 const ethers = hardhat.ethers;
 
 const config = {
-  staked: "0x97bfa4b212A153E15dCafb799e733bc7d1b70E72",
-  rewards: "0x580A84C73811E1839F75d86d75d88cCa0c241fF4",
+  staked: "0x4E720DD3Ac5CFe1e1fbDE4935f386Bb1C66F4642",
+  rewards: "0x4200000000000000000000000000000000000006",
+  feeBatch: "0x3Cd5Ae887Ddf78c58c9C1a063EB343F942DbbcE8"
 };
 
 async function main() {
@@ -14,7 +15,12 @@ async function main() {
   const pool = await Pool.deploy(config.staked, config.rewards);
   await pool.deployed();
 
+  
+
   console.log("Reward pool deployed to:", pool.address);
+
+  console.log(`Transfering Ownership....`);
+  await pool.transferOwnership(config.feeBatch);
 
   console.log(`Verifying contract....`);
   await hardhat.run("verify:verify", {

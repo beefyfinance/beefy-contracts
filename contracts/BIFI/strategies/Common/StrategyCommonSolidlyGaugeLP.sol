@@ -198,17 +198,21 @@ contract StrategyCommonSolidlyGaugeLP is StratManager, FeeManager, GasThrottler 
     function addLiquidity() internal {
         uint256 lp0Amt;
         uint256 lp1Amt;
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (stable) {
-            uint256 outputBal = IERC20(output).balanceOf(address(this));
             lp0Amt = outputBal.mul(getRatio()).div(10**18);
-            lp1Amt = outputBal.sub(lp0Amt);
         } else { 
-            lp0Amt = IERC20(output).balanceOf(address(this)).div(2);
+            lp0Amt = outputBal.div(2);
             lp1Amt = lp0Amt;
         }
 
         if (lpToken0 != output) {
             IUniswapRouterSolidly(unirouter).swapExactTokensForTokens(lp0Amt, 0, outputToLp0Route, address(this), now);
+        }
+
+        if (stable) {
+            uint256 ratio = 10**18 - getRatio();
+            lp1Amt = outputBal.mul(ratio).div(10**18);
         }
 
         if (lpToken1 != output) {

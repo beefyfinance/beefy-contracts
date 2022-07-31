@@ -29,6 +29,7 @@
     "test:registry": "hardhat test --network localhost test/infra/BeefyVaultRegistry.test.ts",
     "test:harvester": "hardhat test --network localhost test/infra/BeefyAutoHarvester.test.ts",
     "deploy:chef": "hardhat run scripts/vault/deploy-generic-chef-strat.ts --network",
+    "deploy:curve": "hardhat run scripts/vault/deploy-curve-strat.ts --network",
     "deploy:rewardPool": "hardhat run scripts/vault/deploy-generic-rewardPool-strat.ts --network",
     "deploy:gauge": "hardhat run scripts/vault/deploy-solidly-gauge.ts --network",
     "deploy:lend": "hardhat run scripts/vault/deploy-strat-lend.ts --network",
