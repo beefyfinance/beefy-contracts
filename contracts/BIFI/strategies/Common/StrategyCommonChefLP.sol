@@ -141,9 +141,11 @@ contract StrategyCommonChefLP is StratFeeManager, GasFeeThrottler {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        IFeeConfig.FeeCategory memory fees = fees();
+        IFeeConfig.FeeCategory memory fees = getFees();
         uint256 toNative = IERC20(output).balanceOf(address(this)) * fees.total / DIVISOR;
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(
+            toNative, 0, outputToNativeRoute, address(this), block.timestamp
+        );
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
@@ -163,16 +165,22 @@ contract StrategyCommonChefLP is StratFeeManager, GasFeeThrottler {
     function addLiquidity() internal {
         uint256 outputHalf = IERC20(output).balanceOf(address(this)) / 2;
         if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), block.timestamp);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(
+                outputHalf, 0, outputToLp0Route, address(this), block.timestamp
+            );
         }
 
         if (lpToken1 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), block.timestamp);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(
+                outputHalf, 0, outputToLp1Route, address(this), block.timestamp
+            );
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp);
+        IUniswapRouterETH(unirouter).addLiquidity(
+            lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp
+        );
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -211,7 +219,7 @@ contract StrategyCommonChefLP is StratFeeManager, GasFeeThrottler {
 
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
-        IFeeConfig.FeeCategory memory fees = fees();
+        IFeeConfig.FeeCategory memory fees = getFees();
         uint256 outputBal = rewardsAvailable();
         uint256 nativeOut;
         if (outputBal > 0) {

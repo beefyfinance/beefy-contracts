@@ -4,29 +4,25 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-interface IStrategy {
-    function vault() external view returns (address);
-}
-
 contract BeefyFeeConfigurator is OwnableUpgradeable {
 
     struct FeeCategory {
-        uint256 total;
-        uint256 beefy;
-        uint256 call;
-        uint256 strategist;
-        string label;
-        bool active;
+        uint256 total;      // total fee charged on each harvest
+        uint256 beefy;      // split of total fee going to beefy fee batcher
+        uint256 call;       // split of total fee going to harvest caller
+        uint256 strategist;     // split of total fee going to developer of the strategy
+        string label;       // description of the type of fee category
+        bool active;        // on/off switch for fee category
     }
 
     address public keeper;
     uint256 public totalLimit;
     uint256 constant DIVISOR = 1 ether;
 
-    mapping(address => uint256) public vaultFeeId;
+    mapping(address => uint256) public stratFeeId;
     mapping(uint256 => FeeCategory) internal feeCategory;
 
-    event UpdateVault(address indexed vault, uint256 indexed id);
+    event SetStratFeeId(address indexed strategy, uint256 indexed id);
     event SetFeeCategory(
         uint256 indexed id,
         uint256 total,
@@ -36,9 +32,9 @@ contract BeefyFeeConfigurator is OwnableUpgradeable {
         string label,
         bool active
     );
-    event SetTotalLimit(uint256 totalLimit);
     event Pause(uint256 indexed id);
     event Unpause(uint256 indexed id);
+    event SetKeeper(address indexed keeper);
 
     function initialize(
         address _keeper,
@@ -56,20 +52,19 @@ contract BeefyFeeConfigurator is OwnableUpgradeable {
         _;
     }
 
-    // fetch fees for the connected vault when called by a strategy
+    // fetch fees for a strategy that calls this function directly
     function getFees() external view returns (FeeCategory memory) {
-        address vault = IStrategy(msg.sender).vault();
-        return getFeeCategory(vaultFeeId[vault], false);
+        return getFeeCategory(stratFeeId[msg.sender], false);
     }
 
-    // fetch fees for a vault
-    function getFees(address _vault) external view returns (FeeCategory memory) {
-        return getFeeCategory(vaultFeeId[_vault], false);
+    // fetch fees for a specified strategy
+    function getFees(address _strategy) external view returns (FeeCategory memory) {
+        return getFeeCategory(stratFeeId[_strategy], false);
     }
 
-    // fetch fees for a vault, _adjust option to view fees as % of total harvest instead of % of total fee
-    function getFees(address _vault, bool _adjust) external view returns (FeeCategory memory) {
-        return getFeeCategory(vaultFeeId[_vault], _adjust);
+    // fetch fees for a specified strategy, _adjust option to view fees as % of total harvest instead of % of total fee
+    function getFees(address _strategy, bool _adjust) external view returns (FeeCategory memory) {
+        return getFeeCategory(stratFeeId[_strategy], _adjust);
     }
 
     // fetch fee category for an id if active, otherwise return default category
@@ -85,19 +80,28 @@ contract BeefyFeeConfigurator is OwnableUpgradeable {
         }
     }
 
-    // set a fee category id for a vault
-    function updateVault(address _vault, uint256 _feeId) external onlyManager {
-        vaultFeeId[_vault] = _feeId;
-        emit UpdateVault(_vault, _feeId);
+    // set a fee category id for a strategy that calls this function directly
+    function setStratFeeId(uint256 _feeId) external {
+        _setStratFeeId(msg.sender, _feeId);
     }
 
-    // set fee category ids for multiple vaults at once
-    function batchUpdateVaults(address[] memory _vaults, uint256[] memory _feeIds) external onlyManager {
-        uint256 vaultLength = _vaults.length;
-        for (uint256 i = 0; i < vaultLength; i++) {
-            vaultFeeId[_vaults[i]] = _feeIds[i];
-            emit UpdateVault(_vaults[i], _feeIds[i]);
+    // set a fee category id for a strategy by a manager
+    function setStratFeeId(address _strategy, uint256 _feeId) external onlyManager {
+        _setStratFeeId(_strategy, _feeId);
+    }
+
+    // set fee category ids for multiple strategies at once by a manager
+    function setStratFeeId(address[] memory _strategies, uint256[] memory _feeIds) external onlyManager {
+        uint256 stratLength = _strategies.length;
+        for (uint256 i = 0; i < stratLength; i++) {
+            _setStratFeeId(_strategies[i], _feeIds[i]);
         }
+    }
+
+    // internally set a fee category id for a strategy
+    function _setStratFeeId(address _strategy, uint256 _feeId) internal {
+        stratFeeId[_strategy] = _feeId;
+        emit SetStratFeeId(_strategy, _feeId);
     }
 
     // set values for a fee category using the relative split for call and strategist
@@ -124,7 +128,7 @@ contract BeefyFeeConfigurator is OwnableUpgradeable {
         emit SetFeeCategory(_id, _total, beefy, _call, _strategist, _label, _active);
     }
 
-    // deactivate a fee category making all vaults with this fee id revert to default fees
+    // deactivate a fee category making all strategies with this fee id revert to default fees
     function pause(uint256 _id) external onlyManager {
         feeCategory[_id].active = false;
         emit Pause(_id);
@@ -139,5 +143,6 @@ contract BeefyFeeConfigurator is OwnableUpgradeable {
     // change keeper
     function setKeeper(address _keeper) external onlyManager {
         keeper = _keeper;
+        emit SetKeeper(_keeper);
     }
 }
