@@ -52,17 +52,12 @@ contract BeefyFeeConfigurator is OwnableUpgradeable {
         _;
     }
 
-    // fetch fees for a strategy that calls this function directly
-    function getFees() external view returns (FeeCategory memory) {
-        return getFeeCategory(stratFeeId[msg.sender], false);
-    }
-
-    // fetch fees for a specified strategy
+    // fetch fees for a strategy
     function getFees(address _strategy) external view returns (FeeCategory memory) {
         return getFeeCategory(stratFeeId[_strategy], false);
     }
 
-    // fetch fees for a specified strategy, _adjust option to view fees as % of total harvest instead of % of total fee
+    // fetch fees for a strategy, _adjust option to view fees as % of total harvest instead of % of total fee
     function getFees(address _strategy, bool _adjust) external view returns (FeeCategory memory) {
         return getFeeCategory(stratFeeId[_strategy], _adjust);
     }

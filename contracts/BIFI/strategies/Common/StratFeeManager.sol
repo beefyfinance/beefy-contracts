@@ -58,11 +58,11 @@ contract StratFeeManager is Ownable, Pausable {
 
     // fetch fees from config contract
     function getFees() public view returns (IFeeConfig.FeeCategory memory) {
-        return beefyFeeConfig.getFees();
+        return beefyFeeConfig.getFees(address(this));
     }
 
     function getStratFeeId() external view returns (uint256) {
-        return beefyFeeConfig.stratFeeId(msg.sender);
+        return beefyFeeConfig.stratFeeId(address(this));
     }
 
     function setStratFeeId(uint256 _feeId) external onlyManager {

@@ -11,7 +11,7 @@ interface IFeeConfig {
         string label;
         bool active;
     }
-    function getFees() external view returns (FeeCategory memory);
+    function getFees(address strategy) external view returns (FeeCategory memory);
     function stratFeeId(address strategy) external view returns (uint256);
     function setStratFeeId(uint256 feeId) external;
 }
