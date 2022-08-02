@@ -44,6 +44,16 @@
       "address": "0x44e314190D9E4cE6d4C0903459204F8E21ff940A",
       "txHash": "0x179d0fd9f2558e7e095914eb02a71a020a394ed5b0eb97a30388055ed7be4b5d",
       "kind": "transparent"
+    },
+    {
+      "address": "0x05ED149419CC7027A9b6Ed4210Be6a0F38701b7c",
+      "txHash": "0x4da94054648950650da2698042eef0ee041274e1eb9398b770daf4b9dd417793",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x7EF35616B98ef828C724122dFd0A9a6cAf79458B",
+      "txHash": "0x58f45cdc2edfbfaef2e1a49a3226986cdf864712d1a770f63fb00f06523cf3a8",
+      "kind": "transparent"
     }
   ],
   "impls": {
@@ -345,6 +355,308 @@
           },
           "t_array(t_uint256)45_storage": {
             "label": "uint256[45]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "8dbf2a5b9a28acda454caec33525d75ad5ad06f66cfe006abffdbc5676446953": {
+      "address": "0xaE8fC2B609392747058CA43D1f6d8f2E9833dC3C",
+      "txHash": "0xfc79c0e781e9a8baa75896f90bff00192057c4213c4b274a404b26e863a27105",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "wNative",
+            "type": "t_contract(IERC20Upgradeable)4603",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:33"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "bifi",
+            "type": "t_contract(IERC20Upgradeable)4603",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:34"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "stable",
+            "type": "t_contract(IERC20Upgradeable)4603",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:35"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "treasury",
+            "type": "t_address",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:36"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "rewardPool",
+            "type": "t_address",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:37"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "unirouter",
+            "type": "t_address",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:38"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "harvester",
+            "type": "t_address",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:39"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "treasuryFee",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:43"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "harvesterGas",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:44"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "harvesterMax",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:45"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "splitRatio",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:46"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "wNativeToBifiRoute",
+            "type": "t_array(t_address)dyn_storage",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:48"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "wNativeToStableRoute",
+            "type": "t_array(t_address)dyn_storage",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:49"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "splitTreasury",
+            "type": "t_bool",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:51"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "sendHarvesterGas",
+            "type": "t_bool",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:52"
+          }
+        ],
+        "types": {
+          "t_contract(IERC20Upgradeable)4603": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_array(t_address)dyn_storage": {
+            "label": "address[]"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "24f80abaf1c3a26dcf9dc2f3e646e6f99ee005b5a95fbe9634704d12ab9ede4b": {
+      "address": "0xae6FD28A06fcE7A7Aff5F63F9C437D5ff64Df24C",
+      "txHash": "0x416024989c1f5f3dcd4de5a04a2e21259d924918d6fb4d35a3d37345710b68ee",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "wNative",
+            "type": "t_contract(IERC20Upgradeable)4976",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:33"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "bifi",
+            "type": "t_contract(IERC20Upgradeable)4976",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:34"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "stable",
+            "type": "t_contract(IERC20Upgradeable)4976",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:35"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "treasury",
+            "type": "t_address",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:36"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "rewardPool",
+            "type": "t_address",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:37"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "unirouter",
+            "type": "t_address",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:38"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "harvester",
+            "type": "t_address",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:39"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "treasuryFee",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:43"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "harvesterGas",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:44"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "harvesterMax",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:45"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "splitRatio",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:46"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "wNativeToBifiRoute",
+            "type": "t_array(t_address)dyn_storage",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:48"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "wNativeToStableRoute",
+            "type": "t_array(t_address)dyn_storage",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:49"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "splitTreasury",
+            "type": "t_bool",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:51"
+          },
+          {
+            "contract": "BeefyFeeBatchV3",
+            "label": "sendHarvesterGas",
+            "type": "t_bool",
+            "src": "contracts/BIFI/infra/BeefyFeeBatchV3.sol:52"
+          }
+        ],
+        "types": {
+          "t_contract(IERC20Upgradeable)4976": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_array(t_address)dyn_storage": {
+            "label": "address[]"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
           },
           "t_array(t_uint256)50_storage": {
             "label": "uint256[50]"

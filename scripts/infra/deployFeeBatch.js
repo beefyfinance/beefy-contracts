@@ -3,44 +3,30 @@ const { getImplementationAddress } = require("@openzeppelin/upgrades-core");
 
 const ethers = hardhat.ethers;
 
-const stableRoute = [ 
-  "0x4200000000000000000000000000000000000006",
-  "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
-  false 
-];
-
-const ethToOp = [
-  "0x4200000000000000000000000000000000000006",
-  "0x4200000000000000000000000000000000000042",
-  false 
-];
-
-const opToBifi = [
-  "0x4200000000000000000000000000000000000042",
-  "0x4E720DD3Ac5CFe1e1fbDE4935f386Bb1C66F4642",
-  false 
-]
+const wnative = "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",
+const bifi = "0xd6070ae98b8069de6B494332d1A1a81B6179D960",
+const stable = "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75",
 
 const config = {
-  treasury: "0x4ABa01FB8E1f6BFE80c56Deb367f19F35Df0f4aE",
+  treasury: "0xdFf234670038dEfB2115Cf103F86dA5fB7CfD2D2",
   rewardPool: "0x0000000000000000000000000000000000000000",
-  unirouter: "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-  bifi: "0x4E720DD3Ac5CFe1e1fbDE4935f386Bb1C66F4642",
-  wNative: "0x4200000000000000000000000000000000000006",
-  stable: "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
-  bifiRoute: [ethToOp, opToBifi],
-  stableRoute: [stableRoute],
+  unirouter: "0xF491e7B69E4244ad4002BC14e878a34207E38c29",
+  bifi: bifi,
+  wNative: wnative,
+  stable: stable,
+  bifiRoute: [wnative, bifi],
+  stableRoute: [wnative, stable],
   splitTreasury: false,
   treasuryFee: 640
 };
 
 async function main() {
   await hardhat.run("compile");
-/*
+
   const deployer = await ethers.getSigner();
   const provider = deployer.provider;
 
-  const BeefyFeeBatch = await ethers.getContractFactory("BeefyFeeBatchV3SolidlyRouter");
+  const BeefyFeeBatch = await ethers.getContractFactory("BeefyFeeBatchV3");
 
   const batcher = await upgrades.deployProxy(BeefyFeeBatch,  [
     config.bifi,
@@ -61,10 +47,10 @@ async function main() {
   console.log("Deployed to:", batcher.address);
   console.log(`Deployed implementation at ${implementationAddr}`);
 
-  */
+ 
   console.log(`Verifing implementation`);
   await hardhat.run("verify:verify", {
-    address: "0xFc9E51a77c0d2755121e5a2FA4D19dAf072F97b4",
+    address: implementationAddr,
     constructorArguments: [
     ]
   })
