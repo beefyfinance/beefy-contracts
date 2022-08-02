@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "../../interfaces/common/IDelegateManagerCommon.sol";
-import "./StratManager.sol";
+import "./StratFeeManager.sol";
 
-abstract contract DelegateManagerCommon is StratManager {
+abstract contract DelegateManagerCommon is StratFeeManager {
 
     /**
      * @dev Contracts:
@@ -22,7 +22,7 @@ abstract contract DelegateManagerCommon is StratManager {
     /**
      * @dev Initializes the base strategy.
      */
-    constructor (bytes32 _id, address _voter) public {
+    constructor (bytes32 _id, address _voter) {
         id = _id;
         _setVoteDelegation(_voter);
     }
