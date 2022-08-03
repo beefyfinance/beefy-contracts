@@ -40,6 +40,11 @@
       "address": "0x6650e6a8A8eD9464B466Fd2fD5d74ffDA4Fd2fab",
       "txHash": "0xf799b612f3d970f7aa811ad842c455d954e272edefc801c81743a3e16de868a7",
       "kind": "transparent"
+    },
+    {
+      "address": "0x6683B3c87913a91856c21ACF2D051dcdDf684c65",
+      "txHash": "0xd6fd44a0367e80075ef98d053051e2c5668b04c9e0eba6476e42c66dd67a906d",
+      "kind": "transparent"
     }
   ],
   "impls": {
@@ -145,6 +150,123 @@
           },
           "t_array(t_address)dyn_storage": {
             "label": "address[]"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "e58668e04bdaff2369ce8eb8f237f1a3bf26a7154866cfd54c0af3091af91931": {
+      "address": "0xD49B76D6Eb8b07Fa80389E3D7724aA4248891f33",
+      "txHash": "0xfacdde918401899617a90b9f74ce8c24f3c10049b9ef5512e2fcc10eed6604f1",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "BeefyFeeConfigurator",
+            "label": "keeper",
+            "type": "t_address",
+            "src": "contracts/BIFI/infra/BeefyFeeConfigurator.sol:18"
+          },
+          {
+            "contract": "BeefyFeeConfigurator",
+            "label": "totalLimit",
+            "type": "t_uint256",
+            "src": "contracts/BIFI/infra/BeefyFeeConfigurator.sol:19"
+          },
+          {
+            "contract": "BeefyFeeConfigurator",
+            "label": "stratFeeId",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "contracts/BIFI/infra/BeefyFeeConfigurator.sol:22"
+          },
+          {
+            "contract": "BeefyFeeConfigurator",
+            "label": "feeCategory",
+            "type": "t_mapping(t_uint256,t_struct(FeeCategory)506_storage)",
+            "src": "contracts/BIFI/infra/BeefyFeeConfigurator.sol:23"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_uint256,t_struct(FeeCategory)506_storage)": {
+            "label": "mapping(uint256 => struct BeefyFeeConfigurator.FeeCategory)"
+          },
+          "t_struct(FeeCategory)506_storage": {
+            "label": "struct BeefyFeeConfigurator.FeeCategory",
+            "members": [
+              {
+                "label": "total",
+                "type": "t_uint256"
+              },
+              {
+                "label": "beefy",
+                "type": "t_uint256"
+              },
+              {
+                "label": "call",
+                "type": "t_uint256"
+              },
+              {
+                "label": "strategist",
+                "type": "t_uint256"
+              },
+              {
+                "label": "label",
+                "type": "t_string_storage"
+              },
+              {
+                "label": "active",
+                "type": "t_bool"
+              }
+            ]
+          },
+          "t_string_storage": {
+            "label": "string"
           },
           "t_bool": {
             "label": "bool"
