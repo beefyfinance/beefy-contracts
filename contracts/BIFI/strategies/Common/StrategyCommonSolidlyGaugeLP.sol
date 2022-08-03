@@ -1,22 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../interfaces/common/IUniswapRouterSolidly.sol";
 import "../../interfaces/common/ISolidlyPair.sol";
 import "../../interfaces/common/ISolidlyGauge.sol";
 import "../../interfaces/common/IERC20Extended.sol";
-import "../Common/StratManager.sol";
-import "../Common/FeeManager.sol";
-import "../../utils/GasThrottler.sol";
+import "../Common/StratFeeManager.sol";
+import "../../utils/GasFeeThrottler.sol";
 
-contract StrategyCommonSolidlyGaugeLP is StratManager, FeeManager, GasThrottler {
+contract StrategyCommonSolidlyGaugeLP is StratFeeManager, GasFeeThrottler {
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
 
     // Tokens used
     address public native;
@@ -27,7 +23,6 @@ contract StrategyCommonSolidlyGaugeLP is StratManager, FeeManager, GasThrottler 
 
     // Third party contracts
     address public gauge;
-    address public intializer;
 
     bool public stable;
     bool public harvestOnDeposit;
@@ -46,25 +41,27 @@ contract StrategyCommonSolidlyGaugeLP is StratManager, FeeManager, GasThrottler 
     constructor(
         address _want,
         address _gauge,
-        address _vault,
-        address _unirouter,
-        address _keeper,
-        address _strategist,
-        address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+        CommonAddresses memory _commonAddresses,
+        IUniswapRouterSolidly.Routes[] memory _outputToNativeRoute,
+        IUniswapRouterSolidly.Routes[] memory _outputToLp0Route,
+        IUniswapRouterSolidly.Routes[] memory _outputToLp1Route     
+    ) StratFeeManager(_commonAddresses) {
         want = _want;
         gauge = _gauge;
 
         stable = ISolidlyPair(want).stable();
-        intializer = msg.sender;
-    }
 
-    function intializeRoutes(address[][] memory outputToNative, address[][] memory outputToLp0, address[][] memory outputToLp1, bool[][] memory stables) external onlyOwner {
-        require(intializer != address(0), "Already Intialized");
-        
-        _initOutputToNativeRoute(outputToNative, stables[0]);
-        _initOutputToLp0Route(outputToLp0, stables[1]);
-        _initOutputToLp1Route(outputToLp1, stables[2]);
+        for (uint i; i < _outputToNativeRoute.length; ++i) {
+            outputToNativeRoute.push(_outputToNativeRoute[i]);
+        }
+
+        for (uint i; i < _outputToLp0Route.length; ++i) {
+            outputToLp0Route.push(_outputToLp0Route[i]);
+        }
+
+        for (uint i; i < _outputToLp1Route.length; ++i) {
+            outputToLp1Route.push(_outputToLp1Route[i]);
+        }
 
         output = outputToNativeRoute[0].from;
         native = outputToNativeRoute[outputToNativeRoute.length -1].to;
@@ -73,38 +70,7 @@ contract StrategyCommonSolidlyGaugeLP is StratManager, FeeManager, GasThrottler 
 
         rewards.push(output);
         _giveAllowances();
-
-        intializer = address(0);
-    }
-
-    function _initOutputToNativeRoute(address[][] memory tokens, bool[] memory stables) internal {
-        for (uint i; i < tokens.length; ++i) {
-            outputToNativeRoute.push(IUniswapRouterSolidly.Routes({
-                from: tokens[i][0],
-                to: tokens[i][1],
-                stable: stables[i]
-            }));
-        }
-    }
-
-    function _initOutputToLp0Route(address[][] memory tokens, bool[] memory stables) internal {
-        for (uint i; i < tokens.length; ++i) {
-            outputToLp0Route.push(IUniswapRouterSolidly.Routes({
-                from: tokens[i][0],
-                to: tokens[i][1],
-                stable: stables[i]
-            }));
-        }
-    }
-
-     function _initOutputToLp1Route(address[][] memory tokens, bool[] memory stables) internal {
-        for (uint i; i < tokens.length; ++i) {
-            outputToLp1Route.push(IUniswapRouterSolidly.Routes({
-                from: tokens[i][0],
-                to: tokens[i][1],
-                stable: stables[i]
-            }));
-        }
+        
     }
 
     // puts the funds to work
@@ -123,7 +89,7 @@ contract StrategyCommonSolidlyGaugeLP is StratManager, FeeManager, GasThrottler 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            ISolidlyGauge(gauge).withdraw(_amount.sub(wantBal));
+            ISolidlyGauge(gauge).withdraw(_amount - wantBal);
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -132,8 +98,8 @@ contract StrategyCommonSolidlyGaugeLP is StratManager, FeeManager, GasThrottler 
         }
 
         if (tx.origin != owner() && !paused()) {
-            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            wantBal = wantBal.sub(withdrawalFeeAmount);
+            uint256 withdrawalFeeAmount = wantBal * withdrawalFee / WITHDRAWAL_MAX;
+            wantBal = wantBal - withdrawalFeeAmount;
         }
 
         IERC20(want).safeTransfer(vault, wantBal);
@@ -177,18 +143,19 @@ contract StrategyCommonSolidlyGaugeLP is StratManager, FeeManager, GasThrottler 
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterSolidly(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        IFeeConfig.FeeCategory memory fees = getFees();
+        uint256 toNative = IERC20(output).balanceOf(address(this)) * fees.total / DIVISOR;
+        IUniswapRouterSolidly(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
+        uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
+        uint256 beefyFeeAmount = nativeBal * fees.beefy / DIVISOR;
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFeeAmount = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        uint256 strategistFeeAmount = nativeBal * fees.strategist / DIVISOR;
         IERC20(native).safeTransfer(strategist, strategistFeeAmount);
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
@@ -200,41 +167,41 @@ contract StrategyCommonSolidlyGaugeLP is StratManager, FeeManager, GasThrottler 
         uint256 lp1Amt;
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (stable) {
-            lp0Amt = outputBal.mul(getRatio()).div(10**18);
+            lp0Amt = outputBal * getRatio() / 10**18;
         } else { 
-            lp0Amt = outputBal.div(2);
+            lp0Amt = outputBal / 2;
             lp1Amt = lp0Amt;
         }
 
         if (lpToken0 != output) {
-            IUniswapRouterSolidly(unirouter).swapExactTokensForTokens(lp0Amt, 0, outputToLp0Route, address(this), now);
+            IUniswapRouterSolidly(unirouter).swapExactTokensForTokens(lp0Amt, 0, outputToLp0Route, address(this), block.timestamp);
         }
 
         if (stable) {
             uint256 ratio = 10**18 - getRatio();
-            lp1Amt = outputBal.mul(ratio).div(10**18);
+            lp1Amt = outputBal * ratio / 10**18;
         }
 
         if (lpToken1 != output) {
-            IUniswapRouterSolidly(unirouter).swapExactTokensForTokens(lp1Amt, 0, outputToLp1Route, address(this), now);
+            IUniswapRouterSolidly(unirouter).swapExactTokensForTokens(lp1Amt, 0, outputToLp1Route, address(this), block.timestamp);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterSolidly(unirouter).addLiquidity(lpToken0, lpToken1, stable, lp0Bal, lp1Bal, 1, 1, address(this), now);
+        IUniswapRouterSolidly(unirouter).addLiquidity(lpToken0, lpToken1, stable, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp);
     }
 
     function getRatio() public view returns (uint256) {
         (uint256 opLp0, uint256 opLp1, ) = ISolidlyPair(want).getReserves();
-        uint256 lp0Amt = opLp0.mul(10**18).div(10**IERC20Extended(lpToken0).decimals());
-        uint256 lp1Amt = opLp1.mul(10**18).div(10**IERC20Extended(lpToken1).decimals());   
-        uint256 totalSupply = lp0Amt.add(lp1Amt);      
-        return lp0Amt.mul(10**18).div(totalSupply);
+        uint256 lp0Amt = opLp0 * 10**18 / 10**IERC20Extended(lpToken0).decimals();
+        uint256 lp1Amt = opLp1 * 10**18 / 10**IERC20Extended(lpToken1).decimals();   
+        uint256 totalSupply = lp0Amt + lp1Amt;      
+        return lp0Amt * 10**18 / totalSupply;
     }
 
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
-        return balanceOfWant().add(balanceOfPool());
+        return balanceOfWant() + balanceOfPool();
     }
 
     // it calculates how much 'want' this contract holds.
@@ -254,13 +221,14 @@ contract StrategyCommonSolidlyGaugeLP is StratManager, FeeManager, GasThrottler 
 
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
+        IFeeConfig.FeeCategory memory fees = getFees();
         uint256 outputBal = rewardsAvailable();
         uint256 nativeOut;
         if (outputBal > 0) {
             (nativeOut,) = IUniswapRouterSolidly(unirouter).getAmountOut(outputBal, output, native);
             }
 
-        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+        return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
@@ -308,14 +276,14 @@ contract StrategyCommonSolidlyGaugeLP is StratManager, FeeManager, GasThrottler 
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(gauge, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(gauge, type(uint).max);
+        IERC20(output).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
+        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint256(-1));
+        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
     }
 
     function _removeAllowances() internal {

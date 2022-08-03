@@ -120,7 +120,7 @@ const config: DeploymentConfig = {
       accounts,
     },
     optimism: {
-      url:  process.env.OPTIMISM_RPC || "https://mainnet.optimism.io",
+      url:  process.env.OPTIMISM_RPC || "https://rpc.ankr.com/optimism",
       chainId: 10, 
       accounts,
     }

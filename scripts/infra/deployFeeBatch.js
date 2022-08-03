@@ -1,21 +1,29 @@
 const hardhat = require("hardhat");
 const { getImplementationAddress } = require("@openzeppelin/upgrades-core");
+import { addressBook } from "blockchain-addressbook";
 
 const ethers = hardhat.ethers;
 
-const wnative = "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",
-const bifi = "0xd6070ae98b8069de6B494332d1A1a81B6179D960",
-const stable = "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75",
+const {
+  platforms: { stella, beefyfinance },
+  tokens: {
+    USDC: { address: USDC },
+    GLMR: { address: GLMR },
+    BIFI: { address: BIFI }
+  },
+} = addressBook.cronos;
+
+const addressZero = ethers.constants.AddressZero,
 
 const config = {
-  treasury: "0xdFf234670038dEfB2115Cf103F86dA5fB7CfD2D2",
-  rewardPool: "0x0000000000000000000000000000000000000000",
-  unirouter: "0xF491e7B69E4244ad4002BC14e878a34207E38c29",
-  bifi: bifi,
-  wNative: wnative,
-  stable: stable,
-  bifiRoute: [wnative, bifi],
-  stableRoute: [wnative, stable],
+  treasury: beefyfinance.treasuryMultisig,
+  rewardPool: beefyfinance.rewardPool,
+  unirouter: vvs.router,
+  bifi: BIFI,
+  wNative: CRO,
+  stable: USDC,
+  bifiRoute: [CRO, BIFI],
+  stableRoute: [CRO, USDC],
   splitTreasury: false,
   treasuryFee: 640
 };

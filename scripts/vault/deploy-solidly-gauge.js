@@ -1,32 +1,29 @@
 import hardhat, { ethers, web3 } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
 import { predictAddresses } from "../../utils/predictAddresses";
-import { setCorrectCallFee } from "../../utils/setCorrectCallFee";
-import { verifyContract } from "../../utils/verifyContract";
-import { BeefyChain } from "../../utils/beefyChain";
+
 
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
   platforms: {  velodrome, beefyfinance },
   tokens: {
-    FRAX: { address: FRAX },
-    FXS: { address: FXS },
+    SNX: { address: SNX },
+    sUSD: { address: sUSD },
     ETH: { address: ETH },
     VELO: { address: VELO },
     USDC: { address: USDC },
   },
 } = addressBook.optimism;
 
-const shouldVerifyOnEtherscan = false;
 
-const want = web3.utils.toChecksumAddress("0xE2EA57FDF87624f4384EF6Da5f3844e8E9e5d878");
-const gauge = web3.utils.toChecksumAddress("0x3A8883381E4416488db94a8e0469394ecfa8A024");
+const want = web3.utils.toChecksumAddress("0x85FF5b70de43FeE34F3fA632adDD9F76a0f6bAA9");
+const gauge = web3.utils.toChecksumAddress("0xFC4B6deA9276D906AD36828dc2e7DbaCfC01B47f");
 //const ensId = ethers.utils.formatBytes32String("cake.eth");
 
 const vaultParams = {
-  mooName: "Moo Velodrome FXS-FRAX",
-  mooSymbol: "mooVelodromeFXS-FRAX",
+  mooName: "Moo Velodrome SNX-sUSD",
+  mooSymbol: "mooVelodromeSNX-sUSD",
   delay: 21600,
 };
 
@@ -37,10 +34,10 @@ const strategyParams = {
   strategist: "0xb2e4A61D99cA58fB8aaC58Bb2F8A59d63f552fC0", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
+  feeConfig: beefyfinance.beefyFeeConfig,
   outputToNativeRoute: [[VELO, ETH]],
-  outputToLp0Route: [[VELO, USDC],[USDC, FRAX]],
-  outputToLp1Route: [[VELO, USDC],[USDC, FRAX],[FRAX, FXS]],
-  bools: [[false],[false, true],[false, true, false]],
+  outputToLp0Route: [[VELO, USDC, false],[USDC, sUSD, true],[sUSD, SNX, false]],
+  outputToLp1Route: [[VELO, USDC, false],[USDC, sUSD, true]],
   verifyStrat: false,
  // ensId
 };
@@ -83,11 +80,17 @@ async function main() {
   const strategyConstructorArguments = [
     strategyParams.want,
     strategyParams.gauge,
-    vault.address,
-    strategyParams.unirouter,
-    strategyParams.keeper,
-    strategyParams.strategist,
-    strategyParams.beefyFeeRecipient,
+    [
+      vault.address,
+      strategyParams.unirouter,
+      strategyParams.keeper,
+      strategyParams.strategist,
+      strategyParams.beefyFeeRecipient,
+      strategyParams.feeConfig,
+    ],
+    strategyParams.outputToNativeRoute,
+    strategyParams.outputToLp0Route, 
+    strategyParams.outputToLp1Route
   ];
 
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
@@ -103,25 +106,10 @@ async function main() {
   console.log();
   console.log("Running post deployment");
 
-  const verifyContractsPromises: Promise<any>[] = [];
-  if (shouldVerifyOnEtherscan) {
-    // skip await as this is a long running operation, and you can do other stuff to prepare vault while this finishes
-    verifyContractsPromises.push(
-      verifyContract(vault.address, vaultConstructorArguments),
-      verifyContract(strategy.address, strategyConstructorArguments)
-    );
-  }
+
  // await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
-  await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
-  console.log(`Transfering Vault Owner to ${beefyfinance.vaultOwner}`)
   await vault.transferOwnership(beefyfinance.vaultOwner);
-  console.log();
-  await strategy.intializeRoutes(strategyParams.outputToNativeRoute, strategyParams.outputToLp0Route, strategyParams.outputToLp1Route, strategyParams.bools);
-  console.log("Strategy Routes Intialized");
-
-
-
-  await Promise.all(verifyContractsPromises);
+  console.log(`Transfered Vault Ownership to ${beefyfinance.vaultOwner}`);
 
   if (hardhat.network.name === "bsc") {
     await registerSubsidy(vault.address, deployer);
