@@ -41,6 +41,7 @@ const strategyParams = {
   strategist: "0x4cC72219fc8aEF162FC0c255D9B9C3Ff93B10882", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
+  beefyFeeConfig: beefyfinance.beefyFeeConfig,
   outputToNativeRoute: [CAKE, BNB],
   outputToLp0Route: [CAKE],
   outputToLp1Route: [CAKE, BNB],
@@ -50,7 +51,7 @@ const strategyParams = {
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonChefLPVoter",
+  strategy: "StrategyCommonChefLP",
 };
 
 async function main() {
@@ -87,15 +88,15 @@ async function main() {
     strategyParams.want,
     strategyParams.poolId,
     strategyParams.chef,
-    vault.address,
+    [vault.address,
     strategyParams.unirouter,
     strategyParams.keeper,
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
+    strategyParams.beefyFeeConfig],
     strategyParams.outputToNativeRoute,
     strategyParams.outputToLp0Route,
-    strategyParams.outputToLp1Route,
-    strategyParams.ensId
+    strategyParams.outputToLp1Route
   ];
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();
