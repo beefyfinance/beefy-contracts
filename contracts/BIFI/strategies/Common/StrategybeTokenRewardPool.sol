@@ -7,12 +7,25 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/common/IERC20Extended.sol";
-import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/common/IRewardPool.sol";
 import "../Common/StratManager.sol";
 import "../Common/FeeManager.sol";
 import "../../utils/GasThrottler.sol";
+
+interface IUniswapRouterETH {
+    function swapExactTokensForTokensSimple(
+        uint amountIn, 
+        uint amountOutMin, 
+        address tokenFrom, 
+        address tokenTo,
+        bool stable, 
+        address to, 
+        uint deadline
+    ) external returns (uint[] memory amounts);
+
+    function getAmountOut(uint amountIn, address tokenIn, address tokenOut) external view returns (uint amount, bool stable);
+}
 
 interface IBeToken {
     function deposit(uint256 _amount) external;
@@ -133,7 +146,7 @@ contract StrategybeTokenRewardPool is StratManager, FeeManager, GasThrottler {
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
         uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokensSimple(toNative, 0, output, native, false, address(this), now);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
@@ -179,12 +192,7 @@ contract StrategybeTokenRewardPool is StratManager, FeeManager, GasThrottler {
         uint256 outputBal = rewardsAvailable();
         uint256 nativeOut;
         if (outputBal > 0) {
-            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
-                returns (uint256[] memory amountOut) 
-            {
-                nativeOut = amountOut[amountOut.length -1];
-            }
-            catch {}
+            ( nativeOut, ) = IUniswapRouterETH(unirouter).getAmountOut(outputBal, output, native);
         }
 
         return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);

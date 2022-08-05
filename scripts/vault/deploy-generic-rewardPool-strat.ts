@@ -8,32 +8,32 @@ import { BeefyChain } from "../../utils/beefyChain";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: { pancake, beefyfinance },
+  platforms: { velodrome, beefyfinance },
   tokens: {
-    CAKE: { address: CAKE },
-    BNB: { address: BNB },
+    VELO: { address: VELO },
+    ETH: { address: ETH },
   },
-} = addressBook.bsc;
+} = addressBook.optimism;
 
 const shouldVerifyOnEtherscan = false;
 
-const rewardPool = web3.utils.toChecksumAddress("0x49fAfAA2d9E32A6Af37A11cEeC50D76A772390Cc");
-const lp = web3.utils.toChecksumAddress("0x42b50A901228fb4C739C19fcd38DC2182B515B66");
+const rewardPool = web3.utils.toChecksumAddress("0x7680639E51155a2C7C9cC98872f0c12A15990241");
+const lp = web3.utils.toChecksumAddress("0xB0af86f18c6155CeFaE1A6D6dA35b05F176F6278");
 
 const vaultParams = {
-  mooName: "Moo beCAKE",
-  mooSymbol: "moobeCAKE",
+  mooName: "Moo beVELO",
+  mooSymbol: "moobeVELO",
   delay: 21600,
 };
 
 const strategyParams = {
   want: lp,
   rewardPool: rewardPool,
-  unirouter: pancake.router,
+  unirouter: velodrome.router,
   strategist: "0xb2e4A61D99cA58fB8aaC58Bb2F8A59d63f552fC0", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [CAKE, BNB],
+  outputToNativeRoute: [VELO, ETH],
  // outputToLp0Route: [WMATIC],
  // outputToLp1Route: [WMATIC, MaticX],
 };

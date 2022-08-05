@@ -8,45 +8,52 @@ import { BeefyChain } from "../../utils/beefyChain";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: {  velodrome, beefyfinance },
+  platforms: { quickswap, beefyfinance },
   tokens: {
-    OP: { address: OP },
-    ETH: { address: ETH },
-    VELO: { address: VELO },
-    USDC: { address: USDC },
+    stMATIC: { address: stMATIC },
+    MATIC: { address: MATIC },
+    LDO: { address: LDO },
+    CRV: { address: CRV }
   },
-} = addressBook.optimism;
+} = addressBook.polygon;
 
 const shouldVerifyOnEtherscan = false;
 
-const want = web3.utils.toChecksumAddress("0xcdd41009E74bD1AE4F7B2EeCF892e4bC718b9302");
-const gauge = web3.utils.toChecksumAddress("0x2f733b00127449fcF8B5a195bC51Abb73B7F7A75");
-//const ensId = ethers.utils.formatBytes32String("cake.eth");
+const gauge = web3.utils.toChecksumAddress("0x9633E0749faa6eC6d992265368B88698d6a93Ac0");
+const gaugeFactory = web3.utils.toChecksumAddress("0xabC000d88f23Bb45525E447528DBF656A9D55bf5");
+const lp =  web3.utils.toChecksumAddress("0xe7CEA2F6d7b120174BF3A9Bc98efaF1fF72C997d");
+const pool = web3.utils.toChecksumAddress("0xFb6FE7802bA9290ef8b00CA16Af4Bc26eb663a28");
 
 const vaultParams = {
-  mooName: "Moo Velodrome OP-ETH",
-  mooSymbol: "mooVelodromeOP-ETH",
+  mooName: "Moo Curve stMATIC-MATIC",
+  mooSymbol: "mooCurvestMATIC-MATIC",
   delay: 21600,
 };
 
 const strategyParams = {
-  want: want,
+  want: lp,
   gauge: gauge,
-  unirouter: velodrome.router,
+  gaugeFactory: gaugeFactory,
+  pool: pool,
+  poolSize: 2, 
+  depositIndex: 0,
+  useUnderlying: false,
+  useMeta: false,
+  unirouter: quickswap.router,
   strategist: "0xb2e4A61D99cA58fB8aaC58Bb2F8A59d63f552fC0", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  outputToNativeRoute: [[VELO, ETH]],
-  outputToLp0Route: [[VELO, ETH]],
-  outputToLp1Route: [[VELO, ETH],[ETH, OP]],
-  bools: [[false],[false],[false, false]],
-  verifyStrat: false,
- // ensId
+  crvToNativeRoute: [CRV, MATIC],
+  nativeToDepositRoute: [MATIC, stMATIC],
+  crvEnabled: false, 
+  addReward: true,
+  rewardToNativeRoute: [LDO, MATIC],
+  minAmount: 1000,
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonSolidlyGaugeLP",
+  strategy: "StrategyCurveLP",
 };
 
 async function main() {
@@ -81,14 +88,21 @@ async function main() {
 
   const strategyConstructorArguments = [
     strategyParams.want,
+    strategyParams.gaugeFactory,
     strategyParams.gauge,
+    strategyParams.pool,
+    strategyParams.poolSize,
+    strategyParams.depositIndex,
+    strategyParams.useUnderlying,
+    strategyParams.useMeta,
+    strategyParams.crvToNativeRoute,
+    strategyParams.nativeToDepositRoute,
     vault.address,
     strategyParams.unirouter,
     strategyParams.keeper,
     strategyParams.strategist,
     strategyParams.beefyFeeRecipient,
   ];
-
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();
 
@@ -97,7 +111,7 @@ async function main() {
   console.log("Vault:", vault.address);
   console.log("Strategy:", strategy.address);
   console.log("Want:", strategyParams.want);
-  console.log("gauge:", strategyParams.gauge);
+  console.log("Gauge:", strategyParams.gauge);
 
   console.log();
   console.log("Running post deployment");
@@ -110,15 +124,18 @@ async function main() {
       verifyContract(strategy.address, strategyConstructorArguments)
     );
   }
- // await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
   await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
   console.log(`Transfering Vault Owner to ${beefyfinance.vaultOwner}`)
   await vault.transferOwnership(beefyfinance.vaultOwner);
+  console.log(`setting needed functions`);
+  if (!strategyParams.crvEnabled) {
+    await strategy.setCrvEnabled(strategyParams.crvEnabled);
+  }
+  if (strategyParams.addReward) {
+    await strategy.addRewardToken(strategyParams.rewardToNativeRoute, strategyParams.minAmount);
+  }
   console.log();
-  await strategy.intializeRoutes(strategyParams.outputToNativeRoute, strategyParams.outputToLp0Route, strategyParams.outputToLp1Route, strategyParams.bools);
-  console.log("Strategy Routes Intialized");
-
-
+  console.log('fin');
 
   await Promise.all(verifyContractsPromises);
 
@@ -126,18 +143,6 @@ async function main() {
     await registerSubsidy(vault.address, deployer);
     await registerSubsidy(strategy.address, deployer);
   }
-
-  if (strategyParams.verifyStrat) {
-    console.log("verifying contract...")
-    await hardhat.run("verify:verify", {
-      address: strategy.address,
-      constructorArguments: [
-        ...strategyConstructorArguments
-      ],
-    })
-  }
- 
-
 }
 
 main()
@@ -146,3 +151,4 @@ main()
     console.error(error);
     process.exit(1);
   });
+  

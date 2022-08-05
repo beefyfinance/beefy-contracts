@@ -120,7 +120,7 @@ const config: DeploymentConfig = {
       accounts,
     },
     optimism: {
-      url:  process.env.OPTIMISM_RPC || "https://mainnet.optimism.io",
+      url:  process.env.OPTIMISM_RPC || "https://rpc.ankr.com/optimism",
       chainId: 10, 
       accounts,
     }
@@ -133,7 +133,7 @@ const config: DeploymentConfig = {
   solidity: {
     compilers: [
       {
-        version: "0.8.11",
+        version: "0.8.15",
         settings: {
           optimizer: {
             enabled: true,

@@ -9,44 +9,39 @@ import { BeefyChain } from "../../utils/beefyChain";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: {  pancake, beefyfinance },
+  platforms: { sushi, beefyfinance },
   tokens: {
-    BNB: { address: BNB },
-    CAKE: { address: CAKE },
-    DAI: { address: DAI },
-    BUSD: { address: BUSD },
-    USDT: { address: USDT },
+    GDDY: { address: GDDY },
+    MATIC: { address: MATIC },
     USDC: { address: USDC },
-    LINK: { address: LINK},
-    SXP: { address: SXP }
   },
-} = addressBook.bsc;
+} = addressBook.polygon;
 
 const shouldVerifyOnEtherscan = false;
 
-const want = web3.utils.toChecksumAddress("0x0eD7e52944161450477ee417DE9Cd3a859b14fD0");
+const want = web3.utils.toChecksumAddress("0xDE990994309BC08E57aca82B1A19170AD84323E8");
 const ensId = ethers.utils.formatBytes32String("cake.eth");
 
 const vaultParams = {
-  mooName: "Moo Test",
-  mooSymbol: "mooTest",
+  mooName: "Moo Giddy GIDDY",
+  mooSymbol: "mooGiddyGIDDY",
   delay: 21600,
 };
 
 const strategyParams = {
-  want,
-  poolId: 2,
-  chef: "0xa5f8C5Dbd5F286960b9d90548680aE5ebFf07652", //pancake.masterchef,
-  unirouter: pancake.router,
-  strategist: "0x4cC72219fc8aEF162FC0c255D9B9C3Ff93B10882", // some address
+  want: GDDY,
+  poolId: 0,
+  chef: sushi.masterchef,
+  unirouter: sushi.router,
+  strategist: process.env.STRATEGIST_ADDRESS,
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   beefyFeeConfig: beefyfinance.beefyFeeConfig,
-  outputToNativeRoute: [CAKE, BNB],
-  outputToLp0Route: [CAKE],
-  outputToLp1Route: [CAKE, BNB],
+  outputToNativeRoute: [GDDY, USDC, MATIC],
+  outputToLp0Route: [GDDY, USDC],
+  outputToLp1Route: [GDDY],
   ensId
- // pendingRewardsFunctionName: "pendingTri", // used for rewardsAvailable(), use correct function name from masterchef
+  // pendingRewardsFunctionName: "pendingGDDY", // used for rewardsAvailable(), use correct function name from masterchef
 };
 
 const contractNames = {
@@ -119,8 +114,7 @@ async function main() {
       verifyContract(strategy.address, strategyConstructorArguments)
     );
   }
- // await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
-  await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
+  // await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
   console.log(`Transfering Vault Owner to ${beefyfinance.vaultOwner}`)
   await vault.transferOwnership(beefyfinance.vaultOwner);
   console.log();
