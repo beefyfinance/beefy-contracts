@@ -59,7 +59,7 @@ struct CommonAddresses {
    address beefyFeeConfig;
 }
 ```
-7. Similarly replace the StratManager constructor with `StratFeeManager(_commonAddresses)`
+7. Similarly replace the StratManager constructor with `StratFeeManager(_commonAddresses)` and remove the `public` identifier
 8. Find and replace every instance of `.add`, `.sub`, `.mul` and `.div` with the actual operator, i.e. replace `.div` with `/`
 9. Find and replace every instance of `now` with `block.timestamp`
 10. Find and replace every instance of `uint256(-1)` (or any use of overflow) with `type(uint256).max`
