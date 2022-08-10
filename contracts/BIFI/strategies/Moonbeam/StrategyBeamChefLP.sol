@@ -150,20 +150,21 @@ contract StrategyBeamChefLP is StratFeeManager, GasFeeThrottler {
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
-        uint256 callFeeAmount = (nativeBal * (fees.call)) / (DIVISOR);
+        uint256 callFeeAmount = (nativeBal * fees.call) / DIVISOR;
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = (nativeBal * (fees.beefy)) / (DIVISOR);
+        uint256 beefyFeeAmount = (nativeBal * fees.beefy) / DIVISOR;
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = (nativeBal * (fees.strategist)) / (DIVISOR);
-        IERC20(native).safeTransfer(strategist, strategistFee);
-        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFee);
+        uint256 strategistFeeAmount = (nativeBal * fees.strategist) / DIVISOR;
+        IERC20(native).safeTransfer(strategist, strategistFeeAmount);
+
+        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 outputHalf = IERC20(output).balanceOf(address(this)) / (2);
+        uint256 outputHalf = IERC20(output).balanceOf(address(this)) / 2;
 
         if (lpToken0 != output) {
             IUniswapRouterETH(unirouter).swapExactTokensForTokens(
