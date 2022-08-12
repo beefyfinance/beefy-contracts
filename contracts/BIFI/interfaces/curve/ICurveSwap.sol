@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0;
 
 interface ICurveSwap {
     function remove_liquidity_one_coin(uint256 token_amount, int128 i, uint256 min_amount) external;

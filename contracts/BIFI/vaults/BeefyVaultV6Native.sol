@@ -31,7 +31,7 @@ contract BeefyVaultV6Native is ERC20, Ownable, ReentrancyGuard {
     // The strategy currently in use by the vault.
     IStrategy public strategy;
     // BEP20 token version of BNB.
-    IWrappedNative public native;
+    IERC20 public native;
     // The minimum time it has to pass before a strat candidate can be approved.
     uint256 public immutable approvalDelay;
 
@@ -57,7 +57,7 @@ contract BeefyVaultV6Native is ERC20, Ownable, ReentrancyGuard {
         _name,
         _symbol
     ) {
-        native = IWrappedNative(_native);
+        native = IERC20(_native);
         strategy = _strategy;
         approvalDelay = _approvalDelay;
     }
@@ -126,7 +126,7 @@ contract BeefyVaultV6Native is ERC20, Ownable, ReentrancyGuard {
 
         uint256 _pool = balance();
         uint256 _amount = msg.value;
-        native.deposit{value: _amount}();
+        IWrappedNative(address(native)).deposit{value: _amount}();
         earn();
         uint256 _after = balance();
         _amount = _after.sub(_pool); // Additional check for deflationary tokens
@@ -205,7 +205,7 @@ contract BeefyVaultV6Native is ERC20, Ownable, ReentrancyGuard {
             }
         }
 
-        native.withdraw(r);
+        IWrappedNative(address(native)).withdraw(r);
         msg.sender.transfer(r);
     }
 
