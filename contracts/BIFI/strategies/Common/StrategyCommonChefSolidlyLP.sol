@@ -166,23 +166,22 @@ contract StrategyCommonChefSolidlyLP is StratFeeManager, GasFeeThrottler {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 lp0Amt;
-        uint256 lp1Amt;
         uint256 outputBal = IERC20(output).balanceOf(address(this));
+        uint256 lp0Amt = outputBal / 2;
+        uint256 lp1Amt = outputBal - lp0Amt;
+
         if (stable) {
-            lp0Amt = outputBal * getRatio() / 10**18;
-        } else { 
-            lp0Amt = outputBal / 2;
-            lp1Amt = lp0Amt;
+            // TODO need adjustment for non e18 decimals
+            uint256 out0 = ISolidlyRouter(unirouter).getAmountsOut(lp0Amt, outputToLp0Route)[outputToLp0Route.length];
+            uint256 out1 = ISolidlyRouter(unirouter).getAmountsOut(lp1Amt, outputToLp1Route)[outputToLp1Route.length];
+            (uint256 amountA, uint256 amountB,) = ISolidlyRouter(unirouter).quoteAddLiquidity(lpToken0, lpToken1, stable, out0, out1);
+            uint256 ratio = out0 * 1e18 / out1 * amountB / amountA;
+            lp0Amt = outputBal * 1e18 / (ratio + 1e18);
+            lp1Amt = outputBal - lp0Amt;
         }
 
         if (lpToken0 != output) {
             ISolidlyRouter(unirouter).swapExactTokensForTokens(lp0Amt, 0, outputToLp0Route, address(this), block.timestamp);
-        }
-
-        if (stable) {
-            uint256 ratio = 10**18 - getRatio();
-            lp1Amt = outputBal * ratio / 10**18;
         }
 
         if (lpToken1 != output) {

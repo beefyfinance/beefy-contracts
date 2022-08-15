@@ -73,6 +73,8 @@ interface ISolidlyRouter {
     ) external returns (uint[] memory amounts);
 
     function getAmountOut(uint amountIn, address tokenIn, address tokenOut) external view returns (uint amount, bool stable);
+
+    function getAmountsOut(uint amountIn, Routes[] memory routes) external view returns (uint[] memory amounts);
    
     function quoteAddLiquidity(
         address tokenA,
