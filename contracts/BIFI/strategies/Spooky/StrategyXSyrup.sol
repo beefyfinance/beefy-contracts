@@ -1,21 +1,18 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/spooky/IXPool.sol";
 import "../../interfaces/spooky/IXChef.sol";
-import "../Common/StratManager.sol";
-import "../Common/FeeManager.sol";
-import "../../utils/GasThrottler.sol";
+import "../Common/StratFeeManager.sol";
+import "../../utils/GasFeeThrottler.sol";
 
-contract StrategyXSyrup is StratManager, FeeManager, GasThrottler {
+contract StrategyXSyrup is StratFeeManager, GasFeeThrottler {
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
 
     // Tokens used
     address public native;
@@ -45,14 +42,10 @@ contract StrategyXSyrup is StratManager, FeeManager, GasThrottler {
         address _xWant,
         uint256 _pid,
         address _xChef,
-        address _vault,
-        address _unirouter,
-        address _keeper,
-        address _strategist,
-        address _beefyFeeRecipient,
+        CommonAddresses memory _commonAddresses,
         address[] memory _outputToNativeRoute,
         address[] memory _outputToWantRoute
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratFeeManager(_commonAddresses) {
         want = _want;
         xWant = _xWant;
         pid = _pid;
@@ -89,8 +82,8 @@ contract StrategyXSyrup is StratManager, FeeManager, GasThrottler {
         uint256 xAmount = IXPool(xWant).BOOForxBOO(_amount);
 
         if (wantBal < _amount) {
-            IXChef(xChef).withdraw(pid, xAmount.sub(xWantBal));
-            IXPool(xWant).leave(xAmount.sub(xWantBal));
+            IXChef(xChef).withdraw(pid, xAmount - xWantBal);
+            IXPool(xWant).leave(xAmount - xWantBal);
             wantBal = balanceOfWant();
         }
 
@@ -99,8 +92,8 @@ contract StrategyXSyrup is StratManager, FeeManager, GasThrottler {
         }
 
         if (tx.origin != owner() && !paused()) {
-            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            wantBal = wantBal.sub(withdrawalFeeAmount);
+            uint256 withdrawalFeeAmount = wantBal * withdrawalFee / WITHDRAWAL_MAX;
+            wantBal = wantBal - withdrawalFeeAmount;
         }
 
         IERC20(want).safeTransfer(vault, wantBal);
@@ -144,22 +137,25 @@ contract StrategyXSyrup is StratManager, FeeManager, GasThrottler {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
+        IFeeConfig.FeeCategory memory fees = getFees();
         uint256 nativeBal;
         if (output != native) {
-            uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+            uint256 toNative = IERC20(output).balanceOf(address(this)) * fees.total / DIVISOR;
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(
+                toNative, 0, outputToNativeRoute, address(this), block.timestamp
+            );
             nativeBal = IERC20(native).balanceOf(address(this));
         } else {
-            nativeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000);
+            nativeBal = IERC20(native).balanceOf(address(this)) * fees.total / DIVISOR;
         }
 
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
+        uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
+        uint256 beefyFeeAmount = nativeBal * fees.beefy / DIVISOR;
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFeeAmount = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        uint256 strategistFeeAmount = nativeBal * fees.strategist / DIVISOR;
         IERC20(native).safeTransfer(strategist, strategistFeeAmount);
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
@@ -175,7 +171,7 @@ contract StrategyXSyrup is StratManager, FeeManager, GasThrottler {
 
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
-        return balanceOfWant().add(balanceOfPool());
+        return balanceOfWant() + balanceOfPool();
     }
 
     // it calculates how much 'want' this contract holds.
@@ -205,17 +201,18 @@ contract StrategyXSyrup is StratManager, FeeManager, GasThrottler {
     }
 
     function callReward() public view returns (uint256) {
+        IFeeConfig.FeeCategory memory fees = getFees();
         uint256 outputBal = rewardsAvailable();
         uint256 nativeOut;
 
         if (output != native) {
             uint256[] memory amountsOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
-            nativeOut = amountsOut[amountsOut.length - 1].mul(45).div(1000).mul(callFee).div(MAX_FEE);
+            nativeOut = amountsOut[amountsOut.length - 1];
         } else {
-            nativeOut = outputBal.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+            nativeOut = outputBal;
         }
 
-        return nativeOut;
+        return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
@@ -265,9 +262,9 @@ contract StrategyXSyrup is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(xWant, uint256(-1));
-        IERC20(xWant).safeApprove(xChef, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(xWant, type(uint).max);
+        IERC20(xWant).safeApprove(xChef, type(uint).max);
+        IERC20(output).safeApprove(unirouter, type(uint).max);
     }
 
     function _removeAllowances() internal {
@@ -300,7 +297,7 @@ contract StrategyXSyrup is StratManager, FeeManager, GasThrottler {
         outputToNativeRoute = _outputToNativeRoute;
         outputToWantRoute = _outputToWantRoute;
 
-        IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(output).safeApprove(unirouter, type(uint).max);
         IXChef(xChef).deposit(pid, balanceOfXWant());
         emit SwapXChefPool(pid);
     }
