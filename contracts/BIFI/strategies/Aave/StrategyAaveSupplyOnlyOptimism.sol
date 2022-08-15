@@ -9,7 +9,7 @@ import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../interfaces/aave/IDataProvider.sol";
 import "../../interfaces/aave/IAaveV3Incentives.sol";
 import "../../interfaces/aave/ILendingPool.sol";
-import "../../interfaces/common/IUniswapRouterSolidly.sol";
+import "../../interfaces/common/ISolidlyRouter.sol";
 import "../Common/StratFeeManager.sol";
 import "../../utils/GasFeeThrottler.sol";
 
@@ -28,8 +28,8 @@ contract StrategyAaveSupplyOnlyOptimism is StratFeeManager, GasFeeThrottler {
     address public incentivesController;
 
     // Routes
-    IUniswapRouterSolidly.Routes[] public outputToNativeRoute;
-    IUniswapRouterSolidly.Routes[] public nativeToWantRoute;
+    ISolidlyRouter.Routes[] public outputToNativeRoute;
+    ISolidlyRouter.Routes[] public nativeToWantRoute;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -44,8 +44,8 @@ contract StrategyAaveSupplyOnlyOptimism is StratFeeManager, GasFeeThrottler {
         address _lendingPool,
         address _incentivesController,
         CommonAddresses memory _commonAddresses,
-        IUniswapRouterSolidly.Routes[] memory _nativeToWantRoute,
-        IUniswapRouterSolidly.Routes[] memory _outputToNativeRoute
+        ISolidlyRouter.Routes[] memory _nativeToWantRoute,
+        ISolidlyRouter.Routes[] memory _outputToNativeRoute
     ) StratFeeManager(_commonAddresses) {
         
         for (uint i; i < _nativeToWantRoute.length; ++i) {
@@ -143,7 +143,7 @@ contract StrategyAaveSupplyOnlyOptimism is StratFeeManager, GasFeeThrottler {
         IFeeConfig.FeeCategory memory fees = getFees();
         uint256 toNative = IERC20(output).balanceOf(address(this));
         if (output != native) {
-            IUniswapRouterSolidly(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
+            ISolidlyRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
         }
 
         uint256 stratFees = IERC20(native).balanceOf(address(this)) * fees.total / DIVISOR;
@@ -164,7 +164,7 @@ contract StrategyAaveSupplyOnlyOptimism is StratFeeManager, GasFeeThrottler {
     function swapRewards() internal {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
         if (want != native) {
-            IUniswapRouterSolidly(unirouter).swapExactTokensForTokens(nativeBal, 0, nativeToWantRoute, address(this), block.timestamp);
+            ISolidlyRouter(unirouter).swapExactTokensForTokens(nativeBal, 0, nativeToWantRoute, address(this), block.timestamp);
         }
     }
 
@@ -215,7 +215,7 @@ contract StrategyAaveSupplyOnlyOptimism is StratFeeManager, GasFeeThrottler {
         uint256 outputBal = rewardsAvailable();
         uint256 nativeOut;
         if (outputBal > 0) {
-            (nativeOut,) = IUniswapRouterSolidly(unirouter).getAmountOut(outputBal, output, native);
+            (nativeOut,) = ISolidlyRouter(unirouter).getAmountOut(outputBal, output, native);
             }
 
         return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;

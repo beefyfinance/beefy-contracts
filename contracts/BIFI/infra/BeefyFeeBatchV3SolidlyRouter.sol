@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "../strategies/BeSolid/IUniswapRouterSolidlyV2.sol";
+import "../interfaces/common/ISolidlyRouter.sol";
 
 interface IRewardPool {
     function notifyRewardAmount(uint256 amount) external;
@@ -28,8 +28,8 @@ contract BeefyFeeBatchV3SolidlyRouter is Initializable, OwnableUpgradeable {
     uint public treasuryFee;
     uint public rewardPoolFee;
 
-    IUniswapRouterSolidlyV2.Routes[] public wNativeToBifiRoute;
-    IUniswapRouterSolidlyV2.Routes[] public wNativeToStableRoute;
+    ISolidlyRouter.Routes[] public wNativeToBifiRoute;
+    ISolidlyRouter.Routes[] public wNativeToStableRoute;
 
     bool public splitTreasury;
 
@@ -44,8 +44,8 @@ contract BeefyFeeBatchV3SolidlyRouter is Initializable, OwnableUpgradeable {
         address _treasury, 
         address _rewardPool, 
         address _unirouter,
-        IUniswapRouterSolidlyV2.Routes[] memory _bifiRoute, 
-        IUniswapRouterSolidlyV2.Routes[] memory _stableRoute,
+        ISolidlyRouter.Routes[] memory _bifiRoute,
+        ISolidlyRouter.Routes[] memory _stableRoute,
         bool _splitTreasury, 
         uint256 _treasuryFee 
     ) public initializer {
@@ -79,11 +79,11 @@ contract BeefyFeeBatchV3SolidlyRouter is Initializable, OwnableUpgradeable {
 
         if (splitTreasury) {
             uint256 treasuryHalf = wNativeBal * treasuryFee / MAX_FEE / 2;
-            IUniswapRouterSolidlyV2(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wNativeToStableRoute, treasury, block.timestamp);
-            IUniswapRouterSolidlyV2(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wNativeToBifiRoute, treasury, block.timestamp);
+            ISolidlyRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wNativeToStableRoute, treasury, block.timestamp);
+            ISolidlyRouter(unirouter).swapExactTokensForTokens(treasuryHalf, 0, wNativeToBifiRoute, treasury, block.timestamp);
         } else {
             uint256 treasuryAmount = wNativeBal * treasuryFee / MAX_FEE;
-            IUniswapRouterSolidlyV2(unirouter).swapExactTokensForTokens(treasuryAmount, 0, wNativeToStableRoute, treasury, block.timestamp);
+            ISolidlyRouter(unirouter).swapExactTokensForTokens(treasuryAmount, 0, wNativeToStableRoute, treasury, block.timestamp);
         }
 
         uint256 rewardPoolAmount = wNativeBal * rewardPoolFee / MAX_FEE;
@@ -115,7 +115,7 @@ contract BeefyFeeBatchV3SolidlyRouter is Initializable, OwnableUpgradeable {
         unirouter = _unirouter;
     }
 
-    function setRoute(IUniswapRouterSolidlyV2.Routes[] memory _route, bool _stableRoute) external onlyOwner {
+    function setRoute(ISolidlyRouter.Routes[] memory _route, bool _stableRoute) external onlyOwner {
         require(_route[0].from == address(wNative), "!wNative");
         if(_stableRoute) {
             delete wNativeToStableRoute;

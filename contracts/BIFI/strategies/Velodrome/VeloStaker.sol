@@ -7,7 +7,7 @@ import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin-4/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "../BeSolid/BeSolidStaker.sol";
-import "../BeSolid/IUniswapRouterSolidlyV2.sol";
+import "../../interfaces/common/ISolidlyRouter.sol";
 
 interface IRewardPool {
     function notifyRewardAmount(uint256 reward) external;
@@ -24,7 +24,7 @@ contract VeloStaker is ERC20, BeSolidStaker {
     // Needed addresses
     IRewardPool public rewardPool;
     address[] public activeVoteLps;
-    IUniswapRouterSolidlyV2 public router;
+    ISolidlyRouter public router;
 
     // Voted Gauges
     struct Gauges {
@@ -35,7 +35,7 @@ contract VeloStaker is ERC20, BeSolidStaker {
     }
 
     // Mapping our reward token to a route 
-    mapping (address => IUniswapRouterSolidlyV2.Routes[]) public routes;
+    mapping (address => ISolidlyRouter.Routes[]) public routes;
     mapping (address => bool) public lpIntialized;
     mapping (address => Gauges) public gauges;
 
@@ -64,7 +64,7 @@ contract VeloStaker is ERC20, BeSolidStaker {
         _voter
     ) {
        rewardPool = IRewardPool(_rewardPool);
-       router = IUniswapRouterSolidlyV2(_router);
+       router = ISolidlyRouter(_router);
     }
 
     // Set our reward Pool to send our earned Velo
@@ -76,7 +76,7 @@ contract VeloStaker is ERC20, BeSolidStaker {
     // Set our router to exchange our rewards
     function setRouter(address _router) external onlyOwner {
         emit NewRouter(address(router), _router);
-        router = IUniswapRouterSolidlyV2(_router);
+        router = ISolidlyRouter(_router);
     }
 
     // vote for emission weights
@@ -111,7 +111,7 @@ contract VeloStaker is ERC20, BeSolidStaker {
     }
 
      // Add reward token
-    function addRewardToken(IUniswapRouterSolidlyV2.Routes[] memory _route) external onlyManager {
+    function addRewardToken(ISolidlyRouter.Routes[] memory _route) external onlyManager {
         for (uint i; i < _route.length; ++i) {
             routes[_route[0].from].push(_route[i]);
         }

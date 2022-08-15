@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../../interfaces/common/IUniswapRouterSolidly.sol";
+import "../../interfaces/common/ISolidlyRouter.sol";
 import "../../interfaces/common/IMasterChef.sol";
 import "../../interfaces/stargate/IStargateRouterETH.sol";
 import "../Common/StratFeeManager.sol";
@@ -34,7 +34,7 @@ contract StrategyStargateOpNative is StratFeeManager, GasFeeThrottler {
     string public pendingRewardsFunctionName;
 
     // Routes
-    IUniswapRouterSolidly.Routes[] public outputToNativeRoute;
+    ISolidlyRouter.Routes[] public outputToNativeRoute;
 
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
@@ -56,7 +56,7 @@ contract StrategyStargateOpNative is StratFeeManager, GasFeeThrottler {
         stargateRouter = _stargateRouter;
 
         for (uint i; i < _outputToNativeRoute.length; ++i) {
-            outputToNativeRoute.push(IUniswapRouterSolidly.Routes({
+            outputToNativeRoute.push(ISolidlyRouter.Routes({
                 from: _outputToNativeRoute[i][0],
                 to: _outputToNativeRoute[i][1],
                 stable: _stables[i]
@@ -141,7 +141,7 @@ contract StrategyStargateOpNative is StratFeeManager, GasFeeThrottler {
     function chargeFees(address callFeeRecipient) internal {
         IFeeConfig.FeeCategory memory fees = getFees();
         uint256 toNative = IERC20(output).balanceOf(address(this));
-        IUniswapRouterSolidly(unirouter).swapExactTokensForTokens(
+        ISolidlyRouter(unirouter).swapExactTokensForTokens(
             toNative, 0, outputToNativeRoute, address(this), block.timestamp
         );
 
@@ -208,7 +208,7 @@ contract StrategyStargateOpNative is StratFeeManager, GasFeeThrottler {
         uint256 outputBal = rewardsAvailable();
         uint256 nativeOut;
         if (outputBal > 0) {
-            (nativeOut,) = IUniswapRouterSolidly(unirouter).getAmountOut(outputBal, output, native);
+            (nativeOut,) = ISolidlyRouter(unirouter).getAmountOut(outputBal, output, native);
         }
 
         return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
