@@ -44,8 +44,8 @@
     "flat:chain": "bin/flattenChainContracts.sh",
     "abi-to-sol": "abi-to-sol",
     "installForge": ". scripts/forge/installForge.sh",
-    "forgeTest:vault": "forge test --force --fork-url https://rpc.ftm.tools --match-contract ProdVaultTest"
-    "deploy:vaultFactory": "hardhat run scripts/deploy-vault-proxyFactory.js --network",
+    "forgeTest:vault": "forge test --force --fork-url https://rpc.ftm.tools --match-contract ProdVaultTest",
+    "deploy:vaultFactory": "hardhat run scripts/deploy-vault-proxyFactory.js --network"
   },
   "devDependencies": {
     "@chainlink/contracts": "^0.2.1",
