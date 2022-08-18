@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 import "../interfaces/beefy/IStrategyV7.sol";
 
@@ -17,7 +16,6 @@ import "../interfaces/beefy/IStrategyV7.sol";
  */
 contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    using SafeMathUpgradeable for uint256;
 
     struct StratCandidate {
         address implementation;
@@ -73,7 +71,7 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
      *  and the balance deployed in other contracts as part of the strategy.
      */
     function balance() public view returns (uint) {
-        return want().balanceOf(address(this)).add(IStrategyV7(strategy).balanceOf());
+        return want().balanceOf(address(this)) + IStrategyV7(strategy).balanceOf();
     }
 
     /**
@@ -91,7 +89,7 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
      * Returns an uint256 with 18 decimals of how much underlying asset one vault share represents.
      */
     function getPricePerFullShare() public view returns (uint256) {
-        return totalSupply() == 0 ? 1e18 : balance().mul(1e18).div(totalSupply());
+        return totalSupply() == 0 ? 1e18 : balance() * 1e18 / totalSupply();
     }
 
     /**
@@ -112,12 +110,12 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
         want().safeTransferFrom(msg.sender, address(this), _amount);
         earn();
         uint256 _after = balance();
-        _amount = _after.sub(_pool); // Additional check for deflationary tokens
+        _amount = _after - _pool; // Additional check for deflationary tokens
         uint256 shares = 0;
         if (totalSupply() == 0) {
             shares = _amount;
         } else {
-            shares = (_amount.mul(totalSupply())).div(_pool);
+            shares = (_amount * totalSupply()) / _pool;
         }
         _mint(msg.sender, shares);
     }
@@ -145,17 +143,17 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
      * tokens are burned in the process.
      */
     function withdraw(uint256 _shares) public {
-        uint256 r = (balance().mul(_shares)).div(totalSupply());
+        uint256 r = (balance() * _shares) / totalSupply();
         _burn(msg.sender, _shares);
 
         uint b = want().balanceOf(address(this));
         if (b < r) {
-            uint _withdraw = r.sub(b);
+            uint _withdraw = r - b;
             strategy.withdraw(_withdraw);
             uint _after = want().balanceOf(address(this));
-            uint _diff = _after.sub(b);
+            uint _diff = _after - b;
             if (_diff < _withdraw) {
-                r = b.add(_diff);
+                r = b + _diff;
             }
         }
 
@@ -185,7 +183,7 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
 
     function upgradeStrat() public onlyOwner {
         require(stratCandidate.implementation != address(0), "There is no candidate");
-        require(stratCandidate.proposedTime.add(approvalDelay) < block.timestamp, "Delay has not passed");
+        require(stratCandidate.proposedTime + approvalDelay < block.timestamp, "Delay has not passed");
 
         emit UpgradeStrat(stratCandidate.implementation);
 
