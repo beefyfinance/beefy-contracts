@@ -16,18 +16,39 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
     uint256 public rewardPerTokenStored;
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
+    uint256 public rewardBalance;
+
+    address public manager;
+    address public treasury;
+    uint256 public treasuryFee = 500;
+
+    bool public isPreStake = true;
+
+    mapping(address => bool) public notifiers;
 
     event RewardAdded(uint256 reward);
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
 
-    constructor(address _stakedToken, address _rewardToken,  uint256 _duration)
+    constructor(address _stakedToken, address _rewardToken,  uint256 _duration, address _manager)
         public
         LPTokenWrapper(_stakedToken)
     {
         rewardToken = IERC20(_rewardToken);
         duration = _duration;
+        manager = _manager;
+        treasury = _manager;
+    }
+
+    modifier onlyManager() {
+        require(msg.sender == manager || msg.sender == owner(), "!manager");
+        _;
+    }
+
+    modifier onlyNotifier() {
+        require(msg.sender == manager || msg.sender == owner() || notifiers[msg.sender], "!notifier");
+        _;
     }
 
     modifier updateReward(address account) {
@@ -88,22 +109,43 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
         uint256 reward = earned(msg.sender);
         if (reward > 0) {
             rewards[msg.sender] = 0;
+            rewardBalance = rewardBalance.sub(reward);
             rewardToken.safeTransfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
         }
     }
 
-    function notifyRewardAmount()
-        external
-        onlyOwner
-        updateReward(address(0))
-    {
-        require(periodFinish == 0, "!notified");
+    function setRewardDuration(uint256 _duration) external onlyManager {
+        require(block.timestamp >= periodFinish);
+        duration = _duration;
+    }
 
-        uint256 reward = IERC20(rewardToken).balanceOf(address(this));
+    function setTreasuryFee(uint256 _fee) external onlyManager {
+        require(_fee <= 500);
+        treasuryFee = _fee;
+    }
 
+    function setTreasury(address _treasury) external onlyManager {
+        treasury = _treasury;
+    }
+
+    function openPreStake() external onlyManager {
+        isPreStake = true;
+    }
+
+    function setNotifier(address _notifier, bool _enable) external onlyManager {
+        notifiers[_notifier] = _enable;
+    }
+
+    function _notify(address _sender, uint256 reward) internal updateReward(address(0)) {
+        if (_sender != owner() && _sender != manager) {
+            uint256 fee = reward.mul(treasuryFee).div(10000);
+            if (fee > 0) {
+                rewardToken.safeTransfer(treasury, fee);
+                reward = reward.sub(fee);
+            }
+        }
         require(reward != 0, "no rewards");
-            
         if (block.timestamp >= periodFinish) {
             rewardRate = reward.div(duration);
         } else {
@@ -113,15 +155,32 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
         }
         lastUpdateTime = block.timestamp;
         periodFinish = block.timestamp.add(duration);
+        rewardBalance = rewardBalance.add(reward);
+        isPreStake = false;
         emit RewardAdded(reward);
     }
 
-    function inCaseTokensGetStuck(address _token) external onlyOwner {
+    function notifyAmount(uint256 _amount) external onlyNotifier {
+        rewardToken.safeTransferFrom(msg.sender, address(this), _amount);
+        _notify(msg.sender, _amount);
+    }
+
+    function notifyAlreadySent() external onlyNotifier {
+        uint256 balance = rewardToken.balanceOf(address(this));
+        uint256 userRewards = rewardBalance;
+        if (rewardToken == stakedToken) {
+            userRewards = userRewards.add(totalSupply());
+        }
+        uint256 newRewards = balance.sub(userRewards);
+        _notify(msg.sender, newRewards);
+    }
+
+    function inCaseTokensGetStuck(address _token) external onlyManager {
         uint256 amount = IERC20(_token).balanceOf(address(this));
         inCaseTokensGetStuck(_token, msg.sender, amount);
     }
 
-    function inCaseTokensGetStuck(address _token, address _to, uint _amount) public onlyOwner {
+    function inCaseTokensGetStuck(address _token, address _to, uint _amount) public onlyManager {
         if (totalSupply() != 0) {
             require(_token != address(stakedToken), "!staked");
         }
