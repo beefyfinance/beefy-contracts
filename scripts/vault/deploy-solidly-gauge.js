@@ -6,45 +6,43 @@ import { predictAddresses } from "../../utils/predictAddresses";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: {  velodrome, beefyfinance },
+  platforms: {  cone, beefyfinance },
   tokens: {
-    SNX: { address: SNX },
-    sUSD: { address: sUSD },
-    ETH: { address: ETH },
-    VELO: { address: VELO },
-    USDC: { address: USDC },
+    CONE: { address: CONE },
+    WBNB: { address: WBNB },
   },
-} = addressBook.optimism;
+} = addressBook.bsc;
 
 
-const want = web3.utils.toChecksumAddress("0x85FF5b70de43FeE34F3fA632adDD9F76a0f6bAA9");
-const gauge = web3.utils.toChecksumAddress("0xFC4B6deA9276D906AD36828dc2e7DbaCfC01B47f");
+const want = web3.utils.toChecksumAddress("0x672cD8201CEB518F9E42526ef7bCFe5263F41951");
+const gauge = web3.utils.toChecksumAddress("0x09635bd2F4aA47afc7eB9d2F03c4fE4e747D4B42");
 //const ensId = ethers.utils.formatBytes32String("cake.eth");
 
 const vaultParams = {
-  mooName: "Moo Velodrome SNX-sUSD",
-  mooSymbol: "mooVelodromeSNX-sUSD",
+  mooName: "Moo Cone CONE-BNB",
+  mooSymbol: "mooConeCONE-BNB",
   delay: 21600,
 };
 
 const strategyParams = {
   want: want,
   gauge: gauge,
-  unirouter: velodrome.router,
+  unirouter: cone.router,
+  gaugeStaker: cone.gaugeStaker,
   strategist: "0xb2e4A61D99cA58fB8aaC58Bb2F8A59d63f552fC0", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   feeConfig: beefyfinance.beefyFeeConfig,
-  outputToNativeRoute: [[VELO, ETH]],
-  outputToLp0Route: [[VELO, USDC, false],[USDC, sUSD, true],[sUSD, SNX, false]],
-  outputToLp1Route: [[VELO, USDC, false],[USDC, sUSD, true]],
+  outputToNativeRoute: [[CONE, WBNB, false]],
+  outputToLp0Route: [[CONE, CONE, false]],
+  outputToLp1Route: [[CONE, WBNB, false]],
   verifyStrat: false,
  // ensId
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonSolidlyGaugeLP",
+  strategy: "StrategyCommonSolidlyStakerLP",
 };
 
 async function main() {
@@ -80,6 +78,7 @@ async function main() {
   const strategyConstructorArguments = [
     strategyParams.want,
     strategyParams.gauge,
+    strategyParams.gaugeStaker,
     [
       vault.address,
       strategyParams.unirouter,

@@ -3,22 +3,24 @@ const { addressBook } = require("blockchain-addressbook");
 const ethers = hardhat.ethers;
 
 const {
-    platforms: { beefyfinance, velodrome },
-  } = addressBook.optimism;
+    platforms: { beefyfinance },
+  } = addressBook.bsc;
 
 const ensID = ethers.utils.formatBytes32String('cake.eth');
 
 const config = {
   rewardPool: ethers.constants.AddressZero,
   reserveRate: 2000,
-  solidvoter: velodrome.voter,
+  solidvoter: "0xC3B5d80E4c094B17603Ea8Bb15d2D31ff5954aAE", //dystopia.voter,
   voter: '0x5e1caC103F943Cd84A1E92dAde4145664ebf692A',
-  router: velodrome.router,
+  router: 1,//dystopia.router,
   id: ensID,
   keeper: beefyfinance.keeper,
-  name: 'Beefy Velo',
-  symbol: 'BeVelo',
-  contractName: 'VeloStaker'
+  name: 'Beefy Dyst',
+  symbol: 'BeDYST',
+  contractName: 'DystopiaStaker',
+  veDist: "0xdfB765935D7f4e38641457c431F89d20Db571674",
+  treasury: beefyfinance.treasuryMultisig,
 };
 
 async function main() {
@@ -36,14 +38,13 @@ async function main() {
   console.log(`deploying Beefy ${config.symbol}`);
 
   const lockerArguments = [
-    config.name,
-    config.symbol,
-    config.reserveRate,
+    //config.name,
+    //config.symbol,
     config.solidvoter,
+    config.veDist,
+    config.treasury,
     config.keeper,
-    config.voter,
-    config.rewardPool,
-    config.router,    
+    config.voter,   
   ];
 
   const staker = await BeToken.deploy(...lockerArguments);
