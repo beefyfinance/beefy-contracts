@@ -145,9 +145,9 @@ contract StrategyStellaMultiRewardsLP is StratFeeManager, GasFeeThrottler {
         if (rewardToOutputRoute.length != 0) {
             for (uint256 i; i < rewardToOutputRoute.length; i++) {
                 if (rewardToOutputRoute[i][0] == native) {
-                    uint256 nativeBal = address(this).balance;
-                    if (nativeBal > 0) {
-                        IWrappedNative(native).deposit{value: nativeBal}();
+                    uint256 unwrappedBal = address(this).balance;
+                    if (unwrappedBal > 0) {
+                        IWrappedNative(native).deposit{value: unwrappedBal}();
                     }
                 }
                 uint256 rewardBal = IERC20(rewardToOutputRoute[i][0]).balanceOf(address(this));
