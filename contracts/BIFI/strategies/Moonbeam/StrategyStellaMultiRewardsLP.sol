@@ -1,22 +1,19 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/common/IWrappedNative.sol";
 import "../../interfaces/solar/ISolarChef.sol";
-import "../Common/StratManager.sol";
-import "../Common/FeeManager.sol";
+import "../Common/StratFeeManager.sol";
+import "../../utils/GasFeeThrottler.sol";
 
-contract StrategyStellaMultiRewardsLP is StratManager, FeeManager {
+contract StrategyStellaMultiRewardsLP is StratFeeManager, GasFeeThrottler {
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
 
     // Tokens used
     address public native;
@@ -47,15 +44,11 @@ contract StrategyStellaMultiRewardsLP is StratManager, FeeManager {
         address _want,
         uint256 _poolId,
         address _chef,
-        address _vault,
-        address _unirouter,
-        address _keeper,
-        address _strategist,
-        address _beefyFeeRecipient,
+        CommonAddresses memory _commonAddresses,
         address[] memory _outputToNativeRoute,
         address[] memory _outputToLp0Route,
         address[] memory _outputToLp1Route
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratFeeManager(_commonAddresses) {
         want = _want;
         poolId = _poolId;
         chef = _chef;
@@ -94,7 +87,7 @@ contract StrategyStellaMultiRewardsLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            ISolarChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            ISolarChef(chef).withdraw(poolId, _amount - wantBal);
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -103,8 +96,8 @@ contract StrategyStellaMultiRewardsLP is StratManager, FeeManager {
         }
 
         if (tx.origin != owner() && !paused()) {
-            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            wantBal = wantBal.sub(withdrawalFeeAmount);
+            uint256 withdrawalFeeAmount = (wantBal * withdrawalFee) / WITHDRAWAL_MAX;
+            wantBal = wantBal - withdrawalFeeAmount;
         }
 
         IERC20(want).safeTransfer(vault, wantBal);
@@ -112,18 +105,18 @@ contract StrategyStellaMultiRewardsLP is StratManager, FeeManager {
         emit Withdraw(balanceOf());
     }
 
-    function beforeDeposit() external override {
+    function beforeDeposit() external virtual override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
             _harvest(tx.origin);
         }
     }
 
-    function harvest() external virtual {
+    function harvest() external virtual gasThrottle {
         _harvest(tx.origin);
     }
 
-    function harvest(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external virtual gasThrottle {
         _harvest(callFeeRecipient);
     }
 
@@ -132,7 +125,7 @@ contract StrategyStellaMultiRewardsLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest(address callFeeRecipient) internal {
+    function _harvest(address callFeeRecipient) internal whenNotPaused {
         ISolarChef(chef).deposit(poolId, 0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
@@ -148,33 +141,49 @@ contract StrategyStellaMultiRewardsLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
+        IFeeConfig.FeeCategory memory fees = getFees();
         if (rewardToOutputRoute.length != 0) {
-            for (uint i; i < rewardToOutputRoute.length; i++) {
+            for (uint256 i; i < rewardToOutputRoute.length; ) {
                 if (rewardToOutputRoute[i][0] == native) {
-                    uint256 nativeBal = address(this).balance;
-                    if (nativeBal > 0) {
-                        IWrappedNative(native).deposit{value: nativeBal}();
+                    uint256 unwrappedBal = address(this).balance;
+                    if (unwrappedBal > 0) {
+                        IWrappedNative(native).deposit{value: unwrappedBal}();
                     }
                 }
                 uint256 rewardBal = IERC20(rewardToOutputRoute[i][0]).balanceOf(address(this));
                 if (rewardBal > 0) {
-                    IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardBal, 0, rewardToOutputRoute[i], address(this), now);
+                    IUniswapRouterETH(unirouter).swapExactTokensForTokens(
+                        rewardBal,
+                        0,
+                        rewardToOutputRoute[i],
+                        address(this),
+                        block.timestamp
+                    );
+                }
+                unchecked {
+                    ++i;
                 }
             }
         }
 
-        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        uint256 toNative = (IERC20(output).balanceOf(address(this)) * fees.total) / DIVISOR;
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(
+            toNative,
+            0,
+            outputToNativeRoute,
+            address(this),
+            block.timestamp
+        );
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
+        uint256 callFeeAmount = (nativeBal * fees.call) / DIVISOR;
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
+        uint256 beefyFeeAmount = (nativeBal * fees.beefy) / DIVISOR;
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFeeAmount = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        uint256 strategistFeeAmount = (nativeBal * fees.strategist) / DIVISOR;
         IERC20(native).safeTransfer(strategist, strategistFeeAmount);
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
@@ -182,24 +191,45 @@ contract StrategyStellaMultiRewardsLP is StratManager, FeeManager {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
+        uint256 outputHalf = IERC20(output).balanceOf(address(this)) / 2;
 
         if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp0Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(
+                outputHalf,
+                0,
+                outputToLp0Route,
+                address(this),
+                block.timestamp
+            );
         }
 
         if (lpToken1 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf, 0, outputToLp1Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(
+                outputHalf,
+                0,
+                outputToLp1Route,
+                address(this),
+                block.timestamp
+            );
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
+        IUniswapRouterETH(unirouter).addLiquidity(
+            lpToken0,
+            lpToken1,
+            lp0Bal,
+            lp1Bal,
+            1,
+            1,
+            address(this),
+            block.timestamp
+        );
     }
 
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
-        return balanceOfWant().add(balanceOfPool());
+        return balanceOfWant() + balanceOfPool();
     }
 
     // it calculates how much 'want' this contract holds.
@@ -209,41 +239,54 @@ contract StrategyStellaMultiRewardsLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount,,,) = ISolarChef(chef).userInfo(poolId, address(this));
+        (uint256 _amount, , , ) = ISolarChef(chef).userInfo(poolId, address(this));
         return _amount;
     }
 
     function rewardsAvailable() public view returns (address[] memory, uint256[] memory) {
-        (address[] memory addresses,,,uint256[] memory amounts) = ISolarChef(chef).pendingTokens(poolId, address(this));
+        (address[] memory addresses, , , uint256[] memory amounts) = ISolarChef(chef).pendingTokens(
+            poolId,
+            address(this)
+        );
         return (addresses, amounts);
     }
 
     function callReward() public view returns (uint256) {
+        IFeeConfig.FeeCategory memory fees = getFees();
         (address[] memory rewardAdd, uint256[] memory rewardBal) = rewardsAvailable();
         uint256 nativeBal;
-        try IUniswapRouterETH(unirouter).getAmountsOut(rewardBal[0], outputToNativeRoute)
-        returns (uint256[] memory amountOut) {
+        try IUniswapRouterETH(unirouter).getAmountsOut(rewardBal[0], outputToNativeRoute) returns (
+            uint256[] memory amountOut
+        ) {
             nativeBal = amountOut[amountOut.length - 1];
         } catch {}
 
         if (rewardToOutputRoute.length != 0) {
-            for (uint i; i < rewardToOutputRoute.length; i++) {
-                for (uint j = 1; j < rewardAdd.length; j++) {
+            for (uint256 i; i < rewardToOutputRoute.length; ) {
+                for (uint256 j = 1; j < rewardAdd.length; ) {
                     if (rewardAdd[j] == rewardToOutputRoute[i][0]) {
-                        try IUniswapRouterETH(unirouter).getAmountsOut(rewardBal[j], rewardToOutputRoute[i])
-                        returns (uint256[] memory initialAmountOut) {
+                        try IUniswapRouterETH(unirouter).getAmountsOut(rewardBal[j], rewardToOutputRoute[i]) returns (
+                            uint256[] memory initialAmountOut
+                        ) {
                             uint256 outputBal = initialAmountOut[initialAmountOut.length - 1];
-                            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
-                            returns (uint256[] memory finalAmountOut) {
-                                nativeBal = nativeBal.add(finalAmountOut[finalAmountOut.length - 1]);
+                            try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute) returns (
+                                uint256[] memory finalAmountOut
+                            ) {
+                                nativeBal = nativeBal + finalAmountOut[finalAmountOut.length - 1];
                             } catch {}
                         } catch {}
                     }
+                    unchecked {
+                        ++j;
+                    }
+                }
+                unchecked {
+                    ++i;
                 }
             }
         }
 
-        return nativeBal.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+        return (((nativeBal * fees.total) / DIVISOR) * fees.call) / DIVISOR;
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
@@ -254,6 +297,10 @@ contract StrategyStellaMultiRewardsLP is StratManager, FeeManager {
         } else {
             setWithdrawalFee(10);
         }
+    }
+
+    function setShouldGasThrottle(bool _shouldGasThrottle) external onlyManager {
+        shouldGasThrottle = _shouldGasThrottle;
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
@@ -287,19 +334,22 @@ contract StrategyStellaMultiRewardsLP is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(chef, type(uint256).max);
+        IERC20(output).safeApprove(unirouter, type(uint256).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
+        IERC20(lpToken0).safeApprove(unirouter, type(uint256).max);
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint256(-1));
+        IERC20(lpToken1).safeApprove(unirouter, type(uint256).max);
 
         if (rewardToOutputRoute.length != 0) {
-            for (uint i; i < rewardToOutputRoute.length; i++) {
+            for (uint256 i; i < rewardToOutputRoute.length; ) {
                 IERC20(rewardToOutputRoute[i][0]).safeApprove(unirouter, 0);
-                IERC20(rewardToOutputRoute[i][0]).safeApprove(unirouter, uint256(-1));
+                IERC20(rewardToOutputRoute[i][0]).safeApprove(unirouter, type(uint256).max);
+                unchecked {
+                    ++i;
+                }
             }
         }
     }
@@ -312,15 +362,18 @@ contract StrategyStellaMultiRewardsLP is StratManager, FeeManager {
         IERC20(lpToken1).safeApprove(unirouter, 0);
 
         if (rewardToOutputRoute.length != 0) {
-            for (uint i; i < rewardToOutputRoute.length; i++) {
+            for (uint256 i; i < rewardToOutputRoute.length; ) {
                 IERC20(rewardToOutputRoute[i][0]).safeApprove(unirouter, 0);
+                unchecked {
+                    ++i;
+                }
             }
         }
     }
 
     function addRewardRoute(address[] memory _rewardToOutputRoute) external onlyOwner {
         IERC20(_rewardToOutputRoute[0]).safeApprove(unirouter, 0);
-        IERC20(_rewardToOutputRoute[0]).safeApprove(unirouter, uint256(-1));
+        IERC20(_rewardToOutputRoute[0]).safeApprove(unirouter, type(uint256).max);
         rewardToOutputRoute.push(_rewardToOutputRoute);
     }
 
@@ -347,6 +400,6 @@ contract StrategyStellaMultiRewardsLP is StratManager, FeeManager {
     function rewardToOutput() external view returns (address[][] memory) {
         return rewardToOutputRoute;
     }
-     
-    receive () external payable {}
+
+    receive() external payable {}
 }
