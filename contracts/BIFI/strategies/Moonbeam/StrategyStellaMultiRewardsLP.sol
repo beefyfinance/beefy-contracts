@@ -143,7 +143,7 @@ contract StrategyStellaMultiRewardsLP is StratFeeManager, GasFeeThrottler {
     function chargeFees(address callFeeRecipient) internal {
         IFeeConfig.FeeCategory memory fees = getFees();
         if (rewardToOutputRoute.length != 0) {
-            for (uint256 i; i < rewardToOutputRoute.length; i++) {
+            for (uint256 i; i < rewardToOutputRoute.length; ) {
                 if (rewardToOutputRoute[i][0] == native) {
                     uint256 unwrappedBal = address(this).balance;
                     if (unwrappedBal > 0) {
@@ -159,6 +159,9 @@ contract StrategyStellaMultiRewardsLP is StratFeeManager, GasFeeThrottler {
                         address(this),
                         block.timestamp
                     );
+                }
+                unchecked {
+                    ++i;
                 }
             }
         }
@@ -259,8 +262,8 @@ contract StrategyStellaMultiRewardsLP is StratFeeManager, GasFeeThrottler {
         } catch {}
 
         if (rewardToOutputRoute.length != 0) {
-            for (uint256 i; i < rewardToOutputRoute.length; i++) {
-                for (uint256 j = 1; j < rewardAdd.length; j++) {
+            for (uint256 i; i < rewardToOutputRoute.length; ) {
+                for (uint256 j = 1; j < rewardAdd.length; ) {
                     if (rewardAdd[j] == rewardToOutputRoute[i][0]) {
                         try IUniswapRouterETH(unirouter).getAmountsOut(rewardBal[j], rewardToOutputRoute[i]) returns (
                             uint256[] memory initialAmountOut
@@ -273,6 +276,12 @@ contract StrategyStellaMultiRewardsLP is StratFeeManager, GasFeeThrottler {
                             } catch {}
                         } catch {}
                     }
+                    unchecked {
+                        ++j;
+                    }
+                }
+                unchecked {
+                    ++i;
                 }
             }
         }
@@ -335,9 +344,12 @@ contract StrategyStellaMultiRewardsLP is StratFeeManager, GasFeeThrottler {
         IERC20(lpToken1).safeApprove(unirouter, type(uint256).max);
 
         if (rewardToOutputRoute.length != 0) {
-            for (uint256 i; i < rewardToOutputRoute.length; i++) {
+            for (uint256 i; i < rewardToOutputRoute.length; ) {
                 IERC20(rewardToOutputRoute[i][0]).safeApprove(unirouter, 0);
                 IERC20(rewardToOutputRoute[i][0]).safeApprove(unirouter, type(uint256).max);
+                unchecked {
+                    ++i;
+                }
             }
         }
     }
@@ -350,8 +362,11 @@ contract StrategyStellaMultiRewardsLP is StratFeeManager, GasFeeThrottler {
         IERC20(lpToken1).safeApprove(unirouter, 0);
 
         if (rewardToOutputRoute.length != 0) {
-            for (uint256 i; i < rewardToOutputRoute.length; i++) {
+            for (uint256 i; i < rewardToOutputRoute.length; ) {
                 IERC20(rewardToOutputRoute[i][0]).safeApprove(unirouter, 0);
+                unchecked {
+                    ++i;
+                }
             }
         }
     }
