@@ -1,23 +1,20 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IWrappedNative.sol";
 import "../../interfaces/curve/ICurveSwap.sol";
 import "../../interfaces/curve/IGaugeFactory.sol";
 import "../../interfaces/curve/IRewardsGauge.sol";
-import "../Common/StratManager.sol";
-import "../Common/FeeManager.sol";
-import "../../utils/GasThrottler.sol";
+import "../Common/StratFeeManager.sol";
+import "../../utils/GasFeeThrottler.sol";
 
-contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
+contract StrategyCurveLP is StratFeeManager, GasFeeThrottler {
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
 
     // Tokens used
     address public want; // curve lpToken
@@ -66,26 +63,19 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
         address _gaugeFactory,
         address _gauge,
         address _pool,
-        uint _poolSize,
-        uint _depositIndex,
-        bool _useUnderlying,
-        bool _useMetapool,
+        uint[] memory _params, // [poolSize, depositIndex, useUnderlying, useMetapool]
         address[] memory _crvToNativeRoute,
         address[] memory _nativeToDepositRoute,
-        address _vault,
-        address _unirouter,
-        address _keeper,
-        address _strategist,
-        address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+        CommonAddresses memory _commonAddresses
+    ) StratFeeManager(_commonAddresses) {
         want = _want;
         gaugeFactory = _gaugeFactory;
         rewardsGauge = _gauge;
         pool = _pool;
-        poolSize = _poolSize;
-        depositIndex = _depositIndex;
-        useUnderlying = _useUnderlying;
-        useMetapool = _useMetapool;
+        poolSize = _params[0];
+        depositIndex = _params[1];
+        useUnderlying = _params[2] > 0;
+        useMetapool = _params[3] > 0;
 
         crv = _crvToNativeRoute[0];
         native = _crvToNativeRoute[_crvToNativeRoute.length - 1];
@@ -120,7 +110,7 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IRewardsGauge(rewardsGauge).withdraw(_amount.sub(wantBal));
+            IRewardsGauge(rewardsGauge).withdraw(_amount - wantBal);
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -128,12 +118,12 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
             wantBal = _amount;
         }
 
-        if (tx.origin == owner() || paused()) {
-            IERC20(want).safeTransfer(vault, wantBal);
-        } else {
-            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
+        if (tx.origin != owner() && !paused()) {
+            uint256 withdrawalFeeAmount = wantBal * withdrawalFee / WITHDRAWAL_MAX;
+            wantBal = wantBal - withdrawalFeeAmount;
         }
+
+        IERC20(want).safeTransfer(vault, wantBal);
 
         emit Withdraw(balanceOf());
     }
@@ -141,20 +131,24 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
-            _harvest();
+            _harvest(tx.origin);
         }
     }
 
-    function harvest() external virtual whenNotPaused gasThrottle {
-        _harvest();
+    function harvest() external gasThrottle virtual {
+        _harvest(tx.origin);
+    }
+
+    function harvest(address callFeeRecipient) external gasThrottle virtual {
+        _harvest(callFeeRecipient);
     }
 
     function managerHarvest() external onlyManager {
-        _harvest();
+        _harvest(tx.origin);
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
+    function _harvest(address callFeeRecipient) internal whenNotPaused {
         if (gaugeFactory != address(0)) {
             IGaugeFactory(gaugeFactory).mint(rewardsGauge);
         }
@@ -162,7 +156,7 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
         swapRewardsToNative();
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
         if (nativeBal > 0) {
-            chargeFees();
+            chargeFees(callFeeRecipient);
             addLiquidity();
             uint256 wantHarvested = balanceOfWant();
             deposit();
@@ -186,19 +180,20 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
     }
 
     // performance fees
-    function chargeFees() internal {
-        uint256 nativeFeeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000);
+    function chargeFees(address callFeeRecipient) internal {
+        IFeeConfig.FeeCategory memory fees = getFees();
+        uint256 nativeBal = IERC20(native).balanceOf(address(this)) * fees.total / DIVISOR;
 
-        uint256 callFeeAmount = nativeFeeBal.mul(callFee).div(MAX_FEE);
-        IERC20(native).safeTransfer(tx.origin, callFeeAmount);
+        uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
+        IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeFeeBal.mul(beefyFee).div(MAX_FEE);
+        uint256 beefyFeeAmount = nativeBal * fees.beefy / DIVISOR;
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeFeeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        uint256 strategistFeeAmount = nativeBal * fees.strategist / DIVISOR;
+        IERC20(native).safeTransfer(strategist, strategistFeeAmount);
 
-        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFee);
+        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
@@ -256,7 +251,7 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
 
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
-        return balanceOfWant().add(balanceOfPool());
+        return balanceOfWant() + balanceOfPool();
     }
 
     // it calculates how much 'want' this contract holds.
@@ -327,7 +322,8 @@ contract StrategyCurveLP is StratManager, FeeManager, GasThrottler {
         uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, crvToNativeRoute);
         uint256 nativeOut = amountOut[amountOut.length - 1];
 
-        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+        IFeeConfig.FeeCategory memory fees = getFees();
+        return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
     }
 
     function setShouldGasThrottle(bool _shouldGasThrottle) external onlyManager {
