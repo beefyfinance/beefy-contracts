@@ -31,14 +31,14 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
 
-    constructor(address _stakedToken, address _rewardToken,  uint256 _duration, address _manager)
+    constructor(address _stakedToken, address _rewardToken,  uint256 _duration, address _manager, address _treasury)
         public
         LPTokenWrapper(_stakedToken)
     {
         rewardToken = IERC20(_rewardToken);
         duration = _duration;
         manager = _manager;
-        treasury = _manager;
+        treasury = _treasury;
     }
 
     modifier onlyManager() {
@@ -137,13 +137,11 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
         notifiers[_notifier] = _enable;
     }
 
-    function _notify(address _sender, uint256 reward) internal updateReward(address(0)) {
-        if (_sender != owner() && _sender != manager) {
-            uint256 fee = reward.mul(treasuryFee).div(10000);
-            if (fee > 0) {
-                rewardToken.safeTransfer(treasury, fee);
-                reward = reward.sub(fee);
-            }
+    function _notify(uint256 reward) internal updateReward(address(0)) {
+        uint256 fee = reward.mul(treasuryFee).div(10000);
+        if (fee > 0) {
+            rewardToken.safeTransfer(treasury, fee);
+            reward = reward.sub(fee);
         }
         require(reward != 0, "no rewards");
         if (block.timestamp >= periodFinish) {
@@ -162,7 +160,7 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
 
     function notifyAmount(uint256 _amount) external onlyNotifier {
         rewardToken.safeTransferFrom(msg.sender, address(this), _amount);
-        _notify(msg.sender, _amount);
+        _notify(_amount);
     }
 
     function notifyAlreadySent() external onlyNotifier {
@@ -172,7 +170,7 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
             userRewards = userRewards.add(totalSupply());
         }
         uint256 newRewards = balance.sub(userRewards);
-        _notify(msg.sender, newRewards);
+        _notify(newRewards);
     }
 
     function inCaseTokensGetStuck(address _token) external onlyManager {
