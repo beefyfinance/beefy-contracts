@@ -2,7 +2,7 @@
 
 rm tmp/*.sol
 
-echo "// SPDX-License-Identifier: MIT" > tmp/StrategyCommonSolidlyStakerLP.sol
+echo "// SPDX-License-Identifier: MIT" > tmp/StrategyJungleChefLP.sol
 echo "// SPDX-License-Identifier: MIT" > tmp/StrategyStella.sol
 # echo "// SPDX-License-Identifier: MIT" > tmp/TimelockV4.sol
 # echo "// SPDX-License-Identifier: MIT" > tmp/Treasury.sol
@@ -18,6 +18,6 @@ truffle-flattener contracts/BIFI/vaults/BeefyVaultV6.sol | sed '/SPDX-License-Id
 truffle-flattener contracts/BIFI/infra/BeefyFeeConfigurator.sol | sed '/SPDX-License-Identifier/d' >> tmp/BeefyFeeConfigurator.sol
 # truffle-flattener contracts/BIFI/infra/BeefyFeeBatch.sol | sed '/SPDX-License-Identifier/d' >> tmp/Batch.sol
 truffle-flattener contracts/BIFI/strategies/BeSolid/DystopiaStaker.sol | sed '/SPDX-License-Identifier/d' >> tmp/DystopiaStaker.sol
-truffle-flattener contracts/BIFI/strategies/Common/StrategyCommonSolidlyStakerLP.sol | sed '/SPDX-License-Identifier/d' >> tmp/StrategyCommonSolidlyStakerLP.sol
+truffle-flattener contracts/BIFI/strategies/Ape/StrategyJungleChefLP.sol | sed '/SPDX-License-Identifier/d' >> tmp/StrategyJungleChefLP.sol
 # truffle-flattener node_modules/@openzeppelin/contracts/access/TimelockController.sol | sed '/SPDX-License-Identifier/d' >> tmp/TimelockController.sol
 
