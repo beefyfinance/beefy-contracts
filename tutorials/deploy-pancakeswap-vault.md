@@ -25,20 +25,20 @@ UPGRADER_PK=59c699...
 
 ## Deploying a Vault to your Development Environment
 
-1. Navigate to and open the `deploy-pancakeswap-vault.ts` script.
+1. Navigate to and open the `deploy-pancakeswap-vault.js` script.
 2. Change the tokens listed in the destructured object to match the tokens needed for deployment. If necessary, you can add tokens not listed in the `addressBook` manually.
 
    ```js
    const {
-     platforms: { pancake, beefyfinance },
-     tokens: {
-       BUSD: { address: BUSD },
-       WBNB: { address: WBNB },
-       CAKE: { address: CAKE },
-     },
+      platforms: { pancake, beefyfinance },
+      tokens: {
+         CAKE: { address: CAKE },
+         WBNB: { address: WBNB },
+         BUSD: { address: BUSD },
+      },
    } = addressBook.bsc;
-
-   const IDIA = web3.utils.toChecksumAddress("0x0b15Ddf19D47E6a86A56148fb4aFFFc6929BcB89");
+   
+   const newToken = web3.utils.toChecksumAddress("0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82");
    ```
 
 3. Find the LP address (`lpAddresses.56`) and pool id (`pid`) of the LP token corresponding to the vault that will be deployed. These values can be found in PancakeSwap's [repository][repository].
@@ -53,25 +53,12 @@ UPGRADER_PK=59c699...
    - `outputToLp1Route` is the path from the reward token to the second token in the LP.
 
 7. Update the `contractNames` with the appropriate vault and strategy names.
-8. In this tutorial we will be forking BSC, this creates a local version of BSC that we can deploy, and interact with. To fork the BSC chain you will need to use an archival node. You can create an archival node endpoint using [moralis.io][moralis.io] then add the URL to the BSC network in the `hardhat.config.ts` file.
-
-   ```js
-   const config: DeploymentConfig = {
-     defaultNetwork: "hardhat",
-     networks: {
-       ...,
-       bsc: {
-         url: "https://speedy-nodes-nyc.moralis.io/<YOUR_API_KEYS>/bsc/mainnet/archive",
-         chainId: 56,
-         accounts,
-       },
-       ...
-   ```
+8. In this tutorial we will be forking BSC, this creates a local version of BSC that we can deploy, and interact with. To fork the BSC chain you will need to use an archival node.
 
 9. Run `npx hardhat node --fork bsc` to create a fork. A message similar to the following shall appear in the terminal.
 
    ```bash
-   Forking bsc from RPC: https://speedy-nodes-nyc.moralis.io/<YOU_API_KEYS>/bsc/mainnet/archive
+   Forking bsc from RPC: https://rpc.ankr.com/bsc
    Started HTTP and WebSocket JSON-RPC server at http://127.0.0.1:8545/
 
    Accounts
@@ -86,22 +73,19 @@ UPGRADER_PK=59c699...
    Private Key: 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
    ```
 
-10. Open a separate terminal and run `npx hardhat run --network localhost tutorials/deploy-pancakeswap-vault.ts` to execute the script on the BSC node. Once the script completes execution you should see a similar message in your second terminal.
+10. Open a separate terminal and run `npx hardhat run tutorials/deploy-pancakeswap-vault.js --network localhost` to execute the script on the BSC node. Once the script completes execution you should see a similar message in your second terminal.
 
     ```bash
-    Deploying: Moo CakeV2 IDIA-BUSD
-    Moo CakeV2 IDIA-BUSD is now deployed
-    Deploying: StrategyCommonChefLPBsc
-    StrategyCommonChefLPBsc is now deployed
-
-    Vault: 0xD5677245C015d5e0A07Bc9932d39D88Fc8930860
-    Strategy: 0xF1D27De22166cb7A803a5eb1951AAc21897ad029
-    Want: 0x71E6de81381eFE0Aa98f56b3B43eB3727D640715
-    PoolId: 484
+    Deploying: Moo Cake CAKE-BNB
+    
+    Vault: 0x42AD3aE0B79Fa253ab732eba8FCF38864Ad4abf0
+    Strategy: 0x6F5F90122d77091a97cDD5DAF78217DCEafE0D40
+    Want: 0x0eD7e52944161450477ee417DE9Cd3a859b14fD0
+    PoolId: 2
 
     Running post deployment
     Setting pendingRewardsFunctionName to 'pendingCake'
-    Setting call fee to '11'
+    Transfered Vault Ownership to 0xA2E6391486670D2f1519461bcc915E4818aD1c9a
     ```
 
 11. From here I recommend writing/running your own set of tests to ensure everything was deployed properly. We recommend reviewing the `test/prod/VaultLifecycle.test.js` test script to get started. When ready you can run your tests using the following command `npx hardhat test --network localhost <PATH_TO_YOUR_TEST>`.
@@ -112,9 +96,9 @@ UPGRADER_PK=59c699...
 
    **NOTE THESE KEYS SHOULD NEVER BE SHARED WITH ANYONE. DOING SO WILL COMPROMISE THE ADDRESS AND ALL ASSETS HELD BY THE ADDRESS.**
 
-2. You will deploy the contract to the BSC chain using the same script from 'Deploying a Vault to your Development Environment'. In the `deploy-pancakeswap-vault.ts` script, change the `strategyParams.strategist` public keys to the address matching the private keys listed in your `.env` file.
+2. You will deploy the contract to the BSC chain using the same script from 'Deploying a Vault to your Development Environment'. In the `deploy-pancakeswap-vault.js` script, change the `strategyParams.strategist` public keys to the address matching the private keys listed in your `.env` file.
 3. Since you will be connecting directly to BSC you may change the RPC URL found in the `hardhat.config.ts` file.
-4. At this point you should be ready to deploy your vault to the BSC network. You can do this by simply running the following command `npx hardhat run --network bsc tutorials/deploy-pancakeswap-vault.ts`.
+4. At this point you should be ready to deploy your vault to the BSC network. You can do this by simply running the following command `npx hardhat run tutorials/deploy-pancakeswap-vault.js --network bsc`.
 5. Once the script completes execution you should be able to verify that it deployed successfully using the links in the terminal or querying bscsan using the Vault or Strategy addresses. From here we recommend performing manual tests as suggested in the [readme.md][readme.md]. NOTE, YOU MUST PERMISSION THE VAULT TO TRANSFER YOUR FUNDS BY SUBMITTING AN `approve()` TRANSACTION TO THE LP TOKEN WITH THE VAULT ADDRESS AND THE AMOUNT.
 
 [readme.md]: beefy-contracts/readme.md
@@ -122,4 +106,3 @@ UPGRADER_PK=59c699...
 [yarn]: https://yarnpkg.com
 [solc]: https://docs.soliditylang.org
 [repository]: https://github.com/pancakeswap/pancake-frontend/blob/master/src/config/constants/farms.ts
-[moralis.io]: https://docs.moralis.io/speedy-nodes/connecting-to-rpc-nodes/connect-to-bsc-node#get-your-bsc-node-url

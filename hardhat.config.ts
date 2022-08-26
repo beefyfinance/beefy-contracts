@@ -24,7 +24,7 @@ const config: DeploymentConfig = {
       accounts: hardhatNetworkAccounts,
     },
     bsc: {
-      url: process.env.BSC_RPC || "https://bsc-dataseed2.defibit.io/",
+      url: process.env.BSC_RPC || "https://rpc.ankr.com/bsc",
       chainId: 56,
       accounts,
     },
