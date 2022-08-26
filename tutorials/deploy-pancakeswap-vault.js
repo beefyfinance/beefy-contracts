@@ -1,50 +1,47 @@
 import hardhat, { ethers, web3 } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
 import { predictAddresses } from "../utils/predictAddresses";
-import { setCorrectCallFee } from "../utils/setCorrectCallFee";
 import { setPendingRewardsFunctionName } from "../utils/setPendingRewardsFunctionName";
-import { verifyContract } from "../utils/verifyContract";
-import { BeefyChain } from "../utils/beefyChain";
 
 const registerSubsidy = require("../utils/registerSubsidy");
 
 const {
   platforms: { pancake, beefyfinance },
   tokens: {
-    BUSD: { address: BUSD },
+    CAKE: { address: CAKE }, // This pulls the addresses from the address book, new tokens will probably not be in there yet.
     WBNB: { address: WBNB },
-    CAKE: { address: CAKE },
+    BUSD: { address: BUSD },
   },
 } = addressBook.bsc;
 
-const IDIA = web3.utils.toChecksumAddress("0x0b15Ddf19D47E6a86A56148fb4aFFFc6929BcB89")
-const want = web3.utils.toChecksumAddress("0x71E6de81381eFE0Aa98f56b3B43eB3727D640715") // Add the LP address.
-
-const shouldVerifyOnEtherscan = false;
+//const newToken = web3.utils.toChecksumAddress("0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82"); Can add new tokens like this for deployment.
+const want = web3.utils.toChecksumAddress("0x0eD7e52944161450477ee417DE9Cd3a859b14fD0"); // Add the address of the underlying LP.
 
 const vaultParams = {
-  mooName: "Moo CakeV2 IDIA-BUSD", // Update the mooName.
-  mooSymbol: "mooCakeV2IDIA-BUSD", // Update the mooSymbol.
+  mooName: "Moo CakeV2 CAKE-BNB", // Update the mooName.
+  mooSymbol: "mooCakeV2CAKE-BNB", // Update the mooSymbol.
   delay: 21600,
 };
 
 const strategyParams = {
-  want,
-  poolId: 484, // Add the LP id.
-  chef: pancake.masterchef,
+  want: want,
+  poolId: 2, // Add the poolId.
+  chef: pancake.masterchefV2,
   unirouter: pancake.router,
-  strategist: "0x2546bcd3c84621e976d8185a91a922ae77ecec30", // Add your public address.
+  strategist: process.env.STRATEGIST_ADDRESS, // Add your public address or pull it from the .env file.
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
+  beefyFeeConfig: beefyfinance.beefyFeeConfig,
   outputToNativeRoute: [CAKE, WBNB], // Add the route to convert from the reward token to the native token.
-  outputToLp0Route: [CAKE, BUSD, IDIA], // Add the route to convert your reward token to token0.
-  outputToLp1Route: [CAKE, BUSD], // Add the route to convert your reward token to token1.
-  pendingRewardsFunctionName: "pendingCake", // used for rewardsAvailable(), use correct function name from masterchef
+  outputToLp0Route: [CAKE, CAKE], // Add the route to convert your reward token to token0.
+  outputToLp1Route: [CAKE, WBNB], // Add the route to convert your reward token to token1.
+  shouldSetPendingRewardsFunctionName: true,
+  pendingRewardsFunctionName: "pendingCake",
 };
 
 const contractNames = {
   vault: "BeefyVaultV6", // Add the vault name which will be deployed.
-  strategy: "StrategyCommonChefLPBsc", // Add the strategy name which will be deployed along with the vault.
+  strategy: "StrategyCommonChefLP", // Add the strategy name which will be deployed along with the vault.
 };
 
 async function main() {
@@ -63,9 +60,11 @@ async function main() {
   const Strategy = await ethers.getContractFactory(contractNames.strategy);
 
   const [deployer] = await ethers.getSigners();
-  const predictedAddresses = await predictAddresses({ creator: deployer.address });
-  
+
   console.log("Deploying:", vaultParams.mooName);
+
+  const predictedAddresses = await predictAddresses({ creator: deployer.address });
+
   const vaultConstructorArguments = [
     predictedAddresses.strategy,
     vaultParams.mooName,
@@ -74,26 +73,26 @@ async function main() {
   ];
   const vault = await Vault.deploy(...vaultConstructorArguments);
   await vault.deployed();
-  console.log(vaultParams.mooName, "is now deployed");
 
-  console.log("Deploying:", contractNames.strategy);
   const strategyConstructorArguments = [
     strategyParams.want,
     strategyParams.poolId,
     strategyParams.chef,
-    vault.address,
-    strategyParams.unirouter,
-    strategyParams.keeper,
-    strategyParams.strategist,
-    strategyParams.beefyFeeRecipient,
+    [
+      vault.address,
+      strategyParams.unirouter,
+      strategyParams.keeper,
+      strategyParams.strategist,
+      strategyParams.beefyFeeRecipient,
+      strategyParams.beefyFeeConfig,
+    ],
     strategyParams.outputToNativeRoute,
     strategyParams.outputToLp0Route,
     strategyParams.outputToLp1Route,
   ];
+
   const strategy = await Strategy.deploy(...strategyConstructorArguments);
   await strategy.deployed();
-  console.log(contractNames.strategy, "is now deployed");
-
 
   // add this info to PR
   console.log();
@@ -105,19 +104,10 @@ async function main() {
   console.log();
   console.log("Running post deployment");
 
-  const verifyContractsPromises: Promise<any>[] = [];
-  if (shouldVerifyOnEtherscan) {
-    // skip await as this is a long running operation, and you can do other stuff to prepare vault while this finishes
-    verifyContractsPromises.push(
-      verifyContract(vault.address, vaultConstructorArguments),
-      verifyContract(strategy.address, strategyConstructorArguments)
-    );
-  }
   await setPendingRewardsFunctionName(strategy, strategyParams.pendingRewardsFunctionName);
-  await setCorrectCallFee(strategy, hardhat.network.name as BeefyChain);
-  console.log();
 
-  await Promise.all(verifyContractsPromises);
+  await vault.transferOwnership(beefyfinance.vaultOwner);
+  console.log(`Transfered Vault Ownership to ${beefyfinance.vaultOwner}`);
 
   if (hardhat.network.name === "bsc") {
     await registerSubsidy(vault.address, deployer);

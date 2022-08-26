@@ -45,7 +45,9 @@
     "abi-to-sol": "abi-to-sol",
     "installForge": ". scripts/forge/installForge.sh",
     "forgeTest:vault": "forge test --force --fork-url https://rpc.ftm.tools --match-contract ProdVaultTest",
-    "deploy:vaultFactory": "hardhat run scripts/deploy-vault-proxyFactory.js --network"
+    "deploy:vaultFactory": "hardhat run scripts/deploy-vault-proxyFactory.js --network",
+    "fork:bsc": "hardhat node --fork bsc",
+    "deploy:tutorial": "hardhat run tutorials/deploy-pancakeswap-vault.js --network localhost"
   },
   "devDependencies": {
     "@chainlink/contracts": "^0.2.1",
