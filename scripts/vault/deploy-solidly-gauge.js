@@ -6,43 +6,51 @@ import { predictAddresses } from "../../utils/predictAddresses";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: {  cone, beefyfinance },
+  platforms: {  spiritswap, beefyfinance },
   tokens: {
-    CONE: { address: CONE },
-    WBNB: { address: WBNB },
+    SPIRIT: { address: SPIRIT},
+    BIFI: { address: BIFI },
+    FTM: { address: FTM },
+    USDC: { address: USDC },
+    FRAX: { address: FRAX },
+    DAI: { address: DAI },
+    fUSDT: { address: fUSDT },
   },
-} = addressBook.bsc;
+} = addressBook.fantom;
 
 
-const want = web3.utils.toChecksumAddress("0x672cD8201CEB518F9E42526ef7bCFe5263F41951");
-const gauge = web3.utils.toChecksumAddress("0x09635bd2F4aA47afc7eB9d2F03c4fE4e747D4B42");
+const want = web3.utils.toChecksumAddress("0x912B333dDaFC925f63C9746E5115A2CD5290b59e");
+const gauge = web3.utils.toChecksumAddress("0x87Cae38ECb34FF4D3239A789F7709f285484F7e1");
+const binSpiritGauge = web3.utils.toChecksumAddress("0x44e314190D9E4cE6d4C0903459204F8E21ff940A");
 //const ensId = ethers.utils.formatBytes32String("cake.eth");
 
 const vaultParams = {
-  mooName: "Moo Cone CONE-BNB",
-  mooSymbol: "mooConeCONE-BNB",
+  mooName: "Moo SpiritV2 SPIRIT-FTM",
+  mooSymbol: "mooSpiritV2SPIRIT-FTM",
   delay: 21600,
 };
 
 const strategyParams = {
   want: want,
   gauge: gauge,
-  unirouter: cone.router,
-  gaugeStaker: cone.gaugeStaker,
+  unirouter: spiritswap.router,
+  gaugeStaker: binSpiritGauge,
   strategist: "0xb2e4A61D99cA58fB8aaC58Bb2F8A59d63f552fC0", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   feeConfig: beefyfinance.beefyFeeConfig,
-  outputToNativeRoute: [[CONE, WBNB, false]],
-  outputToLp0Route: [[CONE, CONE, false]],
-  outputToLp1Route: [[CONE, WBNB, false]],
+  outputToNativeRoute: [[SPIRIT, FTM, false]],
+  outputToLp0Route: [[SPIRIT, FTM, false]],
+  outputToLp1Route: [[SPIRIT, SPIRIT, false]],
   verifyStrat: false,
+  spiritswapStrat: true,
+  gaugeStakerStrat: true
  // ensId
 };
 
 const contractNames = {
   vault: "BeefyVaultV6",
-  strategy: "StrategyCommonSolidlyStakerLP",
+  strategy: strategyParams.gaugeStakerStrat ? "StrategyCommonSolidlyStakerLP" : "StrategyCommonSolidlyGaugeLP",
 };
 
 async function main() {
@@ -75,7 +83,7 @@ async function main() {
   const vault = await Vault.deploy(...vaultConstructorArguments);
   await vault.deployed();
 
-  const strategyConstructorArguments = [
+  const strategyConstructorArgumentsStaker = [
     strategyParams.want,
     strategyParams.gauge,
     strategyParams.gaugeStaker,
@@ -92,7 +100,25 @@ async function main() {
     strategyParams.outputToLp1Route
   ];
 
-  const strategy = await Strategy.deploy(...strategyConstructorArguments);
+  const strategyConstructorArguments = [
+    strategyParams.want,
+    strategyParams.gauge,
+    [
+      vault.address,
+      strategyParams.unirouter,
+      strategyParams.keeper,
+      strategyParams.strategist,
+      strategyParams.beefyFeeRecipient,
+      strategyParams.feeConfig,
+    ],
+    strategyParams.outputToNativeRoute,
+    strategyParams.outputToLp0Route, 
+    strategyParams.outputToLp1Route
+  ];
+
+  const strategy = strategyParams.gaugeStakerStrat 
+    ? await Strategy.deploy(...strategyConstructorArgumentsStaker) 
+    : await Strategy.deploy(...strategyConstructorArguments); 
   await strategy.deployed();
 
   // add this info to PR
@@ -110,6 +136,11 @@ async function main() {
   await vault.transferOwnership(beefyfinance.vaultOwner);
   console.log(`Transfered Vault Ownership to ${beefyfinance.vaultOwner}`);
 
+  if (strategyParams.spiritswapStrat) {
+    console.log(`Setting Spirit Harvest to True`);
+    await strategy.setSpiritHarvest(true);
+  }
+
   if (hardhat.network.name === "bsc") {
     await registerSubsidy(vault.address, deployer);
     await registerSubsidy(strategy.address, deployer);
@@ -117,15 +148,23 @@ async function main() {
 
   if (strategyParams.verifyStrat) {
     console.log("verifying contract...")
-    await hardhat.run("verify:verify", {
-      address: strategy.address,
-      constructorArguments: [
-        ...strategyConstructorArguments
-      ],
-    })
-  }
- 
 
+    if (strategyParams.gaugeStakerStrat) {
+      await hardhat.run("verify:verify", {
+        address: strategy.address,
+        constructorArguments: [
+          ...strategyConstructorArgumentsStaker
+        ],
+      })
+    } else {
+      await hardhat.run("verify:verify", {
+        address: strategy.address,
+        constructorArguments: [
+          ...strategyConstructorArguments
+        ],
+      })
+    }
+  }
 }
 
 main()

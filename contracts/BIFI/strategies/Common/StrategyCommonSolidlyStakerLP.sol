@@ -31,8 +31,8 @@ contract StrategyCommonSolidlyStakerLP is StratFeeManager, GasFeeThrottler {
 
     bool public stable;
     bool public harvestOnDeposit;
+    bool public spiritHarvest;
     uint256 public lastHarvest;
-    string public pendingRewardsFunctionName;
 
     // Routes
     ISolidlyRouter.Routes[] public outputToNativeRoute;
@@ -135,7 +135,9 @@ contract StrategyCommonSolidlyStakerLP is StratFeeManager, GasFeeThrottler {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        IGaugeStaker(gaugeStaker).harvestRewards(gauge, rewards);
+        spiritHarvest 
+            ? IGaugeStaker(gaugeStaker).claimGaugeReward(gauge)
+            : IGaugeStaker(gaugeStaker).harvestRewards(gauge, rewards);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
             chargeFees(callFeeRecipient);
@@ -218,7 +220,7 @@ contract StrategyCommonSolidlyStakerLP is StratFeeManager, GasFeeThrottler {
 
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        return IGauge(gauge).earned(output, gaugeStaker);
+        return spiritHarvest ? IGauge(gauge).earned(gaugeStaker) : IGauge(gauge).earned(output, gaugeStaker);
     }
 
     // native reward amount for calling harvest
@@ -251,6 +253,10 @@ contract StrategyCommonSolidlyStakerLP is StratFeeManager, GasFeeThrottler {
 
     function setShouldGasThrottle(bool _shouldGasThrottle) external onlyManager {
         shouldGasThrottle = _shouldGasThrottle;
+    }
+
+    function setSpiritHarvest(bool _spiritHarvest) external onlyManager {
+        spiritHarvest = _spiritHarvest;
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.

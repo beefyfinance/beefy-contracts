@@ -6,4 +6,5 @@ interface IGaugeStaker {
     function deposit(address gauge, uint amount) external;
     function withdraw(address gauge, uint amount) external;
     function harvestRewards(address gauge, address[] calldata tokens) external;
+    function claimGaugeReward(address gauge) external;
 }
