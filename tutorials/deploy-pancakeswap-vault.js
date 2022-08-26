@@ -18,8 +18,8 @@ const {
 const want = web3.utils.toChecksumAddress("0x0eD7e52944161450477ee417DE9Cd3a859b14fD0"); // Add the address of the underlying LP.
 
 const vaultParams = {
-  mooName: "Moo Cake CAKE-BNB", // Update the mooName.
-  mooSymbol: "mooCakeCAKE-BNB", // Update the mooSymbol.
+  mooName: "Moo CakeV2 CAKE-BNB", // Update the mooName.
+  mooSymbol: "mooCakeV2CAKE-BNB", // Update the mooSymbol.
   delay: 21600,
 };
 

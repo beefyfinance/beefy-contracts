@@ -53,7 +53,7 @@ UPGRADER_PK=59c699...
    - `outputToLp1Route` is the path from the reward token to the second token in the LP.
 
 7. Update the `contractNames` with the appropriate vault and strategy names.
-8. In this tutorial we will be forking BSC, this creates a local version of BSC that we can deploy, and interact with. To fork the BSC chain you will need to use an archival node.
+8. In this tutorial we will be forking BSC, this creates a local version of BSC that we can deploy, and interact with. To fork the BSC chain you will need to use an archival node (Ankr public RPCs provide these).
 
 9. Run `npx hardhat node --fork bsc` to create a fork. A message similar to the following shall appear in the terminal.
 
@@ -76,7 +76,7 @@ UPGRADER_PK=59c699...
 10. Open a separate terminal and run `npx hardhat run tutorials/deploy-pancakeswap-vault.js --network localhost` to execute the script on the BSC node. Once the script completes execution you should see a similar message in your second terminal.
 
     ```bash
-    Deploying: Moo Cake CAKE-BNB
+    Deploying: Moo CakeV2 CAKE-BNB
     
     Vault: 0x42AD3aE0B79Fa253ab732eba8FCF38864Ad4abf0
     Strategy: 0x6F5F90122d77091a97cDD5DAF78217DCEafE0D40
