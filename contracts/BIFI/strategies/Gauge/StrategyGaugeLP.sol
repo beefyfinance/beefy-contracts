@@ -144,7 +144,7 @@ contract StrategyGaugeLP is StratFeeManager, GasFeeThrottler {
     function chargeFees(address callFeeRecipient) internal {
         IFeeConfig.FeeCategory memory fees = getFees();
 
-        uint256 toNative = IERC20(output).balanceOf(address(this)) * fees.total / 1000;
+        uint256 toNative = IERC20(output).balanceOf(address(this)) * fees.total / DIVISOR;
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
