@@ -39,7 +39,7 @@ const config: DeploymentConfig = {
       accounts,
     },
     polygon: {
-      url: process.env.POLYGON_RPC || "https://polygon-rpc.com/",
+      url: process.env.POLYGON_RPC || "https://rpc.ankr.com/polygon",
       chainId: 137,
       accounts,
     },

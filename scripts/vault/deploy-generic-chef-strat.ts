@@ -7,11 +7,11 @@ import { verifyContract } from "../../utils/verifyContract";
 const registerSubsidy = require("../../utils/registerSubsidy");
 
 const {
-  platforms: { ape, beefyfinance },
+  platforms: { pancake, beefyfinance },
   tokens: {
-    BANANA: { address: BANANA },
+    CAKE: { address: CAKE },
     WBNB: { address: WBNB },
-    BNBx: { address: BNBx },
+    WOM: { address: WOM },
     SD: { address: SD },
     BUSD: { address: BUSD }
   },
@@ -19,27 +19,27 @@ const {
 
 const shouldVerifyOnEtherscan = false;
 
-const want = web3.utils.toChecksumAddress("0xB88F211EC9ecfc2931Ae1DE53ea28Da76B9Ed37A");
+const want = web3.utils.toChecksumAddress("0xe68D05418A8d7969D9CA6761ad46F449629d928c");
 const ensId = ethers.utils.formatBytes32String("cake.eth");
 
 const vaultParams = {
-  mooName: "Moo Ape BNBx-BNB",
-  mooSymbol: "mooApeBNBx-BNB",
+  mooName: "Moo CakeV2 WOM-BUSD",
+  mooSymbol: "mooCakeV2WOM-BUSD",
   delay: 21600,
 };
 
 const strategyParams = {
   want: want,
-  poolId: 213,
-  chef: "0x20589C5cC1907023BecA7E4E9A2325e1Ef5F30eF",//ape.masterape,
-  unirouter: ape.router,
+  poolId: 116,
+  chef: pancake.masterchefV2,
+  unirouter: pancake.router,
   strategist: process.env.STRATEGIST_ADDRESS,
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   beefyFeeConfig: beefyfinance.beefyFeeConfig,
-  outputToNativeRoute: [SD, BUSD, WBNB],
-  outputToLp0Route: [SD, BUSD, WBNB, BNBx],
-  outputToLp1Route: [SD, BUSD, WBNB],
+  outputToNativeRoute: [CAKE, WBNB],
+  outputToLp0Route: [CAKE, BUSD, WOM],
+  outputToLp1Route: [CAKE, BUSD],
   ensId,
   shouldSetPendingRewardsFunctionName: true,
   pendingRewardsFunctionName: "pendingCake", // used for rewardsAvailable(), use correct function name from masterchef

@@ -2,13 +2,13 @@ const hardhat = require("hardhat");
 
 const ethers = hardhat.ethers;
 
-const contractName = "BeefyZapOneInchUniswapV2Compatible";
+const contractName = "BeefyZapOneInch";
 
 const config = {
   qi: "0x68Aa691a8819B07988B18923F712F3f4C8d36346",
   anyQi: "0x84B67E43474a403Cde9aA181b02Ba07399a54573",
   beQI: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
-  anycallProxy: "0xC10Ef9F491C9B59f936957026020C321651ac078",
+  anycallProxy: "0xAd37ddFeD1d5a75381Aedfd4396c1D231D1f79fd",
   anycallRouter: "0x1111111254fb6c44bAC0beD2854e76F90643097d",
   verify: false,
 };
@@ -20,7 +20,8 @@ async function main() {
 
   const params = [
     config.anycallRouter, 
-    config.beQI
+    config.beQI,
+    config.anycallProxy
   ]
 
   const contract = await Contract.deploy(...params);
