@@ -21,6 +21,7 @@ interface IVeDist {
 
 interface IGauge {
     function getReward(address user, address[] calldata tokens) external;
+    function getReward(uint256 id, address[] calldata tokens) external;
     function deposit(uint amount, uint tokenId) external;
     function withdraw(uint amount) external;
     function balanceOf(address user) external view returns (uint);
@@ -169,7 +170,7 @@ contract DystopiaStaker is BeSolidManager,  ReentrancyGuard {
 
     // claim owner rewards such as trading fees and bribes from gauges, transferred to treasury
     function claimOwnerRewards(address _gauge, address[] memory _tokens) public onlyManager {
-            IGauge(_gauge).getReward(msg.sender, _tokens);
+            IGauge(_gauge).getReward(veTokenId, _tokens);
             for (uint i; i < _tokens.length;) {
                 address _reward = _tokens[i];
                 uint256 _rewardBal = IERC20(_reward).balanceOf(address(this));

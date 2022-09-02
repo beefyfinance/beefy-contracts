@@ -12,21 +12,24 @@ const {
     BIFI: { address: BIFI },
     FTM: { address: FTM },
     USDC: { address: USDC },
-    FRAX: { address: FRAX },
-    DAI: { address: DAI },
-    fUSDT: { address: fUSDT },
+    MIM: { address: MIM },
+    gALCX: { address: gALCX },
+    CRE8R: { address: CRE8R },
+    alUSD: { address: alUSD },
+    MAI: { address: MAI },
+    ETH:  { addresss: ETH }
   },
 } = addressBook.fantom;
 
 
-const want = web3.utils.toChecksumAddress("0x912B333dDaFC925f63C9746E5115A2CD5290b59e");
-const gauge = web3.utils.toChecksumAddress("0x87Cae38ECb34FF4D3239A789F7709f285484F7e1");
+const want = web3.utils.toChecksumAddress("0x364705F8D0744230f39BC176e0270d90dbc72E50");
+const gauge = web3.utils.toChecksumAddress("0x9F0FeB56184f28043f8159af4238cE179D97cBA5");
 const binSpiritGauge = web3.utils.toChecksumAddress("0x44e314190D9E4cE6d4C0903459204F8E21ff940A");
 //const ensId = ethers.utils.formatBytes32String("cake.eth");
 
 const vaultParams = {
-  mooName: "Moo SpiritV2 SPIRIT-FTM",
-  mooSymbol: "mooSpiritV2SPIRIT-FTM",
+  mooName: "Moo SpiritV2 MIM-USDC",
+  mooSymbol: "mooSpiritV2MIM-USDC",
   delay: 21600,
 };
 
@@ -35,13 +38,13 @@ const strategyParams = {
   gauge: gauge,
   unirouter: spiritswap.router,
   gaugeStaker: binSpiritGauge,
-  strategist: "0xb2e4A61D99cA58fB8aaC58Bb2F8A59d63f552fC0", // some address
+  strategist: process.env.STRATEGIST_ADDRESS, // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   feeConfig: beefyfinance.beefyFeeConfig,
   outputToNativeRoute: [[SPIRIT, FTM, false]],
-  outputToLp0Route: [[SPIRIT, FTM, false]],
-  outputToLp1Route: [[SPIRIT, SPIRIT, false]],
+  outputToLp0Route: [[SPIRIT, FTM, false],[FTM, USDC, false]],
+  outputToLp1Route: [[SPIRIT, SPIRIT, false],[FTM, USDC, false],[USDC, MIM, true]],
   verifyStrat: false,
   spiritswapStrat: true,
   gaugeStakerStrat: true
