@@ -9,30 +9,10 @@ import "../interfaces/common/IUniswapRouterETH.sol";
 import "../interfaces/common/IUniswapV2Pair.sol";
 import "../interfaces/common/ISolidlyPair.sol";
 import "../interfaces/common/ISolidlyRouter.sol";
-
-interface IWETH is IERC20 {
-    function deposit() external payable;
-    function withdraw(uint256 wad) external;
-}
-
-interface IBeefyVault is IERC20 {
-    function deposit(uint256 amount) external;
-    function withdraw(uint256 shares) external;
-    function want() external pure returns (address); // Beefy Vault V6
-    function token() external pure returns (address); // Beefy Vault V5
-    function balance() external pure returns (uint256);
-    function totalSupply() external pure returns (uint256);
-    function strategy() external pure returns (address);
-}
-
-interface IStrategy {
-    function withdrawalFee() external view returns (uint256);
-    function unirouter() external view returns (address);
-}
-
-interface IERC20Extended {
-    function decimals() external view returns (uint256);
-}
+import "./zapInterfaces/IWETH.sol";
+import "./zapInterfaces/IBeefyVault.sol";
+import "./zapInterfaces/IStrategy.sol";
+import "./zapInterfaces/IERC20Extended.sol";
 
 contract BeefyZapKyber {
     using SafeERC20 for IERC20;
