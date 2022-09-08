@@ -1,23 +1,20 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IStableRouter.sol";
 import "../../interfaces/tri/ITriChef.sol";
 import "../../interfaces/tri/ITriRewarder.sol";
-import "../Common/StratManager.sol";
-import "../Common/FeeManager.sol";
+import "../Common/StratFeeManager.sol";
 import "../../utils/StringUtils.sol";
-import "../../utils/GasThrottler.sol";
+import "../../utils/GasFeeThrottler.sol";
 
-contract StrategyTriMiniChefDualStable is StratManager, FeeManager, GasThrottler {
+contract StrategyTriMiniChefDualStable is StratFeeManager, GasFeeThrottler {
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
 
     // Tokens used
     address public native;
@@ -54,20 +51,18 @@ contract StrategyTriMiniChefDualStable is StratManager, FeeManager, GasThrottler
         address _want,
         uint256 _poolId,
         address _chef,
-        address _vault,
-        address _unirouter,
         address _stableRouter,
-        address _keeper,
-        address _strategist,
-        address _beefyFeeRecipient,
+        uint256 _depositIndex,
+        CommonAddresses memory _commonAddresses,
         address[] memory _outputToNativeRoute,
         address[] memory _rewardToOutputRoute,
         address[] memory _outputToInputRoute
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratFeeManager(_commonAddresses) {
         want = _want;
         poolId = _poolId;
         chef = _chef;
         stableRouter = _stableRouter;
+        depositIndex = _depositIndex;
 
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
@@ -102,7 +97,7 @@ contract StrategyTriMiniChefDualStable is StratManager, FeeManager, GasThrottler
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            ITriChef(chef).withdraw(poolId, _amount.sub(wantBal), address(this));
+            ITriChef(chef).withdraw(poolId, _amount - wantBal, address(this));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -111,8 +106,8 @@ contract StrategyTriMiniChefDualStable is StratManager, FeeManager, GasThrottler
         }
 
         if (tx.origin != owner() && !paused()) {
-            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            wantBal = wantBal.sub(withdrawalFeeAmount);
+            uint256 withdrawalFeeAmount = wantBal * withdrawalFee / WITHDRAWAL_MAX;
+            wantBal = wantBal - withdrawalFeeAmount;
         }
 
         IERC20(want).safeTransfer(vault, wantBal);
@@ -157,7 +152,9 @@ contract StrategyTriMiniChefDualStable is StratManager, FeeManager, GasThrottler
                 if (harvested) {
                     uint256 rewardBal = IERC20(reward).balanceOf(address(this));
                     if (rewardBal > 0 && canTrade(rewardBal, rewardToOutputRoute)) {
-                        IUniswapRouterETH(unirouter).swapExactTokensForTokens(rewardBal, 0, rewardToOutputRoute, address(this), now);
+                        IUniswapRouterETH(unirouter).swapExactTokensForTokens(
+                            rewardBal, 0, rewardToOutputRoute, address(this), block.timestamp
+                        );
                     }
                     harvestAndSwapped = true;
                 } else {
@@ -170,29 +167,35 @@ contract StrategyTriMiniChefDualStable is StratManager, FeeManager, GasThrottler
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        IFeeConfig.FeeCategory memory fees = getFees();
+        uint256 toNative = IERC20(output).balanceOf(address(this)) * fees.total / DIVISOR;
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(
+            toNative, 0, outputToNativeRoute, address(this), block.timestamp
+        );
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
+        uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
+        uint256 beefyFeeAmount = nativeBal * fees.beefy / DIVISOR;
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(native).safeTransfer(strategist, strategistFee);
+        uint256 strategistFeeAmount = nativeBal * fees.strategist / DIVISOR;
+        IERC20(native).safeTransfer(strategist, strategistFeeAmount);
+
         feesCharged = true;
         liquidityBal = IERC20(output).balanceOf(address(this));
-        bool tradeInput = input != output ? canTrade(liquidityBal, outputToInputRoute): true;
+        bool tradeInput = input != output ? canTrade(liquidityBal, outputToInputRoute) : true;
         require(tradeInput == true, "Not enough output");
-        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFee);
+        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
     function swap() internal  {
         if (input != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(liquidityBal, 0, outputToInputRoute, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(
+                liquidityBal, 0, outputToInputRoute, address(this), block.timestamp
+            );
         }
         swapped = true;
     }
@@ -201,7 +204,7 @@ contract StrategyTriMiniChefDualStable is StratManager, FeeManager, GasThrottler
     function addLiquidity() internal {
         uint256[] memory inputs = new uint256[](3);
         inputs[depositIndex] = IERC20(input).balanceOf(address(this));
-        IStableRouter(stableRouter).addLiquidity(inputs, 1, now);
+        IStableRouter(stableRouter).addLiquidity(inputs, 1, block.timestamp);
         liquidityBal = 0;
         liquidityAdded = true;
     }
@@ -217,7 +220,7 @@ contract StrategyTriMiniChefDualStable is StratManager, FeeManager, GasThrottler
 
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
-        return balanceOfWant().add(balanceOfPool());
+        return balanceOfWant() + balanceOfPool();
     }
 
     // it calculates how much 'want' this contract holds.
@@ -247,7 +250,7 @@ contract StrategyTriMiniChefDualStable is StratManager, FeeManager, GasThrottler
         }
             catch {} 
         }
-        return first.add(second);
+        return first + second;
     }
 
     // Validates if we can trade because of decimals
@@ -267,17 +270,18 @@ contract StrategyTriMiniChefDualStable is StratManager, FeeManager, GasThrottler
 
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
+        IFeeConfig.FeeCategory memory fees = getFees();
         uint256 outputBal = rewardsAvailable();
         uint256 nativeBal;
 
         try IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
             returns (uint256[] memory amountOut)
         {
-            nativeBal = nativeBal.add(amountOut[amountOut.length -1]);
+            nativeBal = nativeBal + amountOut[amountOut.length -1];
         }
         catch {}
 
-        return nativeBal.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+        return nativeBal * fees.total / DIVISOR * fees.call / DIVISOR;
     }
 
     function setShouldGasThrottle(bool _shouldGasThrottle) external onlyManager {
@@ -315,11 +319,11 @@ contract StrategyTriMiniChefDualStable is StratManager, FeeManager, GasThrottler
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
-        IERC20(reward).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(chef, type(uint256).max);
+        IERC20(output).safeApprove(unirouter, type(uint256).max);
+        IERC20(reward).safeApprove(unirouter, type(uint256).max);
 
-        IERC20(input).safeApprove(stableRouter, uint256(-1));
+        IERC20(input).safeApprove(stableRouter, type(uint256).max);
     }
 
     function _removeAllowances() internal {
