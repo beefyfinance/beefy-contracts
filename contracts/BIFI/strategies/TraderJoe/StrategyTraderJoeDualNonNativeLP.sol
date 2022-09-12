@@ -1,20 +1,18 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../../interfaces/common/IUniswapRouter.sol";
+import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/traderjoe/IMasterChef.sol";
-import "../Common/StratManager.sol";
-import "../Common/FeeManager.sol";
+import "../Common/StratFeeManager.sol";
+import "../../utils/GasFeeThrottler.sol";
 
-contract StrategyTraderJoeDualNonNativeLP is StratManager, FeeManager {
+contract StrategyTraderJoeDualNonNativeLP is StratFeeManager, GasFeeThrottler {
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
 
     // Tokens used
     address public native;
@@ -49,16 +47,12 @@ contract StrategyTraderJoeDualNonNativeLP is StratManager, FeeManager {
         address _want,
         uint256 _poolId,
         address _chef,
-        address _vault,
-        address _unirouter,
-        address _keeper,
-        address _strategist,
-        address _beefyFeeRecipient,
+        CommonAddresses memory _commonAddresses,
         address[] memory _outputToNativeRoute,
         address[] memory _secondOutputToNativeRoute,
         address[] memory _nativeToLp0Route,
         address[] memory _nativeToLp1Route
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+    ) StratFeeManager(_commonAddresses) {
         want = _want;
         poolId = _poolId;
         chef = _chef;
@@ -85,7 +79,7 @@ contract StrategyTraderJoeDualNonNativeLP is StratManager, FeeManager {
     }
 
     // puts the funds to work
-    function deposit() public whenNotPaused payable {
+    function deposit() public whenNotPaused {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
@@ -94,13 +88,13 @@ contract StrategyTraderJoeDualNonNativeLP is StratManager, FeeManager {
         }
     }
 
-    function withdraw(uint256 _amount) external payable {
+    function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            IMasterChef(chef).withdraw(poolId, _amount - wantBal);
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -109,8 +103,8 @@ contract StrategyTraderJoeDualNonNativeLP is StratManager, FeeManager {
         }
 
         if (tx.origin != owner() && !paused()) {
-            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            wantBal = wantBal.sub(withdrawalFeeAmount);
+            uint256 withdrawalFeeAmount = wantBal * withdrawalFee / WITHDRAWAL_MAX;
+            wantBal = wantBal - withdrawalFeeAmount;
         }
 
         IERC20(want).safeTransfer(vault, wantBal);
@@ -125,11 +119,11 @@ contract StrategyTraderJoeDualNonNativeLP is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual {
+    function harvest() external gasThrottle virtual {
         _harvest(tx.origin);
     }
 
-    function harvest(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external gasThrottle virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -155,25 +149,26 @@ contract StrategyTraderJoeDualNonNativeLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
+        IFeeConfig.FeeCategory memory fees = getFees();
         uint256 toNative = IERC20(output).balanceOf(address(this));
         if (toNative > 0) {
-            IUniswapRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
         }
 
         uint256 secondToNative = IERC20(secondOutput).balanceOf(address(this));
         if (secondToNative > 0) {
-            IUniswapRouter(unirouter).swapExactTokensForTokens(secondToNative, 0, secondOutputToNativeRoute, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(secondToNative, 0, secondOutputToNativeRoute, address(this), block.timestamp);
         }
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000);
+        uint256 nativeBal = IERC20(native).balanceOf(address(this)) * fees.total / DIVISOR;
 
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
+        uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
+        uint256 beefyFeeAmount = nativeBal * fees.beefy / DIVISOR;
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        uint256 strategistFee = nativeBal * fees.strategist / DIVISOR;
         IERC20(native).safeTransfer(strategist, strategistFee);
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFee);
@@ -181,24 +176,24 @@ contract StrategyTraderJoeDualNonNativeLP is StratManager, FeeManager {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 nativeHalf = IERC20(native).balanceOf(address(this)).div(2);
+        uint256 nativeHalf = IERC20(native).balanceOf(address(this)) / 2;
 
         if (lpToken0 != native) {
-            IUniswapRouter(unirouter).swapExactTokensForTokens(nativeHalf, 0, nativeToLp0Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeHalf, 0, nativeToLp0Route, address(this), block.timestamp);
         }
 
         if (lpToken1 != native) {
-            IUniswapRouter(unirouter).swapExactTokensForTokens(nativeHalf, 0, nativeToLp1Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeHalf, 0, nativeToLp1Route, address(this), block.timestamp);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        IUniswapRouter(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), now);
+        IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp);
     }
 
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
-        return balanceOfWant().add(balanceOfPool());
+        return balanceOfWant() + balanceOfPool();
     }
 
     // it calculates how much 'want' this contract holds.
@@ -218,24 +213,22 @@ contract StrategyTraderJoeDualNonNativeLP is StratManager, FeeManager {
     }
 
     function callReward() public view returns (uint256) {
+        IFeeConfig.FeeCategory memory fees = getFees();
         (uint256 outputBal, uint256 secondBal) = rewardsAvailable();
-        uint256 nativeBal;
+        uint256 nativeOut;
 
-        try IUniswapRouter(unirouter).getAmountsOut(outputBal, outputToNativeRoute)
-            returns (uint256[] memory amountOut)
-        {
-            nativeBal = nativeBal.add(amountOut[amountOut.length -1]);
+        if (outputBal > 0) {
+            uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
+            nativeOut = amountOut[amountOut.length - 1];
         }
-        catch {}
 
-        try IUniswapRouter(unirouter).getAmountsOut(secondBal, secondOutputToNativeRoute)
-            returns (uint256[] memory amountOut)
-        {
-            nativeBal = nativeBal.add(amountOut[amountOut.length -1]);
+        if (secondBal > 0) {
+            uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(secondBal, secondOutputToNativeRoute);
+            nativeOut += amountOut[amountOut.length - 1];
+
         }
-        catch {}
 
-        return nativeBal.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+        return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
@@ -279,16 +272,16 @@ contract StrategyTraderJoeDualNonNativeLP is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
-        IERC20(secondOutput).safeApprove(unirouter, uint256(-1));
-        IERC20(native).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(chef, type(uint).max);
+        IERC20(output).safeApprove(unirouter, type(uint).max);
+        IERC20(secondOutput).safeApprove(unirouter, type(uint).max);
+        IERC20(native).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
+        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
 
         IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, uint256(-1));
+        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
     }
 
     function _removeAllowances() internal {
