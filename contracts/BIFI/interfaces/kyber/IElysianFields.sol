@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >0.6.0;
 
 interface IElysianFields {
     function deposit(uint256 _pid, uint256 _amount) external;

@@ -1,35 +1,24 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../interfaces/kyber/IDMMRouter.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
-import "../../interfaces/kyber/IElysianFields.sol";
+import "../../interfaces/common/IMasterChef.sol";
 import "../../interfaces/curve/ICurveSwap.sol";
 import "../../interfaces/kyber/IJarvisMinter.sol";
-import "../Common/StratManager.sol";
-import "../Common/FeeManager.sol";
+import "../Common/StratFeeManager.sol";
+import "../../utils/StringUtils.sol";
 
-contract StrategyJarvisDMM is StratManager, FeeManager {
+contract StrategyJarvisDMM is StratFeeManager {
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
 
     struct JarvisContracts {
         address synth;
         address minter;
-    }
-
-    struct StratManagerParams {
-        address keeper;
-        address strategist;
-        address unirouter;
-        address vault;
-        address beefyFeeRecipient;
     }
 
     // Tokens used
@@ -47,6 +36,7 @@ contract StrategyJarvisDMM is StratManager, FeeManager {
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
+    string public pendingRewardsFunctionName;
 
     // Routes
     IERC20[] public outputToWantRoute;
@@ -64,11 +54,11 @@ contract StrategyJarvisDMM is StratManager, FeeManager {
         address _chef,
         uint256 _depositIndex,
         JarvisContracts memory _jarvis,
-        StratManagerParams memory _stratManager,
+        CommonAddresses memory _commonAddresses,
         address[] memory _outputToWantRoute,
         address[] memory _stableToNativeRoute,
         address[] memory _outputToWantPoolsPath
-    ) StratManager(_stratManager.keeper, _stratManager.strategist, _stratManager.unirouter, _stratManager.vault, _stratManager.beefyFeeRecipient) public {
+    ) StratFeeManager(_commonAddresses) {
         want = _want;
         poolId = _poolId;
         chef = _chef;
@@ -94,7 +84,7 @@ contract StrategyJarvisDMM is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IElysianFields(chef).deposit(poolId, wantBal);
+            IMasterChef(chef).deposit(poolId, wantBal);
             emit Deposit(balanceOf());
         }
     }
@@ -105,7 +95,7 @@ contract StrategyJarvisDMM is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IElysianFields(chef).withdraw(poolId, _amount.sub(wantBal));
+            IMasterChef(chef).withdraw(poolId, _amount - wantBal);
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -114,8 +104,8 @@ contract StrategyJarvisDMM is StratManager, FeeManager {
         }
 
         if (tx.origin != owner() && !paused()) {
-            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            wantBal = wantBal.sub(withdrawalFeeAmount);
+            uint256 withdrawalFeeAmount = wantBal * withdrawalFee / WITHDRAWAL_MAX;
+            wantBal = wantBal - withdrawalFeeAmount;
         }
 
         IERC20(want).safeTransfer(vault, wantBal);
@@ -140,7 +130,7 @@ contract StrategyJarvisDMM is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        IElysianFields(chef).deposit(poolId, 0);
+        IMasterChef(chef).deposit(poolId, 0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
             chargeFees(callFeeRecipient);
@@ -154,35 +144,51 @@ contract StrategyJarvisDMM is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
+        IFeeConfig.FeeCategory memory fees = getFees();
         uint256 beforeWantBal = IERC20(want).balanceOf(address(this));
         uint256 toWant = IERC20(output).balanceOf(address(this));
-        IDMMRouter(unirouter).swapExactTokensForTokens(toWant, 0, outputToWantPoolsPath, outputToWantRoute, address(this), now);
+        IDMMRouter(unirouter).swapExactTokensForTokens(
+            toWant,
+            0,
+            outputToWantPoolsPath,
+            outputToWantRoute,
+            address(this),
+            block.timestamp
+        );
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this)).sub(beforeWantBal).mul(45).div(1000);
-        ICurveSwap(want).remove_liquidity_one_coin(wantBal, int128(depositIndex), 1);
+        uint256 wantBal = (IERC20(want).balanceOf(address(this)) - beforeWantBal)
+            * fees.total
+            / DIVISOR;
+        ICurveSwap(want).remove_liquidity_one_coin(wantBal, int128(int256(depositIndex)), 1);
 
         uint256 synthBal = IERC20(jarvis.synth).balanceOf(address(this));
         IJarvisMinter.RedeemParams memory redeemParams =
             IJarvisMinter.RedeemParams(
                 synthBal,
                 1,
-                now,
+                block.timestamp,
                 address(this)
             );
         IJarvisMinter(jarvis.minter).redeem(redeemParams);
 
         uint256 toNative = IERC20(stable).balanceOf(address(this));
-        IUniswapRouterETH(quickRouter).swapExactTokensForTokens(toNative, 0, stableToNativeRoute, address(this), now);
+        IUniswapRouterETH(quickRouter).swapExactTokensForTokens(
+            toNative,
+            0,
+            stableToNativeRoute,
+            address(this),
+            block.timestamp
+        );
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
+        uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
+        uint256 beefyFeeAmount = nativeBal * fees.beefy / DIVISOR;
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFeeAmount = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        uint256 strategistFeeAmount = nativeBal * fees.strategist / DIVISOR;
         IERC20(native).safeTransfer(strategist, strategistFeeAmount);
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
@@ -190,7 +196,7 @@ contract StrategyJarvisDMM is StratManager, FeeManager {
 
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
-        return balanceOfWant().add(balanceOfPool());
+        return balanceOfWant() + balanceOfPool();
     }
 
     // it calculates how much 'want' this contract holds.
@@ -200,25 +206,46 @@ contract StrategyJarvisDMM is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount,) = IElysianFields(chef).userInfo(poolId, address(this));
+        (uint256 _amount,) = IMasterChef(chef).userInfo(poolId, address(this));
         return _amount;
+    }
+
+    function setPendingRewardsFunctionName(string calldata _pendingRewardsFunctionName) external onlyManager {
+        pendingRewardsFunctionName = _pendingRewardsFunctionName;
     }
 
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        return IElysianFields(chef).pendingRwd(poolId, address(this));
+        string memory signature = StringUtils.concat(pendingRewardsFunctionName, "(uint256,address)");
+        bytes memory result = Address.functionStaticCall(
+            chef, 
+            abi.encodeWithSignature(
+                signature,
+                poolId,
+                address(this)
+            )
+        );  
+        return abi.decode(result, (uint256));
     }
 
     // native reward amount for calling harvest
     function callReward() public view returns (uint256) {
+        IFeeConfig.FeeCategory memory fees = getFees();
         uint256 outputBal = rewardsAvailable();
-        uint256[] memory amountOutFromOutput = IDMMRouter(unirouter).getAmountsOut(outputBal, outputToWantPoolsPath, outputToWantRoute);
+        uint256[] memory amountOutFromOutput = IDMMRouter(unirouter).getAmountsOut(
+            outputBal,
+            outputToWantPoolsPath,
+            outputToWantRoute
+        );
         uint256 wantOut = amountOutFromOutput[amountOutFromOutput.length -1];
         (uint256 stableOut,) = IJarvisMinter(jarvis.minter).getRedeemTradeInfo(wantOut);
-        uint256[] memory amountOutFromStable = IUniswapRouterETH(quickRouter).getAmountsOut(stableOut, stableToNativeRoute);
+        uint256[] memory amountOutFromStable = IUniswapRouterETH(quickRouter).getAmountsOut(
+            stableOut,
+            stableToNativeRoute
+        );
         uint256 nativeOut = amountOutFromStable[amountOutFromStable.length -1];
 
-        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+        return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
@@ -235,7 +262,7 @@ contract StrategyJarvisDMM is StratManager, FeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IElysianFields(chef).emergencyWithdraw(poolId);
+        IMasterChef(chef).emergencyWithdraw(poolId);
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -244,7 +271,7 @@ contract StrategyJarvisDMM is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IElysianFields(chef).emergencyWithdraw(poolId);
+        IMasterChef(chef).emergencyWithdraw(poolId);
     }
 
     function pause() public onlyManager {
@@ -262,10 +289,10 @@ contract StrategyJarvisDMM is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
-        IERC20(jarvis.synth).safeApprove(jarvis.minter, uint256(-1));
-        IERC20(stable).safeApprove(quickRouter, uint256(-1));
+        IERC20(want).safeApprove(chef, type(uint).max);
+        IERC20(output).safeApprove(unirouter, type(uint).max);
+        IERC20(jarvis.synth).safeApprove(jarvis.minter, type(uint).max);
+        IERC20(stable).safeApprove(quickRouter, type(uint).max);
     }
 
     function _removeAllowances() internal {
