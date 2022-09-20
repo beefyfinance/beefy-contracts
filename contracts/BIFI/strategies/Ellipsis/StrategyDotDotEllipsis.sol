@@ -26,7 +26,6 @@ contract StrategyDotDotEllipsis is StratFeeManager, GasFeeThrottler {
     IDotDotBondedFeeDistributor public feeDistributor = IDotDotBondedFeeDistributor(0xd4F7b4BC46e6e499D35335D270fd094979D815A0);
     address public depxEpxSwap = 0x45859D71D4caFb93694eD43a5ecE05776Fc2465d;
     address public epxBnbSwap = 0xE014A89c9788dAfdE603a13F2f01390610382471;
-    address public dddUnirouter = 0x10ED43C718714eb63d5aA57B78B54704E256024E;
 
     address public want; // ellipsis lpToken
     address public receiptToken; // receipt token minted/burned by LpDepositor lpDepositor.depositTokens(want)
@@ -51,6 +50,10 @@ contract StrategyDotDotEllipsis is StratFeeManager, GasFeeThrottler {
 
     // claim EPX as bonded dEPX to receive 3x DDD
     bool public claimAsBondedEpx = true;
+
+    // if depositToken should be sent as unwrapped native
+    bool public depositNative;
+
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
 
@@ -79,6 +82,9 @@ contract StrategyDotDotEllipsis is StratFeeManager, GasFeeThrottler {
         require(_nativeToDepositRoute[0] == native, '_nativeToDepositRoute[0] != native');
         depositToken = _nativeToDepositRoute[_nativeToDepositRoute.length - 1];
         nativeToDepositRoute = _nativeToDepositRoute;
+
+        harvestOnDeposit = true;
+        withdrawalFee = 0;
 
         _giveAllowances();
     }
@@ -124,7 +130,7 @@ contract StrategyDotDotEllipsis is StratFeeManager, GasFeeThrottler {
         }
     }
 
-    function harvest() external virtual gasThrottle {
+    function harvest() external gasThrottle virtual {
         _harvest(tx.origin);
     }
 
@@ -189,7 +195,7 @@ contract StrategyDotDotEllipsis is StratFeeManager, GasFeeThrottler {
         // ddd
         uint bal = IERC20(ddd).balanceOf(address(this));
         if (bal > 0) {
-            IUniswapRouterETH(dddUnirouter).swapExactTokensForTokens(bal, 0, dddToNativeRoute, address(this), block.timestamp);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(bal, 0, dddToNativeRoute, address(this), block.timestamp);
         }
         // dEpx to epx
         bal = IERC20(depx).balanceOf(address(this));
@@ -207,6 +213,11 @@ contract StrategyDotDotEllipsis is StratFeeManager, GasFeeThrottler {
             if (bal >= rewards[i].minAmount) {
                 IUniswapRouterETH(rewards[i].router).swapExactTokensForTokens(bal, 0, rewards[i].toNativeRoute, address(this), block.timestamp);
             }
+        }
+        // wrap native, could be sent from ellipsis bnb swap pools
+        uint256 nativeBal = address(this).balance;
+        if (nativeBal > 0) {
+            IWrappedNative(native).deposit{value: nativeBal}();
         }
     }
 
@@ -230,18 +241,23 @@ contract StrategyDotDotEllipsis is StratFeeManager, GasFeeThrottler {
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
         uint256 depositBal;
+        uint256 depositNativeAmount;
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
         if (depositToken != native) {
             IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeBal, 0, nativeToDepositRoute, address(this), block.timestamp);
             depositBal = IERC20(depositToken).balanceOf(address(this));
         } else {
             depositBal = nativeBal;
+            if (depositNative) {
+                depositNativeAmount = nativeBal;
+                IWrappedNative(native).withdraw(depositNativeAmount);
+            }
         }
 
         if (poolSize == 2) {
             uint256[2] memory amounts;
             amounts[depositIndex] = depositBal;
-            ICurveSwap(pool).add_liquidity(amounts, 0);
+            ICurveSwap(pool).add_liquidity{value: depositNativeAmount}(amounts, 0);
         } else if (poolSize == 3) {
             uint256[3] memory amounts;
             amounts[depositIndex] = depositBal;
@@ -323,6 +339,10 @@ contract StrategyDotDotEllipsis is StratFeeManager, GasFeeThrottler {
         return rewards[i].toNativeRoute;
     }
 
+    function setDepositNative(bool _depositNative) external onlyOwner {
+        depositNative = _depositNative;
+    }
+
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
         if (harvestOnDeposit) {
@@ -358,7 +378,7 @@ contract StrategyDotDotEllipsis is StratFeeManager, GasFeeThrottler {
             epxBal = epxFeeBal;
             // 3x DDD
             dddBal = dddBal * 3 + dddFeeBal;
-            uint256[] memory amountOut = IUniswapRouterETH(dddUnirouter).getAmountsOut(dddBal, dddToNativeRoute);
+            uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(dddBal, dddToNativeRoute);
             nativeOut = nativeOut + amountOut[amountOut.length - 1];
             // dEPX to EPX
             (uint256 claimable,) = feeDistributor.streamingBalances(address(this));
@@ -370,7 +390,7 @@ contract StrategyDotDotEllipsis is StratFeeManager, GasFeeThrottler {
             }
         } else {
             // ddd
-            uint256[] memory amountOut = IUniswapRouterETH(dddUnirouter).getAmountsOut(dddBal, dddToNativeRoute);
+            uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(dddBal, dddToNativeRoute);
             nativeOut = nativeOut + amountOut[amountOut.length - 1];
             // epx
             nativeOut = nativeOut + ICurveSwap(epxBnbSwap).get_dy(0, 1, epxBal);
@@ -429,7 +449,7 @@ contract StrategyDotDotEllipsis is StratFeeManager, GasFeeThrottler {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(address(lpDepositor), type(uint).max);
         IERC20(native).safeApprove(unirouter, type(uint).max);
-        IERC20(ddd).safeApprove(dddUnirouter, type(uint).max);
+        IERC20(ddd).safeApprove(unirouter, type(uint).max);
         IERC20(epx).safeApprove(epxBnbSwap, type(uint).max);
         IERC20(depx).safeApprove(depxEpxSwap, type(uint).max);
         if (metaPool != address(0)) {
@@ -442,7 +462,7 @@ contract StrategyDotDotEllipsis is StratFeeManager, GasFeeThrottler {
     function _removeAllowances() internal {
         IERC20(want).safeApprove(address(lpDepositor), 0);
         IERC20(native).safeApprove(unirouter, 0);
-        IERC20(ddd).safeApprove(dddUnirouter, 0);
+        IERC20(ddd).safeApprove(unirouter, 0);
         IERC20(epx).safeApprove(epxBnbSwap, 0);
         IERC20(depx).safeApprove(depxEpxSwap, 0);
         if (metaPool != address(0)) {
@@ -451,4 +471,6 @@ contract StrategyDotDotEllipsis is StratFeeManager, GasFeeThrottler {
             IERC20(depositToken).safeApprove(pool, 0);
         }
     }
+
+    receive () external payable {}
 }
