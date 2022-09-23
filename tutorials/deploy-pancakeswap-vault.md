@@ -97,9 +97,8 @@ UPGRADER_PK=59c699...
    **NOTE THESE KEYS SHOULD NEVER BE SHARED WITH ANYONE. DOING SO WILL COMPROMISE THE ADDRESS AND ALL ASSETS HELD BY THE ADDRESS.**
 
 2. You will deploy the contract to the BSC chain using the same script from 'Deploying a Vault to your Development Environment'. In the `deploy-pancakeswap-vault.js` script, change the `strategyParams.strategist` public keys to the address matching the private keys listed in your `.env` file.
-3. Since you will be connecting directly to BSC you may change the RPC URL found in the `hardhat.config.ts` file.
-4. At this point you should be ready to deploy your vault to the BSC network. You can do this by simply running the following command `npx hardhat run tutorials/deploy-pancakeswap-vault.js --network bsc`.
-5. Once the script completes execution you should be able to verify that it deployed successfully using the links in the terminal or querying bscsan using the Vault or Strategy addresses. From here we recommend performing manual tests as suggested in the [readme.md][readme.md]. NOTE, YOU MUST PERMISSION THE VAULT TO TRANSFER YOUR FUNDS BY SUBMITTING AN `approve()` TRANSACTION TO THE LP TOKEN WITH THE VAULT ADDRESS AND THE AMOUNT.
+3. At this point you should be ready to deploy your vault to the BSC network. You can do this by simply running the following command `npx hardhat run tutorials/deploy-pancakeswap-vault.js --network bsc`.
+4. Once the script completes execution you should be able to verify that it deployed successfully using the links in the terminal or querying bscsan using the Vault or Strategy addresses. From here we recommend performing manual tests as suggested in the [readme.md][readme.md]. NOTE, YOU MUST PERMISSION THE VAULT TO TRANSFER YOUR FUNDS BY SUBMITTING AN `approve()` TRANSACTION TO THE LP TOKEN WITH THE VAULT ADDRESS AND THE AMOUNT.
 
 [readme.md]: beefy-contracts/readme.md
 [node.js]: https://nodejs.org
