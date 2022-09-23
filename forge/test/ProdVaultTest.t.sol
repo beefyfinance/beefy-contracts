@@ -13,16 +13,15 @@ import {IERC20Like} from "./interfaces/IERC20Like.sol";
 import {VaultUser} from "./users/VaultUser.sol";
 
 contract ProdVaultTest is BaseTestHarness {
-
     // Input your vault to test here.
-    IBeefyVaultV6 constant vault = IBeefyVaultV6(0xc4f179b4096514c48ce70b9Ad27e689A3f2C9831);
+    IBeefyVaultV6 constant vault = IBeefyVaultV6(0xC5D89844A407970750758793C9684cE930A19953); // your vault address
     IStrategyComplete strategy;
 
     // Users
     VaultUser user;
-    address constant keeper = 0x340465d9D2EbDE78F15a3870884757584F97aBB4;
-    address constant vaultOwner = 0xc8F3D9994bb1670F5f3d78eBaBC35FA8FdEEf8a2; // fantom
-    address constant strategyOwner = 0xfcDD5a02C611ba6Fe2802f885281500EC95805d7; // fantom
+    address constant keeper = 0x4fED5491693007f0CD49f4614FFC38Ab6A04B619; // beefyfinance.keeper address on bsc
+    address constant vaultOwner = 0xA2E6391486670D2f1519461bcc915E4818aD1c9a; // beefyfinance.vaultOwner address on bsc
+    address constant strategyOwner = 0xfB41Cbf2ce16E8f626013a2F465521d27BA9a610; // your strategist/deployer address until you transfer the strategy to the beefyfinance.strategyOwner
 
     IERC20Like want;
     uint256 slot; // Storage slot that holds `balanceOf` mapping.
@@ -31,11 +30,10 @@ contract ProdVaultTest is BaseTestHarness {
     uint256 wantStartingAmount = 50 ether;
     uint256 delay = 1000 seconds; // Time to wait after depositing before harvesting.
 
-
     function setUp() public {
         want = IERC20Like(vault.want());
         strategy = IStrategyComplete(vault.strategy());
-        
+
         user = new VaultUser();
 
         // Slot set is for performance speed up.
@@ -51,7 +49,7 @@ contract ProdVaultTest is BaseTestHarness {
         _unpauseIfPaused();
 
         _depositIntoVault(user);
-        
+
         shift(100 seconds);
 
         console.log("Withdrawing all want from vault");
@@ -60,12 +58,16 @@ contract ProdVaultTest is BaseTestHarness {
         uint256 wantBalanceFinal = want.balanceOf(address(user));
         console.log("Final user want balance", wantBalanceFinal);
         assertLe(wantBalanceFinal, wantStartingAmount, "Expected wantBalanceFinal <= wantStartingAmount");
-        assertGt(wantBalanceFinal, wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
+        assertGt(
+            wantBalanceFinal,
+            (wantStartingAmount * 99) / 100,
+            "Expected wantBalanceFinal > wantStartingAmount * 99 / 100"
+        );
     }
 
     function test_harvest() external {
         _unpauseIfPaused();
-        
+
         _depositIntoVault(user);
 
         uint256 vaultBalance = vault.balance();
@@ -93,15 +95,27 @@ contract ProdVaultTest is BaseTestHarness {
         uint256 wantBalanceFinal = want.balanceOf(address(user));
 
         assertGt(vaultBalanceAfterHarvest, vaultBalance, "Expected vaultBalanceAfterHarvest > vaultBalance");
-        assertGt(pricePerFullShareAfterHarvest, pricePerFullShare, "Expected pricePerFullShareAfterHarvest > pricePerFullShare");
-        assertGt(wantBalanceFinal, wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
+        assertGt(
+            pricePerFullShareAfterHarvest,
+            pricePerFullShare,
+            "Expected pricePerFullShareAfterHarvest > pricePerFullShare"
+        );
+        assertGt(
+            wantBalanceFinal,
+            (wantStartingAmount * 99) / 100,
+            "Expected wantBalanceFinal > wantStartingAmount * 99 / 100"
+        );
         assertGt(lastHarvestAfterHarvest, lastHarvest, "Expected lastHarvestAfterHarvest > lastHarvest");
-        assertEq(lastHarvestAfterHarvest, timestampBeforeHarvest + delay, "Expected lastHarvestAfterHarvest == timestampBeforeHarvest + delay");
+        assertEq(
+            lastHarvestAfterHarvest,
+            timestampBeforeHarvest + delay,
+            "Expected lastHarvestAfterHarvest == timestampBeforeHarvest + delay"
+        );
     }
 
     function test_panic() external {
         _unpauseIfPaused();
-        
+
         _depositIntoVault(user);
 
         uint256 vaultBalance = vault.balance();
@@ -109,7 +123,7 @@ contract ProdVaultTest is BaseTestHarness {
         uint256 balanceOfWant = strategy.balanceOfWant();
 
         assertGt(balanceOfPool, balanceOfWant);
-        
+
         console.log("Calling panic()");
         FORGE_VM.prank(keeper);
         strategy.panic();
@@ -118,30 +132,38 @@ contract ProdVaultTest is BaseTestHarness {
         uint256 balanceOfPoolAfterPanic = strategy.balanceOfPool();
         uint256 balanceOfWantAfterPanic = strategy.balanceOfWant();
 
-        assertGt(vaultBalanceAfterPanic, vaultBalance  * 99 / 100, "Expected vaultBalanceAfterPanic > vaultBalance");
-        assertGt(balanceOfWantAfterPanic, balanceOfPoolAfterPanic, "Expected balanceOfWantAfterPanic > balanceOfPoolAfterPanic");
+        assertGt(vaultBalanceAfterPanic, (vaultBalance * 99) / 100, "Expected vaultBalanceAfterPanic > vaultBalance");
+        assertGt(
+            balanceOfWantAfterPanic,
+            balanceOfPoolAfterPanic,
+            "Expected balanceOfWantAfterPanic > balanceOfPoolAfterPanic"
+        );
 
         console.log("Getting user more want.");
         modifyBalanceWithKnownSlot(vault.want(), address(user), wantStartingAmount, slot);
         console.log("Approving more want.");
         user.approve(address(want), address(vault), wantStartingAmount);
-        
+
         // Users can't deposit.
         console.log("Trying to deposit while panicked.");
         FORGE_VM.expectRevert("Pausable: paused");
         user.depositAll(vault);
-        
+
         // User can still withdraw
         console.log("User withdraws all.");
         user.withdrawAll(vault);
 
         uint256 wantBalanceFinal = want.balanceOf(address(user));
-        assertGt(wantBalanceFinal, wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
+        assertGt(
+            wantBalanceFinal,
+            (wantStartingAmount * 99) / 100,
+            "Expected wantBalanceFinal > wantStartingAmount * 99 / 100"
+        );
     }
 
     function test_multipleUsers() external {
         _unpauseIfPaused();
-        
+
         _depositIntoVault(user);
 
         // Setup second user.
@@ -155,7 +177,7 @@ contract ProdVaultTest is BaseTestHarness {
 
         console.log("User2 depositAll.");
         _depositIntoVault(user2);
-        
+
         uint256 pricePerFullShareAfterUser2Deposit = vault.getPricePerFullShare();
 
         shift(delay);
@@ -166,9 +188,21 @@ contract ProdVaultTest is BaseTestHarness {
         uint256 user1WantBalanceFinal = want.balanceOf(address(user));
         uint256 pricePerFullShareAfterUser1Withdraw = vault.getPricePerFullShare();
 
-        assertGe(pricePerFullShareAfterUser2Deposit, pricePerFullShare, "Expected pricePerFullShareAfterUser2Deposit >= pricePerFullShare");
-        assertGe(pricePerFullShareAfterUser1Withdraw, pricePerFullShareAfterUser2Deposit, "Expected pricePerFullShareAfterUser1Withdraw >= pricePerFullShareAfterUser2Deposit");
-        assertGt(user1WantBalanceFinal, wantStartingAmount * 99 / 100, "Expected user1WantBalanceFinal > wantStartingAmount * 99 / 100");
+        assertGe(
+            pricePerFullShareAfterUser2Deposit,
+            pricePerFullShare,
+            "Expected pricePerFullShareAfterUser2Deposit >= pricePerFullShare"
+        );
+        assertGe(
+            pricePerFullShareAfterUser1Withdraw,
+            pricePerFullShareAfterUser2Deposit,
+            "Expected pricePerFullShareAfterUser1Withdraw >= pricePerFullShareAfterUser2Deposit"
+        );
+        assertGt(
+            user1WantBalanceFinal,
+            (wantStartingAmount * 99) / 100,
+            "Expected user1WantBalanceFinal > wantStartingAmount * 99 / 100"
+        );
     }
 
     function test_correctOwnerAndKeeper() external {

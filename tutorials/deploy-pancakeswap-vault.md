@@ -41,7 +41,7 @@ UPGRADER_PK=59c699...
    const newToken = web3.utils.toChecksumAddress("0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82");
    ```
 
-3. Find the LP address (`lpAddresses.56`) and pool id (`pid`) of the LP token corresponding to the vault that will be deployed. These values can be found in PancakeSwap's [repository][repository].
+3. Find the LP address and pool id of the LP token corresponding to the vault that will be deployed. These values can be found either in the logs of a deposit transaction into the respective farm or by querying the masterchef contract. PancakeSwap has discontinued the list of farms which contained the pool id.
 4. Replace the address assigned to the `want` variable with the lp address.
 5. Update the `vaultParams` with the correct name and symbol.
 6. Replace the variables under the `strategyParams` object as follows:
@@ -88,7 +88,7 @@ UPGRADER_PK=59c699...
     Transfered Vault Ownership to 0xA2E6391486670D2f1519461bcc915E4818aD1c9a
     ```
 
-11. From here I recommend writing/running your own set of tests to ensure everything was deployed properly. We recommend reviewing the `test/prod/VaultLifecycle.test.js` test script to get started. When ready you can run your tests using the following command `npx hardhat test --network localhost <PATH_TO_YOUR_TEST>`.
+11. From here I recommend writing/running your own set of tests to ensure everything was deployed properly. We recommend reviewing the `test/prod/VaultLifecycle.test.js` or the `forge/test/ProdVaultTest.t.sol` files to get started. When ready you can run your tests using the following command `npx hardhat test --network localhost <PATH_TO_YOUR_TEST>`.
 
 ## Deploying a Vault to BSC
 
@@ -105,4 +105,3 @@ UPGRADER_PK=59c699...
 [node.js]: https://nodejs.org
 [yarn]: https://yarnpkg.com
 [solc]: https://docs.soliditylang.org
-[repository]: https://github.com/pancakeswap/pancake-frontend/blob/master/src/config/constants/farms.ts

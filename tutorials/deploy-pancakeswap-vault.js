@@ -3,8 +3,6 @@ import { addressBook } from "blockchain-addressbook";
 import { predictAddresses } from "../utils/predictAddresses";
 import { setPendingRewardsFunctionName } from "../utils/setPendingRewardsFunctionName";
 
-const registerSubsidy = require("../utils/registerSubsidy");
-
 const {
   platforms: { pancake, beefyfinance },
   tokens: {
@@ -33,9 +31,8 @@ const strategyParams = {
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   beefyFeeConfig: beefyfinance.beefyFeeConfig,
   outputToNativeRoute: [CAKE, WBNB], // Add the route to convert from the reward token to the native token.
-  outputToLp0Route: [CAKE, CAKE], // Add the route to convert your reward token to token0.
+  outputToLp0Route: [CAKE], // Add the route to convert your reward token to token0.
   outputToLp1Route: [CAKE, WBNB], // Add the route to convert your reward token to token1.
-  shouldSetPendingRewardsFunctionName: true,
   pendingRewardsFunctionName: "pendingCake",
 };
 
@@ -108,11 +105,6 @@ async function main() {
 
   await vault.transferOwnership(beefyfinance.vaultOwner);
   console.log(`Transfered Vault Ownership to ${beefyfinance.vaultOwner}`);
-
-  if (hardhat.network.name === "bsc") {
-    await registerSubsidy(vault.address, deployer);
-    await registerSubsidy(strategy.address, deployer);
-  }
 }
 
 main()
