@@ -3,7 +3,7 @@
 pragma solidity ^0.6.0;
 
 import '@uniswap/v3-periphery/contracts/libraries/Path.sol';
-import "../interfaces/common/IUniswapRouterV3.sol";
+import "../interfaces/common/IUniswapRouterV3WithDeadline.sol";
 
 library UniswapV3Utils {
     using Path for bytes;
@@ -14,14 +14,14 @@ library UniswapV3Utils {
         bytes memory _path,
         uint256 _amountIn
     ) internal returns (uint256 amountOut) {
-        IUniswapRouterV3.ExactInputParams memory params = IUniswapRouterV3.ExactInputParams({
+        IUniswapRouterV3WithDeadline.ExactInputParams memory params = IUniswapRouterV3WithDeadline.ExactInputParams({
             path: _path,
             recipient: address(this),
             deadline: block.timestamp,
             amountIn: _amountIn,
             amountOutMinimum: 0
         });
-        return IUniswapRouterV3(_router).exactInput(params);
+        return IUniswapRouterV3WithDeadline(_router).exactInput(params);
     }
 
     // Swap along a token route using known fees and amountIn

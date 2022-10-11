@@ -13,6 +13,7 @@ import "../../interfaces/curve/IRewardsGauge.sol";
 import "../Common/StratFeeManager.sol";
 import "../../utils/GasFeeThrottler.sol";
 import "../../utils/Path.sol";
+import "../../utils/UniV3Actions.sol";
 
 contract StrategyCurveLPUniV3Router is StratFeeManager, GasFeeThrottler {
     using Path for bytes;
@@ -170,26 +171,14 @@ contract StrategyCurveLPUniV3Router is StratFeeManager, GasFeeThrottler {
         }
     }
 
-    // Uniswap V3 swap
-    function _swapV3(address _router, bytes memory _path, uint256 _amount) internal returns (uint256 amountOut) {
-        IUniswapRouterV3.ExactInputParams memory params = IUniswapRouterV3.ExactInputParams({
-            path: _path,
-            recipient: address(this),
-            deadline: block.timestamp,
-            amountIn: _amount,
-            amountOutMinimum: 0
-        });
-        return IUniswapRouterV3(_router).exactInput(params);
-    }
-
     function _swapV3(bytes memory _path, uint256 _amount) internal returns (uint256 amountOut) {
-        return _swapV3(unirouter, _path, _amount);
+        return UniV3Actions.swapV3WithDeadline(unirouter, _path, _amount);
     }
 
     function swapRewardsToNative() internal {
         uint256 crvBal = IERC20(crv).balanceOf(address(this));
         if (crvEnabled && crvBal > 0) {
-            _swapV3(crvRouter, crvToNativePath, crvBal);
+            UniV3Actions.swapV3WithDeadline(crvRouter, crvToNativePath, crvBal);
         }
         // extras
         for (uint i; i < rewards.length; i++) {

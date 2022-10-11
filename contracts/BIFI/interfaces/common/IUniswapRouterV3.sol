@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma experimental ABIEncoderV2;
-pragma solidity >=0.6.0;
+pragma solidity ^0.8.0;
 
 interface IUniswapRouterV3 {
     struct ExactInputSingleParams {
@@ -9,7 +8,6 @@ interface IUniswapRouterV3 {
         address tokenOut;
         uint24 fee;
         address recipient;
-        uint256 deadline;
         uint256 amountIn;
         uint256 amountOutMinimum;
         uint160 sqrtPriceLimitX96;
@@ -23,7 +21,6 @@ interface IUniswapRouterV3 {
     struct ExactInputParams {
         bytes path;
         address recipient;
-        uint256 deadline;
         uint256 amountIn;
         uint256 amountOutMinimum;
     }
@@ -38,7 +35,6 @@ interface IUniswapRouterV3 {
         address tokenOut;
         uint24 fee;
         address recipient;
-        uint256 deadline;
         uint256 amountOut;
         uint256 amountInMaximum;
         uint160 sqrtPriceLimitX96;
@@ -52,7 +48,6 @@ interface IUniswapRouterV3 {
     struct ExactOutputParams {
         bytes path;
         address recipient;
-        uint256 deadline;
         uint256 amountOut;
         uint256 amountInMaximum;
     }

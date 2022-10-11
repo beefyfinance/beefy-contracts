@@ -373,6 +373,4 @@ contract BeefyZapOneInch is Ownable {
     receive() external payable {
         assert(msg.sender == WETH);
     }
-
-
 }

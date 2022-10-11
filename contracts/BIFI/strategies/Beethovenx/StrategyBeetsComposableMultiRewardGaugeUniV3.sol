@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
 
 import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
@@ -8,35 +7,33 @@ import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/beethovenx/IBalancerVault.sol";
 import "../../interfaces/curve/IRewardsGauge.sol";
-import "../../interfaces/curve/IStreamer.sol";
+import "../../interfaces/curve/IHelper.sol";
 import "../Common/StratFeeManager.sol";
+import "../Balancer/BalancerActionsLib.sol";
+import "../Balancer/BeefyBalancerStructs.sol";
+import "../../utils/UniV3Actions.sol";
 
-contract StrategyBalancerMultiRewardGauge is StratFeeManager {
+pragma solidity ^0.8.0;
+contract StrategyBeetsComposableMultiRewardGaugeUniV3 is StratFeeManager {
     using SafeERC20 for IERC20;
 
     // Tokens used
     address public want;
-    address public output = address(0x9a71012B13CA4d3D0Cdc72A177DF3ef03b0E76A3);
-    address public native = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
-    address public input;
-    address[] public lpTokens;
-
-    struct Reward {
-        address token;
-        bytes32 rewardSwapPoolId;
-        address[] routeToNative; // backup route in case there is no Balancer liquidity for reward
-        uint minAmount; // minimum amount to be swapped to native
-    }
-
-    Reward[] public rewards;
+    address public output;
+    address public native;
 
     // Third party contracts
     address public rewardsGauge;
-    address public streamer;
-    bytes32 public wantPoolId;
-    bytes32 public nativeSwapPoolId;
-    bytes32 public inputSwapPoolId;
-    address public quickRouter = address(0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff);
+    
+    BeefyBalancerStructs.BatchSwapStruct[] public nativeToWantRoute;
+    BeefyBalancerStructs.BatchSwapStruct[] public outputToNativeRoute;
+    address[] public nativeToWantAssets;
+    address[] public outputToNativeAssets;
+
+    mapping(address => BeefyBalancerStructs.Reward) public rewards;
+    address[] public rewardTokens;
+    
+    address public uniswapRouter = address(0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45);
 
     IBalancerVault.SwapKind public swapKind;
     IBalancerVault.FundManagement public funds;
@@ -50,22 +47,37 @@ contract StrategyBalancerMultiRewardGauge is StratFeeManager {
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
     constructor(
-        bytes32[] memory _balancerPoolIds,
+        BeefyBalancerStructs.BatchSwapStruct[] memory _nativeToWantRoute,
+        BeefyBalancerStructs.BatchSwapStruct[] memory _outputToNativeRoute,
+        address[] memory _nativeToWant,
+        address[] memory _outputToNative,
         address _rewardsGauge,
-        address _input,
         CommonAddresses memory _commonAddresses
     ) StratFeeManager(_commonAddresses) {
-        wantPoolId = _balancerPoolIds[0];
-        nativeSwapPoolId = _balancerPoolIds[1];
-        inputSwapPoolId = _balancerPoolIds[2];
+        
+        for (uint i; i < _nativeToWantRoute.length;) {
+            nativeToWantRoute.push(_nativeToWantRoute[i]);
+            unchecked {
+                ++i;
+            }
+        }
+
+        for (uint j; j < _outputToNativeRoute.length;) {
+            outputToNativeRoute.push(_outputToNativeRoute[j]);
+            unchecked {
+                ++j;
+            }
+        }
+
+        outputToNativeAssets = _outputToNative;
+        nativeToWantAssets = _nativeToWant;
+        output = outputToNativeAssets[0];
+        native = nativeToWantAssets[0];
+       
         rewardsGauge = _rewardsGauge;
 
-        streamer = IRewardsGauge(rewardsGauge).reward_contract();
+        (want,) = IBalancerVault(unirouter).getPool(nativeToWantRoute[nativeToWantRoute.length - 1].poolId);
 
-        (want,) = IBalancerVault(unirouter).getPool(wantPoolId);
-        input = _input;
-
-        (lpTokens,,) = IBalancerVault(unirouter).getPoolTokens(wantPoolId);
         swapKind = IBalancerVault.SwapKind.GIVEN_IN;
         funds = IBalancerVault.FundManagement(address(this), false, payable(address(this)), false);
 
@@ -127,8 +139,8 @@ contract StrategyBalancerMultiRewardGauge is StratFeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        IStreamer(streamer).get_reward();
-        IRewardsGauge(rewardsGauge).claim_rewards(address(this));
+        address helper = address(0x299dcDF14350999496204c141A0c20A29d71AF3E);
+        IHelper(helper).claimRewards(rewardsGauge, address(this));
         swapRewardsToNative();
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
@@ -146,20 +158,26 @@ contract StrategyBalancerMultiRewardGauge is StratFeeManager {
     function swapRewardsToNative() internal {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
-            balancerSwap(nativeSwapPoolId, output, native, outputBal);
+            IBalancerVault.BatchSwapStep[] memory _swaps = BalancerActionsLib.buildSwapStructArray(outputToNativeRoute, outputBal);
+            BalancerActionsLib.balancerSwap(unirouter, swapKind, _swaps, outputToNativeAssets, funds, int256(outputBal));
         }
         // extras
-        for (uint i; i < rewards.length; i++) {
-            uint bal = IERC20(rewards[i].token).balanceOf(address(this));
-            if (bal >= rewards[i].minAmount) {
-                if (rewards[i].rewardSwapPoolId != bytes32(0)) {
-                    balancerSwap(rewards[i].rewardSwapPoolId, rewards[i].token, native, bal);
+        for (uint i; i < rewardTokens.length; i++) {
+            uint bal = IERC20(rewardTokens[i]).balanceOf(address(this));
+            if (bal >= rewards[rewardTokens[i]].minAmount) {
+                if (rewards[rewardTokens[i]].assets[0] != address(0)) {
+                    BeefyBalancerStructs.BatchSwapStruct[] memory swapInfo = new BeefyBalancerStructs.BatchSwapStruct[](rewards[rewardTokens[i]].assets.length - 1);
+                    for (uint j; j < rewards[rewardTokens[i]].assets.length - 1;) {
+                        swapInfo[j] = rewards[rewardTokens[i]].swapInfo[j];
+                        unchecked {
+                            ++j;
+                        }
+                    }
+                    IBalancerVault.BatchSwapStep[] memory _swaps = BalancerActionsLib.buildSwapStructArray(swapInfo, bal);
+                    BalancerActionsLib.balancerSwap(unirouter, swapKind, _swaps, rewards[rewardTokens[i]].assets, funds, int256(bal));
                 } else {
-                    IUniswapRouterETH(quickRouter).swapExactTokensForTokens(
-                        bal, 0, rewards[i].routeToNative, address(this), block.timestamp
-                    );
+                    UniV3Actions.swapV3(uniswapRouter, rewards[rewardTokens[i]].routeToNative, bal);
                 }
-
             }
         }
     }
@@ -183,29 +201,9 @@ contract StrategyBalancerMultiRewardGauge is StratFeeManager {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        if (input != native) {
-            uint256 nativeBal = IERC20(native).balanceOf(address(this));
-            balancerSwap(inputSwapPoolId, native, input, nativeBal);
-        }
-
-        uint256 inputBal = IERC20(input).balanceOf(address(this));
-        balancerJoin(wantPoolId, input, inputBal);
-    }
-
-    function balancerSwap(bytes32 _poolId, address _tokenIn, address _tokenOut, uint256 _amountIn) internal returns (uint256) {
-        IBalancerVault.SingleSwap memory singleSwap = IBalancerVault.SingleSwap(_poolId, swapKind, _tokenIn, _tokenOut, _amountIn, "");
-        return IBalancerVault(unirouter).swap(singleSwap, funds, 1, block.timestamp);
-    }
-
-    function balancerJoin(bytes32 _poolId, address _tokenIn, uint256 _amountIn) internal {
-        uint256[] memory amounts = new uint256[](lpTokens.length);
-        for (uint256 i = 0; i < amounts.length; i++) {
-            amounts[i] = lpTokens[i] == _tokenIn ? _amountIn : 0;
-        }
-        bytes memory userData = abi.encode(1, amounts, 1);
-
-        IBalancerVault.JoinPoolRequest memory request = IBalancerVault.JoinPoolRequest(lpTokens, amounts, userData, false);
-        IBalancerVault(unirouter).joinPool(_poolId, address(this), address(this), request);
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        IBalancerVault.BatchSwapStep[] memory _swaps = BalancerActionsLib.buildSwapStructArray(nativeToWantRoute, nativeBal);
+        BalancerActionsLib.balancerSwap(unirouter, swapKind, _swaps, nativeToWantAssets, funds, int256(nativeBal));
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -229,49 +227,42 @@ contract StrategyBalancerMultiRewardGauge is StratFeeManager {
     }
 
     // native reward amount for calling harvest
-    function callReward() public returns (uint256) {
-        IFeeConfig.FeeCategory memory fees = getFees();
-        uint256 outputBal = rewardsAvailable();
-        uint256 nativeOut;
-        if (outputBal > 0) {
-            nativeOut = balancerSwap(nativeSwapPoolId, output, native, outputBal);
-        }
-
-        if (rewards.length != 0) {
-            for (uint i; i < rewards.length; ++i) {
-                uint256 rewardBal = IERC20(rewards[i].token).balanceOf(address(this));
-                if (rewardBal > 0) {
-                    if (rewards[i].rewardSwapPoolId != bytes32(0)) {
-                        nativeOut += balancerSwap(rewards[i].rewardSwapPoolId, rewards[i].token, native, rewardBal);
-                    } else {
-                        uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(rewardBal, rewards[i].routeToNative);
-                        nativeOut += amountOut[amountOut.length -1];
-                    }
-                }
-            }
-        }
-
-        return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
+    function callReward() public pure returns (uint256) {
+       return 0; // multiple swap providers with no easy way to estimate native output. 
     }
 
-     function addRewardToken(address _token, bytes32 _rewardSwapPoolId, address[] memory _routeToNative, uint _minAmount) external onlyOwner {
+     function addRewardToken(address _token, BeefyBalancerStructs.BatchSwapStruct[] memory _swapInfo, address[] memory _assets, bytes calldata _routeToNative, uint _minAmount) external onlyOwner {
         require(_token != want, "!want");
         require(_token != native, "!native");
-        if (_rewardSwapPoolId != bytes32(0)) {
+        if (_assets[0] != address(0)) {
             IERC20(_token).safeApprove(unirouter, 0);
             IERC20(_token).safeApprove(unirouter, type(uint).max);
         } else {
-            require(_routeToNative[0] == _token, "routeToNative[0] != reward");
-            require(_routeToNative[_routeToNative.length - 1] == native, "routeToNative[last] != native");
-            IERC20(_token).safeApprove(quickRouter, 0);
-            IERC20(_token).safeApprove(quickRouter, type(uint).max);
+            IERC20(_token).safeApprove(uniswapRouter, 0);
+            IERC20(_token).safeApprove(uniswapRouter, type(uint).max);
         }
 
-        rewards.push(Reward(_token, _rewardSwapPoolId, _routeToNative, _minAmount));
+        rewards[_token].assets = _assets;
+        rewards[_token].routeToNative = _routeToNative;
+        rewards[_token].minAmount = _minAmount;
+
+        for (uint i; i < _swapInfo.length; ) {
+            rewards[_token].swapInfo[i].poolId = _swapInfo[i].poolId;
+            rewards[_token].swapInfo[i].assetInIndex = _swapInfo[i].assetInIndex;
+            rewards[_token].swapInfo[i].assetOutIndex = _swapInfo[i].assetOutIndex;
+            unchecked {
+                ++i;
+            }
+        }
+        rewardTokens.push(_token);
     }
 
-     function resetRewardTokens() external onlyManager {
-        delete rewards;
+    function resetRewardTokens() external onlyManager {
+        for (uint i; i < rewardTokens.length;) {
+            delete rewards[rewardTokens[i]];
+            unchecked { ++i; }
+        }
+        delete rewardTokens;
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
@@ -318,34 +309,31 @@ contract StrategyBalancerMultiRewardGauge is StratFeeManager {
         IERC20(want).safeApprove(rewardsGauge, type(uint).max);
         IERC20(output).safeApprove(unirouter, type(uint).max);
         IERC20(native).safeApprove(unirouter, type(uint).max);
-        if (rewards.length != 0) {
-            for (uint i; i < rewards.length; ++i) {
-                if (rewards[i].rewardSwapPoolId != bytes32(0)) {
-                    IERC20(rewards[i].token).safeApprove(unirouter, type(uint).max);
+        if (rewardTokens.length != 0) {
+            for (uint i; i < rewardTokens.length; ++i) {
+                if (rewards[rewardTokens[i]].assets[0] != address(0)) {
+                    IERC20(rewardTokens[i]).safeApprove(unirouter, 0);
+                    IERC20(rewardTokens[i]).safeApprove(unirouter, type(uint).max);
                 } else {
-                    IERC20(rewards[i].token).safeApprove(quickRouter, type(uint).max);
+                    IERC20(rewardTokens[i]).safeApprove(uniswapRouter, 0);
+                    IERC20(rewardTokens[i]).safeApprove(uniswapRouter, type(uint).max);
                 }
             }
         }
-
-        IERC20(input).safeApprove(unirouter, 0);
-        IERC20(input).safeApprove(unirouter, type(uint).max);
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(rewardsGauge, 0);
         IERC20(output).safeApprove(unirouter, 0);
         IERC20(native).safeApprove(unirouter, 0);
-        if (rewards.length != 0) { 
-            for (uint i; i < rewards.length; ++i) {
-                if (rewards[i].rewardSwapPoolId != bytes32(0)) {
-                    IERC20(rewards[i].token).safeApprove(unirouter, 0);
+        if (rewardTokens.length != 0) { 
+            for (uint i; i < rewardTokens.length; ++i) {
+                if (rewards[rewardTokens[i]].assets[0] != address(0)) {
+                    IERC20(rewardTokens[i]).safeApprove(unirouter, 0);
                 } else {
-                    IERC20(rewards[i].token).safeApprove(quickRouter, 0);
+                    IERC20(rewardTokens[i]).safeApprove(uniswapRouter, 0);
                 }
             }
         }
-
-        IERC20(input).safeApprove(unirouter, 0);
     }
 }
