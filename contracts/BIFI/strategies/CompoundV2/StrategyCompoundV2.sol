@@ -277,12 +277,12 @@ contract StrategyCompoundV2 is StratFeeManager, GasFeeThrottler {
      */
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
-        require(balanceOfWant() >= _amount, "Want Balance Less than Requested");
 
         uint256 wantBal = availableWant();
 
         if (wantBal < _amount) {
             _deleverage();
+            require(balanceOfWant() >= _amount, "Want Balance Less than Requested");
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
