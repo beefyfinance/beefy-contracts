@@ -23,7 +23,7 @@ In addition to version changes all strategies will now use the BeefyFeeConfigura
 
 1. Change the Solidity version of the strategy to 0.8 from 0.6
 ```
-pragma solidity ^0.8.0
+pragma solidity ^0.8.0;
 ```
 2. Replace exisiting OpenZeppelin imports with the 0.8 versions, removing SafeMath entirely
 ```
@@ -37,7 +37,7 @@ pragma solidity >=0.6.0 <0.9.0;
 4. Replace StratManager, FeeManager and GasThrottler imports with StratFeeManager and GasFeeThrottler
 ```
 import "../Common/StratFeeManager.sol";
-import "../../utils/GasFeeThrottler.sol
+import "../../utils/GasFeeThrottler.sol;
 ```
 5. Remove the line `using SafeMath for uint256;`
 6. Replace these lines in the constructor arguments:
@@ -48,7 +48,7 @@ address _keeper,
 address _strategist,
 address _beefyFeeRecipient,
 ```
-with the single line `CommonAddresses memory _commonAddresses,` which is a struct containing:
+with the single line `CommonAddresses memory _commonAddresses` which is a struct containing:
 ```
 struct CommonAddresses {
    address vault;
@@ -84,7 +84,9 @@ struct FeeCategory {
 ```
 uint256 toNative = IERC20(output).balanceOf(address(this)) * fees.total / DIVISOR;
 ```
-```return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;```
+```
+return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
+```
 
 The default fee will automatically be charged, but in the future you may be required to change it to a different fee category. After deployment you will be able to use `setStratFeeCategory(uint256 feeCategory)` to set to a different existing category. Setting the id to a non-existent category will return default fees.
 
