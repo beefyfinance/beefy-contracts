@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.9.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-interface IVToken is IERC20 {
+interface IVToken {
     function underlying() external returns (address);
     function mint(uint mintAmount) external returns (uint);
     function redeem(uint redeemTokens) external returns (uint);
