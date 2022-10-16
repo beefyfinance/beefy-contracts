@@ -13,7 +13,7 @@ import "../../utils/GasFeeThrottler.sol";
 
 
 //Lending Strategy 
-contract StrategyLendingSonne is StratFeeManager, GasFeeThrottler {
+contract StrategyCompoundV2 is StratFeeManager, GasFeeThrottler {
     using SafeERC20 for IERC20;
 
     // Tokens used
@@ -23,7 +23,7 @@ contract StrategyLendingSonne is StratFeeManager, GasFeeThrottler {
     address public iToken;
 
     // Third party contracts
-    address constant public comptroller = 0x60CF091cD3f50420d50fD7f707414d0DF4751C58;
+    address public comptroller;
 
     // Routes
     address[] public outputToNativeRoute;
@@ -73,6 +73,7 @@ contract StrategyLendingSonne is StratFeeManager, GasFeeThrottler {
         address[] memory _outputToNativeRoute,
         address[] memory _outputToWantRoute,
         address[] memory _markets,
+        address _comptroller,
         CommonAddresses memory _commonAddresses
     ) StratFeeManager(_commonAddresses) {
         borrowRate = _borrowRate;
@@ -82,6 +83,7 @@ contract StrategyLendingSonne is StratFeeManager, GasFeeThrottler {
 
         iToken = _markets[0];
         markets = _markets;
+        comptroller = _comptroller;
         want = IVToken(iToken).underlying();
 
         output = _outputToNativeRoute[0];
@@ -269,7 +271,7 @@ contract StrategyLendingSonne is StratFeeManager, GasFeeThrottler {
     }
 
     /**
-     * @dev Withdraws funds and sends them back to the vault. It deleverages from venus first,
+     * @dev Withdraws funds and sends them back to the vault. It deleverages from market first,
      * and then deposits again after the withdraw to make sure it mantains the desired ratio.
      * @param _amount How much {want} to withdraw.
      */
