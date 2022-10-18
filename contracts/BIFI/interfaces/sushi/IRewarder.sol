@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >0.6.0;
 
 interface IRewarder {
     function poolLength() external view returns (uint256);

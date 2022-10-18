@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/sushi/ITridentRouter.sol";
@@ -13,14 +11,12 @@ import "../../interfaces/sushi/IBentoPool.sol";
 import "../../interfaces/sushi/IBentoBox.sol";
 import "../../interfaces/common/IMasterChef.sol";
 import "../../interfaces/stargate/IStargateRouter.sol";
-import "../Common/StratManager.sol";
-import "../Common/FeeManager.sol";
+import "../Common/StratFeeManager.sol";
 import "../../utils/StringUtils.sol";
-import "../../utils/GasThrottler.sol";
+import "../../utils/GasFeeThrottler.sol";
 
-contract StrategyStargatePoly is StratManager, FeeManager, GasThrottler {
+contract StrategyStargatePoly is StratFeeManager, GasFeeThrottler {
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
 
     struct Routes {
         address[] outputToStableRoute;
@@ -63,13 +59,9 @@ contract StrategyStargatePoly is StratManager, FeeManager, GasThrottler {
         address _want,
         uint256 _poolId,
         uint256 _routerPoolId,
-        address _vault,
-        address _unirouter,
-        address _keeper,
-        address _strategist,
-        address _beefyFeeRecipient,
-        Routes memory _routes
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+        Routes memory _routes,
+        CommonAddresses memory _commonAddresses
+    ) StratFeeManager(_commonAddresses) {
         want = _want;
         poolId = _poolId;
         routerPoolId = _routerPoolId;
@@ -114,7 +106,7 @@ contract StrategyStargatePoly is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            IMasterChef(chef).withdraw(poolId, _amount - wantBal);
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -123,8 +115,8 @@ contract StrategyStargatePoly is StratManager, FeeManager, GasThrottler {
         }
 
         if (tx.origin != owner() && !paused()) {
-            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            wantBal = wantBal.sub(withdrawalFeeAmount);
+            uint256 withdrawalFeeAmount = wantBal * withdrawalFee / WITHDRAWAL_MAX;
+            wantBal = wantBal - withdrawalFeeAmount;
         }
 
         IERC20(want).safeTransfer(vault, wantBal);
@@ -168,21 +160,22 @@ contract StrategyStargatePoly is StratManager, FeeManager, GasThrottler {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
+        IFeeConfig.FeeCategory memory fees = getFees();
         outputToStableParams.amountIn = IERC20(output).balanceOf(address(this));
         ITridentRouter(unirouter).exactInputSingleWithNativeToken(outputToStableParams);
 
-        uint256 toNative = IERC20(stable).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(quickRouter).swapExactTokensForTokens(toNative, 0, stableToNativeRoute, address(this), now);
+        uint256 toNative = IERC20(stable).balanceOf(address(this)) * fees.total / DIVISOR;
+        IUniswapRouterETH(quickRouter).swapExactTokensForTokens(toNative, 0, stableToNativeRoute, address(this), block.timestamp);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
+        uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
+        uint256 beefyFeeAmount = nativeBal * fees.beefy / DIVISOR;
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFeeAmount = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        uint256 strategistFeeAmount = nativeBal * fees.strategist / DIVISOR;
         IERC20(native).safeTransfer(strategist, strategistFeeAmount);
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
@@ -192,7 +185,7 @@ contract StrategyStargatePoly is StratManager, FeeManager, GasThrottler {
     function addLiquidity() internal {
         if (stable != input) {
             uint256 toInput = IERC20(stable).balanceOf(address(this));
-            IUniswapRouterETH(quickRouter).swapExactTokensForTokens(toInput, 0, stableToInputRoute, address(this), now);
+            IUniswapRouterETH(quickRouter).swapExactTokensForTokens(toInput, 0, stableToInputRoute, address(this), block.timestamp);
         }
 
         uint256 inputBal = IERC20(input).balanceOf(address(this));
@@ -201,7 +194,7 @@ contract StrategyStargatePoly is StratManager, FeeManager, GasThrottler {
 
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
-        return balanceOfWant().add(balanceOfPool());
+        return balanceOfWant() + balanceOfPool();
     }
 
     // it calculates how much 'want' this contract holds.
@@ -246,7 +239,8 @@ contract StrategyStargatePoly is StratManager, FeeManager, GasThrottler {
             }
         }
 
-        return nativeOut.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+        IFeeConfig.FeeCategory memory fees = getFees();
+        return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
@@ -294,10 +288,10 @@ contract StrategyStargatePoly is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, uint256(-1));
-        IERC20(output).safeApprove(bentoBox, uint256(-1));
-        IERC20(stable).safeApprove(quickRouter, uint256(-1));
-        IERC20(input).safeApprove(stargateRouter, uint256(-1));
+        IERC20(want).safeApprove(chef, type(uint).max);
+        IERC20(output).safeApprove(bentoBox, type(uint).max);
+        IERC20(stable).safeApprove(quickRouter, type(uint).max);
+        IERC20(input).safeApprove(stargateRouter, type(uint).max);
     }
 
     function _removeAllowances() internal {
