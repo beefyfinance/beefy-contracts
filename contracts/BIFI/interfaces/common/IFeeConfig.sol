@@ -12,7 +12,7 @@ interface IFeeConfig {
         bool active;
     }
     struct AllFees {
-        FeeCategory beefy;
+        FeeCategory performance;
         uint256 deposit;
         uint256 withdraw;
     }
