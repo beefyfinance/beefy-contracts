@@ -13,7 +13,7 @@ import "../../utils/GasFeeThrottler.sol";
 
 
 //Lending Strategy 
-contract StrategyCompoundV2 is StratFeeManager, GasFeeThrottler {
+contract StrategyCompoundV2Solidly is StratFeeManager, GasFeeThrottler {
     using SafeERC20 for IERC20;
 
     // Tokens used
