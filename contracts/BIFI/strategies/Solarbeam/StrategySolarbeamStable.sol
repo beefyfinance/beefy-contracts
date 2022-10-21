@@ -1,22 +1,19 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "../../interfaces/common/IWrappedNative.sol";
 import "../../interfaces/solar/ISolarRouter.sol";
 import "../../interfaces/solar/ISolarStableRouter.sol";
-import "../../interfaces/common/IWrappedNative.sol";
 import "../../interfaces/solar/ISolarChef.sol";
-import "../Common/StratManager.sol";
-import "../Common/FeeManager.sol";
+import "../Common/StratFeeManager.sol";
+import "../../utils/GasFeeThrottler.sol";
 
-contract StrategySolarbeamStable is StratManager, FeeManager {
+contract StrategySolarbeamStable is StratFeeManager, GasFeeThrottler {
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
 
     // Tokens used
     address public native;
@@ -47,15 +44,11 @@ contract StrategySolarbeamStable is StratManager, FeeManager {
         address _want,
         uint256 _poolId,
         address _chef,
-        address _vault,
-        address _unirouter,
         address _stableRouter,
-        address _keeper,
-        address _strategist,
-        address _beefyFeeRecipient,
         address[] memory _outputToNativeRoute,
-        address[] memory _outputToInputRoute
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+        address[] memory _outputToInputRoute,
+        CommonAddresses memory _commonAddresses
+    ) StratFeeManager(_commonAddresses) {
         want = _want;
         poolId = _poolId;
         chef = _chef;
@@ -88,7 +81,7 @@ contract StrategySolarbeamStable is StratManager, FeeManager {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            ISolarChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            ISolarChef(chef).withdraw(poolId, _amount - wantBal);
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -97,8 +90,8 @@ contract StrategySolarbeamStable is StratManager, FeeManager {
         }
 
         if (tx.origin != owner() && !paused()) {
-            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            wantBal = wantBal.sub(withdrawalFeeAmount);
+            uint256 withdrawalFeeAmount = wantBal * withdrawalFee / WITHDRAWAL_MAX;
+            wantBal = wantBal - withdrawalFeeAmount;
         }
 
         IERC20(want).safeTransfer(vault, wantBal);
@@ -113,11 +106,11 @@ contract StrategySolarbeamStable is StratManager, FeeManager {
         }
     }
 
-    function harvest() external virtual {
+    function harvest() external virtual gasThrottle {
         _harvest(tx.origin);
     }
 
-    function harvest(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external virtual gasThrottle {
         _harvest(callFeeRecipient);
     }
 
@@ -142,6 +135,7 @@ contract StrategySolarbeamStable is StratManager, FeeManager {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
+        IFeeConfig.FeeCategory memory fees = getFees();
         if (rewardToOutputRoute.length != 0) {
             for (uint i; i < rewardToOutputRoute.length; i++) {
                 if (rewardToOutputRoute[i][0] == native) {
@@ -152,23 +146,23 @@ contract StrategySolarbeamStable is StratManager, FeeManager {
                 }
                 uint256 rewardBal = IERC20(rewardToOutputRoute[i][0]).balanceOf(address(this));
                 if (rewardBal > 0) {
-                    ISolarRouter(unirouter).swapExactTokensForTokens(rewardBal, 0, rewardToOutputRoute[i], address(this), now);
+                    ISolarRouter(unirouter).swapExactTokensForTokens(rewardBal, 0, rewardToOutputRoute[i], address(this), block.timestamp);
                 }
             }
         }
 
-        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        ISolarRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), now);
+        uint256 toNative = IERC20(output).balanceOf(address(this)) * fees.total / DIVISOR;
+        ISolarRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
+        uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
+        uint256 beefyFeeAmount = nativeBal * fees.beefy / DIVISOR;
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFeeAmount = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        uint256 strategistFeeAmount = nativeBal * fees.strategist / DIVISOR;
         IERC20(native).safeTransfer(strategist, strategistFeeAmount);
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
@@ -177,17 +171,17 @@ contract StrategySolarbeamStable is StratManager, FeeManager {
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        ISolarRouter(unirouter).swapExactTokensForTokens(outputBal, 0, outputToInputRoute, address(this), now);
+        ISolarRouter(unirouter).swapExactTokensForTokens(outputBal, 0, outputToInputRoute, address(this), block.timestamp);
 
         uint256 numberOfTokens = ISolarStableRouter(stableRouter).getNumberOfTokens();
         uint256[] memory inputs = new uint256[](numberOfTokens);
         inputs[depositIndex] = IERC20(input).balanceOf(address(this));
-        ISolarStableRouter(stableRouter).addLiquidity(inputs, 1, now);
+        ISolarStableRouter(stableRouter).addLiquidity(inputs, 1, block.timestamp);
     }
 
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
-        return balanceOfWant().add(balanceOfPool());
+        return balanceOfWant() + balanceOfPool();
     }
 
     // it calculates how much 'want' this contract holds.
@@ -207,6 +201,7 @@ contract StrategySolarbeamStable is StratManager, FeeManager {
     }
 
     function callReward() public view returns (uint256) {
+        IFeeConfig.FeeCategory memory fees = getFees();
         (address[] memory rewardAdd, uint256[] memory rewardBal) = rewardsAvailable();
         uint256 nativeBal;
         try ISolarRouter(unirouter).getAmountsOut(rewardBal[0], outputToNativeRoute, 25)
@@ -223,7 +218,7 @@ contract StrategySolarbeamStable is StratManager, FeeManager {
                             uint256 outputBal = initialAmountOut[initialAmountOut.length - 1];
                             try ISolarRouter(unirouter).getAmountsOut(outputBal, outputToNativeRoute, 25)
                             returns (uint256[] memory finalAmountOut) {
-                                nativeBal = nativeBal.add(finalAmountOut[finalAmountOut.length - 1]);
+                                nativeBal = nativeBal + finalAmountOut[finalAmountOut.length - 1];
                             } catch {}
                         } catch {}
                     }
@@ -231,7 +226,7 @@ contract StrategySolarbeamStable is StratManager, FeeManager {
             }
         }
 
-        return nativeBal.mul(45).div(1000).mul(callFee).div(MAX_FEE);
+        return nativeBal * fees.total / DIVISOR * fees.call / DIVISOR;
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
@@ -242,6 +237,10 @@ contract StrategySolarbeamStable is StratManager, FeeManager {
         } else {
             setWithdrawalFee(10);
         }
+    }
+
+    function setShouldGasThrottle(bool _shouldGasThrottle) external onlyManager {
+        shouldGasThrottle = _shouldGasThrottle;
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
@@ -275,14 +274,14 @@ contract StrategySolarbeamStable is StratManager, FeeManager {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
-        IERC20(input).safeApprove(stableRouter, uint256(-1));
+        IERC20(want).safeApprove(chef, type(uint256).max);
+        IERC20(output).safeApprove(unirouter, type(uint256).max);
+        IERC20(input).safeApprove(stableRouter, type(uint256).max);
 
         if (rewardToOutputRoute.length != 0) {
             for (uint i; i < rewardToOutputRoute.length; i++) {
                 IERC20(rewardToOutputRoute[i][0]).safeApprove(unirouter, 0);
-                IERC20(rewardToOutputRoute[i][0]).safeApprove(unirouter, uint256(-1));
+                IERC20(rewardToOutputRoute[i][0]).safeApprove(unirouter, type(uint256).max);
             }
         }
     }
@@ -301,7 +300,7 @@ contract StrategySolarbeamStable is StratManager, FeeManager {
 
     function addRewardRoute(address[] memory _rewardToOutputRoute) external onlyOwner {
         IERC20(_rewardToOutputRoute[0]).safeApprove(unirouter, 0);
-        IERC20(_rewardToOutputRoute[0]).safeApprove(unirouter, uint256(-1));
+        IERC20(_rewardToOutputRoute[0]).safeApprove(unirouter, type(uint256).max);
         rewardToOutputRoute.push(_rewardToOutputRoute);
     }
 
