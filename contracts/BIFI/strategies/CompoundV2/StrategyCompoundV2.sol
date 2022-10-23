@@ -210,11 +210,11 @@ contract StrategyCompoundV2 is StratFeeManager, GasFeeThrottler {
         updateBalance();
     }
 
-    function harvest() external virtual {
+    function harvest() external gasThrottle virtual {
         _harvest(tx.origin);
     }
 
-    function harvest(address callFeeRecipient) external virtual {
+    function harvest(address callFeeRecipient) external gasThrottle virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -357,6 +357,10 @@ contract StrategyCompoundV2 is StratFeeManager, GasFeeThrottler {
         } else {
             super.setWithdrawalFee(10);
         }
+    }
+
+    function setShouldGasThrottle(bool _shouldGasThrottle) external onlyManager {
+        shouldGasThrottle = _shouldGasThrottle;
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
