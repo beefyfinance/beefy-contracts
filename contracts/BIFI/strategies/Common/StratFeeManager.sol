@@ -28,7 +28,7 @@ contract StratFeeManager is Ownable, Pausable {
     uint256 constant DIVISOR = 1 ether;
     uint256 constant public WITHDRAWAL_FEE_CAP = 50;
     uint256 constant public WITHDRAWAL_MAX = 10000;
-    uint256 public withdrawalFee = 10;
+    uint256 internal withdrawalFee = 10;
 
     event SetStratFeeId(uint256 feeId);
     event SetWithdrawalFee(uint256 withdrawalFee);
@@ -57,8 +57,13 @@ contract StratFeeManager is Ownable, Pausable {
     }
 
     // fetch fees from config contract
-    function getFees() public view returns (IFeeConfig.FeeCategory memory) {
+    function getFees() internal view returns (IFeeConfig.FeeCategory memory) {
         return beefyFeeConfig.getFees(address(this));
+    }
+
+    // fetch fees from config contract and dynamic deposit/withdraw fees
+    function getAllFees() external view returns (IFeeConfig.AllFees memory) {
+        return IFeeConfig.AllFees(getFees(), depositFee(), withdrawFee());
     }
 
     function getStratFeeId() external view returns (uint256) {
@@ -112,6 +117,14 @@ contract StratFeeManager is Ownable, Pausable {
     function setBeefyFeeConfig(address _beefyFeeConfig) external onlyOwner {
         beefyFeeConfig = IFeeConfig(_beefyFeeConfig);
         emit SetBeefyFeeConfig(_beefyFeeConfig);
+    }
+
+    function depositFee() public virtual view returns (uint256) {
+        return 0;
+    }
+
+    function withdrawFee() public virtual view returns (uint256) {
+        return paused() ? 0 : withdrawalFee;
     }
 
     function beforeDeposit() external virtual {}
