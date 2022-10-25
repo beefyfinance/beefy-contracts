@@ -86,12 +86,14 @@ contract StrategyCompoundV2Solidly is StratFeeManager, GasFeeThrottler {
         comptroller = _comptroller;
         want = IVToken(iToken).underlying();
 
-        for (uint i; i < _outputToNativeRoute.length; ++i) {
+        for (uint i; i < _outputToNativeRoute.length;) {
             outputToNativeRoute.push(_outputToNativeRoute[i]);
+            unchecked { ++i; }
         }
 
-        for (uint i; i < _outputToWantRoute.length; ++i) {
+        for (uint i; i < _outputToWantRoute.length;) {
             outputToWantRoute.push(_outputToWantRoute[i]);
+            unchecked { ++i; }
         }
 
         output = outputToNativeRoute[0].from;
@@ -118,13 +120,14 @@ contract StrategyCompoundV2Solidly is StratFeeManager, GasFeeThrottler {
     function _leverage(uint256 _amount) internal {
         if (_amount < minLeverage) { return; }
 
-        for (uint i = 0; i < borrowDepth; i++) {
+        for (uint i; i < borrowDepth;) {
             IVToken(iToken).mint(_amount);
             _amount = _amount * borrowRate / 100;
             IVToken(iToken).borrow(_amount);
+            unchecked { i++; }
         }
 
-        reserves = reserves + _amount;
+        reserves += _amount;
 
         updateBalance();
     }
@@ -146,7 +149,8 @@ contract StrategyCompoundV2Solidly is StratFeeManager, GasFeeThrottler {
             uint256 targetSupply = borrowBal * 100 / borrowRate;
 
             uint256 supplyBal = IVToken(iToken).balanceOfUnderlying(address(this));
-            IVToken(iToken).redeemUnderlying(supplyBal - targetSupply);
+            uint error = IVToken(iToken).redeemUnderlying(supplyBal - targetSupply);
+            require(error == 0, "Error while trying to redeem");
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -177,7 +181,8 @@ contract StrategyCompoundV2Solidly is StratFeeManager, GasFeeThrottler {
         uint256 targetSupply = borrowBal * 100 / _borrowRate;
 
         uint256 supplyBal = IVToken(iToken).balanceOfUnderlying(address(this));
-        IVToken(iToken).redeemUnderlying(supplyBal - targetSupply);
+        uint error = IVToken(iToken).redeemUnderlying(supplyBal - targetSupply);
+        require(error == 0, "Error while trying to redeem");
 
         wantBal = IERC20(want).balanceOf(address(this));
         reserves = wantBal;
@@ -283,7 +288,6 @@ contract StrategyCompoundV2Solidly is StratFeeManager, GasFeeThrottler {
 
         if (wantBal < _amount) {
             _deleverage();
-            require(balanceOfWant() >= _amount, "Want Balance Less than Requested");
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -352,7 +356,7 @@ contract StrategyCompoundV2Solidly is StratFeeManager, GasFeeThrottler {
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
 
-        if (harvestOnDeposit == true) {
+        if (harvestOnDeposit) {
             super.setWithdrawalFee(0);
         } else {
             super.setWithdrawalFee(10);
