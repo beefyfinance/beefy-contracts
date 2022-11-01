@@ -347,7 +347,8 @@ contract StrategyCompoundV2Solidly is StratFeeManager, GasFeeThrottler {
         uint256 outputBal = rewardsAvailable();
         uint256 nativeOut;
         if (outputBal > 0) {
-            (nativeOut,) = ISolidlyRouter(unirouter).getAmountOut(outputBal, output, native);
+            uint256[] memory amountOut = ISolidlyRouter(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
+            nativeOut = amountOut[amountOut.length -1];
             }
 
         return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
