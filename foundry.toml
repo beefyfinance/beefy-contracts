@@ -1,8 +1,8 @@
-[default]
+[profile.default]
 src = 'forge'
 test = 'test'
 out = 'artifacts'
-libs = ['node_modules']
+libs = ['node_modules', 'lib']
 remappings = [
     '@chainlink/=node_modules/@chainlink/',
     '@openzeppelin-2/=node_modules/@openzeppelin-2/',

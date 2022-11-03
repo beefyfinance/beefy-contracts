@@ -11,14 +11,14 @@ import {IERC20Like} from "forge/test/interfaces/IERC20Like.sol";
 import {IBeefyVaultV6} from "forge/test/interfaces/IBeefyVaultV6.sol";
 import {BaseTestHarness} from "forge/test/utils/BaseTestHarness.sol";
 import {IStrategyComplete} from "forge/test/interfaces/IStrategyComplete.sol";
-import {StratFeeManager, StrategyLiquidLockers} from "contracts/BIFI/strategies/StakeDAO/StrategyLiquidLockers.sol";
+import {StratFeeManager, StrategyLLCurveLP} from "contracts/BIFI/strategies/StakeDAO/StrategyLLCurveLP.sol";
 
 
 interface ILocker {
     function claim(address _token) external;
 }
 
-contract StrategyLiquidLockersTest is Test {
+contract StrategyLLCurveLPTest is Test {
     address sdLocker = 0x2B82FB2B4bac16a1188f377D6a913f235715031b;
     address sdMultisig = 0xfDB1157ac847D334b8912df1cd24a93Ee22ff3d0;
     address beefyFeeConfig = 0xDC1dC2abC8775561A6065D0EE27E8fDCa8c4f7ED;
@@ -40,7 +40,7 @@ contract StrategyLiquidLockersTest is Test {
     IStrategyComplete OldStrategy;
 
     // New strategy.
-    StrategyLiquidLockers strategy;
+    StrategyLLCurveLP strategy;
 
     // Users
     VaultUser user;
@@ -87,7 +87,7 @@ contract StrategyLiquidLockersTest is Test {
         nativeToUsdc[1] = usdc;
 
         // Deploy new strategy.
-        strategy = new StrategyLiquidLockers(
+        strategy = new StrategyLLCurveLP(
             address(want),
             gauge,
             address(want),

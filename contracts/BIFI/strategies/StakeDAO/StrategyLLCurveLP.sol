@@ -20,7 +20,8 @@ interface IStakeDAOVault {
     function decimals() external;
 }
 
-contract StrategyLiquidLockers is StratFeeManager, GasFeeThrottler {
+/// @notice Strategy for StakeDAO vaults
+contract StrategyLLCurveLP is StratFeeManager, GasFeeThrottler {
     using SafeERC20 for IERC20;
 
     // Tokens used

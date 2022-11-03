@@ -6,7 +6,7 @@ FOUNDRY_FORK_BLOCK_NUMBER?=34993343
 ETHERSCAN_API_KEY?=${ETHERSCAN_KEY}
 
 default:; @forge build
-test:; @forge test --match-contract StrategyLiquidLockersTest
+test:; @forge test --match-contract StrategyLLCurveLPTest
 test-gas-report:; @forge test --gas-report
 
 .PHONY: build test snapshot quote
