@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.12;
 
-import {DSTest, console, Vm} from "../forge/test.sol";
+import {DSTest, console, Vm} from "forge-std/Test.sol";
 
 import {IERC20Like} from "../interfaces/IERC20Like.sol";
 

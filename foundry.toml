@@ -8,7 +8,9 @@ remappings = [
     '@chainlink/=node_modules/@chainlink/',
     '@openzeppelin-2/=node_modules/@openzeppelin-2/',
     '@openzeppelin-4/=node_modules/@openzeppelin-4/',
-    '@openzeppelin/=node_modules/@openzeppelin/'
+    '@openzeppelin/=node_modules/@openzeppelin/',
+    'forge-std/=node_modules/forge-std/src',
+    'ds-test/=node_modules/ds-test/src'
 ]
 # libraries = []
 # cache = true
