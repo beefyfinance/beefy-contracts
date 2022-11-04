@@ -20,9 +20,15 @@ interface IStakeDAOVault {
     function decimals() external;
 }
 
+interface ISDStrategy {
+    function claim(address _token) external;
+}
+
 /// @notice Strategy for StakeDAO vaults
 contract StrategyLLCurveLP is StratFeeManager, GasFeeThrottler {
     using SafeERC20 for IERC20;
+
+    address public immutable SD_CRV_STRATEGY;
 
     // Tokens used
     address public want; // curve lpToken
@@ -75,6 +81,7 @@ contract StrategyLLCurveLP is StratFeeManager, GasFeeThrottler {
         address _pool,
         address _sdVault,
         address _liquidityGauge,
+        address _sd_crv_strategy,
         uint256[] memory _params, // [poolSize, depositIndex, useUnderlying, useMetapool]
         address[] memory _crvToNativeRoute,
         address[] memory _nativeToDepositRoute,
@@ -99,6 +106,8 @@ contract StrategyLLCurveLP is StratFeeManager, GasFeeThrottler {
         require(_nativeToDepositRoute[0] == native, "_nativeToDepositRoute[0] != native");
         depositToken = _nativeToDepositRoute[_nativeToDepositRoute.length - 1];
         nativeToDepositRoute = _nativeToDepositRoute;
+
+        SD_CRV_STRATEGY = _sd_crv_strategy;
 
         _giveAllowances();
     }
@@ -159,6 +168,10 @@ contract StrategyLLCurveLP is StratFeeManager, GasFeeThrottler {
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
         IRewardsGauge(liquidityGauge).claim_rewards(address(this));
+
+        // Claim and Notify rewards.
+        ISDStrategy(SD_CRV_STRATEGY).claim(want);
+
         swapRewardsToNative();
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
         if (nativeBal > 0) {

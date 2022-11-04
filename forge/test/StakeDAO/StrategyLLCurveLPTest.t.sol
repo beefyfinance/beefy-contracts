@@ -19,6 +19,9 @@ interface ILocker {
 }
 
 contract StrategyLLCurveLPTest is Test {
+
+    address internal constant _SD_STRATEGY = 0x2B82FB2B4bac16a1188f377D6a913f235715031b;
+
     address sdLocker = 0x2B82FB2B4bac16a1188f377D6a913f235715031b;
     address sdMultisig = 0xfDB1157ac847D334b8912df1cd24a93Ee22ff3d0;
     address beefyFeeConfig = 0xDC1dC2abC8775561A6065D0EE27E8fDCa8c4f7ED;
@@ -93,6 +96,7 @@ contract StrategyLLCurveLPTest is Test {
             address(want),
             sdVault,
             liquidityGauge,
+            _SD_STRATEGY,
             params,
             crvToNative,
             nativeToUsdc,
