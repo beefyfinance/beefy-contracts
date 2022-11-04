@@ -2,12 +2,13 @@
 src = 'forge'
 test = 'test'
 out = 'artifacts'
-libs = ['node_modules', 'lib']
+libs = ["node_modules"]
+
 remappings = [
     '@chainlink/=node_modules/@chainlink/',
     '@openzeppelin-2/=node_modules/@openzeppelin-2/',
     '@openzeppelin-4/=node_modules/@openzeppelin-4/',
-    '@openzeppelin/=node_modules/@openzeppelin/',
+    '@openzeppelin/=node_modules/@openzeppelin/'
 ]
 # libraries = []
 # cache = true

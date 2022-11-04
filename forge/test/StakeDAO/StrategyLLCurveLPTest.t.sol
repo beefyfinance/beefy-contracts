@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.12;
 
-import "forge-std/Test.sol";
+import "forge/test/forge/test.sol";
 
 // Users
 import {VaultUser} from "forge/test/users/VaultUser.sol";
