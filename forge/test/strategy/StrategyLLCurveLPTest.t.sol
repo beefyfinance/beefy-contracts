@@ -8,9 +8,9 @@ import "forge-std/Test.sol";
 import {VaultUser} from "forge/test/users/VaultUser.sol";
 // Interfaces
 import {IERC20Like} from "forge/test/interfaces/IERC20Like.sol";
-import {IBeefyVaultV6} from "forge/test/interfaces/IBeefyVaultV6.sol";
+import {IVault} from "forge/test/interfaces/IVault.sol";
 import {BaseTestHarness} from "forge/test/utils/BaseTestHarness.sol";
-import {IStrategyComplete} from "forge/test/interfaces/IStrategyComplete.sol";
+import {IStrategy} from "forge/test/interfaces/IStrategy.sol";
 import {StratFeeManager, StrategyLLCurveLP} from "contracts/BIFI/strategies/StakeDAO/StrategyLLCurveLP.sol";
 
 
@@ -39,8 +39,8 @@ contract StrategyLLCurveLPTest is Test {
 
     // Current setup in prod.
     // USDC/USDT Vault.
-    IBeefyVaultV6 constant vault = IBeefyVaultV6(0xEc7c0205a6f426c2Cb1667d783B5B4fD2f875434);
-    IStrategyComplete OldStrategy;
+    IVault constant vault = IVault(0xEc7c0205a6f426c2Cb1667d783B5B4fD2f875434);
+    IStrategy OldStrategy;
 
     // New strategy.
     StrategyLLCurveLP strategy;
@@ -60,7 +60,7 @@ contract StrategyLLCurveLPTest is Test {
     address internal strategyOwner; // fantom
 
     function setUp() public {
-        OldStrategy = IStrategyComplete(vault.strategy());
+        OldStrategy = IStrategy(vault.strategy());
 
         keeper = OldStrategy.keeper();
         vaultOwner = vault.owner();

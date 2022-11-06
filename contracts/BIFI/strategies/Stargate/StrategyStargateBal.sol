@@ -22,7 +22,7 @@ contract StrategyStargateBal is StrategyStargateInitializable {
         address _chef,
         address _stargateRouter,
         uint256 _routerPoolId,
-        CommonAddresses memory _commonAddresses,
+        CommonAddresses calldata _commonAddresses,
         bytes32[] memory _outputToNativePools,
         bytes32[] memory _outputToDepositPools,
         address[] memory _outputToNativeRoute,

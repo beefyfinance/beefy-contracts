@@ -36,7 +36,7 @@ contract StrategyStargateInitializable is StratFeeManagerInitializable {
         address _chef,
         address _stargateRouter,
         uint256 _routerPoolId,
-        CommonAddresses memory _commonAddresses
+        CommonAddresses calldata _commonAddresses
     ) internal onlyInitializing {
         __StratFeeManager_init(_commonAddresses);
         want = _want;

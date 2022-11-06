@@ -39,7 +39,7 @@ contract StratFeeManagerInitializable is OwnableUpgradeable, PausableUpgradeable
     event SetBeefyFeeRecipient(address beefyFeeRecipient);
     event SetBeefyFeeConfig(address beefyFeeConfig);
 
-    function __StratFeeManager_init(CommonAddresses memory _commonAddresses) internal onlyInitializing {
+    function __StratFeeManager_init(CommonAddresses calldata _commonAddresses) internal onlyInitializing {
         __Ownable_init();
         __Pausable_init();
         vault = _commonAddresses.vault;
