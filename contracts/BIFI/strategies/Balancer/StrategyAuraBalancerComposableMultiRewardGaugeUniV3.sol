@@ -59,7 +59,7 @@ contract StrategyAuraBalancerComposableMultiRewardGaugeUniV3 is StratFeeManagerI
         uint256 _pid,
         address[] memory _nativeToWant,
         address[] memory _outputToNative,
-        CommonAddresses memory _commonAddresses
+        CommonAddresses calldata _commonAddresses
     ) public initializer  {
         __StratFeeManager_init(_commonAddresses);
         
