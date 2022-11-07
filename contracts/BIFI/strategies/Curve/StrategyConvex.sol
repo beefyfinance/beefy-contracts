@@ -8,6 +8,7 @@ import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IWrappedNative.sol";
 import "../../interfaces/convex/IConvex.sol";
 import "../../interfaces/curve/ICurveSwap.sol";
+import "../../interfaces/curve/ICurveSwap256.sol";
 import "../../interfaces/curve/IGaugeFactory.sol";
 import "../../interfaces/curve/IRewardsGauge.sol";
 import "../Common/StratFeeManagerInitializable.sol";
@@ -23,6 +24,8 @@ contract StrategyConvex is StratFeeManagerInitializable {
     address public constant cvx = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
     address public constant native = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant unirouterV3 = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    address public constant crvPool = 0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511;
+    address public constant cvxPool = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
     IConvexBooster public constant booster = IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
 
     address public want; // curve lpToken
@@ -55,6 +58,7 @@ contract StrategyConvex is StratFeeManagerInitializable {
     }
     RewardV2[] public rewards;
 
+    uint public curveSwapMinAmount;
     bool public skipEarmarkRewards;
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -96,17 +100,7 @@ contract StrategyConvex is StratFeeManagerInitializable {
             nativeToDepositRoute = _nativeToDepositRoute;
         }
 
-        // default swap CRV and CVX on sushi
-        address sushiRouter = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
-        address[] memory route = new address[](2);
-        route[0] = crv;
-        route[1] = native;
-        rewards.push(RewardV2(crv, sushiRouter, route, 1e18));
-        route[0] = cvx;
-        rewards.push(RewardV2(cvx, sushiRouter, route, 1e18));
-        IERC20(crv).approve(sushiRouter, type(uint).max);
-        IERC20(cvx).approve(sushiRouter, type(uint).max);
-
+        curveSwapMinAmount = 1e19;
         withdrawalFee = 1;
         _giveAllowances();
     }
@@ -189,6 +183,16 @@ contract StrategyConvex is StratFeeManagerInitializable {
     }
 
     function swapRewardsToNative() internal {
+        if (curveSwapMinAmount > 0) {
+            uint bal = IERC20(crv).balanceOf(address(this));
+            if (bal > curveSwapMinAmount) {
+                ICurveSwap256(crvPool).exchange(1, 0, bal, 0);
+            }
+            bal = IERC20(cvx).balanceOf(address(this));
+            if (bal > curveSwapMinAmount) {
+                ICurveSwap256(cvxPool).exchange(1, 0, bal, 0);
+            }
+        }
         for (uint i; i < rewardsV3.length; ++i) {
             uint bal = IERC20(rewardsV3[i].token).balanceOf(address(this));
             if (bal >= rewardsV3[i].minAmount) {
@@ -358,6 +362,10 @@ contract StrategyConvex is StratFeeManagerInitializable {
         skipEarmarkRewards = _skipEarmarkRewards;
     }
 
+    function setCurveSwapMinAmount(uint _minAmount) external onlyManager {
+        curveSwapMinAmount = _minAmount;
+    }
+
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
         if (harvestOnDeposit) {
@@ -412,6 +420,8 @@ contract StrategyConvex is StratFeeManagerInitializable {
         IERC20(native).approve(unirouter, type(uint).max);
         IERC20(depositToken).approve(pool, type(uint).max);
         if (zap != address(0)) IERC20(depositToken).approve(zap, type(uint).max);
+        IERC20(crv).approve(crvPool, type(uint).max);
+        IERC20(cvx).approve(cvxPool, type(uint).max);
     }
 
     function _removeAllowances() internal {
@@ -419,6 +429,8 @@ contract StrategyConvex is StratFeeManagerInitializable {
         IERC20(native).approve(unirouter, 0);
         IERC20(depositToken).approve(pool, 0);
         if (zap != address(0)) IERC20(depositToken).approve(zap, 0);
+        IERC20(crv).approve(crvPool, 0);
+        IERC20(cvx).approve(cvxPool, 0);
     }
 
     receive () external payable {}

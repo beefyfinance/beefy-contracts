@@ -120,7 +120,7 @@ contract StrategyConvexTest is BaseStrategyTest {
     IVault vault;
     StrategyConvex strategy;
     VaultUser user;
-    uint256 wantAmount = 500 ether;
+    uint256 wantAmount = 50000 ether;
 
     function setUp() public {
         BeefyVaultV7 vaultV7 = new BeefyVaultV7();
@@ -146,6 +146,7 @@ contract StrategyConvexTest is BaseStrategyTest {
             bytes memory path = routeToPath(rewardsV3, rewardsV3Fee);
             strategy.addRewardV3(path, 1000);
         }
+        strategy.setCurveSwapMinAmount(1);
 
         deal(vault.want(), address(user), wantAmount);
         initBase(vault, IStrategy(address(strategy)));
@@ -201,12 +202,12 @@ contract StrategyConvexTest is BaseStrategyTest {
         uint rewardsAvailable = strategy.rewardsAvailable();
         assertGt(rewardsAvailable, 0, "Expected rewardsAvailable > 0");
 
-        address[] memory rewards = new address[](strategy.rewardsLength() - 2 + strategy.rewardsV3Length());
-        for(uint i = 2; i < strategy.rewardsLength(); ++i) {
+        address[] memory rewards = new address[](strategy.rewardsLength() + strategy.rewardsV3Length());
+        for(uint i; i < strategy.rewardsLength(); ++i) {
             rewards[i] = strategy.rewardToNative(i)[0];
         }
         for(uint i; i < strategy.rewardsV3Length(); ++i) {
-            rewards[strategy.rewardsLength() - 2 + i] = strategy.rewardV3ToNative(i)[0];
+            rewards[strategy.rewardsLength() + i] = strategy.rewardV3ToNative(i)[0];
         }
 
         console.log("Claim rewards on Convex");
@@ -220,8 +221,8 @@ contract StrategyConvexTest is BaseStrategyTest {
             console2.log(rewards[i], IERC20(rewards[i]).balanceOf(address(strategy)));
         }
         console.log("WETH", nativeBal);
-        deal(strategy.crv(), address(strategy), 1e19);
-        deal(strategy.cvx(), address(strategy), 1e19);
+        deal(strategy.crv(), address(strategy), 1e20);
+        deal(strategy.cvx(), address(strategy), 1e20);
 
         console.log("Harvest");
         strategy.harvest();
@@ -279,5 +280,19 @@ contract StrategyConvexTest is BaseStrategyTest {
         assertEq(vault.balance(), bal, "Harvested");
         uint periodFinishNew = IConvexRewardPool(strategy.rewardPool()).periodFinish();
         assertEq(periodFinishNew, periodFinish, "periodFinish updated");
+    }
+
+    function test_skipCurveSwap() external {
+        strategy.resetRewardsV2();
+        strategy.resetRewardsV3();
+        strategy.setCurveSwapMinAmount(0);
+
+        _depositIntoVault(user, wantAmount);
+        uint bal = vault.balance();
+        skip(1 days);
+
+        console.log("Harvest");
+        strategy.harvest();
+        assertEq(vault.balance(), bal, "Expectted Harvested 0");
     }
 }
