@@ -39,4 +39,16 @@ library UniV3Actions {
         });
         return IUniswapRouterV3WithDeadline(_router).exactInput(swapParams);
     }
+
+    // Uniswap V3 swap with deadline
+    function swapV3WithDeadline(address _router, bytes memory _path, uint256 _amount, address _to) internal returns (uint256 amountOut) {
+        IUniswapRouterV3WithDeadline.ExactInputParams memory swapParams = IUniswapRouterV3WithDeadline.ExactInputParams({
+            path: _path,
+            recipient: _to,
+            deadline: block.timestamp,
+            amountIn: _amount,
+            amountOutMinimum: 0
+        });
+        return IUniswapRouterV3WithDeadline(_router).exactInput(swapParams);
+    }
 }

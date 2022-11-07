@@ -10,7 +10,6 @@ import "./tasks";
 import { HardhatUserConfig } from "hardhat/src/types/config";
 import { HardhatUserConfig as WithEtherscanConfig } from "hardhat/config";
 import { buildHardhatNetworkAccounts, getPKs } from "./utils/configInit";
-import { ethers } from "ethers";
 
 type DeploymentConfig = HardhatUserConfig & WithEtherscanConfig;
 
@@ -23,6 +22,11 @@ const config: DeploymentConfig = {
     hardhat: {
       // accounts visible to hardhat network used by `hardhat node --fork` (yarn net <chainName>)
       accounts: hardhatNetworkAccounts,
+    },
+    mainnet: {
+      url: process.env.MAINNET_RPC || "https://rpc.ankr.com/eth",
+      chainId: 1, 
+      accounts,
     },
     bsc: {
       url: process.env.BSC_RPC || "https://rpc.ankr.com/bsc",

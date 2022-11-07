@@ -5,36 +5,41 @@ import { addressBook } from "blockchain-addressbook";
 const ethers = hardhat.ethers;
 
 const {
-  platforms: { stella, beefyfinance },
+  platforms: { beefyfinance },
   tokens: {
     USDC: { address: USDC },
-    GLMR: { address: GLMR },
-    BIFI: { address: BIFI }
+    ETH: { address: ETH }
   },
-} = addressBook.cronos;
+} = addressBook.ethereum;
+
+const BIFI = '0x5870700f1272a1AdbB87C3140bD770880a95e55D';
+
+const bifiRoute = ethers.utils.formatBytes32String("0");
+const stableRoute = ethers.utils.solidityPack(["address", "uint24", "address"], [ETH, 500, USDC])
 
 const addressZero = ethers.constants.AddressZero,
 
 const config = {
   treasury: beefyfinance.treasuryMultisig,
-  rewardPool: beefyfinance.rewardPool,
-  unirouter: vvs.router,
+  rewardPool: '0xF49c523F08B4e7c8E51a44088ea2a5e6b5f397D9',
+  unirouter: '0xE592427A0AEce92De3Edee1F18E0157C05861564', //vvs.router,
   bifi: BIFI,
-  wNative: CRO,
+  wNative: ETH,
   stable: USDC,
-  bifiRoute: [CRO, BIFI],
-  stableRoute: [CRO, USDC],
+  bifiRoute: bifiRoute,
+  stableRoute: stableRoute,
   splitTreasury: false,
   treasuryFee: 640
 };
 
 async function main() {
+
   await hardhat.run("compile");
 
   const deployer = await ethers.getSigner();
   const provider = deployer.provider;
 
-  const BeefyFeeBatch = await ethers.getContractFactory("BeefyFeeBatchV3");
+  const BeefyFeeBatch = await ethers.getContractFactory("BeefyFeeBatchV3UniV3");
 
   const batcher = await upgrades.deployProxy(BeefyFeeBatch,  [
     config.bifi,
@@ -62,7 +67,6 @@ async function main() {
     constructorArguments: [
     ]
   })
-
 }
 
 
