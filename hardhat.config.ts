@@ -28,6 +28,11 @@ const config: DeploymentConfig = {
       chainId: 1, 
       accounts,
     },
+    ethereum: {
+      url: process.env.ETH_RPC || "https://rpc.ankr.com/eth",
+      chainId: 1,
+      accounts,
+    },
     bsc: {
       url: process.env.BSC_RPC || "https://rpc.ankr.com/bsc",
       chainId: 56,
