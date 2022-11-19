@@ -3,13 +3,13 @@ import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
 import "@openzeppelin/hardhat-upgrades";
+import "hardhat-gas-reporter"
 // import "@typechain/hardhat";
 import "./tasks";
 
 import { HardhatUserConfig } from "hardhat/src/types/config";
 import { HardhatUserConfig as WithEtherscanConfig } from "hardhat/config";
 import { buildHardhatNetworkAccounts, getPKs } from "./utils/configInit";
-import { ethers } from "ethers";
 
 type DeploymentConfig = HardhatUserConfig & WithEtherscanConfig;
 
@@ -22,6 +22,16 @@ const config: DeploymentConfig = {
     hardhat: {
       // accounts visible to hardhat network used by `hardhat node --fork` (yarn net <chainName>)
       accounts: hardhatNetworkAccounts,
+    },
+    mainnet: {
+      url: process.env.MAINNET_RPC || "https://rpc.ankr.com/eth",
+      chainId: 1, 
+      accounts,
+    },
+    ethereum: {
+      url: process.env.ETH_RPC || "https://rpc.ankr.com/eth",
+      chainId: 1,
+      accounts,
     },
     bsc: {
       url: process.env.BSC_RPC || "https://rpc.ankr.com/bsc",
@@ -134,24 +144,6 @@ const config: DeploymentConfig = {
     compilers: [
       {
         version: "0.8.15",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
-      },
-      {
-        version: "0.8.4",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
-      },
-      {
-        version: "0.8.2",
         settings: {
           optimizer: {
             enabled: true,

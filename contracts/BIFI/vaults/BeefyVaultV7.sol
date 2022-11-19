@@ -31,12 +31,6 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
 
     event NewStratCandidate(address implementation);
     event UpgradeStrat(address implementation);
-    event BeefyVaultV7Initialized(
-        IStrategyV7 strategy,
-        string name,
-        string symbol,
-        uint256 approvalDelay
-    );
 
     /**
      * @dev Sets the value of {token} to the token that the vault will
@@ -48,17 +42,17 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
      * @param _symbol the symbol of the vault token.
      * @param _approvalDelay the delay before a new strat can be approved.
      */
-     function initializeBeefyVaultV7(
+     function initialize(
         IStrategyV7 _strategy,
         string memory _name,
         string memory _symbol,
         uint256 _approvalDelay
     ) public initializer {
         __ERC20_init(_name, _symbol);
+        __Ownable_init();
+        __ReentrancyGuard_init();
         strategy = _strategy;
         approvalDelay = _approvalDelay;
-
-        emit BeefyVaultV7Initialized(strategy, _name, _symbol, approvalDelay);
     }
 
     function want() public view returns (IERC20Upgradeable) {
