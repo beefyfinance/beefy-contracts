@@ -104,7 +104,7 @@ contract StrategyCompoundV2 is StratFeeManager, GasFeeThrottler {
             IVToken(iToken).mint(_amount);
             _amount = _amount * borrowRate / 100;
             IVToken(iToken).borrow(_amount);
-            unchecked { i++; }
+            unchecked { ++i; }
         }
 
         reserves += _amount;
