@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0 <0.9.0;
 
-interface IStrategyComplete {
+interface IStrategy {
     event Deposit(uint256 tvl);
     event OwnershipTransferred(
         address indexed previousOwner,
@@ -37,6 +37,8 @@ interface IStrategyComplete {
     function beefyFee() external view returns (uint256);
 
     function beefyFeeRecipient() external view returns (address);
+
+    function beefyFeeConfig() external view returns (address);
 
     function beforeDeposit() external;
 

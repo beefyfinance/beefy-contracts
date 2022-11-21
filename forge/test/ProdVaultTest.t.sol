@@ -2,11 +2,12 @@
 
 pragma solidity ^0.8.12;
 
-import {BaseTestHarness, console} from "./utils/BaseTestHarness.sol";
+import {BaseTestHarness} from "./utils/BaseTestHarness.sol";
+import "forge-std/Test.sol";
 
 // Interfaces
-import {IBeefyVaultV6} from "./interfaces/IBeefyVaultV6.sol";
-import {IStrategyComplete} from "./interfaces/IStrategyComplete.sol";
+import {IVault} from "./interfaces/IVault.sol";
+import {IStrategy} from "./interfaces/IStrategy.sol";
 import {IERC20Like} from "./interfaces/IERC20Like.sol";
 
 // Users
@@ -15,8 +16,8 @@ import {VaultUser} from "./users/VaultUser.sol";
 contract ProdVaultTest is BaseTestHarness {
 
     // Input your vault to test here.
-    IBeefyVaultV6 constant vault = IBeefyVaultV6(0xc4f179b4096514c48ce70b9Ad27e689A3f2C9831);
-    IStrategyComplete strategy;
+    IVault constant vault = IVault(0xc4f179b4096514c48ce70b9Ad27e689A3f2C9831);
+    IStrategy strategy;
 
     // Users
     VaultUser user;
@@ -34,7 +35,7 @@ contract ProdVaultTest is BaseTestHarness {
 
     function setUp() public {
         want = IERC20Like(vault.want());
-        strategy = IStrategyComplete(vault.strategy());
+        strategy = IStrategy(vault.strategy());
         
         user = new VaultUser();
 

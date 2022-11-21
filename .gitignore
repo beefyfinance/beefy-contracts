@@ -29,6 +29,8 @@ bin/flatten.sh
 # Solidity
 /cache
 /artifacts
+/artifacts-forge
+/cache-forge
 
 typechain-types
 dist

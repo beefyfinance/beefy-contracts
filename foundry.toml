@@ -1,17 +1,19 @@
-[default]
+[profile.default]
 src = 'forge'
-test = 'test'
-out = 'artifacts'
+out = 'artifacts-forge'
+cache_path  = 'cache-forge'
 libs = ['node_modules']
 remappings = [
     '@chainlink/=node_modules/@chainlink/',
     '@openzeppelin-2/=node_modules/@openzeppelin-2/',
     '@openzeppelin-4/=node_modules/@openzeppelin-4/',
     '@openzeppelin/=node_modules/@openzeppelin/',
+    'forge-std/=node_modules/forge-std/src',
+    'ds-test/=node_modules/ds-test/src'
 ]
 # libraries = []
 # cache = true
-force = true
+# force = true
 # evm_version = 'london'
 # gas_reports = ['*']
 ## Sets the concrete solc version to use, this overrides the `auto_detect_solc` value
