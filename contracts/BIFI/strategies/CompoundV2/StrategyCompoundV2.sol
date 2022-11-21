@@ -26,8 +26,6 @@ contract StrategyCompoundV2 is StratFeeManager, GasFeeThrottler {
     address public comptroller;
 
     // Routes
-    address[] public outputToNativeRoute;
-    address[] public outputToWantRoute;
     address[] public markets;
 
     bool public harvestOnDeposit;
@@ -70,8 +68,6 @@ contract StrategyCompoundV2 is StratFeeManager, GasFeeThrottler {
         uint256 _borrowRateMax,
         uint256 _borrowDepth,
         uint256 _minLeverage,
-        address[] memory _outputToNativeRoute,
-        address[] memory _outputToWantRoute,
         address[] memory _markets,
         address _comptroller,
         CommonAddresses memory _commonAddresses
@@ -85,17 +81,6 @@ contract StrategyCompoundV2 is StratFeeManager, GasFeeThrottler {
         markets = _markets;
         comptroller = _comptroller;
         want = IVToken(iToken).underlying();
-
-        output = _outputToNativeRoute[0];
-        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
-        outputToNativeRoute = _outputToNativeRoute;
-
-        require(_outputToWantRoute[0] == output, "outputToWantRoute[0] != output");
-        require(_outputToWantRoute[_outputToWantRoute.length - 1] == want, "outputToNativeRoute[last] != want");
-        outputToWantRoute = _outputToWantRoute;
-
-        _giveAllowances();
-        IComptroller(comptroller).enterMarkets(markets);
     }
 
     // puts the funds to work
@@ -247,32 +232,10 @@ contract StrategyCompoundV2 is StratFeeManager, GasFeeThrottler {
     }
 
     // performance fees
-    function chargeFees(address callFeeRecipient) internal {
-        IFeeConfig.FeeCategory memory fees = getFees();
-        uint256 toNative = IERC20(output).balanceOf(address(this)) * fees.total / DIVISOR;
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(
-            toNative, 0, outputToNativeRoute, address(this), block.timestamp
-        );
-
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
-
-        uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
-        IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
-
-        uint256 beefyFeeAmount = nativeBal * fees.beefy / DIVISOR;
-        IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
-
-        uint256 strategistFeeAmount = nativeBal * fees.strategist / DIVISOR;
-        IERC20(native).safeTransfer(strategist, strategistFeeAmount);
-
-        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
-    }
+    function chargeFees(address callFeeRecipient) internal virtual {}
 
     // swap rewards to {want}
-    function swapRewards() internal {
-        uint256 outputBal = IERC20(output).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToWantRoute, address(this), block.timestamp);
-    }
+    function swapRewards() internal virtual {}
 
     /**
      * @dev Withdraws funds and sends them back to the vault. It deleverages from market first,
@@ -340,17 +303,7 @@ contract StrategyCompoundV2 is StratFeeManager, GasFeeThrottler {
     }
 
     // native reward amount for calling harvest
-    function callReward() public returns (uint256) {
-        IFeeConfig.FeeCategory memory fees = getFees();
-        uint256 outputBal = rewardsAvailable();
-        uint256 nativeOut;
-        if (outputBal > 0) {
-            uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(outputBal, outputToNativeRoute);
-            nativeOut = amountOut[amountOut.length -1];
-        }
-
-        return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
-    }
+    function callReward() public virtual returns (uint256) {}
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
@@ -406,11 +359,7 @@ contract StrategyCompoundV2 is StratFeeManager, GasFeeThrottler {
         IERC20(output).safeApprove(unirouter, 0);
     }
 
-     function outputToNative() external view returns(address[] memory) {
-        return outputToNativeRoute;
-    }
+    function outputToNative() external view virtual returns (address[] memory) {}
 
-    function outputToWant() external view returns(address[] memory) {
-        return outputToWantRoute;
-    }
+    function outputToWant() external view virtual returns (address[] memory) {}
 }
