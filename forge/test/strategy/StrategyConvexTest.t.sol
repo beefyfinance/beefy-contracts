@@ -23,28 +23,83 @@ contract StrategyConvexTest is BaseStrategyTest {
     address constant ldo = 0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32;
     address constant usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant uniV3 = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    address constant zapFraxBp = 0x08780fb7E580e492c1935bEe4fA5920b94AA95Da;
+    address constant zap3pool = 0xA79828DF1850E8a3A3064576f380D90aECDD3359;
     uint24[] fee500 = [500];
     uint24[] fee3000 = [3000];
     bytes nativeToUsdc = routeToPath(route(native, usdc), fee500);
 
-//     apeUsd-fraxbp
-    IERC20Like want = IERC20Like(0x04b727C7e246CA70d496ecF52E6b6280f3c8077D);
-    address pool = 0x04b727C7e246CA70d496ecF52E6b6280f3c8077D;
-    address zap = 0x08780fb7E580e492c1935bEe4fA5920b94AA95Da;
-    uint pid = 103;
-    uint poolSize = 3;
-    uint depositIndex = 2;
+    // frxETH
+    IERC20Like want = IERC20Like(0xf43211935C781D5ca1a41d2041F397B8A7366C7A);
+    address pool = 0xa1F8A6807c402E4A15ef4EBa36528A3FED24E577;
+    address zap = address(0);
+    uint pid = 128;
+    uint poolSize = 2;
+    uint depositIndex = 0;
     uint useUnderlying = 0;
-    uint depositNative = 0;
+    uint depositNative = 1;
     uint[] params = [poolSize, depositIndex, useUnderlying, depositNative];
     address unirouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     uint24[] fee = [500];
-    bytes nativeToDepositPath = routeToPath(route(native, usdc), fee);
-    address[] nativeToDepositRoute = new address[](0);
-
-    address[] rewardsV3 = new address[](0);
-//    address[] rewardsV3 = [ldo, native];
+    bytes nativeToDepositPath = "";
+    address[] nativeToDepositRoute = [native];
     uint24[] rewardsV3Fee = [3000];
+    address[] rewardsV3 = new address[](0);
+    // address[] rewardsV3 = [ldo, native];
+
+    // sETH
+//    IERC20Like want = IERC20Like(0xA3D87FffcE63B53E0d54fAa1cc983B7eB0b74A9c);
+//    address pool = 0xc5424B857f758E906013F3555Dad202e4bdB4567;
+//    address zap = address(0);
+//    uint pid = 23;
+//    uint poolSize = 2;
+//    uint depositIndex = 0;
+//    uint useUnderlying = 0;
+//    uint depositNative = 1;
+//    uint[] params = [poolSize, depositIndex, useUnderlying, depositNative];
+//    address unirouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+//    uint24[] fee = [500];
+//    bytes nativeToDepositPath = "";
+//    address[] nativeToDepositRoute = [native];
+//    uint24[] rewardsV3Fee = [3000];
+//    address[] rewardsV3 = new address[](0);
+//    // address[] rewardsV3 = [ldo, native];
+
+    // cbETH
+//    IERC20Like want = IERC20Like(0x5b6C539b224014A09B3388e51CaAA8e354c959C8);
+//    address pool = 0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A;
+//    address zap = address(0);
+//    uint pid = 127;
+//    uint poolSize = 2;
+//    uint depositIndex = 0;
+//    uint useUnderlying = 0;
+//    uint depositNative = 0;
+//    uint[] params = [poolSize, depositIndex, useUnderlying, depositNative];
+//    address unirouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+//    uint24[] fee = [500];
+//    bytes nativeToDepositPath = "";
+//    address[] nativeToDepositRoute = [native];
+//    uint24[] rewardsV3Fee = [3000];
+//    address[] rewardsV3 = new address[](0);
+//    // address[] rewardsV3 = [ldo, native];
+
+//     usdd-3pool
+//    IERC20Like want = IERC20Like(0xe6b5CC1B4b47305c58392CE3D359B10282FC36Ea);
+//    address pool = 0xe6b5CC1B4b47305c58392CE3D359B10282FC36Ea;
+//    address zap = zap3pool;
+//    uint pid = 96;
+//    uint poolSize = 4;
+//    uint depositIndex = 2;
+//    uint useUnderlying = 0;
+//    uint depositNative = 0;
+//    uint[] params = [poolSize, depositIndex, useUnderlying, depositNative];
+//    address unirouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+//    uint24[] fee = [500];
+//    bytes nativeToDepositPath = routeToPath(route(native, usdc), fee);
+//    address[] nativeToDepositRoute = new address[](0);
+//    address[] rewardsV3 = new address[](0);
+////    address[] rewardsV3 = [ldo, native];
+//    uint24[] rewardsV3Fee = [3000];
 
     IVault vault;
     StrategyConvex strategy;
