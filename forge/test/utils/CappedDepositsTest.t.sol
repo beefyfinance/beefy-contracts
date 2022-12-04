@@ -4,21 +4,23 @@ pragma solidity ^0.8.12;
 
 import "forge-std/Test.sol";
 
-import {TemporaryCappedDeposits} from "../../../contracts/BIFI/utils/TemporaryCappedDeposits.sol";
+import {CappedDeposits} from "../../../contracts/BIFI/utils/CappedDeposits.sol";
 
 // create a mock vault with this modifier
-contract TestVault is TemporaryCappedDeposits {
+contract TestVault is CappedDeposits {
     uint256 public depositedAmount;
+    address public owner;
 
-    function initialize(uint256 capUntilBlock, uint256 capWantAmount) public initializer {
-        __TemporaryCappedDeposits_init(capUntilBlock, capWantAmount);
+    function initialize(uint256 defaultCapacity, address _owner) public initializer {
+        __CappedDeposits_init(defaultCapacity);
+        owner = _owner;
     }
 
     function balance() public view returns (uint256) {
         return depositedAmount;
     }
 
-    function deposit(uint256 _amount) public cappedDepositsGuard(balance(), _amount) {
+    function deposit(uint256 _amount) public cappedDepositsGuard(balance(), _amount, msg.sender) {
         depositedAmount += _amount;
     }
 }
