@@ -14,66 +14,61 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
  */
 abstract contract CappedDeposits is Initializable {
     /**
-     * @dev Default capacity per user
+     * @dev vault capacity in want token amount
+     * Capacity checks are disabled if set to 0
      */
-    uint256 private _defaultCap;
+    uint256 private _totalWantCap;
 
-    /**
-     * @dev Capacity per user, overrides default capacity if > 0
-     */
-    mapping(address => uint256) private _userCap;
-
-    /**
-     * @dev Allow the owner to disable capacity checks altogether
-     * used when the vault is considered safe to use
-     */
-    bool private _capEnabled;
-
-    error CappedDeposits__CappacityReached(uint256 userCap, uint256 currentWantAmount, uint256 additionalWantAmount);
+    error CappedDeposits__CappacityReached(
+        uint256 currentWantAmount, uint256 additionalWantAmount, uint256 totalWantCap
+    );
     error CappedDeposits__UnauthorizedAdminAction(address user);
 
-    function __CappedDeposits_init(uint256 defaultCap) internal onlyInitializing {
-        _defaultCap = defaultCap;
+    function __CappedDeposits_init(uint256 totalWantCap) internal onlyInitializing {
+        _totalWantCap = totalWantCap;
     }
 
     /**
      * Since we can't assume the security assumptions of the vault (using Ownable or OwnableUpgradeable), we delegate
      * the responsibility of checking if we can change the user capacity
      */
-    function _canAdministrateCapacity(address user) internal view virtual returns (bool);
+    function _canAdministrateVaultCapacity(address user) internal view virtual returns (bool);
 
     /**
-     * @dev Set the capacity for a user
+     * @dev Set the total vault capacity
      */
-    function setUserCapacity(address user, uint256 capacity) external {
-        if (!_canAdministrateCapacity(msg.sender)) {
+    function setVaultCapacity(uint256 wantAmount) external {
+        if (!_canAdministrateVaultCapacity(msg.sender)) {
             revert CappedDeposits__UnauthorizedAdminAction(msg.sender);
         }
-        _userCap[user] = capacity;
+        _totalWantCap = wantAmount;
     }
 
     /**
-     * @dev Set the capacity for a user
+     * @dev Find out if capacity limit is enabled
      */
-    function setCapacityEnabled(bool capEnabled) external {
-        if (!_canAdministrateCapacity(msg.sender)) {
-            revert CappedDeposits__UnauthorizedAdminAction(msg.sender);
-        }
-        _capEnabled = capEnabled;
+    function isVaultCapped() public view returns (bool) {
+        return _totalWantCap > 0;
+    }
+
+    /**
+     * @dev Find out the capacity
+     */
+    function getVaultTotalCappacity() public view returns (uint256) {
+        return _totalWantCap;
     }
 
     /**
      * Reverts if user has reached capacity
      */
-    function _checkCapacity(uint256 currentWantAmount, uint256 additionalWantAmount, address user) internal view {
-        uint256 userCap = _userCap[user] == 0 ? _defaultCap : _userCap[user];
-        if (currentWantAmount + additionalWantAmount > userCap) {
-            revert CappedDeposits__CappacityReached(userCap, currentWantAmount, additionalWantAmount);
+    function _checkCapacity(uint256 currentWantAmount, uint256 additionalWantAmount) internal view {
+        if (isVaultCapped() && currentWantAmount + additionalWantAmount > _totalWantCap) {
+            revert CappedDeposits__CappacityReached(currentWantAmount, additionalWantAmount, _totalWantCap);
         }
     }
 
-    modifier cappedDepositsGuard(uint256 currentWantAmount, uint256 additionalWantAmount, address user) {
-        _checkCapacity(currentWantAmount, additionalWantAmount, user);
+    modifier cappedDepositsGuard(uint256 currentWantAmount, uint256 additionalWantAmount) {
+        _checkCapacity(currentWantAmount, additionalWantAmount);
 
         _;
     }
