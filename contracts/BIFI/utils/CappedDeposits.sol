@@ -4,6 +4,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /**
  * @dev Prevent depositing too much into an experimental vault.
@@ -12,7 +13,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
  * The goal would be to have a reusable contract that lets strategies have a max cap.
  * This would prevent people from apeing $5M into something experimental.
  */
-abstract contract CappedDeposits is Initializable {
+abstract contract CappedDeposits is Initializable, OwnableUpgradeable {
     /**
      * @dev vault capacity in want token amount
      * Capacity checks are disabled if set to 0
@@ -26,26 +27,16 @@ abstract contract CappedDeposits is Initializable {
     error CappedDeposits__CappacityReached(
         uint256 currentWantAmount, uint256 additionalWantAmount, uint256 vaultMaxCapacity
     );
-    /// @notice Error sent when an unauthorized action has been attempted
-    error CappedDeposits__UnauthorizedAdminAction(address user);
 
     function __CappedDeposits_init(uint256 _vaultMaxCapacity) internal onlyInitializing {
         vaultMaxCapacity = _vaultMaxCapacity;
     }
 
     /**
-     * Since we can't assume the security assumptions of the vault (using Ownable or OwnableUpgradeable), we delegate
-     * the responsibility of checking if we can change the user capacity
-     */
-    function _canAdministrateVaultCapacity(address user) internal view virtual returns (bool);
-
-    /**
      * @dev Set the total vault capacity
      */
     function setVaultCapacity(uint256 wantAmount) external {
-        if (!_canAdministrateVaultCapacity(msg.sender)) {
-            revert CappedDeposits__UnauthorizedAdminAction(msg.sender);
-        }
+        _checkOwner();
         uint256 previousCapacity = vaultMaxCapacity;
         vaultMaxCapacity = wantAmount;
         emit CappedDeposits__CappacityUpdated(previousCapacity, vaultMaxCapacity);

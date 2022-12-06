@@ -9,15 +9,11 @@ import {CappedDeposits} from "../../../contracts/BIFI/utils/CappedDeposits.sol";
 // create a mock vault with this modifier
 contract TestVault is CappedDeposits {
     uint256 public depositedAmount;
-    address public owner;
 
     function initialize(uint256 defaultCapacity, address _owner) public initializer {
         __CappedDeposits_init(defaultCapacity);
-        owner = _owner;
-    }
-
-    function _canAdministrateVaultCapacity(address user) internal view override returns (bool) {
-        return user == owner;
+        __Ownable_init();
+        transferOwnership(_owner);
     }
 
     function balance() public view returns (uint256) {
