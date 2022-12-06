@@ -19,11 +19,14 @@ abstract contract CappedDeposits is Initializable {
      */
     uint256 public vaultMaxCapacity;
 
+    /// @notice Event emitted when the vault capacity is updated
     event CappedDeposits__CappacityUpdated(uint256 previousCapacity, uint256 vaultMaxCapacity);
 
+    /// @notice Error sent when the user tries to deposit more than the vault's capacity
     error CappedDeposits__CappacityReached(
         uint256 currentWantAmount, uint256 additionalWantAmount, uint256 vaultMaxCapacity
     );
+    /// @notice Error sent when an unauthorized action has been attempted
     error CappedDeposits__UnauthorizedAdminAction(address user);
 
     function __CappedDeposits_init(uint256 _vaultMaxCapacity) internal onlyInitializing {

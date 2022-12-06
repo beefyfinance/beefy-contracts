@@ -35,6 +35,9 @@ contract TemporaryCappedDepositsTest is Test {
     address user1;
     address user2;
 
+    // copy of the events we expect to see
+    event CappedDeposits__CappacityUpdated(uint256 previousCapacity, uint256 vaultMaxCapacity);
+
     function setUp() public {
         vault = new TestVault();
         owner = address(0x1);
@@ -53,7 +56,6 @@ contract TemporaryCappedDepositsTest is Test {
         assertEq(vault.balance(), 1000);
 
         // now if we add more, it should revert
-        console.log("should revert next");
         vm.expectRevert();
         vault.deposit(10);
         assertEq(vault.balance(), 1000);
@@ -69,7 +71,6 @@ contract TemporaryCappedDepositsTest is Test {
         assertEq(vault.balance(), 1910);
 
         // but not too much
-        console.log("should revert next");
         vm.expectRevert();
         vault.deposit(100);
         assertEq(vault.balance(), 1910);
@@ -88,7 +89,7 @@ contract TemporaryCappedDepositsTest is Test {
         vault.initialize(1000, owner);
         assertEq(vault.vaultMaxCapacity(), 1000);
 
-        // now we change the capacity to 2000
+        // now we change the capacity to 2000 and expect an event to be yielded
         vm.prank(owner);
         vault.setVaultCapacity(2000);
         assertEq(vault.vaultMaxCapacity(), 2000);
@@ -104,5 +105,17 @@ contract TemporaryCappedDepositsTest is Test {
         vm.expectRevert();
         vault.setVaultCapacity(123);
         assertEq(vault.vaultMaxCapacity(), 2000);
+    }
+
+    function test_CappedDeposits_eventEmittedOnCapacityUpdated() public {
+        // we set the capacity to 1000
+        vault.initialize(1000, owner);
+
+        // now we change the capacity to 1500 and expect an event to be yielded
+        vm.prank(owner);
+        vm.expectEmit(true, true, true, true, address(vault));
+        emit CappedDeposits__CappacityUpdated(1000, 1500); // We emit the event we expect to see.
+        vault.setVaultCapacity(1500);
+        assertEq(vault.vaultMaxCapacity(), 1500);
     }
 }
