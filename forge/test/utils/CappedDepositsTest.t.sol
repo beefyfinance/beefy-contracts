@@ -80,29 +80,29 @@ contract TemporaryCappedDepositsTest is Test {
         vault.deposit(100);
         assertEq(vault.balance(), 2010);
         assertEq(vault.isVaultCapped(), false);
-        assertEq(vault.getVaultTotalCappacity(), 0);
+        assertEq(vault.vaultMaxCapacity(), 0);
     }
 
     function test_CappedDeposits_canOnlyUpdateCapacityIfOwner() public {
         // we set the capacity to 1000
         vault.initialize(1000, owner);
-        assertEq(vault.getVaultTotalCappacity(), 1000);
+        assertEq(vault.vaultMaxCapacity(), 1000);
 
         // now we change the capacity to 2000
         vm.prank(owner);
         vault.setVaultCapacity(2000);
-        assertEq(vault.getVaultTotalCappacity(), 2000);
+        assertEq(vault.vaultMaxCapacity(), 2000);
 
         // user1 trying to change the capacity should revert
         vm.prank(user1);
         vm.expectRevert();
         vault.setVaultCapacity(0);
-        assertEq(vault.getVaultTotalCappacity(), 2000);
+        assertEq(vault.vaultMaxCapacity(), 2000);
 
         // user2 trying to change the capacity should revert
         vm.prank(user2);
         vm.expectRevert();
         vault.setVaultCapacity(123);
-        assertEq(vault.getVaultTotalCappacity(), 2000);
+        assertEq(vault.vaultMaxCapacity(), 2000);
     }
 }

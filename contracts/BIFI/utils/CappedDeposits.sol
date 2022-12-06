@@ -17,15 +17,15 @@ abstract contract CappedDeposits is Initializable {
      * @dev vault capacity in want token amount
      * Capacity checks are disabled if set to 0
      */
-    uint256 private _totalWantCap;
+    uint256 public vaultMaxCapacity;
 
     error CappedDeposits__CappacityReached(
-        uint256 currentWantAmount, uint256 additionalWantAmount, uint256 totalWantCap
+        uint256 currentWantAmount, uint256 additionalWantAmount, uint256 vaultMaxCapacity
     );
     error CappedDeposits__UnauthorizedAdminAction(address user);
 
-    function __CappedDeposits_init(uint256 totalWantCap) internal onlyInitializing {
-        _totalWantCap = totalWantCap;
+    function __CappedDeposits_init(uint256 _vaultMaxCapacity) internal onlyInitializing {
+        vaultMaxCapacity = _vaultMaxCapacity;
     }
 
     /**
@@ -41,29 +41,22 @@ abstract contract CappedDeposits is Initializable {
         if (!_canAdministrateVaultCapacity(msg.sender)) {
             revert CappedDeposits__UnauthorizedAdminAction(msg.sender);
         }
-        _totalWantCap = wantAmount;
+        vaultMaxCapacity = wantAmount;
     }
 
     /**
      * @dev Find out if capacity limit is enabled
      */
     function isVaultCapped() public view returns (bool) {
-        return _totalWantCap > 0;
-    }
-
-    /**
-     * @dev Find out the capacity
-     */
-    function getVaultTotalCappacity() public view returns (uint256) {
-        return _totalWantCap;
+        return vaultMaxCapacity > 0;
     }
 
     /**
      * Reverts if user has reached capacity
      */
     function _checkCapacity(uint256 currentWantAmount, uint256 additionalWantAmount) internal view {
-        if (isVaultCapped() && currentWantAmount + additionalWantAmount > _totalWantCap) {
-            revert CappedDeposits__CappacityReached(currentWantAmount, additionalWantAmount, _totalWantCap);
+        if (isVaultCapped() && currentWantAmount + additionalWantAmount > vaultMaxCapacity) {
+            revert CappedDeposits__CappacityReached(currentWantAmount, additionalWantAmount, vaultMaxCapacity);
         }
     }
 
