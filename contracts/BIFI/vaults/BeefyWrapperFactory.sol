@@ -25,7 +25,8 @@ contract BeefyWrapperFactory {
   }
 
   // Creates a new Beefy Vault wrapper as a proxy of the template instance
-  // A reference to the new proxied Beefy Vault wrapper
+  // @param _vault reference to the cloned Beefy Vault
+  // @return proxy reference to the new proxied Beefy Vault wrapper
   function clone(
     address _vault
   ) external returns (address proxy) {
