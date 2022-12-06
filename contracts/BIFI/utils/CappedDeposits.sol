@@ -19,6 +19,8 @@ abstract contract CappedDeposits is Initializable {
      */
     uint256 public vaultMaxCapacity;
 
+    event CappedDeposits__CappacityUpdated(uint256 previousCapacity, uint256 vaultMaxCapacity);
+
     error CappedDeposits__CappacityReached(
         uint256 currentWantAmount, uint256 additionalWantAmount, uint256 vaultMaxCapacity
     );
@@ -41,7 +43,9 @@ abstract contract CappedDeposits is Initializable {
         if (!_canAdministrateVaultCapacity(msg.sender)) {
             revert CappedDeposits__UnauthorizedAdminAction(msg.sender);
         }
+        uint256 previousCapacity = vaultMaxCapacity;
         vaultMaxCapacity = wantAmount;
+        emit CappedDeposits__CappacityUpdated(previousCapacity, vaultMaxCapacity);
     }
 
     /**
