@@ -32,7 +32,7 @@ contract TemporaryCappedDepositsTest is Test {
     address user2;
 
     // copy of the events we expect to see
-    event CappedDeposits__CappacityUpdated(uint256 previousCapacity, uint256 vaultMaxCapacity);
+    event CappedDeposits__CappacityUpdated(uint256 previousCapacity, uint256 maxCapacity);
 
     function setUp() public {
         vault = new TestVault();
@@ -58,7 +58,7 @@ contract TemporaryCappedDepositsTest is Test {
 
         // now we change the capacity to 2000
         vm.prank(owner);
-        vault.setVaultCapacity(2000);
+        vault.setMaxCapacity(2000);
 
         // and we can deposit again
         vault.deposit(10);
@@ -73,37 +73,40 @@ contract TemporaryCappedDepositsTest is Test {
 
         // now when capacity is zero, we can deposit as much as we want
         vm.prank(owner);
-        vault.setVaultCapacity(0);
+        vault.setMaxCapacity(0);
         vault.deposit(100);
         assertEq(vault.balance(), 2010);
-        assertEq(vault.isVaultCapped(), false);
-        assertEq(vault.vaultMaxCapacity(), 0);
+        assertEq(vault.isCapped(), false);
+        assertEq(vault.maxCapacity(), 0);
     }
 
     function test_CappedDeposits_canOnlyUpdateCapacityIfOwner() public {
         // we set the capacity to 1000
         vault.initialize(1000, owner);
-        assertEq(vault.vaultMaxCapacity(), 1000);
+        assertEq(vault.maxCapacity(), 1000);
 
         // now we change the capacity to 2000 and expect an event to be yielded
         vm.prank(owner);
-        vault.setVaultCapacity(2000);
-        assertEq(vault.vaultMaxCapacity(), 2000);
+        vault.setMaxCapacity(2000);
+        assertEq(vault.maxCapacity(), 2000);
 
         // user1 trying to change the capacity should revert
         vm.prank(user1);
         vm.expectRevert();
-        vault.setVaultCapacity(0);
-        assertEq(vault.vaultMaxCapacity(), 2000);
+        vault.setMaxCapacity(0);
+        assertEq(vault.maxCapacity(), 2000);
 
         // user2 trying to change the capacity should revert
         vm.prank(user2);
         vm.expectRevert();
-        vault.setVaultCapacity(123);
-        assertEq(vault.vaultMaxCapacity(), 2000);
+        vault.setMaxCapacity(123);
+        assertEq(vault.maxCapacity(), 2000);
     }
 
     function test_CappedDeposits_eventEmittedOnCapacityUpdated() public {
+        // expect we emit the event on init
+        vm.expectEmit(true, true, true, true, address(vault));
+        emit CappedDeposits__CappacityUpdated(0, 1000); // We emit the event we expect to see.
         // we set the capacity to 1000
         vault.initialize(1000, owner);
 
@@ -111,7 +114,7 @@ contract TemporaryCappedDepositsTest is Test {
         vm.prank(owner);
         vm.expectEmit(true, true, true, true, address(vault));
         emit CappedDeposits__CappacityUpdated(1000, 1500); // We emit the event we expect to see.
-        vault.setVaultCapacity(1500);
-        assertEq(vault.vaultMaxCapacity(), 1500);
+        vault.setMaxCapacity(1500);
+        assertEq(vault.maxCapacity(), 1500);
     }
 }
