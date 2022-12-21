@@ -123,10 +123,6 @@ contract StrategyChefCurveLP is StratFeeManager, GasFeeThrottler {
         _harvest(callFeeRecipient);
     }
 
-    function managerHarvest() external onlyManager {
-        _harvest(tx.origin);
-    }
-
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
         IMasterChef(chef).deposit(poolId, 0);

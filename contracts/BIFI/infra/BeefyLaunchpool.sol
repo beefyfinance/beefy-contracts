@@ -133,6 +133,10 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
         isPreStake = true;
     }
 
+    function closePreStake() external onlyManager {
+        isPreStake = false;
+    }
+
     function setNotifier(address _notifier, bool _enable) external onlyManager {
         notifiers[_notifier] = _enable;
     }

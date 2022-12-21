@@ -38,5 +38,12 @@ verbosity = 2
 # block_difficulty = 0
 
 # These^ are all the available config options
-
 # Docs at https://github.com/gakonst/foundry/tree/master/config
+
+[rpc_endpoints]
+eth = "${ETH_RPC}"
+mainnet = "${ETH_RPC}"
+ethereum = "${ETH_RPC}"
+optimism = "${OPTIMISM_RPC}"
+arbitrum = "${ARBITRUM_RPC}"
+bsc = "${BSC_RPC}"
