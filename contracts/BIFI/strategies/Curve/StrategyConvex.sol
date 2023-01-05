@@ -263,7 +263,7 @@ contract StrategyConvex is StratFeeManagerInitializable {
             uint256[5] memory amounts;
             amounts[depositIndex] = depositBal;
             if (zap != address(0)) ICurveSwap(zap).add_liquidity(pool, amounts, 0);
-            ICurveSwap(pool).add_liquidity(amounts, 0);
+            else ICurveSwap(pool).add_liquidity(amounts, 0);
         }
     }
 

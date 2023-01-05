@@ -3,7 +3,7 @@ import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
 import "@openzeppelin/hardhat-upgrades";
-import "hardhat-gas-reporter"
+import "hardhat-gas-reporter";
 // import "@typechain/hardhat";
 import "./tasks";
 
@@ -25,7 +25,7 @@ const config: DeploymentConfig = {
     },
     mainnet: {
       url: process.env.MAINNET_RPC || "https://rpc.ankr.com/eth",
-      chainId: 1, 
+      chainId: 1,
       accounts,
     },
     ethereum: {
@@ -130,10 +130,15 @@ const config: DeploymentConfig = {
       accounts,
     },
     optimism: {
-      url:  process.env.OPTIMISM_RPC || "https://rpc.ankr.com/optimism",
-      chainId: 10, 
+      url: process.env.OPTIMISM_RPC || "https://rpc.ankr.com/optimism",
+      chainId: 10,
       accounts,
-    }
+    },
+    kava: {
+      url: process.env.KAVA_RPC || "https://evm.kava.io",
+      chainId: 2222,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan

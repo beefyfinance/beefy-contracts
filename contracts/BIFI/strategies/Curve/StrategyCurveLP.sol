@@ -26,10 +26,10 @@ contract StrategyCurveLP is StratFeeManager, GasFeeThrottler {
     address public gaugeFactory;
     address public rewardsGauge;
     address public pool;
+    address public zap; // curve zap to deposit in metapools, or 0
     uint public poolSize;
     uint public depositIndex;
     bool public useUnderlying;
-    bool public useMetapool;
 
     // Routes
     address[] public crvToNativeRoute;
@@ -63,7 +63,8 @@ contract StrategyCurveLP is StratFeeManager, GasFeeThrottler {
         address _gaugeFactory,
         address _gauge,
         address _pool,
-        uint[] memory _params, // [poolSize, depositIndex, useUnderlying, useMetapool]
+        address _zap,
+        uint[] memory _params, // [poolSize, depositIndex, useUnderlying, useDepositNative]
         address[] memory _crvToNativeRoute,
         address[] memory _nativeToDepositRoute,
         CommonAddresses memory _commonAddresses
@@ -72,10 +73,11 @@ contract StrategyCurveLP is StratFeeManager, GasFeeThrottler {
         gaugeFactory = _gaugeFactory;
         rewardsGauge = _gauge;
         pool = _pool;
+        zap = _zap;
         poolSize = _params[0];
         depositIndex = _params[1];
         useUnderlying = _params[2] > 0;
-        useMetapool = _params[3] > 0;
+        depositNative = _params[3] > 0;
 
         crv = _crvToNativeRoute[0];
         native = _crvToNativeRoute[_crvToNativeRoute.length - 1];
@@ -141,10 +143,6 @@ contract StrategyCurveLP is StratFeeManager, GasFeeThrottler {
 
     function harvest(address callFeeRecipient) external gasThrottle virtual {
         _harvest(callFeeRecipient);
-    }
-
-    function managerHarvest() external onlyManager {
-        _harvest(tx.origin);
     }
 
     // compounds earnings and charges performance fee
@@ -221,17 +219,23 @@ contract StrategyCurveLP is StratFeeManager, GasFeeThrottler {
             uint256[3] memory amounts;
             amounts[depositIndex] = depositBal;
             if (useUnderlying) ICurveSwap(pool).add_liquidity(amounts, 0, true);
-            else if (useMetapool) ICurveSwap(pool).add_liquidity(want, amounts, 0);
-            else ICurveSwap(pool).add_liquidity(amounts, 0);
+            else if (zap != address(0)) ICurveSwap(zap).add_liquidity{value: depositNativeAmount}(pool, amounts, 0);
+            else ICurveSwap(pool).add_liquidity{value: depositNativeAmount}(amounts, 0);
         } else if (poolSize == 4) {
             uint256[4] memory amounts;
             amounts[depositIndex] = depositBal;
-            if (useMetapool) ICurveSwap(pool).add_liquidity(want, amounts, 0);
+            if (zap != address(0)) ICurveSwap(zap).add_liquidity(pool, amounts, 0);
             else ICurveSwap(pool).add_liquidity(amounts, 0);
         } else if (poolSize == 5) {
             uint256[5] memory amounts;
             amounts[depositIndex] = depositBal;
-            ICurveSwap(pool).add_liquidity(amounts, 0);
+            if (zap != address(0)) ICurveSwap(zap).add_liquidity(pool, amounts, 0);
+            else ICurveSwap(pool).add_liquidity(amounts, 0);
+        } else if (poolSize == 6) {
+            uint256[6] memory amounts;
+            amounts[depositIndex] = depositBal;
+            if (zap != address(0)) ICurveSwap(zap).add_liquidity(pool, amounts, 0);
+            else ICurveSwap(pool).add_liquidity(amounts, 0);
         }
     }
 
@@ -365,6 +369,7 @@ contract StrategyCurveLP is StratFeeManager, GasFeeThrottler {
         IERC20(native).safeApprove(unirouter, type(uint).max);
         IERC20(crv).safeApprove(crvRouter, type(uint).max);
         IERC20(depositToken).safeApprove(pool, type(uint).max);
+        if (zap != address(0)) IERC20(depositToken).approve(zap, type(uint).max);
     }
 
     function _removeAllowances() internal {
@@ -372,6 +377,7 @@ contract StrategyCurveLP is StratFeeManager, GasFeeThrottler {
         IERC20(native).safeApprove(unirouter, 0);
         IERC20(crv).safeApprove(crvRouter, 0);
         IERC20(depositToken).safeApprove(pool, 0);
+        if (zap != address(0)) IERC20(depositToken).approve(zap, 0);
     }
 
     receive () external payable {}
