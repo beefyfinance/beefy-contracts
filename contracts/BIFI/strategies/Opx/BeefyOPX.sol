@@ -101,8 +101,10 @@ contract BeefyOPX is ERC20Upgradeable, ReentrancyGuardUpgradeable, OpxManager {
     function lock() public whenNotPaused {
         if (balanceOfWant() > requiredReserve()) {
             uint256 availableBalance = balanceOfWant() - requiredReserve();
-            ve.increase_amount(tokenId, availableBalance);
-            emit LockAmountIncreased(availableBalance);
+            if (availableBalance > ve.minLockedAmount()) {
+                ve.increase_amount(tokenId, availableBalance);
+                emit LockAmountIncreased(availableBalance);
+            }
         }
 
         (,, bool shouldIncreaseLock) = lockInfo();

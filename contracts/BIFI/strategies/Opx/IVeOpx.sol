@@ -11,4 +11,5 @@ interface IVeOpx {
     function locked(uint256 tokenId) external view returns (int128, uint256);
     function withdraw(uint256 tokenId) external;
     function create_lock(uint256 tokenId, uint256 value, uint256 lock_duration) external;
+    function minLockedAmount() external view returns (uint256);
 }
