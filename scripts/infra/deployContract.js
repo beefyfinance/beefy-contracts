@@ -4,7 +4,7 @@ const { startingEtherPerAccount } = require("../../utils/configInit");
 
 const ethers = hardhat.ethers;
 
-const contractName = "StrategyAuraBalancerMultiRewardGaugeUniV3";
+const contractName = "StrategyCommonSolidlyRewardPoolLP";
 const factoryName = "BeefyVaultV7Factory";
 
 const config = {};
