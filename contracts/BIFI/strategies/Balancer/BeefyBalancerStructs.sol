@@ -18,5 +18,6 @@ library BeefyBalancerStructs {
      struct Input {
         address input;
         bool isComposable;
+        bool isBeets;
     }
 }

@@ -8,7 +8,8 @@ import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/beethovenx/IBalancerVault.sol";
 import "../../interfaces/curve/IRewardsGauge.sol";
 import "../../interfaces/curve/IStreamer.sol";
-import "../Common/StratFeeManager.sol";
+import "../../interfaces/curve/IHelper.sol";
+import "../Common/StratFeeManagerInitializable.sol";
 import "./BalancerActionsLib.sol";
 import "./BeefyBalancerStructs.sol";
 import "../../utils/UniV3Actions.sol";
@@ -17,7 +18,11 @@ interface IBalancerPool {
     function getPoolId() external view returns (bytes32);
 }
 
-contract StrategyBalancerComposableMultiRewardGaugeUniV3 is StratFeeManager {
+interface IWUSDPlus {
+    function deposit(uint256 assets, address reciever) external;
+}
+
+contract StrategyBalancerComposableMultiRewardGaugeUniV3 is StratFeeManagerInitializable {
     using SafeERC20 for IERC20;
 
     // Tokens used
@@ -36,27 +41,29 @@ contract StrategyBalancerComposableMultiRewardGaugeUniV3 is StratFeeManager {
     mapping(address => BeefyBalancerStructs.Reward) public rewards;
     address[] public rewardTokens;
     
-    address public uniswapRouter = address(0xC1e7dFE73E1598E3910EF4C7845B68A9Ab6F4c83);
+    address public uniswapRouter = address(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 
-    IBalancerVault.SwapKind public swapKind;
+    IBalancerVault.SwapKind public swapKind = IBalancerVault.SwapKind.GIVEN_IN;
     IBalancerVault.FundManagement public funds;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
+    bool isBeets;
 
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
-    constructor(
-        BeefyBalancerStructs.BatchSwapStruct[] memory _nativeToWantRoute,
-        BeefyBalancerStructs.BatchSwapStruct[] memory _outputToNativeRoute,
-        address[] memory _nativeToWant,
-        address[] memory _outputToNative,
+    function initialize(
+        BeefyBalancerStructs.BatchSwapStruct[] calldata _nativeToWantRoute,
+        BeefyBalancerStructs.BatchSwapStruct[] calldata _outputToNativeRoute,
+        address[][] calldata _assets,
         address _rewardsGauge,
-        CommonAddresses memory _commonAddresses
-    ) StratFeeManager(_commonAddresses) {
+        bool _isBeets,
+        CommonAddresses calldata _commonAddresses
+      ) public initializer  {
+        __StratFeeManager_init(_commonAddresses);
         
         for (uint i; i < _nativeToWantRoute.length;) {
             nativeToWantRoute.push(_nativeToWantRoute[i]);
@@ -72,18 +79,17 @@ contract StrategyBalancerComposableMultiRewardGaugeUniV3 is StratFeeManager {
             }
         }
 
-        outputToNativeAssets = _outputToNative;
-        nativeToWantAssets = _nativeToWant;
+        outputToNativeAssets = _assets[0];
+        nativeToWantAssets = _assets[1];
         output = outputToNativeAssets[0];
         native = nativeToWantAssets[0];
+        isBeets = _isBeets;
        
         rewardsGauge = _rewardsGauge;
 
-        (want,) = IBalancerVault(unirouter).getPool(nativeToWantRoute[nativeToWantRoute.length - 1].poolId);
-
-        swapKind = IBalancerVault.SwapKind.GIVEN_IN;
         funds = IBalancerVault.FundManagement(address(this), false, payable(address(this)), false);
 
+        (want,) = IBalancerVault(unirouter).getPool(nativeToWantRoute[nativeToWantRoute.length - 1].poolId);
         _giveAllowances();
     }
 
@@ -142,8 +148,14 @@ contract StrategyBalancerComposableMultiRewardGaugeUniV3 is StratFeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        IStreamer streamer = IStreamer(IRewardsGauge(rewardsGauge).reward_contract());
-        streamer.get_reward();
+        if (!isBeets) {
+            IStreamer streamer = IStreamer(IRewardsGauge(rewardsGauge).reward_contract());
+            streamer.get_reward();
+        } else {
+            address helper = address(0x299dcDF14350999496204c141A0c20A29d71AF3E);
+            IHelper(helper).claimRewards(rewardsGauge, address(this));
+        }
+     
         IRewardsGauge(rewardsGauge).claim_rewards(address(this));
         swapRewardsToNative();
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
@@ -165,6 +177,16 @@ contract StrategyBalancerComposableMultiRewardGaugeUniV3 is StratFeeManager {
             IBalancerVault.BatchSwapStep[] memory _swaps = BalancerActionsLib.buildSwapStructArray(outputToNativeRoute, outputBal);
             BalancerActionsLib.balancerSwap(unirouter, swapKind, _swaps, outputToNativeAssets, funds, int256(outputBal));
         }
+
+        address usdplus = address(0x73cb180bf0521828d8849bc8CF2B920918e23032);
+        uint256 usdplusbal = IERC20(usdplus).balanceOf(address(this));
+        if (usdplusbal > 0) {
+            address wusdplus = address(0xA348700745D249c3b49D2c2AcAC9A5AE8155F826);
+            IERC20(usdplus).safeApprove(wusdplus, usdplusbal);
+            IWUSDPlus(wusdplus).deposit(usdplusbal, address(this));
+            IERC20(usdplus).safeApprove(wusdplus, 0);
+        }
+
         // extras
         for (uint i; i < rewardTokens.length; i++) {
             uint bal = IERC20(rewardTokens[i]).balanceOf(address(this));

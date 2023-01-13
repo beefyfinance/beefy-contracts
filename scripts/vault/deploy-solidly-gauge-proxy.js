@@ -16,20 +16,20 @@ const {
     MAI: {address: MAI},
     USDT: {address: USDT},
     BTCB: {address: BTCB},
-    stkBNB: {address: stkBNB},
+    BNBx: {address: BNBx},
     FRAX: { address: FRAX}
   },
 } = addressBook.bsc;
 
 
-const want = web3.utils.toChecksumAddress("0x483653bcF3a10d9a1c334CE16a19471a614F4385");
-const gauge = web3.utils.toChecksumAddress("0x7144851e51523a88EA6BeC9710cC07f3a9B3baa7");
+const want = web3.utils.toChecksumAddress("0x6c83E45fE3Be4A9c12BB28cB5BA4cD210455fb55");
+const gauge = web3.utils.toChecksumAddress("0x0Df5Dfe92A0568373DA2d705Cdb5F68017c4B19A");
 const binSpiritGauge = web3.utils.toChecksumAddress("0x44e314190D9E4cE6d4C0903459204F8E21ff940A");
 //const ensId = ethers.utils.formatBytes32String("cake.eth");
 
 const vaultParams = {
-  mooName: "Moo Thena BUSD-BNB",
-  mooSymbol: "mooThenaBUSD-BNB",
+  mooName: "Moo Thena BNBx-BNB",
+  mooSymbol: "mooThenaBNBx-BNB",
   delay: 21600,
 };
 
@@ -43,8 +43,8 @@ const strategyParams = {
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   feeConfig: beefyfinance.beefyFeeConfig,
   outputToNativeRoute: [[THE, BNB, false]],
-  outputToLp0Route: [[THE, BNB, false]],
-  outputToLp1Route: [[THE, BUSD, false]],
+  outputToLp0Route: [[THE, BNB, false],[BNB, BNBx, false]],
+  outputToLp1Route: [[THE, BNB, false]],
   verifyStrat: false,
   spiritswapStrat: false,
   gaugeStakerStrat: false,
