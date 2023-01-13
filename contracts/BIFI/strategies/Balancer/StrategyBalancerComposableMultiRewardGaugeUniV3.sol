@@ -18,10 +18,6 @@ interface IBalancerPool {
     function getPoolId() external view returns (bytes32);
 }
 
-interface IWUSDPlus {
-    function deposit(uint256 assets, address reciever) external;
-}
-
 contract StrategyBalancerComposableMultiRewardGaugeUniV3 is StratFeeManagerInitializable {
     using SafeERC20 for IERC20;
 
@@ -176,15 +172,6 @@ contract StrategyBalancerComposableMultiRewardGaugeUniV3 is StratFeeManagerIniti
         if (outputBal > 0) {
             IBalancerVault.BatchSwapStep[] memory _swaps = BalancerActionsLib.buildSwapStructArray(outputToNativeRoute, outputBal);
             BalancerActionsLib.balancerSwap(unirouter, swapKind, _swaps, outputToNativeAssets, funds, int256(outputBal));
-        }
-
-        address usdplus = address(0x73cb180bf0521828d8849bc8CF2B920918e23032);
-        uint256 usdplusbal = IERC20(usdplus).balanceOf(address(this));
-        if (usdplusbal > 0) {
-            address wusdplus = address(0xA348700745D249c3b49D2c2AcAC9A5AE8155F826);
-            IERC20(usdplus).safeApprove(wusdplus, usdplusbal);
-            IWUSDPlus(wusdplus).deposit(usdplusbal, address(this));
-            IERC20(usdplus).safeApprove(wusdplus, 0);
         }
 
         // extras
