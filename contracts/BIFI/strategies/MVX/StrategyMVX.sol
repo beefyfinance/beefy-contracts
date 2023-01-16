@@ -2,16 +2,15 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../../interfaces/gmx/IGMXRouter.sol";
+import "../../interfaces/mvx/IMVXRouter.sol";
 import "../../interfaces/gmx/IGMXTracker.sol";
 import "../../interfaces/gmx/IBeefyVault.sol";
 import "../../interfaces/gmx/IGMXStrategy.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 
-contract StrategyGMX is StratFeeManagerInitializable {
+contract StrategyMVX is StratFeeManagerInitializable {
     using SafeERC20 for IERC20;
 
     // Tokens used
@@ -31,14 +30,14 @@ contract StrategyGMX is StratFeeManagerInitializable {
     event Withdraw(uint256 tvl);
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
-    function __StrategyGMX_init(
+    function __StrategyMVX_init(
         address _chef,
         CommonAddresses calldata _commonAddresses
     ) internal onlyInitializing {
         __StratFeeManager_init(_commonAddresses);
         chef = _chef;
-        rewardStorage = IGMXRouter(chef).feeGmxTracker();
-        balanceTracker = IGMXRouter(chef).stakedGmxTracker();
+        rewardStorage = IMVXRouter(chef).feeMvxTracker();
+        balanceTracker = IMVXRouter(chef).stakedMvxTracker();
     }
 
     // puts the funds to work
@@ -46,7 +45,7 @@ contract StrategyGMX is StratFeeManagerInitializable {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IGMXRouter(chef).stakeGmx(wantBal);
+            IMVXRouter(chef).stakeMvx(wantBal);
             emit Deposit(balanceOf());
         }
     }
@@ -57,7 +56,7 @@ contract StrategyGMX is StratFeeManagerInitializable {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IGMXRouter(chef).unstakeGmx(_amount - wantBal);
+            IMVXRouter(chef).unstakeMvx(_amount - wantBal);
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -96,7 +95,7 @@ contract StrategyGMX is StratFeeManagerInitializable {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        IGMXRouter(chef).compound();   // Claim and restake esGMX and multiplier points
+        IMVXRouter(chef).compound();   // Claim and restake esMVX and multiplier points
         IGMXTracker(rewardStorage).claim(address(this));
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
         if (nativeBal > 0) {
@@ -175,7 +174,7 @@ contract StrategyGMX is StratFeeManagerInitializable {
         IBeefyVault.StratCandidate memory candidate = IBeefyVault(vault).stratCandidate();
         address stratAddress = candidate.implementation;
 
-        IGMXRouter(chef).signalTransfer(stratAddress);
+        IMVXRouter(chef).signalTransfer(stratAddress);
         IGMXStrategy(stratAddress).acceptTransfer();
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
@@ -185,7 +184,7 @@ contract StrategyGMX is StratFeeManagerInitializable {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IGMXRouter(chef).unstakeGmx(balanceOfPool());
+        IMVXRouter(chef).unstakeMvx(balanceOfPool());
     }
 
     function pause() public onlyManager {
@@ -217,6 +216,9 @@ contract StrategyGMX is StratFeeManagerInitializable {
     function acceptTransfer() external {
         address prevStrat = IBeefyVault(vault).strategy();
         require(msg.sender == prevStrat, "!prevStrat");
-        IGMXRouter(chef).acceptTransfer(prevStrat);
+        IMVXRouter(chef).acceptTransfer(prevStrat);
+
+        // send back 1 wei to complete upgrade
+        IERC20(want).safeTransfer(prevStrat, 1);
     }
 }

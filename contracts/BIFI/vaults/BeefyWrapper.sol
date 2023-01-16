@@ -16,9 +16,10 @@ interface IVault {
 
 /**
  * @dev Implementation of an ERC4626 wrapper for Beefy Vaults.
- * Depositing underlying tokens to this contract will mint the Beefy Vault tokens to this
- * address and mint the wrapped version to the depositor. Burning wrapped tokens withdraws the
- * underlying from the Beefy vault and transfers to the burner.
+ * Depositing underlying tokens to this contract will transfer the Beefy Vault tokens from the
+ * caller to this address and mint the wrapped version to the caller. Burning wrapped tokens
+ * burns the wrapped version transferred by the caller, then withdraws the underlying tokens
+ * from the Beefy vault and transfers those tokens back to the caller.
  */
 contract BeefyWrapper is ERC4626Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -45,7 +46,7 @@ contract BeefyWrapper is ERC4626Upgradeable {
     }
 
     /**
-     * @dev Wraps all of vault share tokens owned by the caller.
+     * @dev Wraps all vault share tokens owned by the caller.
      */
     function wrapAll() external {
         wrap(IERC20Upgradeable(vault).balanceOf(msg.sender));
@@ -61,7 +62,7 @@ contract BeefyWrapper is ERC4626Upgradeable {
     }
 
     /**
-     * @dev Wraps all of wrapped tokens owned by the caller.
+     * @dev Unwraps all wrapped tokens owned by the caller.
      */
     function unwrapAll() external {
         unwrap(balanceOf(msg.sender));

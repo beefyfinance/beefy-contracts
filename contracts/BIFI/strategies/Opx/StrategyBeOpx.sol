@@ -2,26 +2,30 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../../interfaces/gmx/IGMXRouter.sol";
-import "../../interfaces/gmx/IGMXTracker.sol";
-import "../../interfaces/gmx/IBeefyVault.sol";
-import "../../interfaces/gmx/IGMXStrategy.sol";
+import "../../interfaces/common/IRewardPool.sol";
+import "../../utils/UniswapV3Utils.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 
-contract StrategyGMX is StratFeeManagerInitializable {
+interface IBeToken {
+    function depositAll() external;
+    function harvest() external;
+}
+
+contract StrategyBeOpx is StratFeeManagerInitializable {
     using SafeERC20 for IERC20;
 
     // Tokens used
-    address public native;
     address public want;
+    address public native;
+    address public depositToken;
 
     // Third party contracts
-    address public chef;
-    address public rewardStorage;
-    address public balanceTracker;
+    address public rewardPool;
+
+    // Route
+    bytes public outputToDepositPath;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -31,22 +35,31 @@ contract StrategyGMX is StratFeeManagerInitializable {
     event Withdraw(uint256 tvl);
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
-    function __StrategyGMX_init(
-        address _chef,
+    function initialize(
+        address _want,
+        address _rewardPool,
+        address[] memory _outputToDepositRoute,
+        uint24[] memory _outputToDepositFees,
         CommonAddresses calldata _commonAddresses
-    ) internal onlyInitializing {
+    ) public initializer {
         __StratFeeManager_init(_commonAddresses);
-        chef = _chef;
-        rewardStorage = IGMXRouter(chef).feeGmxTracker();
-        balanceTracker = IGMXRouter(chef).stakedGmxTracker();
+        want = _want;
+        rewardPool = _rewardPool;
+
+        native = _outputToDepositRoute[0];
+        depositToken = _outputToDepositRoute[_outputToDepositRoute.length - 1];
+
+        outputToDepositPath = UniswapV3Utils.routeToPath(_outputToDepositRoute, _outputToDepositFees);
+
+        _giveAllowances();
     }
 
     // puts the funds to work
     function deposit() public whenNotPaused {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal > 0) {
-            IGMXRouter(chef).stakeGmx(wantBal);
+            IRewardPool(rewardPool).stake(wantBal);
             emit Deposit(balanceOf());
         }
     }
@@ -54,11 +67,11 @@ contract StrategyGMX is StratFeeManagerInitializable {
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal < _amount) {
-            IGMXRouter(chef).unstakeGmx(_amount - wantBal);
-            wantBal = IERC20(want).balanceOf(address(this));
+            IRewardPool(rewardPool).withdraw(_amount - wantBal);
+            wantBal = balanceOfWant();
         }
 
         if (wantBal > _amount) {
@@ -75,7 +88,7 @@ contract StrategyGMX is StratFeeManagerInitializable {
         emit Withdraw(balanceOf());
     }
 
-    function beforeDeposit() external virtual override {
+    function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
             _harvest(tx.origin);
@@ -96,12 +109,12 @@ contract StrategyGMX is StratFeeManagerInitializable {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        IGMXRouter(chef).compound();   // Claim and restake esGMX and multiplier points
-        IGMXTracker(rewardStorage).claim(address(this));
+        IBeToken(want).harvest();
+        IRewardPool(rewardPool).getReward();
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
         if (nativeBal > 0) {
             chargeFees(callFeeRecipient);
-            swapRewards();
+            depositBe();
             uint256 wantHarvested = balanceOfWant();
             deposit();
 
@@ -127,8 +140,14 @@ contract StrategyGMX is StratFeeManagerInitializable {
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
-    // Adds liquidity to AMM and gets more LP tokens.
-    function swapRewards() internal virtual {}
+    // Deposit into beToken
+    function depositBe() internal {
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        if (nativeBal > 0) {
+            UniswapV3Utils.swap(unirouter, outputToDepositPath, nativeBal);
+            IBeToken(want).depositAll();
+        }
+    }
 
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
@@ -142,12 +161,12 @@ contract StrategyGMX is StratFeeManagerInitializable {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        return IGMXTracker(balanceTracker).depositBalances(address(this), want);
+        return IRewardPool(rewardPool).balanceOf(address(this));
     }
 
     // returns rewards unharvested
     function rewardsAvailable() public view returns (uint256) {
-        return IGMXTracker(rewardStorage).claimable(address(this));
+        return IRewardPool(rewardPool).earned(address(this));
     }
 
     // native reward amount for calling harvest
@@ -160,8 +179,7 @@ contract StrategyGMX is StratFeeManagerInitializable {
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
-
-        if (harvestOnDeposit) {
+        if (harvestOnDeposit == true) {
             setWithdrawalFee(0);
         } else {
             setWithdrawalFee(10);
@@ -172,20 +190,16 @@ contract StrategyGMX is StratFeeManagerInitializable {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IBeefyVault.StratCandidate memory candidate = IBeefyVault(vault).stratCandidate();
-        address stratAddress = candidate.implementation;
+        IRewardPool(rewardPool).withdraw(balanceOfPool());
 
-        IGMXRouter(chef).signalTransfer(stratAddress);
-        IGMXStrategy(stratAddress).acceptTransfer();
-
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
         IERC20(want).transfer(vault, wantBal);
     }
 
     // pauses deposits and withdraws all funds from third party systems.
-    function panic() public onlyManager {
+    function panic() external onlyManager {
         pause();
-        IGMXRouter(chef).unstakeGmx(balanceOfPool());
+        IRewardPool(rewardPool).withdraw(balanceOfPool());
     }
 
     function pause() public onlyManager {
@@ -203,20 +217,18 @@ contract StrategyGMX is StratFeeManagerInitializable {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(balanceTracker, type(uint).max);
+        IERC20(want).safeApprove(rewardPool, type(uint).max);
         IERC20(native).safeApprove(unirouter, type(uint).max);
+        IERC20(depositToken).safeApprove(want, type(uint).max);
     }
 
     function _removeAllowances() internal {
-        IERC20(want).safeApprove(balanceTracker, 0);
+        IERC20(want).safeApprove(rewardPool, 0);
         IERC20(native).safeApprove(unirouter, 0);
+        IERC20(depositToken).safeApprove(want, 0);
     }
 
-    function nativeToWant() external view virtual returns (address[] memory) {}
-
-    function acceptTransfer() external {
-        address prevStrat = IBeefyVault(vault).strategy();
-        require(msg.sender == prevStrat, "!prevStrat");
-        IGMXRouter(chef).acceptTransfer(prevStrat);
+    function outputToDeposit() external view returns (address[] memory) {
+        return UniswapV3Utils.pathToRoute(outputToDepositPath);
     }
 }

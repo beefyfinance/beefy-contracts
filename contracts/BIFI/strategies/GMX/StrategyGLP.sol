@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../interfaces/gmx/IGMXRouter.sol";
@@ -11,10 +10,9 @@ import "../../interfaces/gmx/IGLPManager.sol";
 import "../../interfaces/gmx/IGMXVault.sol";
 import "../../interfaces/gmx/IBeefyVault.sol";
 import "../../interfaces/gmx/IGMXStrategy.sol";
-import "../Common/StratFeeManager.sol";
-import "../../utils/GasFeeThrottler.sol";
+import "../Common/StratFeeManagerInitializable.sol";
 
-contract StrategyGLP is StratFeeManager, GasFeeThrottler {
+contract StrategyGLP is StratFeeManagerInitializable {
     using SafeERC20 for IERC20;
 
     // Tokens used
@@ -22,6 +20,7 @@ contract StrategyGLP is StratFeeManager, GasFeeThrottler {
     address public native;
 
     // Third party contracts
+    address public minter;
     address public chef;
     address public glpRewardStorage;
     address public gmxRewardStorage;
@@ -30,41 +29,35 @@ contract StrategyGLP is StratFeeManager, GasFeeThrottler {
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
-    bool public cooldown;
-    uint256 public extraCooldownDuration = 900;
 
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
-    constructor(
+    function initialize(
         address _want,
         address _native,
+        address _minter,
         address _chef,
-        CommonAddresses memory _commonAddresses
-    ) StratFeeManager(_commonAddresses) {
+        CommonAddresses calldata _commonAddresses
+    ) public initializer {
+        __StratFeeManager_init(_commonAddresses);
         want = _want;
         native = _native;
+        minter = _minter;
         chef = _chef;
+
         glpRewardStorage = IGMXRouter(chef).feeGlpTracker();
         gmxRewardStorage = IGMXRouter(chef).feeGmxTracker();
-        glpManager = IGMXRouter(chef).glpManager();
+        glpManager = IGMXRouter(minter).glpManager();
         gmxVault = IGLPManager(glpManager).vault();
 
         _giveAllowances();
     }
 
-    // prevent griefing by preventing deposits for longer than the cooldown period
-    modifier whenNotCooling {
-        if (cooldown) {
-            require(block.timestamp >= withdrawOpen() + extraCooldownDuration, "cooldown");
-        }
-        _;
-    }
-
     // puts the funds to work
-    function deposit() public whenNotPaused whenNotCooling {
+    function deposit() public whenNotPaused {
         emit Deposit(balanceOf());
     }
 
@@ -94,11 +87,11 @@ contract StrategyGLP is StratFeeManager, GasFeeThrottler {
         }
     }
 
-    function harvest() external gasThrottle virtual {
+    function harvest() external virtual {
         _harvest(tx.origin);
     }
 
-    function harvest(address callFeeRecipient) external gasThrottle virtual {
+    function harvest(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
     }
 
@@ -140,9 +133,9 @@ contract StrategyGLP is StratFeeManager, GasFeeThrottler {
     }
 
     // mint more GLP with the ETH earned as fees
-    function mintGlp() internal whenNotCooling {
+    function mintGlp() internal {
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
-        IGMXRouter(chef).mintAndStakeGlp(native, nativeBal, 0, 0);
+        IGMXRouter(minter).mintAndStakeGlp(native, nativeBal, 0, 0);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -177,10 +170,12 @@ contract StrategyGLP is StratFeeManager, GasFeeThrottler {
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
-    }
 
-    function setShouldGasThrottle(bool _shouldGasThrottle) external onlyManager {
-        shouldGasThrottle = _shouldGasThrottle;
+        if (harvestOnDeposit) {
+            setWithdrawalFee(0);
+        } else {
+            setWithdrawalFee(10);
+        }
     }
 
     // called as part of strat migration. Transfers all want, GLP, esGMX and MP to new strat.
@@ -222,25 +217,12 @@ contract StrategyGLP is StratFeeManager, GasFeeThrottler {
         IERC20(native).safeApprove(glpManager, 0);
     }
 
-    // timestamp at which withdrawals open again
-    function withdrawOpen() public view returns (uint256) {
-        return IGLPManager(glpManager).lastAddedAt(address(this)) 
-            + IGLPManager(glpManager).cooldownDuration();
-    }
-
-    // turn on extra cooldown time to allow users to withdraw
-    function setCooldown(bool _cooldown) external onlyManager {
-        cooldown = _cooldown;
-    }
-
-    // set the length of cooldown time for withdrawals
-    function setExtraCooldownDuration(uint256 _extraCooldownDuration) external onlyManager {
-        extraCooldownDuration = _extraCooldownDuration;
-    }
-
     function acceptTransfer() external {
         address prevStrat = IBeefyVault(vault).strategy();
         require(msg.sender == prevStrat, "!prevStrat");
         IGMXRouter(chef).acceptTransfer(prevStrat);
+
+        // send back 1 wei to complete upgrade
+        IERC20(want).safeTransfer(prevStrat, 1);
     }
 }

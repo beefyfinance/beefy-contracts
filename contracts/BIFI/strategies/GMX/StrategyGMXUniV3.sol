@@ -10,12 +10,13 @@ contract StrategyGMXUniV3 is StrategyGMX {
     // Route
     bytes public nativeToWantPath;
 
-    constructor(
+    function initialize(
         address _chef,
-        address[] memory _nativeToWantRoute,
-        uint24[] memory _nativeToWantFees,
-        CommonAddresses memory _commonAddresses
-    ) StrategyGMX(_chef, _commonAddresses) {
+        address[] calldata _nativeToWantRoute,
+        uint24[] calldata _nativeToWantFees,
+        CommonAddresses calldata _commonAddresses
+    ) public initializer {
+        __StrategyGMX_init(_chef, _commonAddresses);
         native = _nativeToWantRoute[0];
         want = _nativeToWantRoute[_nativeToWantRoute.length - 1];
 
