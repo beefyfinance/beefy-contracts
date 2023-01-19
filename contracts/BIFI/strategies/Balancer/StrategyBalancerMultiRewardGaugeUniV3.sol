@@ -39,7 +39,7 @@ contract StrategyBalancerMultiRewardGaugeUniV3 is StratFeeManagerInitializable {
     mapping(address => BeefyBalancerStructs.Reward) public rewards;
     address[] public rewardTokens;
     
-    address public uniswapRouter = address(0xE592427A0AEce92De3Edee1F18E0157C05861564);
+    address public uniswapRouter;
 
     IBalancerVault.SwapKind public swapKind = IBalancerVault.SwapKind.GIVEN_IN;
     IBalancerVault.FundManagement public funds;
@@ -88,6 +88,7 @@ contract StrategyBalancerMultiRewardGaugeUniV3 is StratFeeManagerInitializable {
        
         rewardsGauge = _rewardsGauge;
         input.isBeets = _switches[1];
+        uniswapRouter = address(0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45);
 
         want = _want;
         _giveAllowances();
@@ -192,7 +193,7 @@ contract StrategyBalancerMultiRewardGaugeUniV3 is StratFeeManagerInitializable {
                     IBalancerVault.BatchSwapStep[] memory _swaps = BalancerActionsLib.buildSwapStructArray(swapInfo, bal);
                     BalancerActionsLib.balancerSwap(unirouter, swapKind, _swaps, rewards[rewardTokens[i]].assets, funds, int256(bal));
                 } else {
-                    UniV3Actions.kyberSwap(uniswapRouter, rewards[rewardTokens[i]].routeToNative, bal);
+                    UniV3Actions.swapV3(uniswapRouter, rewards[rewardTokens[i]].routeToNative, bal);
                 }
             }
         }

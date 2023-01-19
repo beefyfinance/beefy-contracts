@@ -1,13 +1,16 @@
 const { getContractAddress } = require("@openzeppelin/hardhat-upgrades/dist/utils");
 const hardhat = require("hardhat");
-const { startingEtherPerAccount } = require("../../utils/configInit");
 
 const ethers = hardhat.ethers;
 
-const contractName = "StrategyCommonSolidlyRewardPoolLP";
+const contractName = "StrategyCommonChefLPProxySweeper";
 const factoryName = "BeefyVaultV7Factory";
 
-const config = {};
+const config = { 
+  verify: true,
+  router: "0x1111111254eeb25477b68fb85ed929f73a960582",
+  weth: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+};
 
 async function main() {
   await hardhat.run("compile");
@@ -16,22 +19,21 @@ async function main() {
   const Factory = await ethers.getContractFactory(factoryName);
 
   const params = [
-    config.anycallRouter, 
-    config.beQI,
-    config.anycallProxy
+    config.router,
+    config.weth
   ]
 
   const contract = await Contract.deploy();
   await contract.deployed();
   
- // console.log(`${contractName} deployed to:`, contract.address);
-
- // const factory = await Factory.deploy(contract.address);
- // await factory.deployed();
+  console.log(`${contractName} deployed to:`, contract.address);
+/*
+  const factory = await Factory.deploy(contract.address);
+  await factory.deployed();
 
   
- // console.log(`${factoryName} deployed to:`, factory.address);
-
+  console.log(`${factoryName} deployed to:`, factory.address);
+*/
   if (config.verify) {
     await hardhat.run("verify:verify", {
       address: contract.address,

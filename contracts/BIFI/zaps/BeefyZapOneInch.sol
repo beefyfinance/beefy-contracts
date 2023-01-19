@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin-4/contracts/utils/math/Math.sol";
-import "@openzeppelin-4/contracts/access/Ownable.sol";
 
 import "../interfaces/common/IUniswapRouterETH.sol";
 import "../interfaces/common/IUniswapV2Pair.sol";
@@ -14,47 +13,53 @@ import "./zapInterfaces/IWETH.sol";
 import "./zapInterfaces/IBeefyVault.sol";
 import "./zapInterfaces/IStrategy.sol";
 import "./zapInterfaces/IERC20Extended.sol";
-import "./zapInterfaces/IBeefyDataSource.sol";
 
 
 // Aggregator Zap compatible with all single asset, uniswapv2, and solidly router Beefy Vaults. 
-contract BeefyZapOneInch is Ownable {
+contract BeefyZapOneInch {
     using SafeERC20 for IERC20;
     using SafeERC20 for IBeefyVault;
 
     // needed addresses for zap 
-    IBeefyDataSource public dataSource;
     address public immutable oneInchRouter;
     address public immutable WETH;
     uint256 public constant minimumAmount = 1000;
 
-    constructor(address _oneInchRouter, address _WETH, address _dataSource) {
+    enum WantType {
+        WANT_TYPE_SINGLE,
+        WANT_TYPE_UNISWAP_V2,
+        WANT_TYPE_SOLIDLY_STABLE,
+        WANT_TYPE_SOLIDLY_VOLATILE
+    }
+
+    event TokenReturned(address token, uint256 amount);
+    event ZapIn(address vault, address tokenIn, uint256 amountIn);
+    event ZapOut(address vault, address desiredToken, uint256 mooTokenIn);
+
+    constructor(address _oneInchRouter, address _WETH) {
         // Safety checks to ensure WETH token address
         IWETH(_WETH).deposit{value: 0}();
         IWETH(_WETH).withdraw(0);
         WETH = _WETH;
 
         oneInchRouter = _oneInchRouter;
-        
-        // data source is used to fetch pair fee info which we are unable to fetch on chain otherwise
-        dataSource = IBeefyDataSource(_dataSource);
-        
     }
 
     // Zap's main functions external and public functions
-    function beefInETH (address _beefyVault, bytes calldata _token0, bytes calldata _token1) external payable {
+    function beefInETH (address _beefyVault, bytes calldata _token0, bytes calldata _token1, WantType _type) external payable {
         require(msg.value >= minimumAmount, 'Beefy: Insignificant input amount');
 
         IWETH(WETH).deposit{value: msg.value}();
-        _swapAndStake(_beefyVault, WETH, WETH, _token0, _token1);
+        _swapAndStake(_beefyVault, WETH, WETH, _token0, _token1, _type);
+        emit ZapIn(_beefyVault, WETH, msg.value);
     }
 
-    function beefIn (address _beefyVault, address _inputToken, uint256 _tokenInAmount, bytes calldata _token0, bytes calldata _token1) public {
+    function beefIn (address _beefyVault, address _inputToken, uint256 _tokenInAmount, bytes calldata _token0, bytes calldata _token1, WantType _type) public {
         require(_tokenInAmount >= minimumAmount, 'Beefy: Insignificant input amount');
-        require(IERC20(_inputToken).allowance(msg.sender, address(this)) >= _tokenInAmount, 'Beefy: Input token is not approved');
 
         IERC20(_inputToken).safeTransferFrom(msg.sender, address(this), _tokenInAmount);
-        _swapAndStake(_beefyVault, _inputToken, _inputToken, _token0, _token1);
+        _swapAndStake(_beefyVault, _inputToken, _inputToken, _token0, _token1, _type);
+        emit ZapIn(_beefyVault,  _inputToken, _tokenInAmount);
     }
 
     function beefOut (address _beefyVault, uint256 _withdrawAmount) external {
@@ -62,12 +67,13 @@ contract BeefyZapOneInch is Ownable {
          _returnAssets(tokens);
     }
 
-    function beefOutAndSwap(address _beefyVault, uint256 _withdrawAmount, address _desiredToken, bytes calldata _dataToken0, bytes calldata _dataToken1) external {
-        (IBeefyVault vault, IUniswapV2Pair pair, bool singleAsset) =  _getVaultPair(_beefyVault);
+    function beefOutAndSwap(address _beefyVault, uint256 _withdrawAmount, address _desiredToken, bytes calldata _dataToken0, bytes calldata _dataToken1, WantType _type) external {
+        (IBeefyVault vault, IUniswapV2Pair pair) =  _getVaultPair(_beefyVault);
         vault.safeTransferFrom(msg.sender, address(this), _withdrawAmount);
         vault.withdraw(_withdrawAmount);
+         emit ZapOut(_beefyVault, _desiredToken, _withdrawAmount);
 
-       if (!singleAsset) {
+       if (_type != WantType.WANT_TYPE_SINGLE) {
             _removeLiquidity(address(pair), address(this));
 
             address[] memory path = new address[](3);
@@ -101,18 +107,25 @@ contract BeefyZapOneInch is Ownable {
     }
 
     // Zap out funds from the 'fromMooVault', swap whats needed to swap and reinvest into the 'toMooVault'.
-    function beefOutAndReInvest(address _fromMooVault, address _toMooVault, uint256 _mooTokenAmount, bytes calldata _token0ToFrom, bytes calldata _token1ToFrom) external {
-        (IBeefyVault vault, IUniswapV2Pair pair, bool singleAsset) = _getVaultPair(_fromMooVault);
-        (,,bool toSingleAsset) = _getVaultPair(_toMooVault);
+    function beefOutAndReInvest(
+        address _fromMooVault, 
+        address _toMooVault, 
+        uint256 _mooTokenAmount, 
+        bytes calldata _token0ToFrom, 
+        bytes calldata _token1ToFrom, 
+        WantType _fromType, 
+        WantType _toType
+    ) external {
+        (IBeefyVault vault, IUniswapV2Pair pair) = _getVaultPair(_fromMooVault);
 
         address token0; 
         address token1;
-        if (!singleAsset) {
+        if (_fromType != WantType.WANT_TYPE_SINGLE) {
             _beefOut(_fromMooVault, _mooTokenAmount);
             token0 = pair.token0();
             token1 = pair.token1();
-            if (!toSingleAsset) {
-                _swapAndStake(_toMooVault, token0, token1, _token0ToFrom, _token1ToFrom);   
+            if (_toType != WantType.WANT_TYPE_SINGLE) {
+                _swapAndStake(_toMooVault, token0, token1, _token0ToFrom, _token1ToFrom, _toType);   
             } else {
                 _swapAndStake(_toMooVault, token0, _token0ToFrom);
                 _swapAndStake(_toMooVault, token1, _token1ToFrom);
@@ -122,19 +135,19 @@ contract BeefyZapOneInch is Ownable {
             vault.withdraw(_mooTokenAmount);
             token0 = vault.want();
             token1 = token0;
-            toSingleAsset ? _swapAndStake(_toMooVault, token0, _token0ToFrom) : _swapAndStake(_toMooVault, token0, token1, _token0ToFrom, _token1ToFrom);
+            _toType == WantType.WANT_TYPE_SINGLE ? _swapAndStake(_toMooVault, token0, _token0ToFrom) : _swapAndStake(_toMooVault, token0, token1, _token0ToFrom, _token1ToFrom, _toType);
         }
     }
 
     // View function helpers for the app
     // Since solidly stable pairs can be inbalanced we need the proper ratio for our swap, we need to accound both for price of the assets and the ratio of the pair. 
     function quoteStableAddLiquidityRatio(address _beefyVault) external view returns (uint256 ratio1to0) {
-            (IBeefyVault vault, IUniswapV2Pair pairAddress,) = _getVaultPair(_beefyVault);
+            (IBeefyVault vault, IUniswapV2Pair pairAddress) = _getVaultPair(_beefyVault);
             ISolidlyPair pair = ISolidlyPair(address(pairAddress));
             address tokenA = pair.token0();
             address tokenB = pair.token1();
 
-            uint256 investment = 1e18;
+            uint256 investment = IERC20(tokenA).balanceOf(address(pair)) * 10 / 10000;
             uint out = pair.getAmountOut(investment, tokenA);
             ISolidlyRouter router = ISolidlyRouter(IStrategy(vault.strategy()).unirouter());
             (uint amountA, uint amountB,) = router.quoteAddLiquidity(tokenA, tokenB, pair.stable(), investment, out);
@@ -146,41 +159,12 @@ contract BeefyZapOneInch is Ownable {
                 
             uint ratio = out * 1e18 / investment * amountA / amountB; 
                 
-            return investment * 1e18 / (ratio + 1e18);
-    }
-
-    // quoting removing liquidity in uniswapv2 pairs requires us to know the fee rates of the pair, we use the data source to fetch this info and have an accurate estimate.
-    function quoteRemoveLiquidity(IBeefyVault _beefyVault, uint256 _mooTokenAmt) external view returns (uint256 amt0, uint256 amt1, address token0, address token1) {
-        uint256 withdrawFee = IStrategy(_beefyVault.strategy()).withdrawalFee();
-        uint256 liquidity = _mooTokenAmt * _beefyVault.balance() / _beefyVault.totalSupply();
-        uint256 fee = withdrawFee > 0 ? liquidity * withdrawFee / 10000 : 0;
-        liquidity = liquidity - fee;
-        
-        (, IUniswapV2Pair pair,) = _getVaultPair(address(_beefyVault));
-        (bool isSolidPair,) = _getSolidType(address(pair));
-
-        token0 = pair.token0();
-        token1 = pair.token1();
-
-        uint256 balance0 = IERC20(token0).balanceOf(address(pair));
-        uint256 balance1 = IERC20(token1).balanceOf(address(pair));
-
-        uint256 totalSupply = pair.totalSupply();
-
-        if (!isSolidPair) {
-            (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
-            uint256 extliquidity = _mintFee(pair, reserve0, reserve1, totalSupply);
-            totalSupply += extliquidity;
-        }
-
-        amt0 = liquidity * balance0 / totalSupply;
-        amt1 = liquidity * balance1 / totalSupply;
+            return 1e18 * 1e18 / (ratio + 1e18);
     }
 
     // Internal functions
-
     function _beefOut (address _beefyVault, uint256 _withdrawAmount) private returns (address[] memory tokens) {
-        (IBeefyVault vault, IUniswapV2Pair pair,) = _getVaultPair(_beefyVault);
+        (IBeefyVault vault, IUniswapV2Pair pair) = _getVaultPair(_beefyVault);
 
         IERC20(_beefyVault).safeTransferFrom(msg.sender, address(this), _withdrawAmount);
         vault.withdraw(_withdrawAmount);
@@ -190,6 +174,8 @@ contract BeefyZapOneInch is Ownable {
         tokens = new address[](2);
         tokens[0] = pair.token0();
         tokens[1] = pair.token1();
+        
+        emit ZapOut(_beefyVault, address(pair), _withdrawAmount);
     }
 
     function _removeLiquidity(address _pair, address _to) private {
@@ -200,24 +186,7 @@ contract BeefyZapOneInch is Ownable {
         require(amount1 >= minimumAmount, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
     }
 
-    
-    // we measure the amount of extra lp is created after the pair claims fees before we are sent our tokens when removing liquidity
-    function _mintFee(IUniswapV2Pair _pair, uint112 _reserve0, uint112 _reserve1, uint256 _totalSupply) private view returns (uint256 liquidity) {
-        uint _kLast = _pair.kLast();
-        address factory =  _pair.factory();
-        (uint rootKInteger, uint rootKLastInteger) = dataSource.feeData(factory);
-            if (_kLast != 0) {
-                uint rootK = Math.sqrt(uint(_reserve0) * _reserve1);
-                uint rootKLast = Math.sqrt(_kLast);
-                if (rootK > rootKLast) {
-                    uint numerator = _totalSupply * (rootK - rootKLast) * rootKLastInteger;
-                    uint denominator = rootK * rootKInteger + (rootKLast * rootKLastInteger);
-                    liquidity = numerator / denominator;
-                }
-            }
-    }
-
-    function _getVaultPair (address _beefyVault) private view returns (IBeefyVault vault, IUniswapV2Pair pair, bool singleAsset) {
+    function _getVaultPair (address _beefyVault) private pure returns (IBeefyVault vault, IUniswapV2Pair pair) {
         vault = IBeefyVault(_beefyVault);
 
         try vault.want() returns (address pairAddress) {
@@ -225,20 +194,6 @@ contract BeefyZapOneInch is Ownable {
         } catch {
             pair = IUniswapV2Pair(vault.token()); // Vault V5
         }
-
-        try pair.token0() returns (address) {
-            singleAsset = false;
-        } catch {
-            singleAsset = true;
-        }
-    }
-
-    // helper function for us to determine whether the pair is a solidly type and whether or not its a stable.
-    function _getSolidType (address _pair) private view returns (bool isSolidPair, bool stable) {
-        ISolidlyPair solidPair = ISolidlyPair(_pair);
-        address factory = solidPair.factory();
-        isSolidPair = dataSource.isSolidPair(factory);
-        stable = isSolidPair ? solidPair.stable() : false;
     }
 
     function _swapAndStake(address _vault, address _inputToken, bytes calldata _token0) private {
@@ -260,10 +215,10 @@ contract BeefyZapOneInch is Ownable {
     }
   
 
-    function _swapAndStake(address _beefyVault, address _inputToken0, address _inputToken1, bytes calldata _token0, bytes calldata _token1) private {
-        (IBeefyVault vault, IUniswapV2Pair pair, bool singleAsset) =  _getVaultPair(_beefyVault);
+    function _swapAndStake(address _beefyVault, address _inputToken0, address _inputToken1, bytes calldata _token0, bytes calldata _token1, WantType _type) private {
+        (IBeefyVault vault, IUniswapV2Pair pair) =  _getVaultPair(_beefyVault);
 
-        if (!singleAsset) {
+        if (_type != WantType.WANT_TYPE_SINGLE) {
             address[] memory path;
             if (_inputToken0 == _inputToken1) {
                 path = new address[](3);
@@ -287,7 +242,6 @@ contract BeefyZapOneInch is Ownable {
             }
 
             address router = IStrategy(vault.strategy()).unirouter();
-            (bool isSolidPair, bool stable) = _getSolidType(address(pair));
 
             _approveTokenIfNeeded(path[0], address(router));
             _approveTokenIfNeeded(path[1], address(router));
@@ -295,12 +249,13 @@ contract BeefyZapOneInch is Ownable {
             uint256 lp1Amt = IERC20(path[1]).balanceOf(address(this));
 
             uint256 amountLiquidity;
-            if (!isSolidPair) {
-                (,, amountLiquidity) = IUniswapRouterETH(router)
-                .addLiquidity(path[0], path[1], lp0Amt, lp1Amt, 1, 1, address(this), block.timestamp);
-            } else {
+            if (_type == WantType.WANT_TYPE_SOLIDLY_STABLE || _type == WantType.WANT_TYPE_SOLIDLY_VOLATILE) {
+                 bool stable = _type == WantType.WANT_TYPE_SOLIDLY_STABLE ? true : false;
                 (,, amountLiquidity) = ISolidlyRouter(router)
                 .addLiquidity(path[0], path[1], stable,  lp0Amt, lp1Amt, 1, 1, address(this), block.timestamp);
+            } else {
+                (,, amountLiquidity) = IUniswapRouterETH(router)
+                .addLiquidity(path[0], path[1], lp0Amt, lp1Amt, 1, 1, address(this), block.timestamp);
             }
 
              _approveTokenIfNeeded(address(pair), address(vault));
@@ -314,7 +269,7 @@ contract BeefyZapOneInch is Ownable {
     }
 
     // our main swap function call. we call the aggregator contract with our fed data. if we get an error we revert and return the error result. 
-    function _swapViaOneInch(address _inputToken, bytes memory _callData) private returns (uint) {
+    function _swapViaOneInch(address _inputToken, bytes memory _callData) private {
         
         _approveTokenIfNeeded(_inputToken, address(oneInchRouter));
 
@@ -323,8 +278,6 @@ contract BeefyZapOneInch is Ownable {
         propagateError(success, retData, "1inch");
 
         require(success == true, "calling 1inch got an error");
-        (uint actualAmount, ) = abi.decode(retData, (uint, uint));
-        return actualAmount;
     }
 
     function _returnAssets(address[] memory _tokens) private {
@@ -336,8 +289,10 @@ contract BeefyZapOneInch is Ownable {
                     IWETH(WETH).withdraw(balance);
                     (bool success,) = msg.sender.call{value: balance}(new bytes(0));
                     require(success, 'Beefy: ETH transfer failed');
+                    emit TokenReturned(_tokens[i], balance);
                 } else {
                     IERC20(_tokens[i]).safeTransfer(msg.sender, balance);
+                    emit TokenReturned(_tokens[i], balance);
                 }
             }
         }
@@ -347,12 +302,6 @@ contract BeefyZapOneInch is Ownable {
         if (IERC20(_token).allowance(address(this), _spender) == 0) {
             IERC20(_token).safeApprove(_spender, type(uint).max);
         }
-    }
-
-    // Our only setter function in case the data source needs to be upgraded. 
-
-    function setDataSource(address _dataSource) external onlyOwner {
-        dataSource = IBeefyDataSource(_dataSource);
     }
 
     // Error reporting from our call to the aggrator contract when we try to swap. 

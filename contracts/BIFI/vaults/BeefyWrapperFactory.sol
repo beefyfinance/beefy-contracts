@@ -15,13 +15,17 @@ contract BeefyWrapperFactory {
   using ClonesUpgradeable for address;
 
   // Contract template for deploying proxied Beefy Vault wrappers
-  address public immutable implementation;
+  address public implementation;
 
   event ProxyCreated(address proxy);
 
   // Initializes the Factory with an instance of the Beefy Vault Wrapper
-  constructor() {
-    implementation = address(new BeefyWrapper());
+  constructor(address _instance) {
+    if (_instance != address(0)) {
+      implementation = _instance;
+    } else {
+      implementation = address(new BeefyWrapper());
+    }
   }
 
   // Creates a new Beefy Vault wrapper as a proxy of the template instance
@@ -33,7 +37,7 @@ contract BeefyWrapperFactory {
     proxy = implementation.clone();
     IWrapper(proxy).initialize(
       _vault,
-      string.concat("W", IVault(_vault).name()),
+      string.concat("Wrapped ", IVault(_vault).name()),
       string.concat("w", IVault(_vault).symbol())
     );
     emit ProxyCreated(proxy);

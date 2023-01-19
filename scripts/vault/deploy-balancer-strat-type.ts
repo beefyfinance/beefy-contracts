@@ -6,81 +6,73 @@ import stratAbi from "../../artifacts/contracts/BIFI/strategies/Balancer/Strateg
 import stratComAbi from "../../artifacts/contracts/BIFI/strategies/Balancer/StrategyBalancerComposableMultiRewardGaugeUniV3.sol/StrategyBalancerComposableMultiRewardGaugeUniV3.json";
 
 const {
-  platforms: { beethovenX, beefyfinance },
+  platforms: {  beefyfinance },
   tokens: {
     BAL: { address: BAL },
-    'wUSD+': { address: wUSDplus },
-    rETH: { address: rETH },
-    OP: { address: OP },
+    //LDO: { address: LDO },
     wstETH: {address: wstETH },
-    ETH: {address: ETH },
-    USDC: {address: USDC}
+    ETH: {address: ETH }
   },
-} = addressBook.optimism;
+} = addressBook.arbitrum;
+
+const LDO = "0x13Ad51ed4F1B7e9Dc168d8a00cB3f4dDD85EfA60";
 
 const bbrfBAL = "0xd0d334B6CfD77AcC94bAB28C7783982387856449";
 const bbrfETH = "0xdd89c7cd0613c1557b2daac6ae663282900204f1";
 const bbrfOP = "0xA4e597c1bD01859B393b124ce18427Aa4426A871";
 const bbUSDplus = "0x88D07558470484c03d3bb44c3ECc36CAfCF43253";
 
-const gauge = web3.utils.toChecksumAddress("0x6341B7472152D7b7F9af3158C6A42349a2cA6c72");
-const want = web3.utils.toChecksumAddress("0x7B50775383d3D6f0215A8F290f2C9e2eEBBEceb2");
+const gauge = web3.utils.toChecksumAddress("0x251e51b25AFa40F2B6b9F05aaf1bC7eAa0551771");
+const want = web3.utils.toChecksumAddress("0x36bf227d6bac96e2ab1ebb5492ecec69c691943f");
 
 const vaultParams = {
-  mooName: "Moo Beets Shanghai Shakedown",
-  mooSymbol: "mooBeetsShanghaiShakedown",
+  mooName: "Moo Balancer wstETH-ETH V2",
+  mooSymbol: "mooBalancerwstETH-ETHV2",
   delay: 21600,
 };
 
 const bytes0 = '0x0000000000000000000000000000000000000000000000000000000000000000';
+const rewardToNativeRouteBytes = ethers.utils.solidityPack(["address","int24","address"], [LDO, 10000, ETH]);
 
 const strategyParams = {
-  input: wstETH,
+  input: ETH,
   isComposable: false,
-  unirouter: beethovenX.router,
+  unirouter: "0xBA12222222228d8Ba445958a75a0704d566BF2C8",//beethovenX.router,
   strategist: process.env.STRATEGIST_ADDRESS,
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   beefyFeeConfig: beefyfinance.beefyFeeConfig,
-  isBeets: true,
-  beefyVaultProxy: "0xA6D3769faC465FC0415e7E9F16dcdC96B83C240B",  //beefyfinance.vaultProxy,
+  isBeets: false,
+  beefyVaultProxy: "0x8396f3d25d07531a80770Ce3DEA025932C4953f7",  //beefyfinance.vaultProxy,
   composableStrat: false,
-  strategyImplementation: "0x5064c531Af73BeEe8e7B3835dE289965B34CC189",
+  strategyImplementation: "0x06640459fDF9af5073048F8379d765F442C3daE9",
   comStrategyImplementation: "0x617B09c47c3918207fA154b7b789a8E5CDC1680A",
   useVaultProxy: true,
   extraReward: false, 
   secondExtraReward: true,
   outputToNativeAssets: [
     BAL,
-    OP, 
     ETH
   ],
   outputToNativeRouteBytes: [
         [
-            "0xd6e5824b54f64ce6f1161210bc17eebffc77e031000100000000000000000006",
+            "0xcc65a812ce382ab909a11e434dbf75b34f1cc59d000200000000000000000001",
             0,
             1
-        ],
-        [
-          "0x39965c9dab5448482cf7e002f583c812ceb53046000100000000000000000003",
-          1,
-          2
         ]
     ],
   nativeToWantAssets: [
     ETH,
-    wstETH,
+    ETH,
   ],
   nativeToWantRouteBytes: [
         [
-            "0x7b50775383d3d6f0215a8f290f2c9e2eebbeceb200020000000000000000008b",
+            "0x5028497af0c9a54ea8c6d42a054c0341b9fc6168000100000000000000000004",
             0,
             1
         ]
     ],
     rewardAssets: [
-      wUSDplus,
-      USDC,
       wstETH, 
       bbrfETH,
       ETH
@@ -108,12 +100,11 @@ const strategyParams = {
       ]
     ],
     secondRewardAssets: [
-      OP,
-      ETH
+      "0x0000000000000000000000000000000000000000",
     ],
     secondRewardRoute: [
       [
-        "0x39965c9dab5448482cf7e002f583c812ceb53046000100000000000000000003",
+        bytes0,
         0,
         1
       ],
@@ -133,6 +124,7 @@ async function main() {
   await hardhat.run("compile");
 
   console.log("Deploying:", vaultParams.mooName);
+  console.log(rewardToNativeRouteBytes);
 
   const factory = await ethers.getContractAt(vaultV7Factory.abi, strategyParams.beefyVaultProxy);
   let vault = await factory.callStatic.cloneVault();
@@ -227,7 +219,7 @@ async function main() {
   }
 
   if (strategyParams.secondExtraReward) {
-    stratInitTx = await stratContract.addRewardToken(strategyParams.secondRewardAssets[0], strategyParams.secondRewardRoute, strategyParams.secondRewardAssets, bytes0, 100);
+    stratInitTx = await stratContract.addRewardToken(LDO, strategyParams.secondRewardRoute, strategyParams.secondRewardAssets, rewardToNativeRouteBytes, 100);
     stratInitTx = await stratInitTx.wait()
     stratInitTx.status === 1
     ? console.log(`Reward Added with tx: ${stratInitTx.transactionHash}`)
