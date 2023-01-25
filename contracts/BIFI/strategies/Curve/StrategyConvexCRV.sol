@@ -4,16 +4,16 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IWrappedNative.sol";
-import "../../interfaces/convex/IConvex.sol";
+import "../../interfaces/convex/IStakedCvxCrv.sol";
+import "../../interfaces/curve/ICurveRouter.sol";
 import "../../interfaces/curve/ICurveSwap.sol";
-import "../../interfaces/curve/IGaugeFactory.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 import "../../utils/Path.sol";
 import "../../utils/UniV3Actions.sol";
 
-contract StrategyConvex is StratFeeManagerInitializable {
+// cvxCRV single staking
+contract StrategyConvexCRV is StratFeeManagerInitializable {
     using Path for bytes;
     using SafeERC20 for IERC20;
 
@@ -21,43 +21,32 @@ contract StrategyConvex is StratFeeManagerInitializable {
     address public constant crv = 0xD533a949740bb3306d119CC777fa900bA034cd52;
     address public constant cvx = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
     address public constant native = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address public constant unirouterV3 = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    address public constant curveRouter = 0x99a58482BD75cbab83b27EC03CA68fF489b5788f;
     address public constant crvPool = 0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511;
     address public constant cvxPool = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
-    IConvexBooster public constant booster = IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+    IStakedCvxCrv public constant stakedCvxCrv = IStakedCvxCrv(0xaa0C3f5F7DFD688C6E646F66CD2a6B66ACdbE434);
 
-    address public want; // curve lpToken
-    address public pool; // curve swap pool
-    address public zap; // curve zap to deposit in metapools, or 0
-    address public depositToken; // token sent to pool or zap to receive want
-    address public rewardPool; // convex base reward pool
-    uint public pid; // convex booster poolId
-    uint public poolSize; // pool or zap size
-    uint public depositIndex; // index of depositToken in pool or zap
-    bool public useUnderlying; // pass additional true to add_liquidity e.g. aave tokens
-    bool public depositNative; // if depositToken should be sent as unwrapped native
+    // cvxCRV
+    address public constant want = 0x62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7;
 
-    // v3 path or v2 route swapped via StratFeeManager.unirouter
-    bytes public nativeToDepositPath;
-    address[] public nativeToDepositRoute;
+    // swapped via curveRouter
+    CurveRoute public nativeToCvxCRV;
+
+    struct CurveRoute {
+        address[9] route;
+        uint256[3][4] swapParams;
+        uint minAmount; // minimum amount to be swapped to native
+    }
+    CurveRoute[] public rewards;
 
     struct RewardV3 {
         address token;
         bytes toNativePath; // uniswap path
         uint minAmount; // minimum amount to be swapped to native
     }
-    RewardV3[] public rewardsV3; // rewards swapped via unirouterV3
-
-    struct RewardV2 {
-        address token;
-        address router; // uniswap v2 router
-        address[] toNativeRoute; // uniswap route
-        uint minAmount; // minimum amount to be swapped to native
-    }
-    RewardV2[] public rewards;
+    RewardV3[] public rewardsV3; // rewards swapped via unirouter
 
     uint public curveSwapMinAmount;
-    bool public skipEarmarkRewards;
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
 
@@ -67,36 +56,11 @@ contract StrategyConvex is StratFeeManagerInitializable {
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
     function initialize(
-        address _want,
-        address _pool,
-        address _zap,
-        uint _pid,
-        uint[] calldata _params, // [poolSize, depositIndex, useUnderlying, useDepositNative]
-        bytes calldata _nativeToDepositPath,
-        address[] calldata _nativeToDepositRoute,
+        CurveRoute calldata _nativeToCvxCrv,
         CommonAddresses calldata _commonAddresses
     ) public initializer {
         __StratFeeManager_init(_commonAddresses);
-        want = _want;
-        pool = _pool;
-        zap = _zap;
-        pid = _pid;
-        poolSize = _params[0];
-        depositIndex = _params[1];
-        useUnderlying = _params[2] > 0;
-        depositNative = _params[3] > 0;
-        (,,,rewardPool,,) = booster.poolInfo(_pid);
-
-        if (_nativeToDepositPath.length > 0) {
-            address[] memory nativeRoute = pathToRoute(_nativeToDepositPath);
-            require(nativeRoute[0] == native, '_nativeToDeposit[0] != native');
-            depositToken = nativeRoute[nativeRoute.length - 1];
-            nativeToDepositPath = _nativeToDepositPath;
-        } else {
-            require(_nativeToDepositRoute[0] == native, '_nativeToDepositRoute[0] != native');
-            depositToken = _nativeToDepositRoute[_nativeToDepositRoute.length - 1];
-            nativeToDepositRoute = _nativeToDepositRoute;
-        }
+        nativeToCvxCRV = _nativeToCvxCrv;
 
         curveSwapMinAmount = 1e19;
         withdrawalFee = 1;
@@ -108,7 +72,7 @@ contract StrategyConvex is StratFeeManagerInitializable {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            booster.deposit(pid, wantBal, true);
+            stakedCvxCrv.stake(wantBal, address(this));
             emit Deposit(balanceOf());
         }
     }
@@ -119,7 +83,7 @@ contract StrategyConvex is StratFeeManagerInitializable {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IConvexRewardPool(rewardPool).withdrawAndUnwrap(_amount - wantBal, false);
+            stakedCvxCrv.withdraw(_amount - wantBal);
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -152,14 +116,9 @@ contract StrategyConvex is StratFeeManagerInitializable {
         _harvest(callFeeRecipient, false);
     }
 
-    function managerHarvest() external onlyManager {
-        _harvest(tx.origin, false);
-    }
-
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient, bool onDeposit) internal whenNotPaused {
-        earmarkRewards();
-        IConvexRewardPool(rewardPool).getReward();
+        stakedCvxCrv.getReward(address(this));
         swapRewardsToNative();
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
         if (nativeBal > 0) {
@@ -174,12 +133,6 @@ contract StrategyConvex is StratFeeManagerInitializable {
         }
     }
 
-    function earmarkRewards() internal {
-        if (!skipEarmarkRewards && IConvexRewardPool(rewardPool).periodFinish() < block.timestamp) {
-            booster.earmarkRewards(pid);
-        }
-    }
-
     function swapRewardsToNative() internal {
         if (curveSwapMinAmount > 0) {
             uint bal = IERC20(crv).balanceOf(address(this));
@@ -191,17 +144,21 @@ contract StrategyConvex is StratFeeManagerInitializable {
                 ICurveSwap(cvxPool).exchange(1, 0, bal, 0);
             }
         }
+        for (uint i; i < rewards.length; ++i) {
+            uint bal = IERC20(rewards[i].route[0]).balanceOf(address(this));
+            if (bal >= rewards[i].minAmount) {
+                ICurveRouter(curveRouter).exchange_multiple(rewards[i].route, rewards[i].swapParams, bal, 0);
+            }
+        }
         for (uint i; i < rewardsV3.length; ++i) {
             uint bal = IERC20(rewardsV3[i].token).balanceOf(address(this));
             if (bal >= rewardsV3[i].minAmount) {
-                UniV3Actions.swapV3WithDeadline(unirouterV3, rewardsV3[i].toNativePath, bal);
+                UniV3Actions.swapV3WithDeadline(unirouter, rewardsV3[i].toNativePath, bal);
             }
         }
-        for (uint i; i < rewards.length; ++i) {
-            uint bal = IERC20(rewards[i].token).balanceOf(address(this));
-            if (bal >= rewards[i].minAmount) {
-                IUniswapRouterETH(rewards[i].router).swapExactTokensForTokens(bal, 0, rewards[i].toNativeRoute, address(this), block.timestamp);
-            }
+        uint256 nativeBal = address(this).balance;
+        if (nativeBal > 0) {
+            IWrappedNative(native).deposit{value : nativeBal}();
         }
     }
 
@@ -224,56 +181,24 @@ contract StrategyConvex is StratFeeManagerInitializable {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 depositBal;
-        uint256 depositNativeAmount;
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
-        if (depositToken != native) {
-            if (nativeToDepositPath.length > 0) {
-                UniV3Actions.swapV3WithDeadline(unirouter, nativeToDepositPath, nativeBal);
-            } else {
-                IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeBal, 0, nativeToDepositRoute, address(this), block.timestamp);
-            }
-            depositBal = IERC20(depositToken).balanceOf(address(this));
-        } else {
-            depositBal = nativeBal;
-            if (depositNative) {
-                depositNativeAmount = nativeBal;
-                IWrappedNative(native).withdraw(depositNativeAmount);
-            }
-        }
-
-        if (poolSize == 2) {
-            uint256[2] memory amounts;
-            amounts[depositIndex] = depositBal;
-            if (useUnderlying) ICurveSwap(pool).add_liquidity(amounts, 0, true);
-            else ICurveSwap(pool).add_liquidity{value: depositNativeAmount}(amounts, 0);
-        } else if (poolSize == 3) {
-            uint256[3] memory amounts;
-            amounts[depositIndex] = depositBal;
-            if (useUnderlying) ICurveSwap(pool).add_liquidity(amounts, 0, true);
-            else if (zap != address(0)) ICurveSwap(zap).add_liquidity{value: depositNativeAmount}(pool, amounts, 0);
-            else ICurveSwap(pool).add_liquidity{value: depositNativeAmount}(amounts, 0);
-        } else if (poolSize == 4) {
-            uint256[4] memory amounts;
-            amounts[depositIndex] = depositBal;
-            if (zap != address(0)) ICurveSwap(zap).add_liquidity(pool, amounts, 0);
-            else ICurveSwap(pool).add_liquidity(amounts, 0);
-        } else if (poolSize == 5) {
-            uint256[5] memory amounts;
-            amounts[depositIndex] = depositBal;
-            if (zap != address(0)) ICurveSwap(zap).add_liquidity(pool, amounts, 0);
-            else ICurveSwap(pool).add_liquidity(amounts, 0);
-        }
+        ICurveRouter(curveRouter).exchange_multiple(nativeToCvxCRV.route, nativeToCvxCRV.swapParams, nativeBal, 0);
     }
 
-    function addRewardV2(address _router, address[] calldata _rewardToNativeRoute, uint _minAmount) external onlyOwner {
+    function setNativeToWantRoute(address[9] calldata _route, uint[3][4] calldata _swapParams) external onlyOwner {
+        require(_route[0] == native, "!native");
+        nativeToCvxCRV = CurveRoute(_route, _swapParams, 0);
+    }
+
+    function addReward(address[9] calldata _rewardToNativeRoute, uint[3][4] calldata _swapParams, uint _minAmount) external onlyOwner {
         address token = _rewardToNativeRoute[0];
         require(token != want, "!want");
         require(token != native, "!native");
+        require(token != address(stakedCvxCrv), "!staked");
 
-        rewards.push(RewardV2(token, _router, _rewardToNativeRoute, _minAmount));
-        IERC20(token).approve(_router, 0);
-        IERC20(token).approve(_router, type(uint).max);
+        rewards.push(CurveRoute(_rewardToNativeRoute, _swapParams, _minAmount));
+        IERC20(token).approve(curveRouter, 0);
+        IERC20(token).approve(curveRouter, type(uint).max);
     }
 
     function addRewardV3(bytes memory _rewardToNativePath, uint _minAmount) external onlyOwner {
@@ -281,13 +206,14 @@ contract StrategyConvex is StratFeeManagerInitializable {
         address token = _rewardToNativeRoute[0];
         require(token != want, "!want");
         require(token != native, "!native");
+        require(token != address(stakedCvxCrv), "!staked");
 
         rewardsV3.push(RewardV3(token, _rewardToNativePath, _minAmount));
-        IERC20(token).approve(unirouterV3, 0);
-        IERC20(token).approve(unirouterV3, type(uint).max);
+        IERC20(token).approve(unirouter, 0);
+        IERC20(token).approve(unirouter, type(uint).max);
     }
 
-    function resetRewardsV2() external onlyManager {
+    function resetRewards() external onlyManager {
         delete rewards;
     }
 
@@ -307,7 +233,43 @@ contract StrategyConvex is StratFeeManagerInitializable {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        return IConvexRewardPool(rewardPool).balanceOf(address(this));
+        return stakedCvxCrv.balanceOf(address(this));
+    }
+
+    function curveRouteToRoute(address[9] memory _route) public pure returns (address[] memory) {
+        uint len;
+        for (; len < _route.length; len++) {
+            if (_route[len] == address(0)) break;
+        }
+        address[] memory route = new address[](len);
+        for (uint i; i < len; i++) {
+            route[i] = _route[i];
+        }
+        return route;
+    }
+
+    function nativeToWant() external view returns (address[] memory) {
+        return curveRouteToRoute(nativeToCvxCRV.route);
+    }
+
+    function nativeToWantParams() external view returns (uint[3][4] memory) {
+        return nativeToCvxCRV.swapParams;
+    }
+
+    function rewardToNative() external view returns (address[] memory) {
+        return curveRouteToRoute(rewards[0].route);
+    }
+
+    function rewardToNative(uint i) external view returns (address[] memory) {
+        return curveRouteToRoute(rewards[i].route);
+    }
+
+    function rewardToNativeParams(uint i) external view returns (uint[3][4] memory) {
+        return rewards[i].swapParams;
+    }
+
+    function rewardsLength() external view returns (uint) {
+        return rewards.length;
     }
 
     function pathToRoute(bytes memory _path) public pure returns (address[] memory) {
@@ -322,12 +284,6 @@ contract StrategyConvex is StratFeeManagerInitializable {
         return route;
     }
 
-    function nativeToDeposit() external view returns (address[] memory) {
-        if (nativeToDepositPath.length > 0) {
-            return pathToRoute(nativeToDepositPath);
-        } else return nativeToDepositRoute;
-    }
-
     function rewardV3ToNative() external view returns (address[] memory) {
         return pathToRoute(rewardsV3[0].toNativePath);
     }
@@ -340,24 +296,12 @@ contract StrategyConvex is StratFeeManagerInitializable {
         return rewardsV3.length;
     }
 
-    function rewardToNative() external view returns (address[] memory) {
-        return rewards[0].toNativeRoute;
+    function rewardWeight() external view returns (uint) {
+        return stakedCvxCrv.userRewardWeight(address(this));
     }
 
-    function rewardToNative(uint i) external view returns (address[] memory) {
-        return rewards[i].toNativeRoute;
-    }
-
-    function rewardsLength() external view returns (uint) {
-        return rewards.length;
-    }
-
-    function setDepositNative(bool _depositNative) external onlyOwner {
-        depositNative = _depositNative;
-    }
-
-    function setSkipEarmarkRewards(bool _skipEarmarkRewards) external onlyManager {
-        skipEarmarkRewards = _skipEarmarkRewards;
+    function setRewardWeight(uint _weight) external onlyManager {
+        stakedCvxCrv.setRewardWeight(_weight);
     }
 
     function setCurveSwapMinAmount(uint _minAmount) external onlyManager {
@@ -374,8 +318,8 @@ contract StrategyConvex is StratFeeManagerInitializable {
     }
 
     // returns rewards unharvested
-    function rewardsAvailable() public view returns (uint256) {
-        return IConvexRewardPool(rewardPool).earned(address(this));
+    function rewardsAvailable() public pure returns (uint256) {
+        return 0;
     }
 
     // native reward amount for calling harvest
@@ -387,7 +331,7 @@ contract StrategyConvex is StratFeeManagerInitializable {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IConvexRewardPool(rewardPool).withdrawAllAndUnwrap(false);
+        stakedCvxCrv.withdraw(balanceOfPool());
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -396,7 +340,7 @@ contract StrategyConvex is StratFeeManagerInitializable {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IConvexRewardPool(rewardPool).withdrawAllAndUnwrap(false);
+        stakedCvxCrv.withdraw(balanceOfPool());
     }
 
     function pause() public onlyManager {
@@ -414,22 +358,18 @@ contract StrategyConvex is StratFeeManagerInitializable {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).approve(address(booster), type(uint).max);
-        IERC20(native).approve(unirouter, type(uint).max);
-        IERC20(depositToken).approve(pool, type(uint).max);
-        if (zap != address(0)) IERC20(depositToken).approve(zap, type(uint).max);
+        IERC20(want).approve(address(stakedCvxCrv), type(uint).max);
+        IERC20(native).approve(curveRouter, type(uint).max);
         IERC20(crv).approve(crvPool, type(uint).max);
         IERC20(cvx).approve(cvxPool, type(uint).max);
     }
 
     function _removeAllowances() internal {
-        IERC20(want).approve(address(booster), 0);
-        IERC20(native).approve(unirouter, 0);
-        IERC20(depositToken).approve(pool, 0);
-        if (zap != address(0)) IERC20(depositToken).approve(zap, 0);
+        IERC20(want).approve(address(stakedCvxCrv), 0);
+        IERC20(native).approve(curveRouter, 0);
         IERC20(crv).approve(crvPool, 0);
         IERC20(cvx).approve(cvxPool, 0);
     }
 
-    receive () external payable {}
+    receive() external payable {}
 }

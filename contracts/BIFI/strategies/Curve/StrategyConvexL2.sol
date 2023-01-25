@@ -8,7 +8,6 @@ import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IWrappedNative.sol";
 import "../../interfaces/convex/IConvex.sol";
 import "../../interfaces/curve/ICurveSwap.sol";
-import "../../interfaces/curve/ICurveSwap256.sol";
 import "../../interfaces/curve/IGaugeFactory.sol";
 import "../Common/StratFeeManager.sol";
 import "../../utils/Path.sol";

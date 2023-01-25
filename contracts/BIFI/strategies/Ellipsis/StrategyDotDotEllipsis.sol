@@ -9,6 +9,7 @@ import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IWrappedNative.sol";
 import "../../interfaces/curve/ICurveSwap.sol";
 import "./IDotDot.sol";
+import "./IEpsSwap.sol";
 import "../Common/StratFeeManager.sol";
 import "../../utils/GasFeeThrottler.sol";
 
@@ -200,12 +201,12 @@ contract StrategyDotDotEllipsis is StratFeeManager, GasFeeThrottler {
         // dEpx to epx
         bal = IERC20(depx).balanceOf(address(this));
         if (bal > 0) {
-            ICurveSwap(depxEpxSwap).exchange(0, 1, bal, 0);
+            IEpsSwap(depxEpxSwap).exchange(0, 1, bal, 0);
         }
         // epx
         bal = IERC20(epx).balanceOf(address(this));
         if (bal > 0) {
-            ICurveSwap(epxBnbSwap).exchange(0, 1, bal, 0);
+            IEpsSwap(epxBnbSwap).exchange(0, 1, bal, 0);
         }
         // extras
         for (uint i; i < rewards.length; i++) {
@@ -383,17 +384,17 @@ contract StrategyDotDotEllipsis is StratFeeManager, GasFeeThrottler {
             // dEPX to EPX
             (uint256 claimable,) = feeDistributor.streamingBalances(address(this));
             if (claimable > 0) {
-                epxBal = epxBal + ICurveSwap(depxEpxSwap).get_dy(0, 1, claimable);
+                epxBal = epxBal + IEpsSwap(depxEpxSwap).get_dy(0, 1, claimable);
             }
             if (epxBal > 0) {
-                nativeOut = nativeOut + ICurveSwap(epxBnbSwap).get_dy(0, 1, epxBal);
+                nativeOut = nativeOut + IEpsSwap(epxBnbSwap).get_dy(0, 1, epxBal);
             }
         } else {
             // ddd
             uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(dddBal, dddToNativeRoute);
             nativeOut = nativeOut + amountOut[amountOut.length - 1];
             // epx
-            nativeOut = nativeOut + ICurveSwap(epxBnbSwap).get_dy(0, 1, epxBal);
+            nativeOut = nativeOut + IEpsSwap(epxBnbSwap).get_dy(0, 1, epxBal);
         }
 
         // extra rewards
