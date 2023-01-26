@@ -9,19 +9,16 @@ import "../../../node_modules/forge-std/src/Test.sol";
 import "../users/VaultUser.sol";
 // Interfaces
 import "../interfaces/IVault.sol";
+import "../../../contracts/BIFI/interfaces/common/IERC20Extended.sol";
 import "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
-import "../../../contracts/BIFI/strategies/Curve/StrategyConvex.sol";
+import "../../../contracts/BIFI/strategies/Curve/StrategyConvexCRV.sol";
 
-interface ISymbol {
-    function symbol() external view returns(string memory);
-}
-
-contract StrategyProdConvex is Test {
+contract StrategyProdCvxCrv is Test {
 
     uint256 wantAmount = 5000000 ether;
 
     IVault vault;
-    StrategyConvex strategy;
+    StrategyConvexCRV strategy;
     VaultUser user;
 
     function setUp() public {
@@ -29,7 +26,7 @@ contract StrategyProdConvex is Test {
         console.log("Testing vault at", _vault);
         vault = IVault(_vault);
         console.log(vault.name(), vault.symbol());
-        strategy = StrategyConvex(payable(vault.strategy()));
+        strategy = StrategyConvexCRV(payable(vault.strategy()));
         user = new VaultUser();
         deal(vault.want(), address(user), wantAmount);
     }
@@ -42,10 +39,9 @@ contract StrategyProdConvex is Test {
         uint pps = vault.getPricePerFullShare();
         uint lastHarvest = strategy.lastHarvest();
 
+        vm.prank(strategy.keeper());
+        strategy.setRewardWeight(0);
         skip(1 days);
-
-        uint rewardsAvailable = strategy.rewardsAvailable();
-        assertGt(rewardsAvailable, 0, "Expected rewardsAvailable > 0");
 
         address[] memory rewards = new address[](strategy.rewardsLength() + strategy.rewardsV3Length());
         for(uint i; i < strategy.rewardsLength(); ++i) {
@@ -56,14 +52,14 @@ contract StrategyProdConvex is Test {
         }
 
         console.log("Claim rewards on Convex");
-        IConvexRewardPool(strategy.rewardPool()).getReward(address(strategy), true);
+        strategy.stakedCvxCrv().getReward(address(strategy));
         uint crvBal = IERC20(strategy.crv()).balanceOf(address(strategy));
         uint cvxBal = IERC20(strategy.cvx()).balanceOf(address(strategy));
         uint nativeBal = IERC20(strategy.native()).balanceOf(address(strategy));
         console.log("CRV", crvBal);
         console.log("CVX", cvxBal);
         for (uint i; i < rewards.length; ++i) {
-            string memory s = ISymbol(rewards[i]).symbol();
+            string memory s = IERC20Extended(rewards[i]).symbol();
             console2.log(s, IERC20(rewards[i]).balanceOf(address(strategy)));
         }
         console.log("WETH", nativeBal);
@@ -79,7 +75,7 @@ contract StrategyProdConvex is Test {
         console.log("CVX", cvxBal);
         for (uint i; i < rewards.length; ++i) {
             uint bal = IERC20(rewards[i]).balanceOf(address(strategy));
-            string memory s = ISymbol(rewards[i]).symbol();
+            string memory s = IERC20Extended(rewards[i]).symbol();
             console2.log(s, bal);
             assertEq(bal, 0, "Extra reward not swapped");
         }
