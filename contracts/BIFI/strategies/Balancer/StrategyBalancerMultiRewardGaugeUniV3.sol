@@ -39,7 +39,7 @@ contract StrategyBalancerMultiRewardGaugeUniV3 is StratFeeManagerInitializable {
     mapping(address => BeefyBalancerStructs.Reward) public rewards;
     address[] public rewardTokens;
     
-    address public uniswapRouter = address(0xE592427A0AEce92De3Edee1F18E0157C05861564);
+    address public uniswapRouter;
 
     IBalancerVault.SwapKind public swapKind = IBalancerVault.SwapKind.GIVEN_IN;
     IBalancerVault.FundManagement public funds;
@@ -88,6 +88,7 @@ contract StrategyBalancerMultiRewardGaugeUniV3 is StratFeeManagerInitializable {
        
         rewardsGauge = _rewardsGauge;
         input.isBeets = _switches[1];
+        uniswapRouter = address(0xC1e7dFE73E1598E3910EF4C7845B68A9Ab6F4c83);
 
         want = _want;
         _giveAllowances();
