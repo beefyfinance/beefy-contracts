@@ -152,6 +152,14 @@ const config: DeploymentConfig = {
           apiURL: "https://andromeda-explorer.metis.io/api",
           browserURL: "https://andromeda-explorer.metis.io/"
         }
+      },
+      {
+        network: "celo",
+        chainId: 42220,
+        urls: {
+          apiURL: "https://api.celoscan.io/api/",
+          browserURL: "https://celoscan.io/"
+        }
       }
     ]
   },
