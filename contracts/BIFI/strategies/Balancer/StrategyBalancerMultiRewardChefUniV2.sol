@@ -166,7 +166,7 @@ contract StrategyBalancerMultiRewardChefUniV2 is StratFeeManagerInitializable {
 
     function swapRewardsToNative() internal {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
-        if (outputBal > 0) {
+        if (outputBal > 1 ether) {
             IBalancerVault.BatchSwapStep[] memory _swaps = BalancerActionsLib.buildSwapStructArray(outputToNativeRoute, outputBal);
             BalancerActionsLib.balancerSwap(unirouter, swapKind, _swaps, outputToNativeAssets, funds, int256(outputBal));
         }
