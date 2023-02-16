@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.9.0;
 
 interface ICommonMiniChef {
     function poolLength() external view returns (uint256);
-    function userInfo(uint256 _pid, address _user) external view returns (uint256, uint256);
+    function userInfo(uint256 _pid, address _user) external view returns (uint256, int256);
     function pendingReward(uint256 _pid, address _user) external view returns (uint256);
     function deposit(uint256 pid, uint256 amount, address to) external;
     function withdraw(uint256 pid, uint256 amount, address to) external;
