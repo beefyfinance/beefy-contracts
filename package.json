@@ -36,6 +36,7 @@
     "deploy:gauge": "hardhat run scripts/vault/deploy-solidly-gauge.js --network",
     "deploy:gauge:proxy": "hardhat run scripts/vault/deploy-solidly-gauge-proxy.js --network",
     "deploy:lend": "hardhat run scripts/vault/deploy-strat-lend.ts --network",
+    "deploy:kyber": "hardhat run scripts/vault/deploy-kyber-strat.ts --network",
     "deploy:beToken": "hardhat run scripts/vault/deployBeToken.js --network",
     "deploy:beTokenInfra": "hardhat run scripts/infra/deployBeTokenInfra.js --network",
     "deploy:timelock": "hardhat run scripts/infra/deployTimelockController.js --network",

@@ -6,8 +6,8 @@ import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
 
 interface IDMMRouter {
     function addLiquidity(
-        IERC20 tokenA,
-        IERC20 tokenB,
+        address tokenA,
+        address tokenB,
         address pool,
         uint256 amountADesired,
         uint256 amountBDesired,
@@ -90,4 +90,10 @@ interface IDMMRouter {
         address[] calldata poolsPath,
         IERC20[] calldata path
     ) external view returns (uint256[] memory amounts);
+
+    function quote(
+        uint256 amountA, 
+        uint256 reserveA,
+        uint256 reserveB
+    ) external view returns (uint256 amountB);
 }
