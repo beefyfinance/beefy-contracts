@@ -20,6 +20,8 @@ contract StrategyConvexTest is BaseStrategyTest {
 
     IStrategy constant PROD_STRAT = IStrategy(0x2486c5fa59Ba480F604D5A99A6DAF3ef8A5b4D76);
     address constant native = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address constant crv = 0xD533a949740bb3306d119CC777fa900bA034cd52;
+    address constant cvx = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
     address constant ldo = 0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32;
     address constant fxs = 0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0;
     address constant usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -29,23 +31,107 @@ contract StrategyConvexTest is BaseStrategyTest {
     address constant zap3pool = 0xA79828DF1850E8a3A3064576f380D90aECDD3359;
     uint24[] fee500 = [500];
     uint24[] fee3000 = [3000];
+    uint24[] fee10000 = [10000];
     bytes nativeToUsdc = routeToPath(route(native, usdc), fee500);
 
-    // sbtc2
-    IERC20Like want = IERC20Like(0x051d7e5609917Bd9b73f04BAc0DED8Dd46a74301);
-    address pool = 0xf253f83AcA21aAbD2A20553AE0BF7F65C755A07F;
+    // LDO-ETH
+    IERC20Like want = IERC20Like(0xb79565c01b7Ae53618d9B847b9443aAf4f9011e7);
+    address pool = 0x9409280DC1e6D33AB7A8C6EC03e5763FB61772B5;
     address zap = address(0);
-    uint pid = 135;
+    uint pid = 149;
     uint poolSize = 2;
     uint depositIndex = 0;
     uint useUnderlying = 0;
     uint depositNative = 0;
     uint[] params = [poolSize, depositIndex, useUnderlying, depositNative];
     address unirouter = uniV3;
-    bytes nativeToDepositPath = routeToPath(route(native, wbtc), fee500);
-    address[] nativeToDepositRoute = new address[](0);
+    bytes nativeToDepositPath = "";
+    address[] nativeToDepositRoute = [native];
     address[] rewardsV3 = new address[](0);
     uint24[] rewardsV3Fee = [3000];
+
+    // CLEV-ETH
+//    IERC20Like want = IERC20Like(0x6C280dB098dB673d30d5B34eC04B6387185D3620);
+//    address pool = 0x342D1C4Aa76EA6F5E5871b7f11A019a0eB713A4f;
+//    address zap = address(0);
+//    uint pid = 142;
+//    uint poolSize = 2;
+//    uint depositIndex = 0;
+//    uint useUnderlying = 0;
+//    uint depositNative = 0;
+//    uint[] params = [poolSize, depositIndex, useUnderlying, depositNative];
+//    address unirouter = uniV3;
+//    bytes nativeToDepositPath = "";
+//    address[] nativeToDepositRoute = [native];
+//    address[] rewardsV3 = new address[](0);
+//    uint24[] rewardsV3Fee = [3000];
+
+    // clevCVX
+//    IERC20Like want = IERC20Like(0xF9078Fb962A7D13F55d40d49C8AA6472aBD1A5a6);
+//    address pool = 0xF9078Fb962A7D13F55d40d49C8AA6472aBD1A5a6;
+//    address zap = address(0);
+//    uint pid = 139;
+//    uint poolSize = 2;
+//    uint depositIndex = 0;
+//    uint useUnderlying = 0;
+//    uint depositNative = 0;
+//    uint[] params = [poolSize, depositIndex, useUnderlying, depositNative];
+//    address unirouter = uniV3;
+//    uint24[] fee = fee10000;
+//    bytes nativeToDepositPath = routeToPath(route(native, cvx), fee);
+//    address[] nativeToDepositRoute = new address[](0);
+//    address[] rewardsV3 = new address[](0);
+//    uint24[] rewardsV3Fee = [3000];
+
+    // yCRV
+//    IERC20Like want = IERC20Like(0x453D92C7d4263201C69aACfaf589Ed14202d83a4);
+//    address pool = 0x453D92C7d4263201C69aACfaf589Ed14202d83a4;
+//    address zap = address(0);
+//    uint pid = 124;
+//    uint poolSize = 2;
+//    uint depositIndex = 0;
+//    uint useUnderlying = 0;
+//    uint depositNative = 0;
+//    uint[] params = [poolSize, depositIndex, useUnderlying, depositNative];
+//    address unirouter = uniV3;
+//    uint24[] fee = fee3000;
+//    bytes nativeToDepositPath = routeToPath(route(native, crv), fee);
+//    address[] nativeToDepositRoute = new address[](0);
+//    address[] rewardsV3 = new address[](0);
+//    uint24[] rewardsV3Fee = [3000];
+
+    // tusd-3pool
+//    IERC20Like want = IERC20Like(0xEcd5e75AFb02eFa118AF914515D6521aaBd189F1);
+//    address pool = 0xEcd5e75AFb02eFa118AF914515D6521aaBd189F1;
+//    address zap = zap3pool;
+//    uint pid = 31;
+//    uint poolSize = 4;
+//    uint depositIndex = 2;
+//    uint useUnderlying = 0;
+//    uint depositNative = 0;
+//    uint[] params = [poolSize, depositIndex, useUnderlying, depositNative];
+//    address unirouter = uniV3;
+//    uint24[] fee = fee500;
+//    bytes nativeToDepositPath = routeToPath(route(native, usdc), fee);
+//    address[] nativeToDepositRoute = new address[](0);
+//    address[] rewardsV3 = new address[](0);
+//    uint24[] rewardsV3Fee = [3000];
+
+    // sbtc2
+//    IERC20Like want = IERC20Like(0x051d7e5609917Bd9b73f04BAc0DED8Dd46a74301);
+//    address pool = 0xf253f83AcA21aAbD2A20553AE0BF7F65C755A07F;
+//    address zap = address(0);
+//    uint pid = 135;
+//    uint poolSize = 2;
+//    uint depositIndex = 0;
+//    uint useUnderlying = 0;
+//    uint depositNative = 0;
+//    uint[] params = [poolSize, depositIndex, useUnderlying, depositNative];
+//    address unirouter = uniV3;
+//    bytes nativeToDepositPath = routeToPath(route(native, wbtc), fee500);
+//    address[] nativeToDepositRoute = new address[](0);
+//    address[] rewardsV3 = new address[](0);
+//    uint24[] rewardsV3Fee = [3000];
 
     // multibtc
 //    IERC20Like want = IERC20Like(0x2863a328A0B7fC6040f11614FA0728587DB8e353);
@@ -205,6 +291,9 @@ contract StrategyConvexTest is BaseStrategyTest {
         strategy.initialize(address(want), pool, zap, pid, params, nativeToDepositPath, nativeToDepositRoute, commons);
         console.log("Strategy initialized", strategy.pid(), strategy.want(), strategy.rewardPool());
 
+        if (nativeToDepositPath.length > 0) {
+            console.log("nativeToDeposit", bytesToStr(nativeToDepositPath));
+        }
         if (rewardsV3.length > 0) {
             console.log("Add rewardV3", rewardsV3[0]);
             bytes memory path = routeToPath(rewardsV3, rewardsV3Fee);

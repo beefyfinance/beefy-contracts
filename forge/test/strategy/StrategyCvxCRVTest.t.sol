@@ -17,7 +17,7 @@ import "../../../contracts/BIFI/strategies/Curve/StrategyConvexCRV.sol";
 import "../../../contracts/BIFI/strategies/Common/StratFeeManager.sol";
 import "./BaseStrategyTest.t.sol";
 
-contract StrategyConvexCRVTest is BaseStrategyTest {
+contract StrategyCvxCRVTest is BaseStrategyTest {
 
     IStrategy constant PROD_STRAT = IStrategy(0x2486c5fa59Ba480F604D5A99A6DAF3ef8A5b4D76);
     address constant uniV3 = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
