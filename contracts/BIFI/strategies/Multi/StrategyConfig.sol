@@ -11,35 +11,35 @@ import "../../interfaces/common/IMasterChef.sol";
 import "../../utils/StringUtils.sol";
 import "./StrategyCore.sol";
 
-contract StrategyConfig is StrategyCore {
+abstract contract StrategyConfig is StrategyCore {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using MathUpgradeable for uint256;
 
     // Tokens used
     address public lpToken0;
     address public lpToken1;
-    Reward[] public rewards;
+    address[] public rewards;
 
     // Third party contracts
     address public chef;
     uint256 public poolId;
 
     string public pendingRewardsFunctionName;
-    uint256 public slippage = 0.98 ether;
 
     // Routes
     mapping(address => mapping(address => address[])) public routes;
     mapping(address => uint256) public minToSwap;
 
-    constructor(
+    function initialize(
         address _want,
         uint256 _poolId,
         address _chef,
-        CommonAddresses memory _commonAddresses,
-        address[] memory _outputToNativeRoute,
-        address[] memory _outputToLp0Route,
-        address[] memory _outputToLp1Route
-    ) StratFeeManager(_commonAddresses) {
+        address[] calldata _outputToNativeRoute,
+        address[] calldata _outputToLp0Route,
+        address[] calldata _outputToLp1Route,
+        CommonAddresses calldata _commonAddresses
+    ) public initializer {
+        __StratFeeManager_init(_commonAddresses);
         want = _want;
         poolId = _poolId;
         chef = _chef;
@@ -101,7 +101,7 @@ contract StrategyConfig is StrategyCore {
         IMasterChef(chef).deposit(poolId, 0);
         uint256 rewardLength = rewards.length;
         for (uint256 i; i < rewardLength;) {
-            _swap(unirouter, rewards[i].reward, output, 1 ether);
+            _swap(unirouter, rewards[i], output, 1 ether);
             unchecked { ++i; }
         }
     }
@@ -122,7 +122,7 @@ contract StrategyConfig is StrategyCore {
     }
 
     /**
-     * @dev It swaps from one token to another, taking into account the route and slippage.
+     * @dev It swaps from one token to another.
      * @param _unirouter The router used to make the swap.
      * @param _fromToken The token to swap from.
      * @param _toToken The token to swap to.
@@ -133,7 +133,7 @@ contract StrategyConfig is StrategyCore {
         address _fromToken,
         address _toToken,
         uint256 _percentageSwap
-    ) internal override {
+    ) internal {
         if (_fromToken == _toToken) {
             return;
         }
@@ -142,12 +142,8 @@ contract StrategyConfig is StrategyCore {
         if (fromTokenBal > minToSwap[_fromToken]) {
             address[] memory path = routes[_fromToken][_toToken];
             require(path[0] != address(0), "path not set");
-            uint256 minOutput = _getAmountOut(_unirouter, fromTokenBal, _fromToken, _toToken)
-                * slippage
-                / DIVISOR;
-
             try IUniswapRouterETH(_unirouter).swapExactTokensForTokens(
-                fromTokenBal, minOutput, path, address(this), block.timestamp
+                fromTokenBal, 0, path, address(this), block.timestamp
             ) {} catch {}
         }
     }
@@ -179,7 +175,7 @@ contract StrategyConfig is StrategyCore {
      */
     function rewardsAvailable() public override view returns (uint256) {
         string memory signature = StringUtils.concat(pendingRewardsFunctionName, "(uint256,address)");
-        bytes memory result = Address.functionStaticCall(
+        bytes memory result = AddressUpgradeable.functionStaticCall(
             chef,
             abi.encodeWithSignature(
                 signature,
@@ -188,19 +184,6 @@ contract StrategyConfig is StrategyCore {
             )
         );
         return abi.decode(result, (uint256));
-    }
-
-    /**
-     * @dev It notifies the strategy that there is an extra token to compound back into the output.
-     * The router can be different to the strategy unirouter and the route is encoded so different 
-     * types of swaps can be implemented.
-     * @param rewardData The swap data for the extra reward token.
-     */
-    function addReward(Reward calldata rewardData) external onlyOwner override {
-        // TODO
-        address fromToken = rewardData.reward;
-        address toToken = rewardData.route[rewardData.route.length - 1];
-        routes[fromToken][toToken] = rewardData.route;
     }
 
     /**
@@ -222,6 +205,12 @@ contract StrategyConfig is StrategyCore {
 
         IERC20Upgradeable(lpToken1).safeApprove(unirouter, 0);
         IERC20Upgradeable(lpToken1).safeApprove(unirouter, type(uint).max);
+
+        for (uint i; i < rewards.length;) {
+            IERC20Upgradeable(rewards[i]).safeApprove(unirouter, 0);
+            IERC20Upgradeable(rewards[i]).safeApprove(unirouter, type(uint).max);
+            unchecked { ++i; }
+        }
     }
 
     /**
@@ -232,13 +221,18 @@ contract StrategyConfig is StrategyCore {
         IERC20Upgradeable(output).safeApprove(unirouter, 0);
         IERC20Upgradeable(lpToken0).safeApprove(unirouter, 0);
         IERC20Upgradeable(lpToken1).safeApprove(unirouter, 0);
+
+        for (uint i; i < rewards.length;) {
+            IERC20Upgradeable(rewards[i]).safeApprove(unirouter, 0);
+            unchecked { ++i; }
+        }
     }
 
     /**
      * @dev Helper function to view the token route for swapping between output and native.
      * @return outputToNativeRoute The token route between output to native.
      */
-    function outputToNative() external override view returns (address[] memory) {
+    function outputToNative() external view returns (address[] memory) {
         return routes[output][native];
     }
 
@@ -267,5 +261,33 @@ contract StrategyConfig is StrategyCore {
         string calldata _pendingRewardsFunctionName
     ) external onlyManager {
         pendingRewardsFunctionName = _pendingRewardsFunctionName;
+    }
+
+    /**
+     * @dev It notifies the strategy that there is an extra token to compound back into the output.
+     * @param _route The route for the extra reward token.
+     */
+    function addReward(address[] calldata _route) external onlyOwner {
+        address fromToken = _route[0];
+        address toToken = _route[_route.length - 1];
+        require(fromToken != want, "want is not a reward");
+        require(toToken == output, "dest token is not output");
+
+        rewards.push(fromToken);
+        routes[fromToken][toToken] = _route;
+
+        IERC20Upgradeable(fromToken).safeApprove(unirouter, 0);
+        IERC20Upgradeable(fromToken).safeApprove(unirouter, type(uint).max);
+    }
+
+    /**
+     * @dev It removes the extra reward previously added by the owner.
+     */
+    function removeReward() external onlyManager {
+        address token = rewards[rewards.length - 1];
+        if (token != lpToken0 || token != lpToken1) {
+            IERC20Upgradeable(token).safeApprove(unirouter, 0);
+        }
+        rewards.pop();
     }
 }

@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 
 import "../interfaces/beefy/IMultiStrategy.sol";
+import "../interfaces/common/IFeeConfig.sol";
 
 /**
  * @dev Implementation of a vault to deposit funds for yield optimizing.
@@ -51,6 +52,10 @@ contract VaultManager is Initializable, ERC4626Upgradeable, OwnableUpgradeable {
     uint256 public lockedProfit;
     // Admin controller for less critical functions.
     address public keeper;
+    // Beefy fee recipient address.
+    address public beefyFeeRecipient;
+    // Fee split configurator for the strategies.
+    address public beefyFeeConfig;
 
     event AddStrategy(address indexed strategy, uint256 debtRatio);
     event SetStrategyDebtRatio(address indexed strategy, uint256 debtRatio);
@@ -59,6 +64,8 @@ contract VaultManager is Initializable, ERC4626Upgradeable, OwnableUpgradeable {
     event SetLockedProfitDegradation(uint256 degradation);
     event SetTvlCap(uint256 newTvlCap);
     event SetKeeper(address keeper);
+    event SetBeefyFeeRecipient(address beefyFeeRecipient);
+    event SetBeefyFeeConfig(address beefyFeeConfig);
     event EmergencyShutdown(bool active);
     event InCaseTokensGetStuck(address token, uint256 amount);
 
@@ -69,12 +76,16 @@ contract VaultManager is Initializable, ERC4626Upgradeable, OwnableUpgradeable {
      * to withdraw the corresponding portion of the underlying assets.
      * @param _tvlCap Initial deposit cap for scaling TVL safely.
      */
-    function __Manager_init_(
+    function __VaultManager_init(
         uint256 _tvlCap,
-        address _keeper
+        address _keeper,
+        address _beefyFeeRecipient,
+        address _beefyFeeConfig
     ) public onlyInitializing {
         tvlCap = _tvlCap;
         keeper = _keeper;
+        beefyFeeRecipient = _beefyFeeRecipient;
+        beefyFeeConfig = _beefyFeeConfig;
         lastReport = block.timestamp;
     }
 
@@ -200,6 +211,24 @@ contract VaultManager is Initializable, ERC4626Upgradeable, OwnableUpgradeable {
     }
 
     /**
+     * @dev Sets the beefy fee recipient address to receive fees.
+     * @param newBeefyFeeRecipient The new beefy fee recipient address.
+     */
+    function setBeefyFeeRecipient(address newBeefyFeeRecipient) external onlyManager {
+        beefyFeeRecipient = newBeefyFeeRecipient;
+        emit SetBeefyFeeRecipient(beefyFeeRecipient);
+    }
+
+    /**
+     * @dev Sets the beefy fee config address to change fee configurator.
+     * @param newBeefyFeeConfig The new beefy fee config address.
+     */
+    function setBeefyFeeConfig(address newBeefyFeeConfig) external onlyManager {
+        beefyFeeConfig = newBeefyFeeConfig;
+        emit SetBeefyFeeConfig(beefyFeeConfig);
+    }
+
+    /**
      * @dev Activates or deactivates Vault mode where all Strategies go into full
      * withdrawal.
      * During Emergency Shutdown:
@@ -217,11 +246,22 @@ contract VaultManager is Initializable, ERC4626Upgradeable, OwnableUpgradeable {
         emit EmergencyShutdown(emergencyShutdown);
     }
 
+    /**
+     * @dev Cancels the line of credit to the strategy. On next report the strategy will 
+     * return all funds to the vault.
+     */
     function revokeStrategy() external onlyStrategy {
         address stratAddr = msg.sender;
         totalDebtRatio -= strategies[stratAddr].debtRatio;
         strategies[stratAddr].debtRatio = 0;
         emit SetStrategyDebtRatio(stratAddr, 0);
+    }
+
+    /**
+     * @dev Fetch fees from the Fee Config contract.
+     */
+    function getFees(address strategy) internal view returns (IFeeConfig.FeeCategory memory) {
+        return IFeeConfig(beefyFeeConfig).getFees(strategy);
     }
 
     /**

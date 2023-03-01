@@ -3,9 +3,15 @@
 pragma solidity >=0.6.0 <0.9.0;
 
 interface IStargateRouter {
-        function addLiquidity(
+    function addLiquidity(
         uint256 _poolId,
         uint256 _amountLD,
         address _to
     ) external;
+    function addLiquidityETH() external payable;
+    function instantRedeemLocal(
+        uint16 poolId,
+        uint256 amount,
+        address receiver
+    ) external returns (uint256);
 }

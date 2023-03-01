@@ -11,7 +11,7 @@ import "../../interfaces/common/IMasterChef.sol";
 import "../Common/StratFeeManager.sol";
 import "../../utils/GasFeeThrottler.sol";
 import "../../utils/StringUtils.sol";
-import "../../interfaces/beefy/IBeefyVaultV7Multi.sol";
+import "../../interfaces/beefy/IBeefyVaultV8.sol";
 
 contract StrategyBase is StratFeeManager, GasFeeThrottler {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -303,7 +303,7 @@ contract StrategyBase is StratFeeManager, GasFeeThrottler {
         (int256 roi, uint256 repayment) = _liquidateRepayment(_getDebt());
         gain = roi > 0 ? uint256(roi) : 0;
 
-        uint256 outstandingDebt = IBeefyVaultV7Multi(vault).report(roi, repayment);
+        uint256 outstandingDebt = IBeefyVaultV8(vault).report(roi, repayment);
         _adjustPosition(outstandingDebt);
     }
 
@@ -312,7 +312,7 @@ contract StrategyBase is StratFeeManager, GasFeeThrottler {
      * @return debt The amount owed to the vault.
      */
     function _getDebt() internal virtual returns (uint256 debt) {
-        int256 availableCapital = IBeefyVaultV7Multi(vault).availableCapital(address(this));
+        int256 availableCapital = IBeefyVaultV8(vault).availableCapital(address(this));
         if (availableCapital < 0) {
             debt = uint256(-availableCapital);
         }
@@ -328,7 +328,7 @@ contract StrategyBase is StratFeeManager, GasFeeThrottler {
         int256 roi, 
         uint256 repayment
     ) {
-        uint256 allocated = IBeefyVaultV7Multi(vault).strategies(address(this)).allocated;
+        uint256 allocated = IBeefyVaultV8(vault).strategies(address(this)).allocated;
         uint256 totalAssets = balanceOf();
         uint256 toFree = debt;
 
@@ -530,6 +530,6 @@ contract StrategyBase is StratFeeManager, GasFeeThrottler {
      * in this strategy will be sent to the vault on the next harvest.
      */
     function _revokeStrategy() internal virtual {
-        IBeefyVaultV7Multi(vault).revokeStrategy();
+        IBeefyVaultV8(vault).revokeStrategy();
     }
 }

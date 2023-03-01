@@ -2,9 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-
-interface IBeefyVaultV7Multi {
+interface IBeefyVaultV8 {
     struct StrategyParams {
         uint256 activation;
         uint256 allocBPS;
@@ -18,4 +16,5 @@ interface IBeefyVaultV7Multi {
     function availableCapital(address strategy) external view returns (int256);
     function report(int256 roi, uint256 repayment) external returns (uint256);
     function revokeStrategy() external;
+    function debtOutstanding(address strategy) external view returns (uint256);
 }

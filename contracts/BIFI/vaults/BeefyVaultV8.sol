@@ -10,7 +10,7 @@ import "./VaultManager.sol";
  * This is the contract that receives funds and that users interface with.
  * The yield optimizing strategy itself is implemented in a separate 'Strategy.sol' contract.
  */
-contract BeefyVaultV7Multi is VaultManager, ReentrancyGuardUpgradeable {
+contract BeefyVaultV8 is VaultManager, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using MathUpgradeable for uint256;
 
@@ -40,11 +40,13 @@ contract BeefyVaultV7Multi is VaultManager, ReentrancyGuardUpgradeable {
         string memory _name,
         string memory _symbol,
         uint256 _tvlCap,
-        address _keeper
+        address _keeper,
+        address _beefyFeeRecipient,
+        address _beefyFeeConfig
     ) public initializer {
         __ERC4626_init(_asset);
         __ERC20_init(_name, _symbol);
-        __Manager_init_(_tvlCap, _keeper);
+        __VaultManager_init(_tvlCap, _keeper, _beefyFeeRecipient, _beefyFeeConfig);
     }
 
     /**
@@ -360,6 +362,7 @@ contract BeefyVaultV7Multi is VaultManager, ReentrancyGuardUpgradeable {
             _reportLoss(stratAddr, loss);
         } else {
             gain = uint256(roi);
+            _chargeFees(stratAddr, gain);
             strategy.gains += gain;
         }
 
@@ -422,5 +425,38 @@ contract BeefyVaultV7Multi is VaultManager, ReentrancyGuardUpgradeable {
         }
 
         return debt;
+    }
+
+    /**
+     * @dev It fetches fees and charges the appropriate amount on the output token. Fees are sent
+     * to the various stored addresses.
+     */
+    function _chargeFees(address strategy, uint256 gain) internal virtual returns (uint256) {
+        IFeeConfig.FeeCategory memory fees = getFees(strategy);
+
+        uint256 performanceFee = gain * fees.total / 1 ether;
+        if (performanceFee > 0) {
+            uint256 shares = convertToShares(performanceFee);
+            _mint(beefyFeeRecipient, shares * fees.beefy / 1 ether);
+            _mint(IMultiStrategy(strategy).strategist(), shares * fees.strategist / 1 ether);
+        }
+        return performanceFee;
+    }
+
+    function debtOutstanding(address strategy) external view returns (uint256) {
+        if (totalDebtRatio == 0) {
+            return strategies[strategy].allocated;
+        }
+
+        uint256 debtLimit = strategies[strategy].debtRatio * totalAssets() / PERCENT_DIVISOR;
+        uint256 totalDebt = strategies[strategy].allocated;
+
+        if (emergencyShutdown) {
+            return totalDebt;
+        } else if (totalDebt <= debtLimit) {
+            return 0;
+        } else {
+            return totalDebt - debtLimit;
+        }
     }
 }

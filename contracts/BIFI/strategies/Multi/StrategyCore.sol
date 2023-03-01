@@ -5,18 +5,11 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
-import "../Common/StratFeeManager.sol";
-import "../../utils/GasFeeThrottler.sol";
-import "../../interfaces/beefy/IBeefyVaultV7Multi.sol";
+import "../Common/StratFeeManagerInitializable.sol";
+import "../../interfaces/beefy/IBeefyVaultV8.sol";
 
-abstract contract StrategyCore is StratFeeManager, GasFeeThrottler {
+abstract contract StrategyCore is StratFeeManagerInitializable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    struct Reward {
-        address reward;
-        address unirouter;
-        address[] route;
-    }
 
     // Tokens used
     address public native;
@@ -46,71 +39,34 @@ abstract contract StrategyCore is StratFeeManager, GasFeeThrottler {
     }
 
     /**
-     * @dev External function for anyone to harvest this strategy, protected by a gas throttle to
-     * prevent front-running. Call fee goes to the caller of this function.
+     * @dev External function for anyone to harvest this strategy.
      */
-    function harvest() external gasThrottle virtual {
-        _harvest(tx.origin);
-    }
-
-    /**
-     * @dev External function for anyone to harvest this strategy, protected by a gas throttle to
-     * prevent front-running. Call fee goes to the specified recipient.
-     */
-    function harvest(address callFeeRecipient) external gasThrottle virtual {
-        _harvest(callFeeRecipient);
+    function harvest() external virtual {
+        _harvest();
     }
 
     /**
      * @dev External function for the manager to harvest this strategy to be used in times of high gas
-     * prices. Call fee goes to the caller of this function.
+     * prices.
      */
     function managerHarvest() external onlyManager virtual {
-        _harvest(tx.origin);
+        _harvest();
     }
 
     /**
      * @dev Internal function to harvest the strategy. If not paused then collect rewards, charge
      * fees and convert output to the want token. Exchange funds with the vault if the strategy is
      * owed more vault allocation or if the strategy has a debt to pay back to the vault.
-     * @param callFeeRecipient The address to send the call fee to.
      */
-    function _harvest(address callFeeRecipient) internal virtual {
+    function _harvest() internal virtual {
         if (!paused()) {
             _getRewards();
-            if (IERC20Upgradeable(output).balanceOf(address(this)) > 0) {
-                _chargeFees(callFeeRecipient);
-                _convertToWant();
-            }
+            _convertToWant();
         }
 
         uint256 gain = _balanceVaultFunds();
         lastHarvest = block.timestamp;
         emit StratHarvest(msg.sender, gain, balanceOf());
-    }
-
-    /**
-     * @dev It fetches fees and charges the appropriate amount on the output token. Fees are sent
-     * to the various stored addresses and to the specified call fee recipient.
-     * @param callFeeRecipient The address to send the call fee to.
-     */
-    function _chargeFees(address callFeeRecipient) internal virtual {
-        IFeeConfig.FeeCategory memory fees = getFees();
-
-        _swap(unirouter, output, native, fees.total);
-
-        uint256 nativeBal = IERC20Upgradeable(native).balanceOf(address(this));
-
-        uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
-        IERC20Upgradeable(native).safeTransfer(callFeeRecipient, callFeeAmount);
-
-        uint256 beefyFeeAmount = nativeBal * fees.beefy / DIVISOR;
-        IERC20Upgradeable(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
-
-        uint256 strategistFeeAmount = nativeBal * fees.strategist / DIVISOR;
-        IERC20Upgradeable(native).safeTransfer(strategist, strategistFeeAmount);
-
-        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
     /**
@@ -125,7 +81,7 @@ abstract contract StrategyCore is StratFeeManager, GasFeeThrottler {
         (int256 roi, uint256 repayment) = _liquidateRepayment(_getDebt());
         gain = roi > 0 ? uint256(roi) : 0;
 
-        uint256 outstandingDebt = IBeefyVaultV7Multi(vault).report(roi, repayment);
+        uint256 outstandingDebt = IBeefyVaultV8(vault).report(roi, repayment);
         _adjustPosition(outstandingDebt);
     }
 
@@ -134,7 +90,7 @@ abstract contract StrategyCore is StratFeeManager, GasFeeThrottler {
      * @return debt The amount owed to the vault.
      */
     function _getDebt() internal virtual returns (uint256 debt) {
-        int256 availableCapital = IBeefyVaultV7Multi(vault).availableCapital(address(this));
+        int256 availableCapital = IBeefyVaultV8(vault).availableCapital(address(this));
         if (availableCapital < 0) {
             debt = uint256(-availableCapital);
         }
@@ -150,7 +106,7 @@ abstract contract StrategyCore is StratFeeManager, GasFeeThrottler {
         int256 roi, 
         uint256 repayment
     ) {
-        uint256 allocated = IBeefyVaultV7Multi(vault).strategies(address(this)).allocated;
+        uint256 allocated = IBeefyVaultV8(vault).strategies(address(this)).allocated;
         uint256 totalAssets = balanceOf();
         uint256 toFree = debt;
 
@@ -163,7 +119,8 @@ abstract contract StrategyCore is StratFeeManager, GasFeeThrottler {
         }
 
         (uint256 amountFreed, uint256 loss) = _liquidatePosition(toFree);
-        repayment = MathUpgradeable.min(debt, amountFreed);
+        repayment = debt < amountFreed ? debt : amountFreed;
+        
         roi -= int256(loss);
     }
 
@@ -213,6 +170,10 @@ abstract contract StrategyCore is StratFeeManager, GasFeeThrottler {
         }
     }
 
+    function tend() external virtual {
+        _adjustPosition(IBeefyVaultV8(vault).debtOutstanding(address(this)));
+    }
+
     /**
      * @dev It calculates the total underlying balance of 'want' held by this strategy including
      * the invested amount.
@@ -246,14 +207,6 @@ abstract contract StrategyCore is StratFeeManager, GasFeeThrottler {
     }
 
     /**
-     * @dev It turns on or off the gas throttle to limit the gas price on harvests.
-     * @param _shouldGasThrottle Change the activation of the gas throttle.
-     */
-    function setShouldGasThrottle(bool _shouldGasThrottle) external onlyManager virtual {
-        shouldGasThrottle = _shouldGasThrottle;
-    }
-
-    /**
      * @dev It shuts down deposits, removes allowances and prepares the full withdrawal of funds
      * back to the vault on next harvest.
      */
@@ -277,7 +230,7 @@ abstract contract StrategyCore is StratFeeManager, GasFeeThrottler {
      * in this strategy will be sent to the vault on the next harvest.
      */
     function _revokeStrategy() internal virtual {
-        IBeefyVaultV7Multi(vault).revokeStrategy();
+        IBeefyVaultV8(vault).revokeStrategy();
     }
 
     /* ----------- INTERNAL VIRTUAL ----------- */
@@ -314,20 +267,6 @@ abstract contract StrategyCore is StratFeeManager, GasFeeThrottler {
     function _convertToWant() internal virtual;
 
     /**
-     * @dev It swaps from one token to another, taking into account the route and slippage.
-     * @param _unirouter The router used to make the swap.
-     * @param _fromToken The token to swap from.
-     * @param _toToken The token to swap to.
-     * @param _percentageSwap The percentage of the fromToken to use in the swap, scaled to 1e18.
-     */
-    function _swap(
-        address _unirouter,
-        address _fromToken,
-        address _toToken,
-        uint256 _percentageSwap
-    ) internal virtual;
-
-    /**
      * @dev It estimated the amount received from making a swap.
      * @param _unirouter The router used to make the swap.
      * @param _amountIn The amount of fromToken to be used in the swap.
@@ -349,13 +288,6 @@ abstract contract StrategyCore is StratFeeManager, GasFeeThrottler {
     function rewardsAvailable() public virtual view returns (uint256);
 
     /**
-     * @dev It notifies the strategy that there is an extra token to compound back into the output.
-     * The router can be different to the strategy unirouter.
-     * @param rewardData The swap data for the extra reward token.
-     */
-    function addReward(Reward calldata rewardData) external virtual;
-
-    /**
      * @dev It withdraws from the underlying platform without caring about rewards.
      */
     function _emergencyWithdraw() internal virtual;
@@ -371,8 +303,8 @@ abstract contract StrategyCore is StratFeeManager, GasFeeThrottler {
     function _removeAllowances() internal virtual;
 
     /**
-     * @dev Helper function to view the token route for swapping between output and native.
-     * @return outputToNativeRoute The token route between output to native.
+     * @dev Helper function to view the token route for swapping between output and want.
+     * @return outputToWantRoute The token route between output to want.
      */
-    function outputToNative() external virtual view returns (address[] memory);
+    function outputToWant() external virtual view returns (address[] memory);
 }
