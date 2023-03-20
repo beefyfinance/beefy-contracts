@@ -22,7 +22,7 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
     address public treasury;
     uint256 public treasuryFee = 500;
 
-    bool public isPreStake = true;
+    bool public isPreStake;
 
     mapping(address => bool) public notifiers;
 

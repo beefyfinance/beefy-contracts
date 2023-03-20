@@ -38,5 +38,5 @@ interface IConvexRewardPool {
 
     // L2 interface
     function withdraw(uint256 _amount, bool _claim) external;
-    function withdrawAll(bool claim) external;
+    function emergencyWithdraw(uint256 _amount) external;
 }

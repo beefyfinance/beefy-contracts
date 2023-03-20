@@ -356,7 +356,7 @@ contract StrategyConvexL2 is StratFeeManager {
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IConvexRewardPool(rewardPool).withdrawAll(false);
+        IConvexRewardPool(rewardPool).emergencyWithdraw(balanceOfPool());
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -365,7 +365,7 @@ contract StrategyConvexL2 is StratFeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IConvexRewardPool(rewardPool).withdrawAll(false);
+        IConvexRewardPool(rewardPool).emergencyWithdraw(balanceOfPool());
     }
 
     function pause() public onlyManager {
