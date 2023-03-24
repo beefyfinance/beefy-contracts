@@ -2,45 +2,53 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../interfaces/common/IStableRouter.sol";
 import "../../interfaces/common/IRewardPool.sol";
-import "../Common/StratFeeManager.sol";
-import "../../utils/GasFeeThrottler.sol";
+import "../Common/StratFeeManagerInitializable.sol";
 
-contract StrategyHop is StratFeeManager, GasFeeThrottler {
+contract StrategyHop is StratFeeManagerInitializable {
     using SafeERC20 for IERC20;
 
     // Tokens used
     address public native;
     address public output;
     address public want;
-    address public depositToken;
+    address public lpToken;
 
     // Third party contracts
     address public rewardPool;
     address public stableRouter;
-    uint256 public depositIndex;
+    uint8 public depositIndex;
+    uint8 public hTokenIndex;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
+    uint256 public slippage = 0.99 ether;
+    uint256 public overpool = 1.05 ether;
 
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
+    event SetSlippage(uint256 slippage);
+    event SetOverpool(uint256 overpool);
 
-    constructor(
+    function __StrategyHop_init(
         address _want,
         address _rewardPool,
         address _stableRouter,
-        CommonAddresses memory _commonAddresses
-    ) StratFeeManager(_commonAddresses) {
+        CommonAddresses calldata _commonAddresses
+    ) internal onlyInitializing {
+        __StratFeeManager_init(_commonAddresses);
         want = _want;
         rewardPool = _rewardPool;
         stableRouter = _stableRouter;
+
+        lpToken = IRewardPool(rewardPool).stakingToken();
+        depositIndex = IStableRouter(stableRouter).getTokenIndex(want);
+        hTokenIndex = depositIndex == 0 ? 1 : 0;
     }
 
     // puts the funds to work
@@ -48,7 +56,16 @@ contract StrategyHop is StratFeeManager, GasFeeThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IRewardPool(rewardPool).stake(wantBal);
+            uint256[] memory inputs = new uint256[](2);
+            inputs[depositIndex] = IERC20(want).balanceOf(address(this));
+
+            // check that the pool is balanced in our favor
+            uint256 wantTokenBal = IStableRouter(stableRouter).getTokenBalances(depositIndex);
+            uint256 hTokenBal = IStableRouter(stableRouter).getTokenBalances(hTokenIndex);
+            require(wantTokenBal < hTokenBal * overpool / 1 ether, "want overpooled in LP");
+
+            IStableRouter(stableRouter).addLiquidity(inputs, 1, block.timestamp);
+            IRewardPool(rewardPool).stake(IERC20(lpToken).balanceOf(address(this)));
             emit Deposit(balanceOf());
         }
     }
@@ -59,7 +76,23 @@ contract StrategyHop is StratFeeManager, GasFeeThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IRewardPool(rewardPool).withdraw(_amount - wantBal);
+            uint256 amountToWithdraw = _amount - wantBal;
+            uint256 lpBal = IERC20(lpToken).balanceOf(address(this));
+            uint256 stakedLpBal = IRewardPool(rewardPool).balanceOf(address(this));
+
+            uint256 lpBalToWithdraw = (lpBal + stakedLpBal) * amountToWithdraw / balanceOfPool();
+            if (lpBalToWithdraw > lpBal) {
+                IRewardPool(rewardPool).withdraw(lpBalToWithdraw - lpBal);
+            }
+
+            // remove liquidity to 'want' with slippage protection
+            IStableRouter(stableRouter).removeLiquidityOneToken(
+                lpBalToWithdraw,
+                depositIndex,
+                amountToWithdraw * slippage / 1 ether,
+                block.timestamp
+            );
+
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -102,7 +135,6 @@ contract StrategyHop is StratFeeManager, GasFeeThrottler {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         if (outputBal > 0) {
             chargeFees(callFeeRecipient);
-            addLiquidity();
             uint256 wantHarvested = balanceOfWant();
             deposit();
 
@@ -130,15 +162,6 @@ contract StrategyHop is StratFeeManager, GasFeeThrottler {
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
-    // Adds liquidity to AMM and gets more LP tokens.
-    function addLiquidity() internal {
-        _swapToDeposit();
-
-        uint256[] memory inputs = new uint256[](2);
-        inputs[depositIndex] = IERC20(depositToken).balanceOf(address(this));
-        IStableRouter(stableRouter).addLiquidity(inputs, 1, block.timestamp);
-    }
-
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
         return balanceOfWant() + balanceOfPool();
@@ -151,7 +174,11 @@ contract StrategyHop is StratFeeManager, GasFeeThrottler {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        return IRewardPool(rewardPool).balanceOf(address(this));
+        uint256 lpBal = IERC20(lpToken).balanceOf(address(this)) 
+            + IRewardPool(rewardPool).balanceOf(address(this));
+        uint256 lpPrice = IStableRouter(stableRouter).getVirtualPrice();
+
+        return lpBal * lpPrice / 1 ether;
     }
 
     function rewardsAvailable() public view returns (uint256) {
@@ -181,8 +208,23 @@ contract StrategyHop is StratFeeManager, GasFeeThrottler {
     // called as part of strat migration. Sends all the available funds back to the vault.
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
+        
+        uint256 stakedLpBal = IRewardPool(rewardPool).balanceOf(address(this));
+        if (stakedLpBal > 0) {
+            IRewardPool(rewardPool).withdraw(stakedLpBal);
+        }
 
-        IRewardPool(rewardPool).withdraw(balanceOfPool());
+        uint256 lpBal = IERC20(lpToken).balanceOf(address(this));
+        IERC20(lpToken).safeApprove(stableRouter, 0);
+        IERC20(lpToken).safeApprove(stableRouter, type(uint).max);
+        if (lpBal > 0) {
+            IStableRouter(stableRouter).removeLiquidityOneToken(
+                lpBal,
+                depositIndex,
+                balanceOfPool() * slippage / 1 ether,
+                block.timestamp
+            );
+        }
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -190,8 +232,14 @@ contract StrategyHop is StratFeeManager, GasFeeThrottler {
 
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
+        IRewardPool(rewardPool).withdraw(IRewardPool(rewardPool).balanceOf(address(this)));
+        try IStableRouter(stableRouter).removeLiquidityOneToken(
+            IERC20(lpToken).balanceOf(address(this)),
+            depositIndex,
+            balanceOfPool() * slippage / 1 ether,
+            block.timestamp
+        ) {} catch {}
         pause();
-        IRewardPool(rewardPool).withdraw(balanceOfPool());
     }
 
     function pause() public onlyManager {
@@ -209,24 +257,38 @@ contract StrategyHop is StratFeeManager, GasFeeThrottler {
     }
 
     function _giveAllowances() internal virtual {
-        IERC20(want).safeApprove(rewardPool, type(uint).max);
+        IERC20(want).safeApprove(stableRouter, type(uint).max);
+        IERC20(lpToken).safeApprove(stableRouter, type(uint).max);
+        IERC20(lpToken).safeApprove(rewardPool, type(uint).max);
         IERC20(output).safeApprove(unirouter, type(uint).max);
-        IERC20(depositToken).safeApprove(stableRouter, type(uint).max);
     }
 
     function _removeAllowances() internal virtual {
-        IERC20(want).safeApprove(rewardPool, 0);
+        IERC20(want).safeApprove(stableRouter, 0);
+        IERC20(lpToken).safeApprove(stableRouter, 0);
+        IERC20(lpToken).safeApprove(rewardPool, 0);
         IERC20(output).safeApprove(unirouter, 0);
-        IERC20(depositToken).safeApprove(stableRouter, 0);
+    }
+
+    function setSlippage(uint256 _slippage) external onlyOwner {
+        require(_slippage < 1 ether, ">slippageMax");
+        slippage = _slippage;
+        emit SetSlippage(_slippage);
+    }
+
+    function setOverpool(uint256 _overpool) external onlyOwner {
+        require(_overpool > 1 ether, "<overpoolMin");
+        overpool = _overpool;
+        emit SetOverpool(_overpool);
     }
 
     function _swapToNative(uint256 totalFee) internal virtual {}
 
-    function _swapToDeposit() internal virtual {}
+    function _swapToWant() internal virtual {}
 
     function _getAmountOut(uint256 inputAmount) internal view virtual returns (uint256) {}
 
     function outputToNative() external view virtual returns (address[] memory) {}
 
-    function outputToDeposit() external view virtual returns (address[] memory) {}
+    function outputToWant() external view virtual returns (address[] memory) {}
 }
