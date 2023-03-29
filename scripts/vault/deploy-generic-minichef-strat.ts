@@ -10,6 +10,7 @@ const {
   tokens: {
     SYN: { address: SYN },
     ETH: { address: ETH },
+    SUSHI: { address: SUSHI },
   },
 } = addressBook.ethereum;
 
@@ -30,9 +31,9 @@ const vaultParams = {
 };
 
 const strategyParams = {
-  strategyContractName: "StrategyCommonChefLP",
+  strategyContractName: "StrategyCommonMiniChefLP",
   want: want,
-  poolId: 116,
+  poolId: 0,
   chef: synapse.minichef,
   unirouter: sushi.router,
   strategist: strategist,
@@ -60,22 +61,28 @@ async function main() {
 
   console.log("Creating vault from V7 factory");
   const factory = await ethers.getContractAt(vaultV7Factory.abi, strategyParams.beefyVaultProxy);
-  const vaultClone = await factory.callStatic.cloneVault();
+  const vaultAddress = await factory.callStatic.cloneVault();
   let tx = await factory.cloneVault();
   tx = await tx.wait();
   tx.status === 1
-    ? console.log(`Vault ${vaultClone} is deployed with tx: ${tx.transactionHash}`)
-    : console.log(`Vault ${vaultClone} deploy failed with tx: ${tx.transactionHash}`);
+    ? console.log(`Vault ${vaultAddress} is deployed with tx: ${tx.transactionHash}`)
+    : console.log(`Vault ${vaultAddress} deploy failed with tx: ${tx.transactionHash}`);
+  const vaultContract = await ethers.getContractAt(vaultV7.abi, vaultAddress);
 
   console.log("Strategy factory init");
   const StrategyFactory = await ethers.getContractFactory(strategyParams.strategyContractName);
+  console.log("Deploying strategy");
+  const strategyContract = await StrategyFactory.deploy();
+  await strategyContract.deployed();
+  console.log(`Strategy deployed at ${strategyContract.address}`);
 
-  const strategyConstructorArguments = [
+  // initializing
+  const strategyInitArguments = [
     strategyParams.want,
     strategyParams.poolId,
     strategyParams.chef,
     [
-      vaultClone,
+      vaultAddress,
       strategyParams.unirouter,
       strategyParams.keeper,
       strategyParams.strategist,
@@ -86,25 +93,22 @@ async function main() {
     strategyParams.outputToLp0Route,
     strategyParams.outputToLp1Route,
   ];
-  console.log("Deploying strategy");
-  const strategyContract = await StrategyFactory.deploy(...strategyConstructorArguments);
-  await strategyContract.deployed();
-  console.log(`Strategy deployed at ${strategyContract.address}`);
+  console.log(`Initializing strategy contract`);
+  let strategyInitTx = await strategyContract.initialize(...strategyInitArguments);
+  strategyInitTx = await strategyInitTx.wait();
+  strategyInitTx.status === 1
+    ? console.log(`Strategy Intilization done with tx: ${strategyInitTx.transactionHash}`)
+    : console.log(`Strategy Intilization failed with tx: ${strategyInitTx.transactionHash}`);
 
-  const vaultConstructorArguments = [
-    strategyContract.address,
-    vaultParams.mooName,
-    vaultParams.mooSymbol,
-    vaultParams.delay,
-  ];
-  const vaultContract = await ethers.getContractAt(vaultV7.abi, vaultClone);
-
+  const vaultInitArguments = [strategyContract.address, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay];
   console.log(`Initializing vault contract`);
-  let vaultInitTx = await vaultContract.initialize(...vaultConstructorArguments);
+  let vaultInitTx = await vaultContract.initialize(...vaultInitArguments);
   vaultInitTx = await vaultInitTx.wait();
   vaultInitTx.status === 1
     ? console.log(`Vault Intilization done with tx: ${vaultInitTx.transactionHash}`)
     : console.log(`Vault Intilization failed with tx: ${vaultInitTx.transactionHash}`);
+
+  // ownership
 
   vaultInitTx = await vaultContract.transferOwnership(beefyfinance.vaultOwner);
   vaultInitTx = await vaultInitTx.wait();
@@ -126,8 +130,8 @@ async function main() {
   if (shouldVerifyOnEtherscan) {
     // skip await as this is a long running operation, and you can do other stuff to prepare vault while this finishes
     verifyContractsPromises.push(
-      verifyContract(vaultContract.address, vaultConstructorArguments),
-      verifyContract(strategyContract.address, strategyConstructorArguments)
+      verifyContract(vaultContract.address, vaultInitArguments),
+      verifyContract(strategyContract.address, strategyInitArguments)
     );
   }
 
