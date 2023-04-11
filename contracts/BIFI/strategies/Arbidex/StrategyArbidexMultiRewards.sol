@@ -9,7 +9,6 @@ import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/common/IWrappedNative.sol";
 import "../../interfaces/arbidex/IArbidexMasterChef.sol";
-import "../Common/StratFeeManager.sol";
 import "../../utils/GasFeeThrottler.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 
@@ -142,33 +141,24 @@ contract StrategyArbidexMultiRewardsLP is StratFeeManagerInitializable, GasFeeTh
         }
     }
 
-    // converts rewards to native
-    function _convertRewards() internal {
-        // unwrap any native
-        uint256 nativeBal = address(this).balance;
-        if (nativeBal > 0) {
-            IWrappedNative(native).deposit{value: nativeBal}();
-        }
-        // convert any output to native
+    // performance fees
+    function chargeFees(address callFeeRecipient) internal {
         uint256 outputBal = IERC20(output).balanceOf(address(this));
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToNativeRoute, address(this), block.timestamp);
 
         // convert additional rewards
         if (rewardToNativeRoute.length != 0) {
             for (uint i; i < rewardToNativeRoute.length; i++) {
-                uint256 toNative = IERC20(rewardToNativeRoute[i][0]).balanceOf(address(this));
-                if (toNative > 0) {
-                    IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, rewardToNativeRoute[i], address(this), block.timestamp);
+                uint256 toNativeAmount = IERC20(rewardToNativeRoute[i][0]).balanceOf(address(this));
+                if (toNativeAmount > 0) {
+                    IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNativeAmount, 0, rewardToNativeRoute[i], address(this), block.timestamp);
                 }
             }
         }
-    }
 
-    // performance fees
-    function chargeFees(address callFeeRecipient) internal {
         IFeeConfig.FeeCategory memory fees = getFees();
 
-        uint256 toNative = (IERC20(output).balanceOf(address(this)) * fees.total) / DIVISOR;
+        uint256 toNative = IERC20(native).balanceOf(address(this)) * fees.total / DIVISOR;
         IUniswapRouterETH(unirouter).swapExactTokensForTokens(
             toNative,
             0,
@@ -193,19 +183,6 @@ contract StrategyArbidexMultiRewardsLP is StratFeeManagerInitializable, GasFeeTh
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 outputBal = IERC20(output).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputBal, 0, outputToNativeRoute, address(this), block.timestamp);
-
-        // convert additional rewards
-        if (rewardToNativeRoute.length != 0) {
-            for (uint i; i < rewardToNativeRoute.length; i++) {
-                uint256 toNative = IERC20(rewardToNativeRoute[i][0]).balanceOf(address(this));
-                if (toNative > 0) {
-                    IUniswapRouterETH(unirouter).swapExactTokensForTokens(toNative, 0, rewardToNativeRoute[i], address(this), block.timestamp);
-                }
-            }
-        }
-
         uint256 nativeHalf = IERC20(native).balanceOf(address(this)) / 2;
 
         if (lpToken0 != native) {
@@ -248,19 +225,14 @@ contract StrategyArbidexMultiRewardsLP is StratFeeManagerInitializable, GasFeeTh
         (uint256 arxAvailable, uint256 wethAvailable) = rewardsAvailable();
         uint256 nativeOut;
        
-        try IUniswapRouterETH(unirouter).getAmountsOut(arxAvailable, outputToNativeRoute)
-            returns (uint256[] memory amountOut)
-        {
+        if (arxAvailable > 0) {
+            uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(arxAvailable, outputToNativeRoute);
             nativeOut = nativeOut + amountOut[amountOut.length -1];
         }
-        catch {}
-
-        try IUniswapRouterETH(unirouter).getAmountsOut(wethAvailable, rewardToNativeRoute[0])
-            returns (uint256[] memory amountOut)
-        {
-            nativeOut = nativeOut + amountOut[amountOut.length -1];
+       
+        if (wethAvailable > 0) {
+            nativeOut = nativeOut + wethAvailable;
         }
-        catch {}
 
         return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
     }
