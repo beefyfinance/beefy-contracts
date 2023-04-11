@@ -8,7 +8,7 @@ import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/common/IWrappedNative.sol";
-import "../../interfaces/arbidex/IArbidexMasterChef.sol";
+import "../../interfaces/arbidex/IMasterChef.sol";
 import "../../utils/GasFeeThrottler.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 
