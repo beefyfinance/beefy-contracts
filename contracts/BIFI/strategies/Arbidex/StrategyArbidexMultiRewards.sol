@@ -158,24 +158,15 @@ contract StrategyArbidexMultiRewardsLP is StratFeeManagerInitializable, GasFeeTh
 
         IFeeConfig.FeeCategory memory fees = getFees();
 
-        uint256 toNative = IERC20(native).balanceOf(address(this)) * fees.total / DIVISOR;
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(
-            toNative,
-            0,
-            outputToNativeRoute,
-            address(this),
-            block.timestamp
-        );
+        uint256 totalFees = IERC20(native).balanceOf(address(this)) * fees.total / DIVISOR;
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
-
-        uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
+        uint256 callFeeAmount = totalFees * fees.call / DIVISOR;
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal * fees.beefy / DIVISOR;
+        uint256 beefyFeeAmount = totalFees * fees.beefy / DIVISOR;
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFeeAmount = nativeBal * fees.strategist / DIVISOR;
+        uint256 strategistFeeAmount = totalFees * fees.strategist / DIVISOR;
         IERC20(native).safeTransfer(strategist, strategistFeeAmount);
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
