@@ -73,5 +73,12 @@ interface IBalancerVault {
         external
         view
         returns (address, uint8);
+
+    function flashLoan(
+        address recipient,
+        address[] memory tokens,
+        uint256[] memory amounts,
+        bytes memory userData
+    ) external;
     
 }
