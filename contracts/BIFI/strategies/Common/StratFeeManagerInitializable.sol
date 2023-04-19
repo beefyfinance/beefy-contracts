@@ -53,8 +53,12 @@ contract StratFeeManagerInitializable is OwnableUpgradeable, PausableUpgradeable
 
     // checks that caller is either owner or keeper.
     modifier onlyManager() {
-        require(msg.sender == owner() || msg.sender == keeper, "!manager");
+        _checkManager();
         _;
+    }
+
+    function _checkManager() internal view {
+        require(msg.sender == owner() || msg.sender == keeper, "!manager");
     }
 
     // fetch fees from config contract
