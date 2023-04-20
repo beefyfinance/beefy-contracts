@@ -11,4 +11,6 @@ interface IRewardPool {
     function balanceOf(address account) external view returns (uint256);
     function stakingToken() external view returns (address);
     function rewardsToken() external view returns (address);
+    function emergency() external view returns (bool);
+    function emergencyWithdraw() external;
 }

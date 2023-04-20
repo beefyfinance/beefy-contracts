@@ -249,7 +249,8 @@ contract StrategyCommonSolidlyRewardPoolLP is StratFeeManagerInitializable, GasF
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IRewardPool(rewardPool).withdraw(balanceOfPool());
+        if (IRewardPool(rewardPool).emergency()) IRewardPool(rewardPool).emergencyWithdraw();
+        else IRewardPool(rewardPool).withdraw(balanceOfPool());
     }
 
     function pause() public onlyManager {
