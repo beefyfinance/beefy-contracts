@@ -240,7 +240,8 @@ contract StrategyCommonSolidlyRewardPoolLP is StratFeeManagerInitializable, GasF
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IRewardPool(rewardPool).withdraw(balanceOfPool());
+        if (IRewardPool(rewardPool).emergency()) IRewardPool(rewardPool).emergencyWithdraw();
+        else IRewardPool(rewardPool).withdraw(balanceOfPool());
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
