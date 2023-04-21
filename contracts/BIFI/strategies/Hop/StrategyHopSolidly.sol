@@ -8,14 +8,14 @@ import "./StrategyHop.sol";
 contract StrategyHopSolidly is StrategyHop {
     // Routes
     ISolidlyRouter.Routes[] public outputToNativeRoute;
-    ISolidlyRouter.Routes[] public outputToWantRoute;
+    ISolidlyRouter.Routes[] public outputToDepositRoute;
 
     function initialize(
         address _want,
         address _rewardPool,
         address _stableRouter,
         ISolidlyRouter.Routes[] calldata _outputToNativeRoute,
-        ISolidlyRouter.Routes[] calldata _outputToWantRoute,
+        ISolidlyRouter.Routes[] calldata _outputToDepositRoute,
         CommonAddresses calldata _commonAddresses
     ) public initializer {
         __StrategyHop_init(_want, _rewardPool, _stableRouter, _commonAddresses);
@@ -23,13 +23,14 @@ contract StrategyHopSolidly is StrategyHop {
             outputToNativeRoute.push(_outputToNativeRoute[i]);
         }
 
-        for (uint i; i < _outputToWantRoute.length; ++i) {
-            outputToWantRoute.push(_outputToWantRoute[i]);
+        for (uint i; i < _outputToDepositRoute.length; ++i) {
+            outputToDepositRoute.push(_outputToDepositRoute[i]);
         }
 
         output = outputToNativeRoute[0].from;
         native = outputToNativeRoute[outputToNativeRoute.length - 1].to;
-        depositIndex = IStableRouter(stableRouter).getTokenIndex(want);
+        depositToken = _outputToDepositRoute[_outputToDepositRoute.length - 1].to;
+        depositIndex = IStableRouter(stableRouter).getTokenIndex(depositToken);
 
         _giveAllowances();
     }
@@ -39,9 +40,9 @@ contract StrategyHopSolidly is StrategyHop {
         ISolidlyRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
     }
 
-    function _swapToWant() internal virtual override {
-        uint256 toWant = IERC20(output).balanceOf(address(this));
-        ISolidlyRouter(unirouter).swapExactTokensForTokens(toWant, 0, outputToWantRoute, address(this), block.timestamp);
+    function _swapToDeposit() internal virtual override {
+        uint256 toDeposit = IERC20(output).balanceOf(address(this));
+        ISolidlyRouter(unirouter).swapExactTokensForTokens(toDeposit, 0, outputToDepositRoute, address(this), block.timestamp);
     }
 
     function _getAmountOut(uint256 inputAmount) internal view virtual override returns (uint256) {
@@ -54,8 +55,8 @@ contract StrategyHopSolidly is StrategyHop {
         return _solidlyToRoute(_route);
     }
 
-    function outputToWant() external view virtual override returns (address[] memory) {
-        ISolidlyRouter.Routes[] memory _route = outputToWantRoute;
+    function outputToDeposit() external view virtual override returns (address[] memory) {
+        ISolidlyRouter.Routes[] memory _route = outputToDepositRoute;
         return _solidlyToRoute(_route);
     }
 
