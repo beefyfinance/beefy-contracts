@@ -283,11 +283,9 @@ contract StrategyArbidexMultiRewardsLP is StratFeeManagerInitializable, GasFeeTh
         IERC20(lpToken1).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
 
-        if (rewardToNativeRoute.length != 0) {
-            for (uint i; i < rewardToNativeRoute.length; i++) {
-                IERC20(rewardToNativeRoute[i][0]).safeApprove(unirouter, 0);
-                IERC20(rewardToNativeRoute[i][0]).safeApprove(unirouter, type(uint).max);
-            }
+        for (uint i; i < rewardToNativeRoute.length; i++) {
+            IERC20(rewardToNativeRoute[i][0]).safeApprove(unirouter, 0);
+            IERC20(rewardToNativeRoute[i][0]).safeApprove(unirouter, type(uint).max);
         }
     }
 
@@ -307,9 +305,12 @@ contract StrategyArbidexMultiRewardsLP is StratFeeManagerInitializable, GasFeeTh
     }
 
     function addRewardRoute(address[] memory _rewardToNativeRoute) external onlyOwner {
-        IERC20(_rewardToNativeRoute[0]).safeApprove(unirouter, 0);
-        IERC20(_rewardToNativeRoute[0]).safeApprove(unirouter, type(uint).max);
-        rewardToNativeRoute.push(_rewardToNativeRoute);
+        if (_rewardToNativeRoute[0] != want && _rewardToNativeRoute[0] != native) {
+            IERC20(_rewardToNativeRoute[0]).safeApprove(unirouter, 0);
+            IERC20(_rewardToNativeRoute[0]).safeApprove(unirouter, type(uint).max);
+            rewardToNativeRoute.push(_rewardToNativeRoute);
+        }
+       
     }
 
     function removeLastRewardRoute() external onlyManager {
