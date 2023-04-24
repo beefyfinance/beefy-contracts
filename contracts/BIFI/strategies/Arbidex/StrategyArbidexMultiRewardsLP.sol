@@ -333,7 +333,11 @@ contract StrategyArbidexMultiRewardsLP is StratFeeManagerInitializable, GasFeeTh
         return nativeToLp1Route;
     }
 
-    function rewardToNative() external view returns (address[][] memory) {
-        return rewardToNativeRoute;
+    function rewardToNative(uint i) external view returns (address[] memory) {
+        return rewardToNativeRoute[i];
+    }
+
+    function rewardLength() external view returns (uint) {
+        return rewardToNativeRoute.length;
     }
 }
