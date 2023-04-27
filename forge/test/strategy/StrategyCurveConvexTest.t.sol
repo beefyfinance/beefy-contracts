@@ -1,0 +1,332 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.12;
+
+//import "forge-std/Test.sol";
+import "../../../node_modules/forge-std/src/Test.sol";
+
+// Users
+import "../users/VaultUser.sol";
+// Interfaces
+import "../interfaces/IERC20Like.sol";
+import "../interfaces/IVault.sol";
+import "../interfaces/IStrategy.sol";
+import "../interfaces/IUniV3Quoter.sol";
+import "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
+import "../../../contracts/BIFI/interfaces/common/IERC20Extended.sol";
+import "../../../contracts/BIFI/strategies/Curve/StrategyCurveConvex.sol";
+import "../../../contracts/BIFI/strategies/Common/StratFeeManager.sol";
+import "../../../contracts/BIFI/utils/UniswapV3Utils.sol";
+import "./BaseStrategyTest.t.sol";
+
+contract StrategyCurveConvexTest is BaseStrategyTest {
+
+    IStrategy constant PROD_STRAT = IStrategy(0x2486c5fa59Ba480F604D5A99A6DAF3ef8A5b4D76);
+    address constant native = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address constant crv = 0xD533a949740bb3306d119CC777fa900bA034cd52;
+    address constant cvx = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+    address constant triCrypto = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
+    address constant usdt = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    address constant crv3pool = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
+    address constant usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address constant fraxBp = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
+    address constant fraxBpLp = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
+    address constant uniV3 = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    address constant uniV3Quoter = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
+    address a0 = address(0);
+    uint24[] fee500 = [500];
+    uint24[] fee3000 = [3000];
+    uint24[] fee10000 = [10000];
+
+    // eUSD-FraxBP
+    address want = 0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F;
+    address gauge = 0x8605dc0C339a2e7e85EEA043bD29d42DA2c6D784;
+    uint pid = 156;
+    bytes crvToNativePath = routeToPath(route(crv, native), fee3000);
+    bytes cvxToNativePath = routeToPath(route(cvx, native), fee10000);
+    address unirouter = uniV3;
+    address[] rewardsV3 = new address[](0);
+    uint24[] rewardsV3Fee = fee3000;
+
+//    bytes nativeToDepositPath = "";
+    address[9] nativeToFraxBpRoute = [native, triCrypto, usdt, crv3pool, usdc, fraxBp, fraxBpLp, want, want];
+    uint[3][4] nativeToFraxBp = [[2, 0, 3], [2, 1, 1], [1, 0, 7], [1, 0, 7]];
+    bytes nativeToDepositPath = routeToPath(route(native, usdc), fee500);
+    address[9] usdcToFraxBpRoute = [usdc, fraxBp, fraxBpLp, want, want, a0, a0, a0, a0];
+    uint[3][4] usdcToFraxBp = [[1, 0, 7], [1, 0, 7], [1, 0, 7], [0, 0, 0]];
+    StrategyCurveConvex.CurveRoute depositToWantRoute = StrategyCurveConvex.CurveRoute(
+        usdcToFraxBpRoute, usdcToFraxBp, 0);
+//        nativeToFraxBpRoute, nativeToFraxBp, 0);
+
+    IVault vault;
+    StrategyCurveConvex strategy;
+    VaultUser user;
+    uint256 wantAmount = 50000 ether;
+
+    function setUp() public {
+        BeefyVaultV7 vaultV7 = new BeefyVaultV7();
+        vault = IVault(address(vaultV7));
+        strategy = new StrategyCurveConvex();
+        user = new VaultUser();
+
+        vaultV7.initialize(IStrategyV7(address(strategy)), "TestVault", "testVault", 0);
+
+        StratFeeManagerInitializable.CommonAddresses memory commons = StratFeeManagerInitializable.CommonAddresses({
+        vault : address(vault),
+        unirouter : unirouter,
+        keeper : PROD_STRAT.keeper(),
+        strategist : address(user),
+        beefyFeeRecipient : PROD_STRAT.beefyFeeRecipient(),
+        beefyFeeConfig : PROD_STRAT.beefyFeeConfig()
+        });
+        strategy.initialize(want, gauge, pid, crvToNativePath, cvxToNativePath, nativeToDepositPath, depositToWantRoute, commons);
+        console.log("Strategy initialized", IERC20Extended(strategy.want()).symbol(), strategy.pid(), strategy.rewardPool());
+
+        if (nativeToDepositPath.length > 0) {
+            console.log("nativeToDeposit", bytesToStr(nativeToDepositPath));
+        }
+
+        if (rewardsV3.length > 0) {
+            bytes memory path = routeToPath(rewardsV3, rewardsV3Fee);
+            console.log("RewardV3", IERC20Extended(rewardsV3[0]).symbol(), bytesToStr(path));
+            strategy.addRewardV3(path, 1000);
+        }
+
+        deal(vault.want(), address(user), wantAmount);
+        initBase(vault, IStrategy(address(strategy)));
+    }
+
+    function test_initWithNoPid() external {
+        BeefyVaultV7 vaultV7 = new BeefyVaultV7();
+        IVault vaultNoPid = IVault(address(vaultV7));
+        StrategyCurveConvex strategyNoPid = new StrategyCurveConvex();
+
+        vaultV7.initialize(IStrategyV7(address(strategyNoPid)), "TestVault", "testVault", 0);
+        StratFeeManagerInitializable.CommonAddresses memory commons = StratFeeManagerInitializable.CommonAddresses({
+            vault : address(vaultNoPid),
+            unirouter : unirouter,
+            keeper : PROD_STRAT.keeper(),
+            strategist : address(user),
+            beefyFeeRecipient : PROD_STRAT.beefyFeeRecipient(),
+            beefyFeeConfig : PROD_STRAT.beefyFeeConfig()
+        });
+        console.log("Init Strategy NO_PID");
+        strategyNoPid.initialize(want, gauge, strategy.NO_PID(), crvToNativePath, cvxToNativePath, nativeToDepositPath, depositToWantRoute, commons);
+
+        user.approve(want, address(vaultNoPid), wantAmount);
+        user.depositAll(vaultNoPid);
+        user.withdrawAll(vaultNoPid);
+        uint wantBalanceFinal = IERC20(want).balanceOf(address(user));
+        console.log("Final user want balance", wantBalanceFinal);
+        assertLe(wantBalanceFinal, wantAmount, "Expected wantBalanceFinal <= wantAmount");
+        assertGt(wantBalanceFinal, wantAmount * 99 / 100, "Expected wantBalanceFinal > wantAmount * 99 / 100");
+    }
+
+    function test_setConvexPid() external {
+        address rewardPool = strategy.rewardPool();
+        _depositIntoVault(user, wantAmount);
+
+        uint rewardPoolBal = IConvexRewardPool(rewardPool).balanceOf(address(strategy));
+        assertEq(vault.balance(), rewardPoolBal, "RewardPool balance != vault balance");
+
+        console.log("setConvexPid NO_PID switches to Curve");
+        strategy.setConvexPid(strategy.NO_PID());
+        rewardPoolBal = IConvexRewardPool(rewardPool).balanceOf(address(strategy));
+        assertEq(rewardPoolBal, 0, "RewardPool balance != 0");
+        uint gaugeBal = IRewardsGauge(strategy.gauge()).balanceOf(address(strategy));
+        assertEq(vault.balance(), gaugeBal, "Gauge balance != vault balance");
+        user.withdrawAll(vault);
+        uint userBal = IERC20(want).balanceOf(address(user));
+        assertLe(userBal, wantAmount, "Expected userBal <= wantAmount");
+        assertGt(userBal, wantAmount * 99 / 100, "Expected userBal > wantAmount * 99 / 100");
+
+        _depositIntoVault(user, userBal);
+        console.log("setConvexPid bad pid reverts");
+        vm.expectRevert();
+        strategy.setConvexPid(1);
+
+        console.log("setConvexPid valid pid switches to Convex");
+        strategy.setConvexPid(pid);
+        rewardPoolBal = IConvexRewardPool(rewardPool).balanceOf(address(strategy));
+        assertEq(vault.balance(), rewardPoolBal, "RewardPool balance != vault balance");
+        gaugeBal = IRewardsGauge(strategy.gauge()).balanceOf(address(strategy));
+        assertEq(gaugeBal, 0, "Gauge balance != 0");
+        user.withdrawAll(vault);
+        uint userBalFinal = IERC20(want).balanceOf(address(user));
+        assertLe(userBalFinal, userBal, "Expected userBalFinal <= userBal");
+        assertGt(userBalFinal, userBal * 99 / 100, "Expected userBalFinal > userBal * 99 / 100");
+    }
+
+    function test_setNativeToDepositPath() external {
+        console.log("Non-native path reverts");
+        vm.expectRevert();
+        strategy.setNativeToDepositPath(routeToPath(route(usdc, native), fee3000));
+    }
+
+    function test_setDepositToWant() external {
+        console.log("Want as deposit token reverts");
+        vm.expectRevert();
+        strategy.setDepositToWant([want, a0, a0, a0, a0, a0, a0, a0, a0], nativeToFraxBp, 1e18);
+
+        console.log("Deposit token approved on curve router");
+        address token = native;
+        strategy.setDepositToWant([token, a0, a0, a0, a0, a0, a0, a0, a0], nativeToFraxBp, 1e18);
+        uint allowed = IERC20(token).allowance(address(strategy), strategy.curveRouter());
+        assertEq(allowed, type(uint).max);
+    }
+
+    function test_setCrvMintable() external {
+        _depositIntoVault(user, wantAmount);
+        uint bal = vault.balance();
+
+        console.log("setConvexPid NO_PID");
+        strategy.setConvexPid(strategy.NO_PID());
+
+        console.log("setCrvMintable false not expecting harvest");
+        skip(1 days);
+        strategy.setCrvMintable(false);
+        strategy.harvest();
+        assertEq(vault.balance(), bal, "Harvested");
+
+        console.log("setCrvMintable true expecting harvest CRV");
+        skip(1 days);
+        strategy.setCrvMintable(true);
+        strategy.harvest();
+        assertGt(vault.balance(), bal, "Not harvested");
+    }
+
+    function test_addRewards() external {
+        strategy.resetCurveRewards();
+        strategy.resetRewardsV3();
+
+        console.log("Add curveReward");
+        uint[3] memory p = [uint(1),uint(0), uint(0)];
+        uint[3][4] memory _params = [p,p,p,p];
+        strategy.addReward([crv,a0,a0,a0,a0,a0,a0,a0,a0], _params, 1);
+        strategy.addReward([cvx,a0,a0,a0,a0,a0,a0,a0,a0], _params, 1);
+        (address[9] memory r, uint256[3][4] memory params, uint minAmount) = strategy.curveReward(0);
+        address token0 = r[0];
+        assertEq(token0, crv, "!crv");
+        assertEq(params[0][0], _params[0][0], "!params");
+        assertEq(minAmount, 1, "!minAmount");
+        (r,,) = strategy.curveReward(1);
+        address token1 = r[0];
+        assertEq(token1, cvx, "!cvx");
+        vm.expectRevert();
+        strategy.curveRewards(2);
+
+        console.log("Add rewardV3");
+        uint24[] memory fees = new uint24[](1);
+        fees[0] = 3000;
+        strategy.addRewardV3(routeToPath(route(crv, strategy.native()), fees), 1);
+        (token0,,minAmount) = strategy.rewardsV3(0);
+        assertEq(token0, crv, "!crv");
+        assertEq(minAmount, 1, "!minAmount");
+        vm.expectRevert();
+        strategy.rewardsV3(1);
+
+
+        console.log("rewardV3Route");
+        print(strategy.rewardV3Route(0));
+        console.log("nativeToDeposit");
+        bytes memory path = strategy.nativeToDepositPath();
+        if (path.length > 0) {
+            print(UniswapV3Utils.pathToRoute(path));
+        }
+        console.log("depositToWant");
+        (r, params, minAmount) = strategy.depositToWantRoute();
+        for(uint i; i < r.length; i++) {
+            if (r[i] == address(0)) break;
+            console.log(r[i]);
+        }
+
+        strategy.resetCurveRewards();
+        strategy.resetRewardsV3();
+        vm.expectRevert();
+        strategy.rewardsV3(0);
+        vm.expectRevert();
+        strategy.curveRewards(0);
+    }
+
+    function test_rewards() external {
+        _depositIntoVault(user, wantAmount);
+        skip(1 days);
+
+        uint rewardsAvailable = strategy.rewardsAvailable();
+        assertGt(rewardsAvailable, 0, "Expected rewardsAvailable > 0");
+
+        address[] memory rewards = new address[](strategy.curveRewardsLength() + strategy.rewardsV3Length());
+        for(uint i; i < strategy.curveRewardsLength(); ++i) {
+            (address[9] memory route,,) = strategy.curveReward(i);
+            rewards[i] = route[0];
+        }
+        for(uint i; i < strategy.rewardsV3Length(); ++i) {
+            rewards[strategy.curveRewardsLength() + i] = strategy.rewardV3Route(i)[0];
+            (address token, bytes memory path,) = strategy.rewardsV3(i);
+            uint out = IUniV3Quoter(uniV3Quoter).quoteExactInput(path, 1e20);
+            console.log("Route 100", IERC20Extended(token).symbol(), "to ETH:", out);
+        }
+
+        console.log("Claim rewards on Convex");
+        IConvexRewardPool(strategy.rewardPool()).getReward(address(strategy), true);
+        for (uint i; i < rewards.length; ++i) {
+            string memory s = IERC20Extended(rewards[i]).symbol();
+            console2.log(s, IERC20(rewards[i]).balanceOf(address(strategy)));
+        }
+        console.log("WETH", IERC20(native).balanceOf(address(strategy)));
+        deal(crv, address(strategy), 1e20);
+        deal(cvx, address(strategy), 1e20);
+
+        console.log("Harvest");
+        strategy.harvest();
+        for (uint i; i < rewards.length; ++i) {
+            string memory s = IERC20Extended(rewards[i]).symbol();
+            uint bal = IERC20(rewards[i]).balanceOf(address(strategy));
+            console2.log(s, bal);
+            assertEq(bal, 0, "Extra reward not swapped");
+        }
+        uint nativeBal = IERC20(native).balanceOf(address(strategy));
+        console.log("WETH", nativeBal);
+        assertEq(nativeBal, 0, "Native not swapped");
+    }
+
+    function test_earmark() external {
+        // pass periodFinish
+        skip(7 days);
+        _depositIntoVault(user, wantAmount);
+        uint bal = vault.balance();
+
+        uint rewardsAvailable = strategy.rewardsAvailable();
+        assertEq(rewardsAvailable, 0, "Expected 0 rewardsAvailable");
+
+        uint periodFinish = IConvexRewardPool(strategy.rewardPool()).periodFinish();
+        assertLt(periodFinish, block.timestamp, "periodFinish not ended");
+
+        console.log("Harvest");
+        strategy.harvest();
+        assertGt(vault.balance(), bal, "Not Harvested");
+        periodFinish = IConvexRewardPool(strategy.rewardPool()).periodFinish();
+        assertGt(periodFinish, block.timestamp, "periodFinish not updated");
+    }
+
+    function test_skipEarmark() external {
+        // pass periodFinish
+        skip(7 days);
+        _depositIntoVault(user, wantAmount);
+        uint bal = vault.balance();
+
+        uint rewardsAvailable = strategy.rewardsAvailable();
+        assertEq(rewardsAvailable, 0, "Expected 0 rewardsAvailable");
+
+        uint periodFinish = IConvexRewardPool(strategy.rewardPool()).periodFinish();
+        assertLt(periodFinish, block.timestamp, "periodFinish not ended");
+
+        console.log("SkipEarmarkRewards");
+        strategy.setSkipEarmarkRewards(true);
+        console.log("Harvest");
+        strategy.harvest();
+        assertEq(vault.balance(), bal, "Harvested");
+        uint periodFinishNew = IConvexRewardPool(strategy.rewardPool()).periodFinish();
+        assertEq(periodFinishNew, periodFinish, "periodFinish updated");
+    }
+}
