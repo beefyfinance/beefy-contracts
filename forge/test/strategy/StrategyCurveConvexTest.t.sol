@@ -28,34 +28,58 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
     address constant triCrypto = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
     address constant usdt = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address constant crv3pool = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
+    address constant crv3poolLp = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
     address constant usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant fraxBp = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
     address constant fraxBpLp = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
     address constant uniV3 = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    address constant uniV2 = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address constant uniV3Quoter = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
+    ICrvMinter public constant minter = ICrvMinter(0xd061D61a4d941c39E5453435B6345Dc261C2fcE0);
     address a0 = address(0);
     uint24[] fee500 = [500];
     uint24[] fee3000 = [3000];
     uint24[] fee10000 = [10000];
+    uint24[] fee10000_500 = [10000, 500];
+    bytes crvToNativeUniV3 = routeToPath(route(crv, native), fee3000);
+    bytes cvxToNativeUniV3 = routeToPath(route(cvx, native), fee10000);
+
+    // lvUSD
+    address want = 0xe9123CBC5d1EA65301D417193c40A72Ac8D53501;
+    address gauge = 0xf2cBa59952cc09EB23d6F7baa2C47aB79B9F2945;
+    uint pid = 42069;
+    bytes crvToNativePath = "";
+    bytes cvxToNativePath = "";
+    address unirouter = uniV3;
+    address[] rewardsV2 = [0x73C69d24ad28e2d43D03CBf35F79fE26EBDE1011, usdc, native];
+    address[] rewardsV3 = new address[](0);
+    uint24[] rewardsV3Fee = fee10000_500;
 
     // eUSD-FraxBP
-    address want = 0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F;
-    address gauge = 0x8605dc0C339a2e7e85EEA043bD29d42DA2c6D784;
-    uint pid = 156;
-    bytes crvToNativePath = routeToPath(route(crv, native), fee3000);
-    bytes cvxToNativePath = routeToPath(route(cvx, native), fee10000);
-    address unirouter = uniV3;
-    address[] rewardsV3 = new address[](0);
-    uint24[] rewardsV3Fee = fee3000;
+//    address want = 0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F;
+//    address gauge = 0x8605dc0C339a2e7e85EEA043bD29d42DA2c6D784;
+//    uint pid = 156;
+//    bytes crvToNativePath = crvToNativeUniV3;
+//    bytes cvxToNativePath = cvxToNativeUniV3;
+//    address unirouter = uniV3;
+//    address[] rewardsV3 = new address[](0);
+//    uint24[] rewardsV3Fee = fee3000;
 
 //    bytes nativeToDepositPath = "";
+    bytes nativeToDepositPath = routeToPath(route(native, usdc), fee500);
     address[9] nativeToFraxBpRoute = [native, triCrypto, usdt, crv3pool, usdc, fraxBp, fraxBpLp, want, want];
     uint[3][4] nativeToFraxBp = [[2, 0, 3], [2, 1, 1], [1, 0, 7], [1, 0, 7]];
-    bytes nativeToDepositPath = routeToPath(route(native, usdc), fee500);
-    address[9] usdcToFraxBpRoute = [usdc, fraxBp, fraxBpLp, want, want, a0, a0, a0, a0];
-    uint[3][4] usdcToFraxBp = [[1, 0, 7], [1, 0, 7], [1, 0, 7], [0, 0, 0]];
+    address[9] nativeTo3PoolRoute = [native, triCrypto, usdt, crv3pool, crv3poolLp, want, want];
+    uint[3][4] nativeTo3Pool = [[2, 0, 3], [2, 0, 8], [1, 0, 7]];
+    address[9] usdcTo3PoolRoute = [usdc, crv3pool, crv3poolLp, want, want];
+    uint[3][4] usdcTo3Pool = [[1, 0, 8], [1, 0, 7]];
+    address[9] usdcToFraxBpRoute = [usdc, fraxBp, fraxBpLp, want, want];
+    uint[3][4] usdcToFraxBp = [[1, 0, 7], [1, 0, 7], [1, 0, 7]];
+
     StrategyCurveConvex.CurveRoute depositToWantRoute = StrategyCurveConvex.CurveRoute(
-        usdcToFraxBpRoute, usdcToFraxBp, 0);
+//        usdcToFraxBpRoute, usdcToFraxBp, 0);
+         usdcTo3PoolRoute, usdcTo3Pool, 0);
+//         nativeTo3PoolRoute, nativeTo3Pool, 0);
 //        nativeToFraxBpRoute, nativeToFraxBp, 0);
 
     IVault vault;
@@ -86,6 +110,10 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
             console.log("nativeToDeposit", bytesToStr(nativeToDepositPath));
         }
 
+        if (rewardsV2.length > 0) {
+            console.log("RewardV2", IERC20Extended(rewardsV2[0]).symbol(), routeToStr(rewardsV2));
+            strategy.addRewardV2(uniV2, rewardsV2, 0);
+        }
         if (rewardsV3.length > 0) {
             bytes memory path = routeToPath(rewardsV3, rewardsV3Fee);
             console.log("RewardV3", IERC20Extended(rewardsV3[0]).symbol(), bytesToStr(path));
@@ -123,6 +151,9 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
     }
 
     function test_setConvexPid() external {
+        // only if convex
+        if (strategy.rewardPool() == address(0)) return;
+
         address rewardPool = strategy.rewardPool();
         _depositIntoVault(user, wantAmount);
 
@@ -176,6 +207,9 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
     }
 
     function test_setCrvMintable() external {
+        // only if convex
+        if (strategy.rewardPool() == address(0)) return;
+
         _depositIntoVault(user, wantAmount);
         uint bal = vault.balance();
 
@@ -252,30 +286,52 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
         _depositIntoVault(user, wantAmount);
         skip(1 days);
 
-        uint rewardsAvailable = strategy.rewardsAvailable();
-        assertGt(rewardsAvailable, 0, "Expected rewardsAvailable > 0");
+        // only if convex
+        if (strategy.rewardPool() != address(0)) {
+            uint rewardsAvailable = strategy.rewardsAvailable();
+            assertGt(rewardsAvailable, 0, "Expected rewardsAvailable > 0");
+        }
 
-        address[] memory rewards = new address[](strategy.curveRewardsLength() + strategy.rewardsV3Length());
+        address[] memory rewards = new address[](strategy.curveRewardsLength() + strategy.rewardsV2Length() + strategy.rewardsV3Length());
         for(uint i; i < strategy.curveRewardsLength(); ++i) {
             (address[9] memory route,,) = strategy.curveReward(i);
             rewards[i] = route[0];
         }
+        for(uint i; i < strategy.rewardsV2Length(); ++i) {
+            (address router, address[] memory route,) = strategy.rewardV2(i);
+            rewards[strategy.curveRewardsLength() + i] = route[0];
+            uint out = IUniswapRouterETH(router).getAmountsOut(1e20, route)[route.length - 1];
+            console.log("Route 100", IERC20Extended(route[0]).symbol(), "to ETH:", out);
+        }
         for(uint i; i < strategy.rewardsV3Length(); ++i) {
-            rewards[strategy.curveRewardsLength() + i] = strategy.rewardV3Route(i)[0];
+            rewards[strategy.curveRewardsLength() + strategy.rewardsV2Length() + i] = strategy.rewardV3Route(i)[0];
             (address token, bytes memory path,) = strategy.rewardsV3(i);
             uint out = IUniV3Quoter(uniV3Quoter).quoteExactInput(path, 1e20);
             console.log("Route 100", IERC20Extended(token).symbol(), "to ETH:", out);
         }
 
-        console.log("Claim rewards on Convex");
-        IConvexRewardPool(strategy.rewardPool()).getReward(address(strategy), true);
-        for (uint i; i < rewards.length; ++i) {
-            string memory s = IERC20Extended(rewards[i]).symbol();
-            console2.log(s, IERC20(rewards[i]).balanceOf(address(strategy)));
+        // if convex
+        if (strategy.rewardPool() != address(0)) {
+            console.log("Claim rewards on Convex");
+            IConvexRewardPool(strategy.rewardPool()).getReward(address(strategy), true);
+            for (uint i; i < rewards.length; ++i) {
+                string memory s = IERC20Extended(rewards[i]).symbol();
+                console2.log(s, IERC20(rewards[i]).balanceOf(address(strategy)));
+            }
+            console.log("WETH", IERC20(native).balanceOf(address(strategy)));
+            deal(crv, address(strategy), 1e20);
+            deal(cvx, address(strategy), 1e20);
+        } else {
+            console.log("Claim rewards on Curve");
+            IRewardsGauge(strategy.gauge()).claim_rewards(address(strategy));
+            if (strategy.isCrvMintable()) {
+                minter.mint(strategy.gauge());
+            }
+            for (uint i; i < rewards.length; ++i) {
+                string memory s = IERC20Extended(rewards[i]).symbol();
+                console2.log(s, IERC20(rewards[i]).balanceOf(address(strategy)));
+            }
         }
-        console.log("WETH", IERC20(native).balanceOf(address(strategy)));
-        deal(crv, address(strategy), 1e20);
-        deal(cvx, address(strategy), 1e20);
 
         console.log("Harvest");
         strategy.harvest();
@@ -291,6 +347,9 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
     }
 
     function test_earmark() external {
+        // only if convex
+        if (strategy.rewardPool() == address(0)) return;
+
         // pass periodFinish
         skip(7 days);
         _depositIntoVault(user, wantAmount);
@@ -310,6 +369,9 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
     }
 
     function test_skipEarmark() external {
+        // only if convex
+        if (strategy.rewardPool() == address(0)) return;
+
         // pass periodFinish
         skip(7 days);
         _depositIntoVault(user, wantAmount);

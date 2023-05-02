@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IWrappedNative.sol";
 import "../../interfaces/convex/IConvex.sol";
 import "../../interfaces/curve/ICurveSwap.sol";
@@ -31,6 +32,13 @@ contract StrategyCurveConvex is StratFeeManagerInitializable {
     address public rewardPool; // convex base reward pool
     uint public pid; // convex booster poolId
 
+    struct CurveRoute {
+        address[9] route;
+        uint256[3][4] swapParams;
+        uint minAmount; // minimum amount to be swapped to native
+    }
+    CurveRoute[] public curveRewards;
+
     struct RewardV3 {
         address token;
         bytes toNativePath; // uniswap path
@@ -38,12 +46,13 @@ contract StrategyCurveConvex is StratFeeManagerInitializable {
     }
     RewardV3[] public rewardsV3; // rewards swapped via unirouter
 
-    struct CurveRoute {
-        address[9] route;
-        uint256[3][4] swapParams;
+    struct RewardV2 {
+        address token;
+        address router; // uniswap v2 router
+        address[] toNativeRoute; // uniswap route
         uint minAmount; // minimum amount to be swapped to native
     }
-    CurveRoute[] public curveRewards;
+    RewardV2[] public rewardsV2;
 
     // uniV3 path swapped via unirouter, or 0 to skip and use native via depositToWant
     bytes public nativeToDepositPath;
@@ -79,8 +88,8 @@ contract StrategyCurveConvex is StratFeeManagerInitializable {
             (,,, rewardPool,,) = booster.poolInfo(_pid);
         }
 
-        addRewardV3(_crvToNativePath, 1e18);
-        addRewardV3(_cvxToNativePath, 1e18);
+        if (_crvToNativePath.length > 0) addRewardV3(_crvToNativePath, 1e18);
+        if (_cvxToNativePath.length > 0) addRewardV3(_cvxToNativePath, 1e18);
 
         setNativeToDepositPath(_nativeToDepositPath);
         setDepositToWant(_depositToWant.route, _depositToWant.swapParams, _depositToWant.minAmount);
@@ -188,6 +197,12 @@ contract StrategyCurveConvex is StratFeeManagerInitializable {
                 ICurveRouter(curveRouter).exchange_multiple(curveRewards[i].route, curveRewards[i].swapParams, bal, 0);
             }
         }
+        for (uint i; i < rewardsV2.length; ++i) {
+            uint bal = IERC20(rewardsV2[i].token).balanceOf(address(this));
+            if (bal >= rewardsV2[i].minAmount) {
+                IUniswapRouterETH(rewardsV2[i].router).swapExactTokensForTokens(bal, 0, rewardsV2[i].toNativeRoute, address(this), block.timestamp);
+            }
+        }
         for (uint i; i < rewardsV3.length; ++i) {
             uint bal = IERC20(rewardsV3[i].token).balanceOf(address(this));
             if (bal >= rewardsV3[i].minAmount) {
@@ -262,6 +277,16 @@ contract StrategyCurveConvex is StratFeeManagerInitializable {
         _approve(token, curveRouter, type(uint).max);
     }
 
+    function addRewardV2(address _router, address[] calldata _rewardToNativeRoute, uint _minAmount) external onlyOwner {
+        address token = _rewardToNativeRoute[0];
+        require(token != want, "!want");
+        require(token != native, "!native");
+
+        rewardsV2.push(RewardV2(token, _router, _rewardToNativeRoute, _minAmount));
+        IERC20(token).approve(_router, 0);
+        IERC20(token).approve(_router, type(uint).max);
+    }
+
     function addRewardV3(bytes calldata _rewardToNativePath, uint _minAmount) public onlyOwner {
         address[] memory _rewardToNativeRoute = UniswapV3Utils.pathToRoute(_rewardToNativePath);
         address token = _rewardToNativeRoute[0];
@@ -275,6 +300,10 @@ contract StrategyCurveConvex is StratFeeManagerInitializable {
 
     function resetCurveRewards() external onlyManager {
         delete curveRewards;
+    }
+
+    function resetRewardsV2() external onlyManager {
+        delete rewardsV2;
     }
 
     function resetRewardsV3() external onlyManager {
@@ -318,6 +347,14 @@ contract StrategyCurveConvex is StratFeeManagerInitializable {
 
     function rewardsV3Length() external view returns (uint) {
         return rewardsV3.length;
+    }
+
+    function rewardV2(uint i) external view returns (address, address[] memory, uint) {
+        return (rewardsV2[i].router, rewardsV2[i].toNativeRoute, rewardsV2[i].minAmount);
+    }
+
+    function rewardsV2Length() external view returns (uint) {
+        return rewardsV2.length;
     }
 
     function setCrvMintable(bool _isCrvMintable) external onlyManager {

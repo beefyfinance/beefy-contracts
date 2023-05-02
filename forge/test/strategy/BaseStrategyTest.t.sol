@@ -158,6 +158,13 @@ abstract contract BaseStrategyTest is Test {
         _route[1] = t2;
     }
 
+    function route(address t1, address t2, address t3) internal pure returns (address[] memory _route) {
+        _route = new address[](3);
+        _route[0] = t1;
+        _route[1] = t2;
+        _route[2] = t3;
+    }
+
     function bytesToStr(bytes memory buffer) public pure returns (string memory) {
         // Fixed buffer size for hexadecimal convertion
         bytes memory converted = new bytes(buffer.length * 2);
@@ -167,6 +174,16 @@ abstract contract BaseStrategyTest is Test {
             converted[i * 2 + 1] = _base[uint8(buffer[i]) % _base.length];
         }
         return string(abi.encodePacked("0x", converted));
+    }
+
+    function routeToStr(address[] memory a) public pure returns (string memory t) {
+        if (a.length == 0) return "[]";
+        if (a.length == 1) return string.concat("[", bytesToStr(abi.encodePacked(a[0])), "]");
+        t = string.concat("[", bytesToStr(abi.encodePacked(a[0])));
+        for (uint i = 1; i < a.length; i++) {
+            t = string.concat(t, ",", bytesToStr(abi.encodePacked(a[i])));
+        }
+        t = string.concat(t, "]");
     }
 
     function print(address[] memory a) internal view {
