@@ -38,10 +38,12 @@ contract ChainVaultsTest is Test {
         require(bytes(chain).length > 0, "Set the 'CHAIN' environment variable with any chain name");
         address vaultAddress = vm.envAddress("VAULT");
         require(vaultAddress != address(0x0), "Set the 'VAULT' environment variable with the vault address to test");
+        uint256 blockNumber = vm.envOr("BLOCK", uint256(0));
 
         // initialize fork based on our hardhat network config and the requested chain
         HardhatNetworkManager net = new HardhatNetworkManager();
-        net.createHardhatNetworkFork(chain);
+        if (blockNumber > 0) net.createHardhatNetworkFork(chain, blockNumber);
+        else net.createHardhatNetworkFork(chain);
 
         // setup various infos
         vault = IVault(vaultAddress);

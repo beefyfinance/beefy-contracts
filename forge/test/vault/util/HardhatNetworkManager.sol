@@ -72,4 +72,10 @@ contract HardhatNetworkManager is CommonBase {
         NetworkConfig memory config = _networkConfigCache[networkName];
         vm.createSelectFork(config.url);
     }
+    
+    function createHardhatNetworkFork(string memory networkName, uint256 blockNumber) public _loadNetworkConfig() {
+        // find the rpc url
+        NetworkConfig memory config = _networkConfigCache[networkName];
+        vm.createSelectFork(config.url, blockNumber);
+    }
 }
