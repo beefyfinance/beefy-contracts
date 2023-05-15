@@ -32,6 +32,11 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
     address constant usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant fraxBp = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
     address constant fraxBpLp = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
+    address constant tbtc = 0x18084fbA666a33d37592fA2633fD49a74DD93a88;
+    address constant wbtc = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+    address constant sbtcPool = 0xf253f83AcA21aAbD2A20553AE0BF7F65C755A07F;
+    address constant sbtcLp = 0x051d7e5609917Bd9b73f04BAc0DED8Dd46a74301;
+
     address constant uniV3 = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     address constant uniV2 = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address constant uniV3Quoter = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
@@ -44,16 +49,44 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
     bytes crvToNativeUniV3 = routeToPath(route(crv, native), fee3000);
     bytes cvxToNativeUniV3 = routeToPath(route(cvx, native), fee10000);
 
-    // lvUSD
-    address want = 0xe9123CBC5d1EA65301D417193c40A72Ac8D53501;
-    address gauge = 0xf2cBa59952cc09EB23d6F7baa2C47aB79B9F2945;
-    uint pid = 42069;
-    bytes crvToNativePath = "";
-    bytes cvxToNativePath = "";
+    // T/ETH
+    address want = 0xCb08717451aaE9EF950a2524E33B6DCaBA60147B;
+    address gauge = 0x6070fBD4E608ee5391189E7205d70cc4A274c017;
+    uint pid = 67;
+    bytes crvToNativePath = crvToNativeUniV3;
+    bytes cvxToNativePath = cvxToNativeUniV3;
+    bytes nativeToDepositPath = "";
+    address[9] depositToWant = [native, 0x752eBeb79963cf0732E9c0fec72a49FD1DEfAEAC, want];
+    uint[3][4] depositToWantParams = [[0,0,7]];
     address unirouter = uniV3;
-    address[] rewardsV2 = [0x73C69d24ad28e2d43D03CBf35F79fE26EBDE1011, usdc, native];
-    address[] rewardsV3 = new address[](0);
+    address[] rewardsV2;
+    address[] rewardsV3;
     uint24[] rewardsV3Fee = fee10000_500;
+
+    // tBTC
+//    address want = 0xF95AAa7EBB1620e46221B73588502960Ef63dBa0;
+//    address gauge = 0x0eC3d1f5d737593ff4aEDB8E22EB33a1886ddB9a;
+//    uint pid = 146;
+//    bytes crvToNativePath = crvToNativeUniV3;
+//    bytes cvxToNativePath = cvxToNativeUniV3;
+//    address unirouter = uniV3;
+//    bytes nativeToDepositPath = routeToPath(route(native, tbtc), fee3000);
+//    address[9] depositToWant = [tbtc, want, want];
+//    uint[3][4] depositToWantParams = [[0,0,7]];
+//    address[] rewardsV2;
+//    address[] rewardsV3;
+//    uint24[] rewardsV3Fee = fee10000_500;
+
+    // lvUSD
+//    address want = 0xe9123CBC5d1EA65301D417193c40A72Ac8D53501;
+//    address gauge = 0xf2cBa59952cc09EB23d6F7baa2C47aB79B9F2945;
+//    uint pid = 42069;
+//    bytes crvToNativePath = "";
+//    bytes cvxToNativePath = "";
+//    address unirouter = uniV3;
+//    address[] rewardsV2 = [0x73C69d24ad28e2d43D03CBf35F79fE26EBDE1011, usdc, native];
+//    address[] rewardsV3 = new address[](0);
+//    uint24[] rewardsV3Fee = fee10000_500;
 
     // eUSD-FraxBP
 //    address want = 0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F;
@@ -65,20 +98,22 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
 //    address[] rewardsV3 = new address[](0);
 //    uint24[] rewardsV3Fee = fee3000;
 
-//    bytes nativeToDepositPath = "";
-    bytes nativeToDepositPath = routeToPath(route(native, usdc), fee500);
-    address[9] nativeToFraxBpRoute = [native, triCrypto, usdt, crv3pool, usdc, fraxBp, fraxBpLp, want, want];
+//    bytes nativeToDepositPath = routeToPath(route(native, usdc), fee500);
+
+//    address[9] nativeToWant = [native, want, want];
+//    address[9] nativeToFraxBpRoute = [native, triCrypto, usdt, crv3pool, usdc, fraxBp, fraxBpLp, want, want];
     uint[3][4] nativeToFraxBp = [[2, 0, 3], [2, 1, 1], [1, 0, 7], [1, 0, 7]];
-    address[9] nativeTo3PoolRoute = [native, triCrypto, usdt, crv3pool, crv3poolLp, want, want];
-    uint[3][4] nativeTo3Pool = [[2, 0, 3], [2, 0, 8], [1, 0, 7]];
-    address[9] usdcTo3PoolRoute = [usdc, crv3pool, crv3poolLp, want, want];
-    uint[3][4] usdcTo3Pool = [[1, 0, 8], [1, 0, 7]];
-    address[9] usdcToFraxBpRoute = [usdc, fraxBp, fraxBpLp, want, want];
-    uint[3][4] usdcToFraxBp = [[1, 0, 7], [1, 0, 7], [1, 0, 7]];
+//    address[9] nativeTo3PoolRoute = [native, triCrypto, usdt, crv3pool, crv3poolLp, want, want];
+//    uint[3][4] nativeTo3Pool = [[2, 0, 3], [2, 0, 8], [1, 0, 7]];
+//    address[9] usdcTo3PoolRoute = [usdc, crv3pool, crv3poolLp, want, want];
+//    uint[3][4] usdcTo3Pool = [[1, 0, 8], [1, 0, 7]];
+//    address[9] usdcToFraxBpRoute = [usdc, fraxBp, fraxBpLp, want, want];
+//    uint[3][4] usdcToFraxBp = [[1, 0, 7], [1, 0, 7], [1, 0, 7]];
 
     StrategyCurveConvex.CurveRoute depositToWantRoute = StrategyCurveConvex.CurveRoute(
+        depositToWant, depositToWantParams, 0);
 //        usdcToFraxBpRoute, usdcToFraxBp, 0);
-         usdcTo3PoolRoute, usdcTo3Pool, 0);
+//         usdcTo3PoolRoute, usdcTo3Pool, 0);
 //         nativeTo3PoolRoute, nativeTo3Pool, 0);
 //        nativeToFraxBpRoute, nativeToFraxBp, 0);
 
@@ -283,6 +318,10 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
     }
 
     function test_rewards() external {
+        if (strategy.rewardPool() != address(0)) {
+            strategy.booster().earmarkRewards(strategy.pid());
+        }
+
         _depositIntoVault(user, wantAmount);
         skip(1 days);
 

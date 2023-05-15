@@ -42,6 +42,10 @@ contract StrategyProdCurveConvex is Test {
         uint pps = vault.getPricePerFullShare();
         uint lastHarvest = strategy.lastHarvest();
 
+        if (strategy.rewardPool() != address(0)) {
+            strategy.booster().earmarkRewards(strategy.pid());
+        }
+
         skip(1 days);
 
         if (strategy.rewardPool() != address(0)) {

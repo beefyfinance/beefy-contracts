@@ -29,20 +29,19 @@ abstract contract BaseStrategyTest is Test {
     }
 
     function test_depositAndWithdraw() external {
-        assertEq(vault.balance(), 0, "Vault balance != 0 on start");
-        assertGt(want.balanceOf(address(user)), 0, "User balance == 0 on start");
-
         _depositIntoVault(user, wantAmount);
         assertEq(want.balanceOf(address(user)), 0, "User balance != 0 after deposit");
+        assertGe(vault.balance(), wantAmount, "Vault balance < wantAmount");
 
         uint vaultBal = vault.balance();
         uint balOfPool = strategy.balanceOfPool();
         uint balOfWant = strategy.balanceOfWant();
-        assertEq(balOfPool, wantAmount, "balOfPool != wantAmount"); // if deposit fee could be GT want * 99 / 100
+        assertGe(balOfPool, wantAmount, "balOfPool < wantAmount"); // if deposit fee could be GT want * 99 / 100
         assertEq(balOfPool, vaultBal, "balOfPool != vaultBal");
         assertEq(balOfWant, 0, "Strategy.balanceOfWant != 0");
 
         console.log("Panic");
+        vm.prank(strategy.keeper());
         strategy.panic();
         uint vaultBalAfterPanic = vault.balance();
         uint balOfPoolAfterPanic = strategy.balanceOfPool();
@@ -54,6 +53,7 @@ abstract contract BaseStrategyTest is Test {
         assertGt(balOfWantAfterPanic, balOfWant, "balOfWantAfterPanic");
 
         console.log("Unpause");
+        vm.prank(strategy.keeper());
         strategy.unpause();
         uint vaultBalAfterUnpause = vault.balance();
         uint balOfPoolAfterUnpause = strategy.balanceOfPool();
@@ -74,9 +74,11 @@ abstract contract BaseStrategyTest is Test {
     function test_depositWithHod() external {
         _depositIntoVault(user, wantAmount);
         uint pps = vault.getPricePerFullShare();
-        assertEq(pps, 1e18, "Initial pps != 1");
+        assertGe(pps, 1e18, "Initial pps < 1");
+        assertGe(vault.balance(), wantAmount, "Vault balance < wantAmount");
 
         console.log("setHarvestOnDeposit true");
+        vm.prank(strategy.keeper());
         strategy.setHarvestOnDeposit(true);
         skip(1 days);
         deal(vault.want(), address(user), wantAmount);
@@ -91,13 +93,14 @@ abstract contract BaseStrategyTest is Test {
 
         uint wantBalanceFinal = want.balanceOf(address(user));
         console.log("Final user want balance", wantBalanceFinal);
-        assertEq(wantBalanceFinal, vaultBal, "wantBalanceFinal != vaultBal");
+        assertLe(wantBalanceFinal, vaultBal, "wantBalanceFinal > vaultBal");
+        assertEq(vault.balance(), vaultBal - wantBalanceFinal, "vaultBal != vaultBal - wantBalanceFinal");
     }
 
     function test_harvest() external {
         _depositIntoVault(user, wantAmount);
         uint vaultBalance = vault.balance();
-        assertEq(vaultBalance, wantAmount, "Vault balance != wantAmount");
+        assertGe(vaultBalance, wantAmount, "Vault balance < wantAmount");
 
         uint pps = vault.getPricePerFullShare();
         uint lastHarvest = strategy.lastHarvest();

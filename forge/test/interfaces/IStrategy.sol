@@ -125,6 +125,7 @@ interface IStrategy {
     function withdraw(uint256 _amount) external;
 
     function withdrawalFee() external view returns (uint256);
+    function withdrawFee() external view returns (uint256);
 
     // Only chef based strats
     function chef() external view returns (address); 
