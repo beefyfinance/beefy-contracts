@@ -2,47 +2,57 @@ import hardhat, { ethers, web3 } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
 import vaultV7 from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7.sol/BeefyVaultV7.json";
 import vaultV7Factory from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
-import stratAbi from "../../artifacts/contracts/BIFI/strategies/Thena/StrategyThenaGamma.sol/StrategyThenaGamma.json";
+import stratAbi from "../../artifacts/contracts/BIFI/strategies/Gamma/StrategyThenaGamma.sol/StrategyThenaGamma.json";
+import stratChefAbi from "../../artifacts/contracts/BIFI/strategies/Gamma/StrategyQuickGamma.sol/StrategyQuickGamma.json";
 
 
 const {
-  platforms: { thena, beefyfinance },
+  platforms: { quickswap, beefyfinance },
   tokens: {
-    THE: {address: THE},
-    BNB: {address: BNB}, 
     ETH: {address: ETH},
-    USDT: {address: USDT},
-    BTCB: {address: BTCB},
-    BNBx: {address: BNBx},
-    FRAX: { address: FRAX}
+    USDC: {address: USDC},
+    MATIC: {address: MATIC},
+    WBTC: {address: WBTC},
+    USDT: { address: USDT},
+    newQUICK: {address: newQUICK},
+    MaticX: { address: MaticX },
+    stMATIC: { address: stMATIC },
+    SD: {address: SD}
   },
-} = addressBook.bsc;
+} = addressBook.polygon;
 
 
-const want = web3.utils.toChecksumAddress("0xAcB6a2c03c8012C2817EFC4d81e33cc0978e3aBD");
+const want = web3.utils.toChecksumAddress("0x4A83253e88e77E8d518638974530d0cBbbF3b675");
 const rewardPool = web3.utils.toChecksumAddress("0x2a2d5Fc3793019C71ce94a07B85659943b832E41");
 
 const vaultParams = {
-  mooName: "Moo Thena BNBx-USDT Wide",
-  mooSymbol: "mooThenaBNBx-USDTWide",
+  mooName: "Moo Quick MATIC-USDC Wide",
+  mooSymbol: "mooQuickMATIC-USDCWide",
   delay: 21600,
 };
 
 const strategyParams = {
   want: want,
   rewardPool: rewardPool,
-  unirouter: web3.utils.toChecksumAddress("0x327Dd3208f0bCF590A66110aCB6e5e6941A4EfA0"),
+  chef: "0x20ec0d06F447d550fC6edee42121bc8C1817b97D",
+  pid: 3,
+  unirouter: web3.utils.toChecksumAddress("0xf5b509bB0909a69B1c207E495f687a596C168E12"),
   strategist: process.env.STRATEGIST_ADDRESS, // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   feeConfig: beefyfinance.beefyFeeConfig,
-  outputToNativeRoute: ethers.utils.solidityPack(["address", "address"], [THE, BNB]),
-  outputToLp0Route: ethers.utils.solidityPack(["address", "address"], [BNB, BNBx]),
-  outputToLp1Route: ethers.utils.solidityPack(["address", "address"], [BNB, USDT]),
+  outputToNativeRoute: ethers.utils.solidityPack(["address", "address"], [newQUICK, MATIC]),
+  outputToLp0Route: '0x', //ethers.utils.solidityPack(["address"], [MATIC]),
+  outputToLp1Route: ethers.utils.solidityPack(["address", "address"], [MATIC, USDC]),
   verifyStrat: false,
   beefyVaultProxy: beefyfinance.vaultFactory,
   strategyImplementation: "0xf0e7f344AA64bB581A90F32FC3aCBa8D1Dd14e89",
+  strategyChefImplementation: "0x5Dda0D7ef00E0b3A30EDf9Ab1132D463d7A0b355",
   useVaultProxy: true,
+  chefStrat: true,
+  addReward: false, 
+  rewardToken: SD, 
+  rewardPath: ethers.utils.solidityPack(["address", "address", "address"], [SD, USDC, MATIC])
  // ensId
 };
 
@@ -67,8 +77,9 @@ async function main() {
   ? console.log(`Vault ${vault} is deployed with tx: ${tx.transactionHash}`)
   : console.log(`Vault ${vault} deploy failed with tx: ${tx.transactionHash}`);
 
-  let strat = await factory.callStatic.cloneContract(strategyParams.strategyImplementation);
-  let stratTx = await factory.cloneContract(strategyParams.gaugeStakerStrat ? strategyParams.strategyImplementationStaker : strategyParams.strategyImplementation);
+  let implementation = strategyParams.chefStrat ? strategyParams.strategyChefImplementation : strategyParams.strategyImplementation;
+  let strat = await factory.callStatic.cloneContract(implementation);
+  let stratTx = await factory.cloneContract(implementation);
   stratTx = await stratTx.wait();
   stratTx.status === 1
   ? console.log(`Strat ${strat} is deployed with tx: ${stratTx.transactionHash}`)
@@ -110,14 +121,39 @@ async function main() {
     ]
   ];
 
-  let abi = stratAbi.abi;
+  const strategyChefConstructorArguments = [
+    strategyParams.want,
+    strategyParams.chef,
+    strategyParams.pid,
+    strategyParams.outputToNativeRoute,
+    strategyParams.outputToLp0Route, 
+    strategyParams.outputToLp1Route,
+    [
+        vault,
+        strategyParams.unirouter,
+        strategyParams.keeper,
+        strategyParams.strategist,
+        strategyParams.beefyFeeRecipient,
+        strategyParams.feeConfig,
+    ]
+  ];
+
+  let abi = strategyParams.chefStrat ? stratChefAbi.abi : stratAbi.abi;
   const stratContract = await ethers.getContractAt(abi, strat);
-  let args = strategyConstructorArguments
+  let args = strategyParams.chefStrat ? strategyChefConstructorArguments : strategyConstructorArguments
   let stratInitTx = await stratContract.initialize(...args);
   stratInitTx = await stratInitTx.wait()
   stratInitTx.status === 1
   ? console.log(`Strat Intilization done with tx: ${stratInitTx.transactionHash}`)
   : console.log(`Strat Intilization failed with tx: ${stratInitTx.transactionHash}`);
+
+  if (strategyParams.addReward) {
+    stratInitTx = await stratContract.addReward(strategyParams.rewardToken, strategyParams.rewardPath);
+    stratInitTx = await stratInitTx.wait()
+    stratInitTx.status === 1
+    ? console.log(`Adding Rewards done with tx: ${stratInitTx.transactionHash}`)
+    : console.log(`Adding Reward failed with tx: ${stratInitTx.transactionHash}`);
+  }
 }
 
 main()

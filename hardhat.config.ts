@@ -144,7 +144,9 @@ const config: DeploymentConfig = {
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: process.env.API_KEY,
+    apiKey: {
+      polygon: process.env.POLYGON_API_KEY!,
+    },
     customChains: [
       {
         network: "metis",
