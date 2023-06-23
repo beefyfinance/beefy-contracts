@@ -16,14 +16,14 @@ import {VaultUser} from "./users/VaultUser.sol";
 contract ProdVaultTest is BaseTestHarness {
 
     // Input your vault to test here.
-    IVault constant vault = IVault(0xc4f179b4096514c48ce70b9Ad27e689A3f2C9831);
+    IVault constant vault = IVault(0x17dEc2AF8018f2F940D34787399eA123Ff292963);
     IStrategy strategy;
 
     // Users
     VaultUser user;
-    address constant keeper = 0x340465d9D2EbDE78F15a3870884757584F97aBB4;
-    address constant vaultOwner = 0xc8F3D9994bb1670F5f3d78eBaBC35FA8FdEEf8a2; // fantom
-    address constant strategyOwner = 0xfcDD5a02C611ba6Fe2802f885281500EC95805d7; // fantom
+    address constant keeper = 0x4fED5491693007f0CD49f4614FFC38Ab6A04B619;
+    address constant vaultOwner = 0x5B6C5363851EC9ED29CB7220C39B44E1dd443992; // fantom
+    address constant strategyOwner = 0x1c9270ac5C42E51611d7b97b1004313D52c80293; // fantom
 
     IERC20Like want;
     uint256 slot; // Storage slot that holds `balanceOf` mapping.
