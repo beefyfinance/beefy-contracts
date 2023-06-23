@@ -12,7 +12,7 @@ import "../../interfaces/common/ICommonRewarderV8.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 import "../../utils/GasFeeThrottler.sol";
 
-contract StrategyCommonMinichefLP is StratFeeManagerInitializable, GasFeeThrottler {
+contract StrategyCommonMiniChefMultiRewardsLP is StratFeeManagerInitializable, GasFeeThrottler {
     using SafeERC20 for IERC20;
 
     // Tokens used
@@ -77,7 +77,7 @@ contract StrategyCommonMinichefLP is StratFeeManagerInitializable, GasFeeThrottl
 
         lpToken1 = IUniswapV2Pair(want).token1();
         require(_nativeToLp1Route[0] == native, "nativeToLp1Route[0] != native");
-        require(_nativeToLp1Route[_nativeToLp1Route.length - 1] == lpToken1, "nativeToLp01oute[last] != lpToken1");
+        require(_nativeToLp1Route[_nativeToLp1Route.length - 1] == lpToken1, "nativeToLp1Route[last] != lpToken1");
         nativeToLp1Route = _nativeToLp1Route;
 
         _giveAllowances();
