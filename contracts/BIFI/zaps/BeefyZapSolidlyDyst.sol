@@ -10,24 +10,23 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Affero General Public License for more details.
 
-// @author Wivern for Beefy.Finance
-// @notice This contract adds liquidity to Uniswap V2 compatible liquidity pair pools and stake.
+// @author Wivern & Weso for Beefy.Finance
+// @notice This contract adds liquidity to Solidly compatible liquidity pair pools and stake.
 
 pragma solidity >=0.7.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import '@openzeppelin/contracts/utils/Address.sol';
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin-4/contracts/token/ERC20/IERC20.sol";
+import '@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol';
+import '@openzeppelin-4/contracts/utils/Address.sol';
+import "@openzeppelin-4/contracts/utils/math/SafeMath.sol";
 import '@uniswap/lib/contracts/libraries/Babylonian.sol';
-import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
-import '@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol';
+import '../interfaces/common/ISolidlyPair.sol';
+import '../interfaces/common/ISolidlyRouter.sol';
 import '@uniswap/v3-core/contracts/libraries/LowGasSafeMath.sol';
 
 interface IERC20Extended { 
     function decimals() external view returns (uint256);
 }
-
 
 interface IWETH is IERC20 {
     function deposit() external payable;
@@ -40,26 +39,25 @@ interface IBeefyVaultV6 is IERC20 {
     function want() external pure returns (address);
 }
 
-contract BeefySolidlyZap {
+interface IDystRouter {
+    function wmatic() external view returns (address);
+}
+
+contract BeefyZapSolidlyDyst {
     using LowGasSafeMath for uint256;
     using SafeERC20 for IERC20;
     using SafeERC20 for IBeefyVaultV6;
 
-    
-    IUniswapRouterSolidly public immutable router;
+    ISolidlyRouter public immutable router;
     address public immutable WETH;
     uint256 public constant minimumAmount = 1000;
     
     constructor(address _router, address _WETH) {
-        router = IUniswapRouterSolidly(_router);
+        router = ISolidlyRouter(_router);
         WETH = _WETH;
     }
 
-    receive() external payable {
-        assert(msg.sender == WETH);
-    }
-
-    function beefInETH (address beefyVault, uint256 tokenAmountOutMin) external payable {
+    function beefInETH(address beefyVault, uint256 tokenAmountOutMin) external payable {
         require(msg.value >= minimumAmount, 'Beefy: Insignificant input amount');
 
         IWETH(WETH).deposit{value: msg.value}();
@@ -67,7 +65,7 @@ contract BeefySolidlyZap {
         _swapAndStake(beefyVault, tokenAmountOutMin, WETH);
     }
 
-    function beefIn (address beefyVault, uint256 tokenAmountOutMin, address tokenIn, uint256 tokenInAmount) external {
+    function beefIn(address beefyVault, uint256 tokenAmountOutMin, address tokenIn, uint256 tokenInAmount) external {
         require(tokenInAmount >= minimumAmount, 'Beefy: Insignificant input amount');
         require(IERC20(tokenIn).allowance(msg.sender, address(this)) >= tokenInAmount, 'Beefy: Input token is not approved');
 
@@ -76,8 +74,8 @@ contract BeefySolidlyZap {
         _swapAndStake(beefyVault, tokenAmountOutMin, tokenIn);
     }
 
-    function beefOut (address beefyVault, uint256 withdrawAmount) external {
-        (IBeefyVaultV6 vault, IUniswapV2Pair pair) = _getVaultPair(beefyVault);
+    function beefOut(address beefyVault, uint256 withdrawAmount) external {
+        (IBeefyVaultV6 vault, ISolidlyPair pair) = _getVaultPair(beefyVault);
 
         IERC20(beefyVault).safeTransferFrom(msg.sender, address(this), withdrawAmount);
         vault.withdraw(withdrawAmount);
@@ -96,7 +94,7 @@ contract BeefySolidlyZap {
     }
 
     function beefOutAndSwap(address beefyVault, uint256 withdrawAmount, address desiredToken, uint256 desiredTokenOutMin) external {
-        (IBeefyVaultV6 vault, IUniswapV2Pair pair) = _getVaultPair(beefyVault);
+        (IBeefyVaultV6 vault, ISolidlyPair pair) = _getVaultPair(beefyVault);
         address token0 = pair.token0();
         address token1 = pair.token1();
         require(token0 == desiredToken || token1 == desiredToken, 'Beefy: desired token not present in liqudity pair');
@@ -118,19 +116,19 @@ contract BeefySolidlyZap {
 
     function _removeLiquidity(address pair, address to) private {
         IERC20(pair).safeTransfer(pair, IERC20(pair).balanceOf(address(this)));
-        (uint256 amount0, uint256 amount1) = IUniswapV2Pair(pair).burn(to);
+        (uint256 amount0, uint256 amount1) = ISolidlyPair(pair).burn(to);
 
         require(amount0 >= minimumAmount, 'UniswapV2Router: INSUFFICIENT_A_AMOUNT');
         require(amount1 >= minimumAmount, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
     }
 
-    function _getVaultPair (address beefyVault) private pure returns (IBeefyVaultV6 vault, IUniswapV2Pair pair) {
+    function _getVaultPair(address beefyVault) private pure returns (IBeefyVaultV6 vault, ISolidlyPair pair) {
         vault = IBeefyVaultV6(beefyVault);
-        pair = IUniswapV2Pair(vault.want());
+        pair = ISolidlyPair(vault.want());
     }
 
     function _swapAndStake(address beefyVault, uint256 tokenAmountOutMin, address tokenIn) private {
-        (IBeefyVaultV6 vault, IUniswapV2Pair pair) = _getVaultPair(beefyVault);
+        (IBeefyVaultV6 vault, ISolidlyPair pair) = _getVaultPair(beefyVault);
 
         (uint256 reserveA, uint256 reserveB,) = pair.getReserves();
         require(reserveA > minimumAmount && reserveB > minimumAmount, 'Beefy: Liquidity pair reserves too low');
@@ -181,7 +179,7 @@ contract BeefySolidlyZap {
         }
     }
 
-    function _getSwapAmount(IUniswapV2Pair pair, uint256 investmentA, uint256 reserveA, uint256 reserveB, address tokenA, address tokenB) private view returns (uint256 swapAmount) {
+    function _getSwapAmount(ISolidlyPair pair, uint256 investmentA, uint256 reserveA, uint256 reserveB, address tokenA, address tokenB) private view returns (uint256 swapAmount) {
         uint256 halfInvestment = investmentA / 2;
 
         if (pair.stable()) {
@@ -193,7 +191,7 @@ contract BeefySolidlyZap {
         }
     }
 
-    function _getStableSwap(IUniswapV2Pair pair, uint256 investmentA, uint256 halfInvestment, address tokenA, address tokenB) private view returns (uint256 swapAmount) {
+    function _getStableSwap(ISolidlyPair pair, uint256 investmentA, uint256 halfInvestment, address tokenA, address tokenB) private view returns (uint256 swapAmount) {
         uint out = pair.getAmountOut(halfInvestment, tokenA);
         (uint amountA, uint amountB,) = router.quoteAddLiquidity(tokenA, tokenB, pair.stable(), halfInvestment, out);
                 
@@ -209,7 +207,7 @@ contract BeefySolidlyZap {
 
     function estimateSwap(address beefyVault, address tokenIn, uint256 fullInvestmentIn) public view returns(uint256 swapAmountIn, uint256 swapAmountOut, address swapTokenOut) {
         checkWETH();
-        (, IUniswapV2Pair pair) = _getVaultPair(beefyVault);
+        (, ISolidlyPair pair) = _getVaultPair(beefyVault);
 
         bool isInputA = pair.token0() == tokenIn;
         require(isInputA || pair.token1() == tokenIn, 'Beefy: Input token not present in liqudity pair');
@@ -223,7 +221,7 @@ contract BeefySolidlyZap {
     }
 
     function checkWETH() public view returns (bool isValid) {
-        isValid = WETH == router.wmatic();
+        isValid = WETH == IDystRouter(address(router)).wmatic();
         require(isValid, 'Beefy: WETH address not matching Router.weth()');
     }
 
@@ -231,5 +229,9 @@ contract BeefySolidlyZap {
         if (IERC20(token).allowance(address(this), spender) == 0) {
             IERC20(token).safeApprove(spender, type(uint256).max);
         }
+    }
+
+    receive() external payable {
+        assert(msg.sender == WETH);
     }
 }
