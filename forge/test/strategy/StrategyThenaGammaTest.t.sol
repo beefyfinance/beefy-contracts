@@ -15,7 +15,7 @@ import "../interfaces/IUniV3Quoter.sol";
 import "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
 import "../../../contracts/BIFI/interfaces/common/IERC20Extended.sol";
 import "../../../contracts/BIFI/strategies/Common/StratFeeManager.sol";
-import "../../../contracts/BIFI/strategies/Thena/StrategyThenaGamma.sol";
+import "../../../contracts/BIFI/strategies/Gamma/StrategyThenaGamma.sol";
 import "../../../contracts/BIFI/utils/AlgebraUtils.sol";
 import "./BaseStrategyTest.t.sol";
 //import "../vault/util/HardhatNetworkManager.sol";
