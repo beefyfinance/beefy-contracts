@@ -23,6 +23,12 @@ For extra help in debugging a deployed vault during development, you can use the
 
 To prep to run the test suite, input the correct vault address, vaultOwner and stratOwner for the chain your testing in `ProdVaultTest.t.sol`, and modify the `yarn forgeTest:vault` script in package.json to pass in the correct RPC url of the chain your vault is on. Then run `yarn forgeTest:vault` to execute the test run. You can use `console.log` within the tests in `ProdVaultTest.t.sol` to output to the console.
 
+#### 3.1. Using a local fork of the chain
+To avoid having to deploy the contracts to a testnet, you can use a local fork of the chain.
+In one console start an anvil fork: `anvil -f https://rpc.ankr.com/eth --accounts 3 --balance 300 --no-cors`
+Then in another console deploy your contracts to the forked chain using hardhat `localhost` network: `npx hardhat run scripts/vault/deploy-generic-minichef-strat.ts --network localhost`
+Finally grab the vault address and run `ChainVaultTest.t.sol`: `CHAIN=ethereum VAULT=0x047c41817954b51309a2bd6f60e47bC115C23f1F forge test --match-contract ChainVaultsTest --ffi`
+
 ### 4. Deploy the smart contracts
 Once you are confident that everything works as expected you can do the official deploy of the vault + strategy contracts. There are [some scripts](https://github.com/beefyfinance/beefy-contracts/blob/master/scripts/) to help make deploying easier. 
 
