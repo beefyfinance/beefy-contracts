@@ -24,6 +24,7 @@ contract StrategyStargateMulti is StrategyCore {
     // Third party contracts
     address public chef;
     uint256 public poolId;
+    address public unirouter;
     address public stargateRouter;
     uint256 public routerPoolId;
 
@@ -37,6 +38,7 @@ contract StrategyStargateMulti is StrategyCore {
         address _native,
         uint256 _poolId,
         address _chef,
+        address _unirouter,
         address _stargateRouter,
         uint256 _routerPoolId,
         uint256 _minToSwap,
@@ -44,18 +46,19 @@ contract StrategyStargateMulti is StrategyCore {
         address[] calldata _outputToWantRoute,
         CommonAddresses calldata _commonAddresses
     ) public initializer {
-        __StratFeeManager_init(_commonAddresses);
-        native = _native;
+        __StratManager_init(_commonAddresses);
+        native = IERC20Upgradeable(_native);
         poolId = _poolId;
         chef = _chef;
+        unirouter = _unirouter;
         stargateRouter = _stargateRouter;
         routerPoolId = _routerPoolId;
 
-        output = _outputToWantRoute[0];
-        want = _outputToWantRoute[_outputToWantRoute.length - 1];
-        routes[output][want] = _outputToWantRoute;
+        output = IERC20Upgradeable(_outputToWantRoute[0]);
+        want = IERC20Upgradeable(_outputToWantRoute[_outputToWantRoute.length - 1]);
+        routes[address(output)][address(want)] = _outputToWantRoute;
 
-        minToSwap[output] = _minToSwap;
+        minToSwap[address(output)] = _minToSwap;
         outputIsSTG = _outputIsSTG;
 
         _giveAllowances();
@@ -63,29 +66,30 @@ contract StrategyStargateMulti is StrategyCore {
 
     /**
      * @dev Helper function to deposit to the underlying platform.
-     * @param amount The amount to deposit.
+     * @param _amount The amount to deposit.
      */
-    function _depositUnderlying(uint256 amount) internal override {
+    function _depositUnderlying(uint256 _amount) internal override {
         if (want != native) {
-            IStargateRouter(stargateRouter).addLiquidity(routerPoolId, amount, address(this));
+            IStargateRouter(stargateRouter).addLiquidity(routerPoolId, _amount, address(this));
         } else {
-            IWrappedNative(native).withdraw(amount);
-            uint256 toDeposit = address(this).balance;
-            IStargateRouter(stargateRouter).addLiquidityETH{value: toDeposit}();
+            IWrappedNative(address(native)).withdraw(_amount);
+            _amount = address(this).balance;
+            IStargateRouter(stargateRouter).addLiquidityETH{value: _amount}();
         }
 
         uint256 lpBal = IERC20Upgradeable(lpToken).balanceOf(address(this));
         if (lpBal > 0) {
             IStargateChef(chef).deposit(poolId, lpBal);
         }
+        emit DepositUnderlying(_amount);
     }
 
     /**
      * @dev Helper function to withdraw from the underlying platform.
-     * @param amount The amount to withdraw.
+     * @param _amount The amount to withdraw.
      */
-    function _withdrawUnderlying(uint256 amount) internal override {
-        uint256 lpAmount = _wantToLp(amount);
+    function _withdrawUnderlying(uint256 _amount) internal override {
+        uint256 lpAmount = _wantToLp(_amount);
         if (lpAmount > balanceOfLp()) {
             lpAmount = balanceOfLp();
         }
@@ -96,8 +100,11 @@ contract StrategyStargateMulti is StrategyCore {
             lpAmount,
             address(this)
         );
-        uint256 toWrap = address(this).balance;
-        IWrappedNative(native).deposit{value: toWrap}();
+        if (want == native) {
+            uint256 toWrap = address(this).balance;
+            IWrappedNative(address(native)).deposit{value: toWrap}();
+        }
+        emit WithdrawUnderlying(_amount);
     }
 
     /**
@@ -113,8 +120,8 @@ contract StrategyStargateMulti is StrategyCore {
      * @return balanceOfLp The invested balance of the LP tokens.
      */
     function balanceOfLp() public view returns (uint256) {
-        (uint256 _amount,) = IStargateChef(chef).userInfo(poolId, address(this));
-        return _amount;
+        (uint256 amount,) = IStargateChef(chef).userInfo(poolId, address(this));
+        return amount;
     }
 
     /**
@@ -145,7 +152,7 @@ contract StrategyStargateMulti is StrategyCore {
         IStargateChef(chef).deposit(poolId, 0);
         uint256 rewardLength = rewards.length;
         for (uint256 i; i < rewardLength;) {
-            _swap(unirouter, rewards[i], output, 1 ether);
+            _swap(rewards[i], address(output), IERC20Upgradeable(rewards[i]).balanceOf(address(this)));
             unchecked { ++i; }
         }
     }
@@ -155,54 +162,30 @@ contract StrategyStargateMulti is StrategyCore {
      * and adds liquidity.
      */
     function _convertToWant() internal override {
-        _swap(unirouter, output, want, 1 ether);
+        _swap(address(output), address(want), output.balanceOf(address(this)));
     }
 
     /**
      * @dev It swaps from one token to another.
-     * @param _unirouter The router used to make the swap.
      * @param _fromToken The token to swap from.
      * @param _toToken The token to swap to.
-     * @param _percentageSwap The percentage of the fromToken to use in the swap, scaled to 1e18.
      */
     function _swap(
-        address _unirouter,
         address _fromToken,
         address _toToken,
-        uint256 _percentageSwap
+        uint256 _amount
     ) internal {
         if (_fromToken == _toToken) {
             return;
         }
-        uint256 fromTokenBal = 
-            IERC20Upgradeable(_fromToken).balanceOf(address(this)) * _percentageSwap / DIVISOR;
-        if (fromTokenBal > minToSwap[_fromToken]) {
+        
+        if (_amount > minToSwap[_fromToken]) {
             address[] memory path = routes[_fromToken][_toToken];
             require(path[0] != address(0), "path not set");
-            try IUniswapRouterETH(_unirouter).swapExactTokensForTokens(
-                fromTokenBal, 0, path, address(this), block.timestamp
-            ) {} catch {}
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(
+                _amount, 0, path, address(this), block.timestamp
+            );
         }
-    }
-
-    /**
-     * @dev It estimated the amount received from making a swap.
-     * @param _unirouter The router used to make the swap.
-     * @param _amountIn The amount of fromToken to be used in the swap.
-     * @param _fromToken The token to swap from.
-     * @param _toToken The token to swap to.
-     */
-    function _getAmountOut(
-        address _unirouter,
-        uint256 _amountIn,
-        address _fromToken,
-        address _toToken
-    ) internal override view returns (uint256 amount) {
-        uint256[] memory amountOut = IUniswapRouterETH(_unirouter).getAmountsOut(
-            _amountIn,
-            routes[_fromToken][_toToken]
-        );
-        amount = amountOut[amountOut.length - 1];
     }
 
     /**
@@ -229,9 +212,9 @@ contract StrategyStargateMulti is StrategyCore {
      * @dev It gives allowances to the required addresses.
      */
     function _giveAllowances() internal override {
-        IERC20Upgradeable(want).safeApprove(stargateRouter, type(uint).max);
+        want.safeApprove(stargateRouter, type(uint).max);
         IERC20Upgradeable(lpToken).safeApprove(chef, type(uint).max);
-        IERC20Upgradeable(output).safeApprove(unirouter, type(uint).max);
+        output.safeApprove(unirouter, type(uint).max);
 
         for (uint i; i < rewards.length;) {
             IERC20Upgradeable(rewards[i]).safeApprove(unirouter, type(uint).max);
@@ -243,9 +226,9 @@ contract StrategyStargateMulti is StrategyCore {
      * @dev It revokes allowances from the previously approved addresses.
      */
     function _removeAllowances() internal override {
-        IERC20Upgradeable(want).safeApprove(stargateRouter, 0);
+        want.safeApprove(stargateRouter, 0);
         IERC20Upgradeable(lpToken).safeApprove(chef, 0);
-        IERC20Upgradeable(output).safeApprove(unirouter, 0);
+        output.safeApprove(unirouter, 0);
 
         for (uint i; i < rewards.length;) {
             IERC20Upgradeable(rewards[i]).safeApprove(unirouter, 0);
@@ -258,18 +241,18 @@ contract StrategyStargateMulti is StrategyCore {
      * @return outputToWantRoute The token route between output to want.
      */
     function outputToWant() external override view returns (address[] memory) {
-        return routes[output][want];
+        return routes[address(output)][address(want)];
     }
 
     /**
      * @dev It notifies the strategy that there is an extra token to compound back into the output.
      * @param _route The route for the extra reward token.
      */
-    function addReward(address[] calldata _route, uint256 _minToSwap) external onlyOwner {
+    function addReward(address[] calldata _route, uint256 _minToSwap) external atLeastRole(ADMIN) {
         address fromToken = _route[0];
         address toToken = _route[_route.length - 1];
-        require(fromToken != want, "want is not a reward");
-        require(toToken == output, "dest token is not output");
+        require(fromToken != address(want) && fromToken != address(lpToken), "want is not a reward");
+        require(toToken == address(output), "dest token is not output");
 
         rewards.push(fromToken);
         routes[fromToken][toToken] = _route;
@@ -282,7 +265,7 @@ contract StrategyStargateMulti is StrategyCore {
     /**
      * @dev It removes the extra reward previously added by the owner.
      */
-    function removeReward() external onlyManager {
+    function removeReward() external atLeastRole(STRATEGIST) {
         address token = rewards[rewards.length - 1];
         IERC20Upgradeable(token).safeApprove(unirouter, 0);
         rewards.pop();

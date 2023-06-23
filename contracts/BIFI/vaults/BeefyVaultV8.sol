@@ -23,6 +23,7 @@ contract BeefyVaultV8 is VaultManager, ReentrancyGuardUpgradeable {
         uint256 allocated,
         uint256 debtRatio
     );
+    event ChargeFees(uint256 performanceFee, uint256 beefyFee, uint256 strategistFee);
 
     /**
      * @dev Sets the value of {token} to the token that the vault will
@@ -40,13 +41,15 @@ contract BeefyVaultV8 is VaultManager, ReentrancyGuardUpgradeable {
         string memory _name,
         string memory _symbol,
         uint256 _tvlCap,
+        address _timelock,
+        address _dev,
         address _keeper,
         address _beefyFeeRecipient,
         address _beefyFeeConfig
     ) public initializer {
         __ERC4626_init(_asset);
         __ERC20_init(_name, _symbol);
-        __VaultManager_init(_tvlCap, _keeper, _beefyFeeRecipient, _beefyFeeConfig);
+        __VaultManager_init(_tvlCap, _timelock, _dev, _keeper, _beefyFeeRecipient, _beefyFeeConfig);
     }
 
     /**
@@ -265,7 +268,6 @@ contract BeefyVaultV8 is VaultManager, ReentrancyGuardUpgradeable {
             }
 
             uint256 maxLoss = ((assets + totalLoss) * withdrawMaxLoss) / PERCENT_DIVISOR;
-
             require(totalLoss <= maxLoss, ">maxLoss");
         }
 
@@ -428,8 +430,8 @@ contract BeefyVaultV8 is VaultManager, ReentrancyGuardUpgradeable {
     }
 
     /**
-     * @dev It fetches fees and charges the appropriate amount on the output token. Fees are sent
-     * to the various stored addresses.
+     * @dev It fetches fees and charges the appropriate amount by minting vault shares direct to 
+     * Beefy treasury and the strategist.
      */
     function _chargeFees(address strategy, uint256 gain) internal virtual returns (uint256) {
         IFeeConfig.FeeCategory memory fees = getFees(strategy);
@@ -437,26 +439,13 @@ contract BeefyVaultV8 is VaultManager, ReentrancyGuardUpgradeable {
         uint256 performanceFee = gain * fees.total / 1 ether;
         if (performanceFee > 0) {
             uint256 shares = convertToShares(performanceFee);
-            _mint(beefyFeeRecipient, shares * fees.beefy / 1 ether);
-            _mint(IMultiStrategy(strategy).strategist(), shares * fees.strategist / 1 ether);
+            uint256 beefyFee = shares * fees.beefy / 1 ether;
+            uint256 strategistFee = shares * fees.strategist / 1 ether;
+
+            _mint(beefyFeeRecipient, beefyFee);
+            _mint(IMultiStrategy(strategy).strategist(), strategistFee);
+            emit ChargeFees(performanceFee, beefyFee, strategistFee);
         }
         return performanceFee;
-    }
-
-    function debtOutstanding(address strategy) external view returns (uint256) {
-        if (totalDebtRatio == 0) {
-            return strategies[strategy].allocated;
-        }
-
-        uint256 debtLimit = strategies[strategy].debtRatio * totalAssets() / PERCENT_DIVISOR;
-        uint256 totalDebt = strategies[strategy].allocated;
-
-        if (emergencyShutdown) {
-            return totalDebt;
-        } else if (totalDebt <= debtLimit) {
-            return 0;
-        } else {
-            return totalDebt - debtLimit;
-        }
     }
 }

@@ -23,6 +23,7 @@ abstract contract StrategyConfig is StrategyCore {
     // Third party contracts
     address public chef;
     uint256 public poolId;
+    address public unirouter;
 
     string public pendingRewardsFunctionName;
 
@@ -34,36 +35,38 @@ abstract contract StrategyConfig is StrategyCore {
         address _want,
         uint256 _poolId,
         address _chef,
+        address _unirouter,
         address[] calldata _outputToNativeRoute,
         address[] calldata _outputToLp0Route,
         address[] calldata _outputToLp1Route,
         CommonAddresses calldata _commonAddresses
     ) public initializer {
-        __StratFeeManager_init(_commonAddresses);
-        want = _want;
+        __StratManager_init(_commonAddresses);
+        want = IERC20Upgradeable(_want);
         poolId = _poolId;
         chef = _chef;
+        unirouter = _unirouter;
 
-        output = _outputToNativeRoute[0];
-        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
-        routes[output][native] = _outputToNativeRoute;
+        output = IERC20Upgradeable(_outputToNativeRoute[0]);
+        native = IERC20Upgradeable(_outputToNativeRoute[_outputToNativeRoute.length - 1]);
+        routes[address(output)][address(native)] = _outputToNativeRoute;
 
         // setup lp routing
-        lpToken0 = IUniswapV2Pair(want).token0();
-        require(_outputToLp0Route[0] == output, "outputToLp0Route[0] != output");
+        lpToken0 = IUniswapV2Pair(address(want)).token0();
+        require(_outputToLp0Route[0] == address(output), "outputToLp0Route[0] != output");
         require(
             _outputToLp0Route[_outputToLp0Route.length - 1] == lpToken0,
             "outputToLp0Route[last] != lpToken0"
         );
-        routes[output][lpToken0] = _outputToLp0Route;
+        routes[address(output)][lpToken0] = _outputToLp0Route;
 
-        lpToken1 = IUniswapV2Pair(want).token1();
-        require(_outputToLp1Route[0] == output, "outputToLp1Route[0] != output");
+        lpToken1 = IUniswapV2Pair(address(want)).token1();
+        require(_outputToLp1Route[0] == address(output), "outputToLp1Route[0] != output");
         require(
             _outputToLp1Route[_outputToLp1Route.length - 1] == lpToken1,
             "outputToLp1Route[last] != lpToken1"
         );
-        routes[output][lpToken1] = _outputToLp1Route;
+        routes[address(output)][lpToken1] = _outputToLp1Route;
 
         _giveAllowances();
     }
@@ -101,7 +104,7 @@ abstract contract StrategyConfig is StrategyCore {
         IMasterChef(chef).deposit(poolId, 0);
         uint256 rewardLength = rewards.length;
         for (uint256 i; i < rewardLength;) {
-            _swap(unirouter, rewards[i], output, 1 ether);
+            _swap(rewards[i], address(output), IERC20Upgradeable(rewards[i]).balanceOf(address(this)));
             unchecked { ++i; }
         }
     }
@@ -111,8 +114,8 @@ abstract contract StrategyConfig is StrategyCore {
      * and adds liquidity.
      */
     function _convertToWant() internal override {
-        _swap(unirouter, output, lpToken0, 0.5 ether);
-        _swap(unirouter, output, lpToken1, 0.5 ether);
+        _swap(address(output), lpToken0, IERC20Upgradeable(output).balanceOf(address(this)) / 2);
+        _swap(address(output), lpToken1, IERC20Upgradeable(output).balanceOf(address(this)));
 
         uint256 lp0Bal = IERC20Upgradeable(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20Upgradeable(lpToken1).balanceOf(address(this));
@@ -123,45 +126,40 @@ abstract contract StrategyConfig is StrategyCore {
 
     /**
      * @dev It swaps from one token to another.
-     * @param _unirouter The router used to make the swap.
      * @param _fromToken The token to swap from.
      * @param _toToken The token to swap to.
-     * @param _percentageSwap The percentage of the fromToken to use in the swap, scaled to 1e18.
+     * @param _amount Amount of token to swap.
      */
     function _swap(
-        address _unirouter,
         address _fromToken,
         address _toToken,
-        uint256 _percentageSwap
+        uint256 _amount
     ) internal {
         if (_fromToken == _toToken) {
             return;
         }
-        uint256 fromTokenBal = 
-            IERC20Upgradeable(_fromToken).balanceOf(address(this)) * _percentageSwap / DIVISOR;
-        if (fromTokenBal > minToSwap[_fromToken]) {
+
+        if (_amount > minToSwap[_fromToken]) {
             address[] memory path = routes[_fromToken][_toToken];
             require(path[0] != address(0), "path not set");
-            try IUniswapRouterETH(_unirouter).swapExactTokensForTokens(
-                fromTokenBal, 0, path, address(this), block.timestamp
-            ) {} catch {}
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(
+                _amount, 0, path, address(this), block.timestamp
+            );
         }
     }
 
     /**
      * @dev It estimated the amount received from making a swap.
-     * @param _unirouter The router used to make the swap.
-     * @param _amountIn The amount of fromToken to be used in the swap.
      * @param _fromToken The token to swap from.
      * @param _toToken The token to swap to.
+     * @param _amountIn The amount of fromToken to be used in the swap.
      */
     function _getAmountOut(
-        address _unirouter,
-        uint256 _amountIn,
         address _fromToken,
-        address _toToken
-    ) internal override view returns (uint256 amount) {
-        uint256[] memory amountOut = IUniswapRouterETH(_unirouter).getAmountsOut(
+        address _toToken,
+        uint256 _amountIn
+    ) internal view returns (uint256 amount) {
+        uint256[] memory amountOut = IUniswapRouterETH(unirouter).getAmountsOut(
             _amountIn,
             routes[_fromToken][_toToken]
         );
@@ -233,7 +231,7 @@ abstract contract StrategyConfig is StrategyCore {
      * @return outputToNativeRoute The token route between output to native.
      */
     function outputToNative() external view returns (address[] memory) {
-        return routes[output][native];
+        return routes[address(output)][address(native)];
     }
 
     /**
@@ -241,7 +239,7 @@ abstract contract StrategyConfig is StrategyCore {
      * @return outputToLp0Route The token route between output to lpToken0.
      */
     function outputToLp0() external view returns (address[] memory) {
-        return routes[output][lpToken0];
+        return routes[address(output)][lpToken0];
     }
 
     /**
@@ -249,7 +247,7 @@ abstract contract StrategyConfig is StrategyCore {
      * @return outputToLp1Route The token route between output to lpToken1.
      */
     function outputToLp1() external view returns (address[] memory) {
-        return routes[output][lpToken1];
+        return routes[address(output)][lpToken1];
     }
 
     /**
@@ -259,7 +257,7 @@ abstract contract StrategyConfig is StrategyCore {
      */
     function setPendingRewardsFunctionName(
         string calldata _pendingRewardsFunctionName
-    ) external onlyManager {
+    ) external atLeastRole(STRATEGIST) {
         pendingRewardsFunctionName = _pendingRewardsFunctionName;
     }
 
@@ -267,11 +265,11 @@ abstract contract StrategyConfig is StrategyCore {
      * @dev It notifies the strategy that there is an extra token to compound back into the output.
      * @param _route The route for the extra reward token.
      */
-    function addReward(address[] calldata _route) external onlyOwner {
+    function addReward(address[] calldata _route) external atLeastRole(ADMIN) {
         address fromToken = _route[0];
         address toToken = _route[_route.length - 1];
-        require(fromToken != want, "want is not a reward");
-        require(toToken == output, "dest token is not output");
+        require(fromToken != address(want), "want is not a reward");
+        require(toToken == address(output), "dest token is not output");
 
         rewards.push(fromToken);
         routes[fromToken][toToken] = _route;
@@ -283,7 +281,7 @@ abstract contract StrategyConfig is StrategyCore {
     /**
      * @dev It removes the extra reward previously added by the owner.
      */
-    function removeReward() external onlyManager {
+    function removeReward() external atLeastRole(STRATEGIST) {
         address token = rewards[rewards.length - 1];
         if (token != lpToken0 || token != lpToken1) {
             IERC20Upgradeable(token).safeApprove(unirouter, 0);

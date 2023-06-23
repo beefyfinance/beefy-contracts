@@ -4,44 +4,43 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 
-import "../Common/StratFeeManagerInitializable.sol";
-import "../../interfaces/beefy/IBeefyVaultV8.sol";
+import "./StratManager.sol";
 
-abstract contract StrategyCore is StratFeeManagerInitializable {
+abstract contract StrategyCore is StratManager {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // Tokens used
-    address public native;
-    address public output;
-    address public want;
+    IERC20Upgradeable public native;
+    IERC20Upgradeable public output;
+    IERC20Upgradeable public want;
 
-    uint256 public lastHarvest;
-
-    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
-    event Withdraw(uint256 tvl);
-    event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
+    event DepositUnderlying(uint256 amount);
+    event WithdrawUnderlying(uint256 amount);
+    event StratHarvest(address indexed harvester, uint256 gain);
+    event LiquidateRepayment(int256 roi, uint256 repayment);
+    event LiquidatePosition(uint256 liquidatedAmount, uint256 loss);
+    event AdjustPosition(uint256 reinvestedAmount);
 
     /**
      * @dev Only called by the vault to withdraw a requested amount. Losses from liquidating the
      * requested funds are recorded and reported to the vault.
      * @param amount The amount of assets to withdraw.
-     * @param loss The loss that occured when liquidating the assets.
+     * @return loss The loss that occured when liquidating the assets.
      */
     function withdraw(uint256 amount) external virtual returns (uint256 loss) {
-        require(msg.sender == vault);
+        require(msg.sender == address(vault), "Sender not vault");
 
         uint256 amountFreed;
         (amountFreed, loss) = _liquidatePosition(amount);
-        IERC20Upgradeable(want).safeTransfer(vault, amountFreed);
-
-        emit Withdraw(balanceOf());
+        want.safeTransfer(address(vault), amountFreed);
     }
 
     /**
      * @dev External function for anyone to harvest this strategy.
      */
-    function harvest() external virtual {
+    function harvest() external atLeastRole(HARVESTER) virtual {
         _harvest();
     }
 
@@ -49,7 +48,7 @@ abstract contract StrategyCore is StratFeeManagerInitializable {
      * @dev External function for the manager to harvest this strategy to be used in times of high gas
      * prices.
      */
-    function managerHarvest() external onlyManager virtual {
+    function managerHarvest() external atLeastRole(STRATEGIST) virtual {
         _harvest();
     }
 
@@ -65,8 +64,7 @@ abstract contract StrategyCore is StratFeeManagerInitializable {
         }
 
         uint256 gain = _balanceVaultFunds();
-        lastHarvest = block.timestamp;
-        emit StratHarvest(msg.sender, gain, balanceOf());
+        emit StratHarvest(msg.sender, gain);
     }
 
     /**
@@ -81,7 +79,7 @@ abstract contract StrategyCore is StratFeeManagerInitializable {
         (int256 roi, uint256 repayment) = _liquidateRepayment(_getDebt());
         gain = roi > 0 ? uint256(roi) : 0;
 
-        uint256 outstandingDebt = IBeefyVaultV8(vault).report(roi, repayment);
+        uint256 outstandingDebt = vault.report(roi, repayment);
         _adjustPosition(outstandingDebt);
     }
 
@@ -90,7 +88,7 @@ abstract contract StrategyCore is StratFeeManagerInitializable {
      * @return debt The amount owed to the vault.
      */
     function _getDebt() internal virtual returns (uint256 debt) {
-        int256 availableCapital = IBeefyVaultV8(vault).availableCapital(address(this));
+        int256 availableCapital = vault.availableCapital(address(this));
         if (availableCapital < 0) {
             debt = uint256(-availableCapital);
         }
@@ -106,7 +104,7 @@ abstract contract StrategyCore is StratFeeManagerInitializable {
         int256 roi, 
         uint256 repayment
     ) {
-        uint256 allocated = IBeefyVaultV8(vault).strategies(address(this)).allocated;
+        uint256 allocated = vault.strategies(address(this)).allocated;
         uint256 totalAssets = balanceOf();
         uint256 toFree = debt;
 
@@ -122,6 +120,7 @@ abstract contract StrategyCore is StratFeeManagerInitializable {
         repayment = debt < amountFreed ? debt : amountFreed;
         
         roi -= int256(loss);
+        emit LiquidateRepayment(roi, repayment);
     }
 
     /**
@@ -136,14 +135,14 @@ abstract contract StrategyCore is StratFeeManagerInitializable {
         virtual
         returns (uint256 liquidatedAmount, uint256 loss)
     {
-        uint256 wantBal = IERC20Upgradeable(want).balanceOf(address(this));
+        uint256 wantBal = want.balanceOf(address(this));
         if (wantBal < amountNeeded) {
             if (paused()) {
                 _emergencyWithdraw();
             } else {
                 _withdrawUnderlying(amountNeeded - wantBal);
             }
-            liquidatedAmount = IERC20Upgradeable(want).balanceOf(address(this));
+            liquidatedAmount = want.balanceOf(address(this));
         } else {
             liquidatedAmount = amountNeeded;
         }
@@ -151,6 +150,7 @@ abstract contract StrategyCore is StratFeeManagerInitializable {
         if (amountNeeded > liquidatedAmount) {
             loss = amountNeeded - liquidatedAmount;
         }
+        emit LiquidatePosition(liquidatedAmount, loss);
     }
 
     /**
@@ -167,11 +167,15 @@ abstract contract StrategyCore is StratFeeManagerInitializable {
         if (wantBalance > debt) {
             uint256 toReinvest = wantBalance - debt;
             _depositUnderlying(toReinvest);
+            emit AdjustPosition(toReinvest);
         }
     }
 
-    function tend() external virtual {
-        _adjustPosition(IBeefyVaultV8(vault).debtOutstanding(address(this)));
+    /**
+     * @dev Reinvest any left over 'want' without the gas-intensive reporting to the vault.
+     */
+    function tend() external atLeastRole(HARVESTER) virtual {
+        _adjustPosition(_getDebt());
     }
 
     /**
@@ -188,49 +192,27 @@ abstract contract StrategyCore is StratFeeManagerInitializable {
      * @return balanceOfWant The balance of the wanted asset on this address.
      */
     function balanceOfWant() public virtual view returns (uint256) {
-        return IERC20Upgradeable(want).balanceOf(address(this));
-    }
-
-    /**
-     * @dev It calculates the native reward for a caller to harvest the strategy. Fees are fetched
-     * from the Beefy Fee Configurator and applied.
-     * @return nativeOut The native reward amount for a harvest caller.
-     */
-    function callReward() public virtual view returns (uint256 nativeOut) {
-        IFeeConfig.FeeCategory memory fees = getFees();
-        uint256 outputBal = rewardsAvailable();
-        if (outputBal > 0) {
-            nativeOut = _getAmountOut(unirouter, outputBal, output, native);
-        }
-
-        return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
+        return want.balanceOf(address(this));
     }
 
     /**
      * @dev It shuts down deposits, removes allowances and prepares the full withdrawal of funds
      * back to the vault on next harvest.
      */
-    function pause() public onlyManager virtual {
+    function pause() public atLeastRole(GUARDIAN) {
         _pause();
         _removeAllowances();
-        _revokeStrategy();
+        _emergencyWithdraw();
+        vault.revokeStrategy();
     }
 
     /**
      * @dev It reopens possible deposits and reinstates allowances. The debt ratio needs to be
      * updated on the vault and the next harvest will bring in funds from the vault.
      */
-    function unpause() external onlyManager virtual {
+    function unpause() external atLeastRole(GUARDIAN) {
         _unpause();
         _giveAllowances();
-    }
-
-    /**
-     * @dev It revokes the strategy's debt ratio allocation on the vault, so that all of the funds
-     * in this strategy will be sent to the vault on the next harvest.
-     */
-    function _revokeStrategy() internal virtual {
-        IBeefyVaultV8(vault).revokeStrategy();
     }
 
     /* ----------- INTERNAL VIRTUAL ----------- */
@@ -267,20 +249,6 @@ abstract contract StrategyCore is StratFeeManagerInitializable {
     function _convertToWant() internal virtual;
 
     /**
-     * @dev It estimated the amount received from making a swap.
-     * @param _unirouter The router used to make the swap.
-     * @param _amountIn The amount of fromToken to be used in the swap.
-     * @param _fromToken The token to swap from.
-     * @param _toToken The token to swap to.
-     */
-    function _getAmountOut(
-        address _unirouter,
-        uint256 _amountIn,
-        address _fromToken,
-        address _toToken
-    ) internal virtual view returns (uint256 amount);
-
-    /**
      * @dev It calculates the output reward available to the strategy by calling the pending
      * rewards function on the underlying platform.
      * @return rewardsAvailable The amount of output rewards not yet harvested.
@@ -307,4 +275,9 @@ abstract contract StrategyCore is StratFeeManagerInitializable {
      * @return outputToWantRoute The token route between output to want.
      */
     function outputToWant() external virtual view returns (address[] memory);
+
+    /**
+     * @dev Allow this contract to receive ether.
+     */
+    receive() external payable {}
 }
