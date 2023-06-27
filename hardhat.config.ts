@@ -140,6 +140,11 @@ const config: DeploymentConfig = {
       chainId: 2222,
       accounts,
     },
+    canto: {
+      url: process.env.CANTO_RPC || "https://canto.slingshot.finance",
+      chainId: 7700,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
@@ -153,18 +158,18 @@ const config: DeploymentConfig = {
         chainId: 1088,
         urls: {
           apiURL: "https://andromeda-explorer.metis.io/api",
-          browserURL: "https://andromeda-explorer.metis.io/"
-        }
+          browserURL: "https://andromeda-explorer.metis.io/",
+        },
       },
       {
         network: "celo",
         chainId: 42220,
         urls: {
           apiURL: "https://api.celoscan.io/api/",
-          browserURL: "https://celoscan.io/"
-        }
-      }
-    ]
+          browserURL: "https://celoscan.io/",
+        },
+      },
+    ],
   },
   solidity: {
     compilers: [

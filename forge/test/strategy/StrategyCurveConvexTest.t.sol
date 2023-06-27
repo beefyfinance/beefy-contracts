@@ -23,6 +23,7 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
 
     IStrategy constant PROD_STRAT = IStrategy(0x2486c5fa59Ba480F604D5A99A6DAF3ef8A5b4D76);
     address constant native = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address constant crv = 0xD533a949740bb3306d119CC777fa900bA034cd52;
     address constant cvx = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
     address constant triCrypto = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
@@ -49,19 +50,75 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
     bytes crvToNativeUniV3 = routeToPath(route(crv, native), fee3000);
     bytes cvxToNativeUniV3 = routeToPath(route(cvx, native), fee10000);
 
-    // T/ETH
-    address want = 0xCb08717451aaE9EF950a2524E33B6DCaBA60147B;
-    address gauge = 0x6070fBD4E608ee5391189E7205d70cc4A274c017;
-    uint pid = 67;
+    // crvUSD-USDC
+//    address want = 0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E;
+//    address gauge = 0x95f00391cB5EebCd190EB58728B4CE23DbFa6ac1;
+//    uint pid = 182;
+//    bytes crvToNativePath = crvToNativeUniV3;
+//    bytes cvxToNativePath = cvxToNativeUniV3;
+//    bytes nativeToDepositPath = routeToPath(route(native, usdc), fee500);
+//    address[9] depositToWant = [usdc, want, want];
+//    uint[3][4] depositToWantParams = [[0,0,7]];
+//    address unirouter = uniV3;
+//    address[] rewardsV2;
+//    address[] rewardsV3;
+//    uint24[] rewardsV3Fee = fee10000_500;
+
+    // OETH
+//    address want = 0x94B17476A93b3262d87B9a326965D1E91f9c13E7;
+//    address gauge = 0xd03BE91b1932715709e18021734fcB91BB431715;
+//    uint pid = 174;
+//    bytes crvToNativePath = crvToNativeUniV3;
+//    bytes cvxToNativePath = cvxToNativeUniV3;
+//    bytes nativeToDepositPath = "";
+//    address[9] depositToWant = [native, native, ETH, want, 0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3, want, want];
+//    uint[3][4] depositToWantParams = [[0,0,15],[0, 1, 1],[1,0,7]];
+//    address unirouter = uniV3;
+//    address[] rewardsV2;
+//    address[] rewardsV3;
+//    uint24[] rewardsV3Fee = fee10000_500;
+
+    // TriCryptoUSDC
+    address want = 0x7F86Bf177Dd4F3494b841a37e810A34dD56c829B;
+    address gauge = 0x85D44861D024CB7603Ba906F2Dc9569fC02083F6;
+    uint pid = 189;
     bytes crvToNativePath = crvToNativeUniV3;
     bytes cvxToNativePath = cvxToNativeUniV3;
     bytes nativeToDepositPath = "";
-    address[9] depositToWant = [native, 0x752eBeb79963cf0732E9c0fec72a49FD1DEfAEAC, want];
-    uint[3][4] depositToWantParams = [[0,0,7]];
+    address[9] depositToWant = [native, want, want];
+    uint[3][4] depositToWantParams = [[2,0,8]];
     address unirouter = uniV3;
     address[] rewardsV2;
     address[] rewardsV3;
     uint24[] rewardsV3Fee = fee10000_500;
+
+    // wBETH
+//    address want = 0xBfAb6FA95E0091ed66058ad493189D2cB29385E6;
+//    address gauge = 0x50161102a240b1456d770Dbb55c76d8dc2D160Aa;
+//    uint pid = 175;
+//    bytes crvToNativePath = crvToNativeUniV3;
+//    bytes cvxToNativePath = cvxToNativeUniV3;
+//    bytes nativeToDepositPath = "";
+//    address[9] depositToWant = [native, native, ETH, want, 0xa2E3356610840701BDf5611a53974510Ae27E2e1, want, want];
+//    uint[3][4] depositToWantParams = [[0,0,15],[0, 1, 1],[1,0,7]];
+//    address unirouter = uniV3;
+//    address[] rewardsV2;
+//    address[] rewardsV3;
+//    uint24[] rewardsV3Fee = fee10000_500;
+
+    // T/ETH
+//    address want = 0xCb08717451aaE9EF950a2524E33B6DCaBA60147B;
+//    address gauge = 0x6070fBD4E608ee5391189E7205d70cc4A274c017;
+//    uint pid = 67;
+//    bytes crvToNativePath = crvToNativeUniV3;
+//    bytes cvxToNativePath = cvxToNativeUniV3;
+//    bytes nativeToDepositPath = "";
+//    address[9] depositToWant = [native, 0x752eBeb79963cf0732E9c0fec72a49FD1DEfAEAC, want];
+//    uint[3][4] depositToWantParams = [[0,0,7]];
+//    address unirouter = uniV3;
+//    address[] rewardsV2;
+//    address[] rewardsV3;
+//    uint24[] rewardsV3Fee = fee10000_500;
 
     // tBTC
 //    address want = 0xF95AAa7EBB1620e46221B73588502960Ef63dBa0;

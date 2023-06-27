@@ -15,7 +15,7 @@ import "../interfaces/IUniV3Quoter.sol";
 import "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
 import "../../../contracts/BIFI/interfaces/common/IERC20Extended.sol";
 import "../../../contracts/BIFI/strategies/Common/StratFeeManager.sol";
-import "../../../contracts/BIFI/strategies/Thena/StrategyThenaGamma.sol";
+import "../../../contracts/BIFI/strategies/Gamma/StrategyThenaGamma.sol";
 import "../../../contracts/BIFI/utils/AlgebraUtils.sol";
 import "./BaseStrategyTest.t.sol";
 //import "../vault/util/HardhatNetworkManager.sol";
@@ -41,11 +41,19 @@ contract StrategyThenaGammaTest is BaseStrategyTest {
 
     bytes outputToNative = AlgebraUtils.routeToPath(route(the, native));
 
+    // WUSDR-DOLA
+    address constant want = 0x92104a7BeC32297DdD022A8f242bf498d0470876;
+    address constant rewardPool = 0x2174e40F56806D32f56Ad95202a4137B9F513E0b;
+    address[] lp0Route = [native, usdt, usdc, wusdr];
+    address[] lp1Route = [native, usdt, usdc, wusdr, 0x2F29Bc0FFAF9bff337b31CBe6CB5Fb3bf12e5840];
+    bytes nativeToLp0 = AlgebraUtils.routeToPath(lp0Route);
+    bytes nativeToLp1 = AlgebraUtils.routeToPath(lp1Route);
+
     // ETH-ankrETH
-    address constant want = 0x5c15842fCC12313C4f94dFB6fad1Af3f989D33e9;
-    address constant rewardPool = 0x5F8a5C3C094C6eb31d6b99B921dbB34a5151b352;
-    bytes nativeToLp0 = AlgebraUtils.routeToPath(route(native, eth));
-    bytes nativeToLp1 = AlgebraUtils.routeToPath(route(native, eth, ankrETH));
+//    address constant want = 0x5c15842fCC12313C4f94dFB6fad1Af3f989D33e9;
+//    address constant rewardPool = 0x5F8a5C3C094C6eb31d6b99B921dbB34a5151b352;
+//    bytes nativeToLp0 = AlgebraUtils.routeToPath(route(native, eth));
+//    bytes nativeToLp1 = AlgebraUtils.routeToPath(route(native, eth, ankrETH));
 
     // USDT-FLOKI
 //    address constant want = 0x2D65274C588C4f1f78Da0d288F69cb47C2FeFC3e;

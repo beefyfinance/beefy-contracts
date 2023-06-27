@@ -240,8 +240,7 @@ contract StrategyCommonSolidlyRewardPoolLP is StratFeeManagerInitializable, GasF
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        if (IRewardPool(rewardPool).emergency()) IRewardPool(rewardPool).emergencyWithdraw();
-        else IRewardPool(rewardPool).withdraw(balanceOfPool());
+        IRewardPool(rewardPool).withdraw(balanceOfPool());
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -250,8 +249,7 @@ contract StrategyCommonSolidlyRewardPoolLP is StratFeeManagerInitializable, GasF
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        if (IRewardPool(rewardPool).emergency()) IRewardPool(rewardPool).emergencyWithdraw();
-        else IRewardPool(rewardPool).withdraw(balanceOfPool());
+        IRewardPool(rewardPool).withdraw(balanceOfPool());
     }
 
     function pause() public onlyManager {

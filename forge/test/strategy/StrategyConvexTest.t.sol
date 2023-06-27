@@ -37,21 +37,37 @@ contract StrategyConvexTest is BaseStrategyTest {
     uint24[] fee10000 = [10000];
     bytes nativeToUsdc = routeToPath(route(native, usdc), fee500);
 
-    // eUSD-FraxBP
-    IERC20Like want = IERC20Like(0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F);
-    address pool = 0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F;
-    address zap = zapFraxBp;
-    uint pid = 156;
-    uint poolSize = 3;
-    uint depositIndex = 2;
+    // wBETH
+    IERC20Like want = IERC20Like(0xBfAb6FA95E0091ed66058ad493189D2cB29385E6);
+    address pool = 0xBfAb6FA95E0091ed66058ad493189D2cB29385E6;
+    address zap = address(0);
+    uint pid = 175;
+    uint poolSize = 2;
+    uint depositIndex = 0;
     uint useUnderlying = 0;
-    uint depositNative = 0;
+    uint depositNative = 1;
     uint[] params = [poolSize, depositIndex, useUnderlying, depositNative];
     address unirouter = uniV3;
-    bytes nativeToDepositPath = routeToPath(route(native, usdc), fee500);
-    address[] nativeToDepositRoute = new address[](0);
+    bytes nativeToDepositPath = "";
+    address[] nativeToDepositRoute = [native];
     address[] rewardsV3 = new address[](0);
     uint24[] rewardsV3Fee = fee3000;
+
+    // eUSD-FraxBP
+//    IERC20Like want = IERC20Like(0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F);
+//    address pool = 0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F;
+//    address zap = zapFraxBp;
+//    uint pid = 156;
+//    uint poolSize = 3;
+//    uint depositIndex = 2;
+//    uint useUnderlying = 0;
+//    uint depositNative = 0;
+//    uint[] params = [poolSize, depositIndex, useUnderlying, depositNative];
+//    address unirouter = uniV3;
+//    bytes nativeToDepositPath = routeToPath(route(native, usdc), fee500);
+//    address[] nativeToDepositRoute = new address[](0);
+//    address[] rewardsV3 = new address[](0);
+//    uint24[] rewardsV3Fee = fee3000;
 
     // msETH-ETH
 //    IERC20Like want = IERC20Like(0xc897b98272AA23714464Ea2A0Bd5180f1B8C0025);
