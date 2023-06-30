@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+pragma solidity 0.8.19;
+
 import {IERC20} from "@openzeppelin-4/contracts/interfaces/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin-4/contracts/interfaces/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -8,8 +10,6 @@ import {IPool} from "../interfaces/velodrome-v2/IPool.sol";
 import {IBeefyVault} from "./zapInterfaces/IBeefyVault.sol";
 import {IWETH} from "./zapInterfaces/IWETH.sol";
 import {Babylonian} from "./libs/Babylonian.sol";
-
-pragma solidity 0.8.19;
 
 contract BeefyVelodromeV2Zap {
     using SafeERC20 for IERC20;
