@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 contract ZapErrors {
-    error InsignicantAmount();
+    error InsignificantAmount();
     error NotWETH();
     error WrongToken(); // Beefy: desired token not present in liquidity pair.
     error InsufficientAmount();

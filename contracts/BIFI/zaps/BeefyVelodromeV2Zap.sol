@@ -31,7 +31,7 @@ contract BeefyVelodromeV2Zap is ZapErrors {
     }
 
     function beefInETH(address beefyVault, uint256 tokenAmountOutMin) external payable {
-        if(msg.value < minimumAmount) revert InsignicantAmount();
+        if(msg.value < minimumAmount) revert InsignificantAmount();
 
         IWETH(WETH).deposit{value: msg.value}();
 
@@ -39,7 +39,7 @@ contract BeefyVelodromeV2Zap is ZapErrors {
     }
 
     function beefIn(address beefyVault, uint256 tokenAmountOutMin, address tokenIn, uint256 tokenInAmount) external {
-        if(tokenAmountOutMin < minimumAmount) revert InsignicantAmount();
+        if(tokenAmountOutMin < minimumAmount) revert InsignificantAmount();
 
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), tokenInAmount);
 
@@ -69,7 +69,7 @@ contract BeefyVelodromeV2Zap is ZapErrors {
         (IBeefyVault vault, IPool pair) = _getVaultPair(beefyVault);
         address token0 = pair.token0();
         address token1 = pair.token1();
-        if(token0 != desiredToken || token1 != desiredToken) revert WrongToken();
+        if(token0 != desiredToken && token1 != desiredToken) revert WrongToken();
 
         vault.safeTransferFrom(msg.sender, address(this), withdrawAmount);
         vault.withdraw(withdrawAmount);
@@ -124,10 +124,10 @@ contract BeefyVelodromeV2Zap is ZapErrors {
         if(pair.factory() != router.defaultFactory()) revert IncompatiblePair(); // router.addLiquidity adds to pair from router.defaultFactory()
 
         (uint256 reserveA, uint256 reserveB,) = pair.getReserves();
-        if (reserveA < minimumAmount && reserveB < minimumAmount) revert ReservesTooLow();
+        if (reserveA < minimumAmount || reserveB < minimumAmount) revert ReservesTooLow();
 
         bool isInputA = pair.token0() == tokenIn;
-        if(!isInputA || pair.token1() != tokenIn) revert WrongToken();
+        if(!isInputA && pair.token1() != tokenIn) revert WrongToken();
 
         address[] memory path = new address[](2);
         path[0] = tokenIn;
@@ -202,7 +202,7 @@ contract BeefyVelodromeV2Zap is ZapErrors {
         if(pair.factory() != router.defaultFactory()) revert IncompatiblePair(); // router.addLiquidity adds to pair from router.defaultFactory()
 
         bool isInputA = pair.token0() == tokenIn;
-        if(!isInputA || pair.token1() != tokenIn) revert WrongToken(); // 'Beefy: Input token not present in liquidity pair';
+        if(!isInputA && pair.token1() != tokenIn) revert WrongToken(); // 'Beefy: Input token not present in liquidity pair';
 
         (uint256 reserveA, uint256 reserveB,) = pair.getReserves();
         (reserveA, reserveB) = isInputA ? (reserveA, reserveB) : (reserveB, reserveA);

@@ -151,6 +151,7 @@ const config: DeploymentConfig = {
     // Obtain one at https://etherscan.io/
     apiKey: {
       polygon: process.env.POLYGON_API_KEY!,
+      optimisticEthereum: process.env.OPTIMISM_API_KEY!
     },
     customChains: [
       {

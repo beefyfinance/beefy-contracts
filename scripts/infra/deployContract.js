@@ -4,7 +4,7 @@ const { startingEtherPerAccount } = require("../../utils/configInit");
 
 const ethers = hardhat.ethers;
 
-const contractName = "StrategyQuickGamma";
+const contractName = "BeefyVelodromeV2Zap";
 const factoryName = "BeefyVaultV7Factory";
 
 const config = {};
@@ -21,7 +21,7 @@ async function main() {
     config.anycallProxy
   ]
 
-  const contract = await Contract.deploy();
+  const contract = await Contract.deploy("0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858", "0x4200000000000000000000000000000000000006");
   await contract.deployed();
   
   console.log(`${contractName} deployed to:`, contract.address);
