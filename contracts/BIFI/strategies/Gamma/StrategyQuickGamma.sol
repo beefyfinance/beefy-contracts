@@ -30,6 +30,10 @@ interface IdQuick {
     function dQuickForQuick(uint256 amount) external view returns (uint256);
 }
 
+interface IHypervisor {
+    function whitelistedAddress() external view returns (address uniProxy);
+}
+
 contract StrategyQuickGamma is StratFeeManagerInitializable, GasFeeThrottler {
     using SafeERC20 for IERC20;
 
@@ -43,7 +47,6 @@ contract StrategyQuickGamma is StratFeeManagerInitializable, GasFeeThrottler {
 
     // Third party contracts
     address public chef;
-    IGammaUniProxy public constant gammaProxy = IGammaUniProxy(0xe0A61107E250f8B5B24bf272baBFCf638569830C);
     IAlgebraQuoter public constant quoter = IAlgebraQuoter(0xa15F0D7377B2A0C0c10db057f641beD21028FC89);
 
     bool public isFastQuote;
@@ -198,12 +201,12 @@ contract StrategyQuickGamma is StratFeeManagerInitializable, GasFeeThrottler {
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
 
-        (uint amount1Start, uint amount1End) = gammaProxy.getDepositAmount(want, lpToken0, lp0Bal);
-        (, uint amount0End) = gammaProxy.getDepositAmount(want, lpToken1, lp1Bal);
+        (uint amount1Start, uint amount1End) = gammaProxy().getDepositAmount(want, lpToken0, lp0Bal);
+        (, uint amount0End) = gammaProxy().getDepositAmount(want, lpToken1, lp1Bal);
         if (lp1Bal > amount1End) {
             lp1Bal = amount1End;
         } else if (lp1Bal < amount1Start) {
-            (, lp0Bal) = gammaProxy.getDepositAmount(want, lpToken1, lp1Bal);
+            (, lp0Bal) = gammaProxy().getDepositAmount(want, lpToken1, lp1Bal);
         }
         
         if (lp0Bal > amount0End) {
@@ -211,7 +214,7 @@ contract StrategyQuickGamma is StratFeeManagerInitializable, GasFeeThrottler {
         }
 
         uint[4] memory minIn;
-        gammaProxy.deposit(lp0Bal, lp1Bal, address(this), want, minIn);
+        gammaProxy().deposit(lp0Bal, lp1Bal, address(this), want, minIn);
 
     }
 
@@ -226,7 +229,7 @@ contract StrategyQuickGamma is StratFeeManagerInitializable, GasFeeThrottler {
             uint decimalsDenominator = decimalsDiff > 1e12 ? 1e6 : 1;
             uint sqrtPriceX96 = IAlgebraPool(IAlgebraPool(want).pool()).globalState();
             uint price = sqrtPriceX96 ** 2 * (decimalsDiff / decimalsDenominator) / (2 ** 192) * decimalsDenominator;
-            (uint amountStart, uint amountEnd) = gammaProxy.getDepositAmount(want, lpToken0, lp0Decimals);
+            (uint amountStart, uint amountEnd) = gammaProxy().getDepositAmount(want, lpToken0, lp0Decimals);
             uint amountB = (amountStart + amountEnd) / 2 * 1e18 / lp1Decimals;
             ratio = amountB * 1e18 / price;
         } else {
@@ -240,7 +243,7 @@ contract StrategyQuickGamma is StratFeeManagerInitializable, GasFeeThrottler {
             if (nativeToLp1Path.length > 0) {
                 (out1,) = quoter.quoteExactInput(nativeToLp1Path, lp1Amt);
             }
-            (uint amountStart, uint amountEnd) = gammaProxy.getDepositAmount(want, lpToken0, out0);
+            (uint amountStart, uint amountEnd) = gammaProxy().getDepositAmount(want, lpToken0, out0);
             uint amountB = (amountStart + amountEnd) / 2;
             ratio = amountB * 1e18 / out1;
         }
@@ -397,6 +400,10 @@ contract StrategyQuickGamma is StratFeeManagerInitializable, GasFeeThrottler {
             require(route[route.length - 1] == lpToken1, "!lp1");
         }
         nativeToLp1Path = _nativeToLp1Path;
+    }
+
+    function gammaProxy() public view returns (IGammaUniProxy uniProxy) {
+        uniProxy = IGammaUniProxy(IHypervisor(want).whitelistedAddress());
     }
 
     function outputToNative() external view returns (address[] memory) {
