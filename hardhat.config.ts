@@ -145,12 +145,18 @@ const config: DeploymentConfig = {
       chainId: 7700,
       accounts,
     },
+    zkevm: {
+      url: process.env.ZKEVM_RPC || "https://zkevm-rpc.com",
+      chainId: 1101,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
     apiKey: {
       polygon: process.env.POLYGON_API_KEY!,
+      zkevm: process.env.ZKEVM_API_KEY!,
     },
     customChains: [
       {
@@ -167,6 +173,14 @@ const config: DeploymentConfig = {
         urls: {
           apiURL: "https://api.celoscan.io/api/",
           browserURL: "https://celoscan.io/",
+        },
+      },
+      {
+        network: "zkevm",
+        chainId: 1101,
+        urls: {
+          apiURL: "https://api-zkevm.polygonscan.com/",
+          browserURL: "https://zkevm.polygonscan.com/",
         },
       },
     ],
