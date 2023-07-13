@@ -179,7 +179,7 @@ const config: DeploymentConfig = {
         network: "zkevm",
         chainId: 1101,
         urls: {
-          apiURL: "https://api-zkevm.polygonscan.com/",
+          apiURL: "https://api-zkevm.polygonscan.com/api",
           browserURL: "https://zkevm.polygonscan.com/",
         },
       },
