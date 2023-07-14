@@ -44,12 +44,19 @@ contract StrategyConicTest is BaseStrategyTest {
     bytes cvxToNativePath = routeToPath(route(cvx, native), fee10000);
     address unirouter = uniV3;
 
-    // crvUSD
-    address want = 0xB569bD86ba2429fd2D8D288b40f17EBe1d0f478f;
+    // crvETH
+    address want = 0x3565A68666FD3A6361F06f84637E805b727b4A47;
     bytes nativeToUnderlyingPath = "";
-    address[9] nativeToUnderlying = [native, triCryptoUSDC, usdc, crvUSD_USDC, crvUSD];
-    uint[3][4] nativeToUnderlyingParams = [[2,0,3],[0, 1, 1]];
+    address[9] nativeToUnderlying = [native, native, ETH, native, native];
+    uint[3][4] nativeToUnderlyingParams = [[0,0,15],[0,0,15]];
     StrategyConic.CurveRoute nativeToUnderlyingRoute = StrategyConic.CurveRoute(nativeToUnderlying, nativeToUnderlyingParams, 0);
+
+    // crvUSD
+//    address want = 0xB569bD86ba2429fd2D8D288b40f17EBe1d0f478f;
+//    bytes nativeToUnderlyingPath = "";
+//    address[9] nativeToUnderlying = [native, triCryptoUSDC, usdc, crvUSD_USDC, crvUSD];
+//    uint[3][4] nativeToUnderlyingParams = [[2,0,3],[0, 1, 1]];
+//    StrategyConic.CurveRoute nativeToUnderlyingRoute = StrategyConic.CurveRoute(nativeToUnderlying, nativeToUnderlyingParams, 0);
 
     // USDC pool
 //    address want = 0x472fCC880F01B32C55F1fB55F58f7bD930dE1944;
@@ -110,24 +117,32 @@ contract StrategyConicTest is BaseStrategyTest {
         zap.estimateSwap(beefyVault, cvx, 1000);
 
         address tokenIn = strategy.underlying();
-        uint amount = 1000000000;
+        uint amount = 10000000000000000;
         (uint swapAmountIn, uint swapAmountOut, address swapTokenOut) = zap.estimateSwap(beefyVault, tokenIn, amount);
-        uint amountMin = swapAmountOut * 999 / 1000; // 0.1%
+        uint amountMin = swapAmountOut * 995 / 1000; // 0.5%
         console.log('Estimate swap', swapAmountIn, swapAmountOut, amountMin);
         assertEq(swapAmountIn, amount, "swapAmountIn != amount");
         assertLt(swapAmountOut, swapAmountIn, "swapAmountOut >= swapAmountIn");
         assertEq(swapTokenOut, want, "swapTokenOut != want");
 
         deal(tokenIn, address(this), amount);
-        IERC20(tokenIn).approve(address(zap), type(uint).max);
-        zap.beefIn(beefyVault, amountMin, tokenIn, amount);
+        if (tokenIn == native) {
+            console.log('Zap in native beefInETH');
+            IWrappedNative(native).withdraw(amount);
+            zap.beefInETH{value: amount}(beefyVault, amountMin);
+        } else {
+            IERC20(tokenIn).approve(address(zap), type(uint).max);
+            zap.beefIn(beefyVault, amountMin, tokenIn, amount);
+        }
 
         assertEq(IERC20(strategy.cnc()).balanceOf(address(zap)), 0);
         assertEq(IERC20(strategy.underlying()).balanceOf(address(zap)), 0);
         assertEq(IERC20(want).balanceOf(address(zap)), 0);
+        assertEq(address(zap).balance, 0);
 
         uint mooBal = beefyVault.balanceOf(address(this));
         uint tokenBal = mooBal * beefyVault.balance() / beefyVault.totalSupply();
+        console.log('Received tokenBal', tokenBal);
         assertGe(tokenBal, amountMin, "Balance < amountMin");
     }
 
@@ -160,7 +175,9 @@ contract StrategyConicTest is BaseStrategyTest {
         assertEq(IERC20(strategy.underlying()).balanceOf(address(zap)), 0);
         assertEq(IERC20(want).balanceOf(address(zap)), 0);
 
-        uint tokenBal = IERC20(tokenOut).balanceOf(address(this));
+        uint tokenBal = (tokenOut == native)
+            ? address(this).balance
+            : IERC20(tokenOut).balanceOf(address(this));
         assertGe(tokenBal, amountMin, "Balance < amountMin");
     }
 
@@ -292,4 +309,5 @@ contract StrategyConicTest is BaseStrategyTest {
         assertEq(nativeBal, 0, "Native not swapped");
     }
 
+    receive() external payable {}
 }

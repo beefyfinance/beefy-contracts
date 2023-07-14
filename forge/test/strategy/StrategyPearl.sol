@@ -28,10 +28,10 @@ contract StrategyPearl is BaseStrategyTest {
     address constant dai = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
     address constant unirouter = 0xda822340F5E8216C277DBF66627648Ff5D57b527;
 
-    // wUSDR-USDR
-    address constant want = 0x10E1b58B3C93890D04D539b5f39Aa4Df27A362b2;
-    address constant gauge = 0xa9d0fb2581DdD3783853fB3Fda9B296a2c7a0734;
-    address constant lp0 = 0xAF0D9D65fC54de245cdA37af3d18cbEc860A4D4b;
+    // TNGBL-USDR
+    address constant want = 0x16e9D19221DF563CfB15628953B5c51E4a2Be30c;
+    address constant gauge = 0x99f21d87eD8A2d04cD18E44571e60e414384B678;
+    address constant lp0 = 0x49e6A20f1BBdfEeC2a8222E052000BbB14EE6007;
     function routes() internal pure returns(
         ISolidlyRouter.Routes[] memory outputToNative,
         ISolidlyRouter.Routes[] memory outputToLp0,
