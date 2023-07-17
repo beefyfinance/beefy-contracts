@@ -7,15 +7,15 @@ import "./StrategyHop.sol";
 
 contract StrategyHopSolidly is StrategyHop {
     // Routes
-    ISolidlyRouter.Routes[] public outputToNativeRoute;
-    ISolidlyRouter.Routes[] public outputToDepositRoute;
+    ISolidlyRouter.Route[] public outputToNativeRoute;
+    ISolidlyRouter.Route[] public outputToDepositRoute;
 
     function initialize(
         address _want,
         address _rewardPool,
         address _stableRouter,
-        ISolidlyRouter.Routes[] calldata _outputToNativeRoute,
-        ISolidlyRouter.Routes[] calldata _outputToDepositRoute,
+        ISolidlyRouter.Route[] calldata _outputToNativeRoute,
+        ISolidlyRouter.Route[] calldata _outputToDepositRoute,
         CommonAddresses calldata _commonAddresses
     ) public initializer {
         __StrategyHop_init(_want, _rewardPool, _stableRouter, _commonAddresses);
@@ -51,16 +51,16 @@ contract StrategyHopSolidly is StrategyHop {
     }
 
     function outputToNative() external view virtual override returns (address[] memory) {
-        ISolidlyRouter.Routes[] memory _route = outputToNativeRoute;
+        ISolidlyRouter.Route[] memory _route = outputToNativeRoute;
         return _solidlyToRoute(_route);
     }
 
     function outputToDeposit() external view virtual override returns (address[] memory) {
-        ISolidlyRouter.Routes[] memory _route = outputToDepositRoute;
+        ISolidlyRouter.Route[] memory _route = outputToDepositRoute;
         return _solidlyToRoute(_route);
     }
 
-    function _solidlyToRoute(ISolidlyRouter.Routes[] memory _route) internal pure virtual returns (address[] memory) {
+    function _solidlyToRoute(ISolidlyRouter.Route[] memory _route) internal pure virtual returns (address[] memory) {
         address[] memory route = new address[](_route.length + 1);
         route[0] = _route[0].from;
         for (uint i; i < _route.length; ++i) {
