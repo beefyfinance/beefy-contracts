@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity 0.5.5;
 
 import "@openzeppelin-2/contracts/math/Math.sol";
 import "@openzeppelin-2/contracts/token/ERC20/IERC20.sol";
@@ -20,7 +20,7 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
 
     address public manager;
     address public treasury;
-    uint256 public treasuryFee = 500;
+    uint256 public treasuryFee;
 
     bool public isPreStake;
 
@@ -31,14 +31,13 @@ contract BeefyLaunchpool is LPTokenWrapper, Ownable {
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
 
-    constructor(address _stakedToken, address _rewardToken,  uint256 _duration, address _manager, address _treasury)
+    constructor(address _stakedToken, address _rewardToken,  uint256 _duration)
         public
         LPTokenWrapper(_stakedToken)
     {
         rewardToken = IERC20(_rewardToken);
         duration = _duration;
-        manager = _manager;
-        treasury = _treasury;
+        manager = msg.sender;
     }
 
     modifier onlyManager() {
