@@ -4,6 +4,9 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 
+/**
+ * @dev Interface of a Beefy Vault
+ */
 interface IVault {
     function deposit(uint256) external;
     function withdraw(uint256) external;
@@ -15,23 +18,28 @@ interface IVault {
 }
 
 /**
- * @dev Implementation of an ERC4626 wrapper for Beefy Vaults.
- * Depositing underlying tokens to this contract will transfer the Beefy Vault tokens from the
- * caller to this address and mint the wrapped version to the caller. Burning wrapped tokens
- * burns the wrapped version transferred by the caller, then withdraws the underlying tokens
- * from the Beefy vault and transfers those tokens back to the caller.
+ * @title Beefy Wrapper ERC-4626
+ * @author kexley
+ * @notice Implementation for an ERC-4626 wrapper of a Beefy Vault
+ * @dev Wrapped Beefy Vault tokens can be minted by deposit of the underlying asset or by 
+ * wrapping Beefy Vault tokens in a 1:1 ratio. Wrapped Beefy Vault tokens can either be unwrapped
+ * for an equal number of Beefy Vault tokens or redeemed for the underlying asset
  */
 contract BeefyWrapper is ERC4626Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using MathUpgradeable for uint256;
 
+    /**
+     * @notice Address of the vault being wrapped
+     */
     address public vault;
 
     /**
-     * @dev Initializes an ERC4626 wrapper for a Beefy Vault token.
-     * @param _vault the address of the vault.
-     * @param _name the name of this contract's token.
-     * @param _symbol the symbol of this contract's token.
+     * @notice Initializes an ERC-4626 wrapper for a Beefy Vault token
+     * @dev Called by the factory on cloning
+     * @param _vault the address of the vault being wrapped
+     * @param _name the name of the vault
+     * @param _symbol the symbol of the vault's token
      */
      function initialize(
         address _vault,
@@ -46,15 +54,15 @@ contract BeefyWrapper is ERC4626Upgradeable {
     }
 
     /**
-     * @dev Wraps all vault share tokens owned by the caller.
+     * @notice Wraps all vault tokens owned by the caller
      */
     function wrapAll() external {
         wrap(IERC20Upgradeable(vault).balanceOf(msg.sender));
     }
 
     /**
-     * @dev Wraps an amount of vault share tokens.
-     * @param amount the total amount of vault share tokens to be wrapped.
+     * @notice Wraps an amount of vault tokens
+     * @param amount the total amount of vault share tokens to be wrapped
      */
     function wrap(uint256 amount) public {
         IERC20Upgradeable(vault).safeTransferFrom(msg.sender, address(this), amount);
@@ -62,15 +70,15 @@ contract BeefyWrapper is ERC4626Upgradeable {
     }
 
     /**
-     * @dev Unwraps all wrapped tokens owned by the caller.
+     * @notice Unwraps all wrapped tokens owned by the caller
      */
     function unwrapAll() external {
         unwrap(balanceOf(msg.sender));
     }
 
     /**
-     * @dev Unwraps an amount of vault share tokens.
-     * @param amount the total amount of vault share tokens to be unwrapped.
+     * @notice Unwraps an amount of vault tokens
+     * @param amount the total amount of vault tokens to be unwrapped
      */
     function unwrap(uint256 amount) public {
         _burn(msg.sender, amount);
@@ -78,16 +86,18 @@ contract BeefyWrapper is ERC4626Upgradeable {
     }
 
     /**
-     * @dev Fetches the total assets held by the vault.
-     * @return totalAssets the total balance of assets held by the vault.
+     * @notice Fetches the total assets held by the vault
+     * @dev Returns the total assets held by the vault, not only the wrapper
+     * @return totalAssets the total balance of assets held by the vault
      */
     function totalAssets() public view virtual override returns (uint256) {
         return IVault(vault).balance();
     }
 
     /**
-     * @dev Fetches the total vault shares.
-     * @return totalSupply the total supply of vault shares.
+     * @notice Fetches the total vault shares
+     * @dev Returns the total vault shares, not the shares of the wrapper
+     * @return totalSupply the total supply of vault shares
      */
     function totalSupply()
         public view virtual override(ERC20Upgradeable, IERC20Upgradeable) 
@@ -96,11 +106,13 @@ contract BeefyWrapper is ERC4626Upgradeable {
     }
 
     /**
-     * @dev Deposit assets to the vault and mint an equal number of wrapped tokens to vault shares.
-     * @param caller the address of the sender of the assets.
-     * @param receiver the address of the receiver of the wrapped tokens.
-     * @param assets the amount of assets being deposited.
-     * @param shares the amount of shares being minted.
+     * @notice Deposit underlying assets to the vault and mint tokens to the receiver
+     * @dev Overrides ERC-4626 internal deposit function. Deposits underlying assets to the vault 
+     * and mints the increase in vault shares to the receiver
+     * @param caller the address of the sender of the assets
+     * @param receiver the address of the receiver of the wrapped tokens
+     * @param assets the amount of assets being deposited
+     * @param shares the amount of shares being minted
      */
     function _deposit(
         address caller,
@@ -118,12 +130,14 @@ contract BeefyWrapper is ERC4626Upgradeable {
     }
 
     /**
-     * @dev Burn wrapped tokens and withdraw assets from the vault.
-     * @param caller the address of the caller of the withdraw.
-     * @param receiver the address of the receiver of the assets.
-     * @param owner the address of the owner of the burnt shares.
-     * @param assets the amount of assets being withdrawn.
-     * @param shares the amount of shares being burnt.
+     * @notice Burn tokens and withdraw assets to receiver
+     * @dev Overrides ERC-4626 internal withdraw function. Withdraws the underlying asset from the 
+     * vault and sends to the receiver
+     * @param caller the address of the caller of the withdraw
+     * @param receiver the address of the receiver of the assets
+     * @param owner the address of the owner of the burnt shares
+     * @param assets the amount of assets being withdrawn
+     * @param shares the amount of shares being burnt
      */
     function _withdraw(
         address caller,

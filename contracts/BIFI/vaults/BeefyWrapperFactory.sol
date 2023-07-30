@@ -5,31 +5,46 @@ pragma solidity ^0.8.0;
 import "./BeefyWrapper.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol";
 
+/**
+ * @dev Interface of wrapper for initializing
+ */
 interface IWrapper {
   function initialize(address _vault, string memory _name, string memory _symbol) external;
 }
 
-// Beefy Wrapper Proxy Factory
-// Minimal proxy pattern for creating new Beefy Vault wrappers
+/**
+ * @title Beefy Wrapper ERC-4626 Factory
+ * @author kexley
+ * @notice Minimal factory for wrapping Beefy Vaults
+ * @dev This factory creates lightweight ERC-4626 compliant wrappers for existing Beefy Vaults
+ */
 contract BeefyWrapperFactory {
   using ClonesUpgradeable for address;
 
-  // Contract template for deploying proxied Beefy Vault wrappers
+  /**
+   * @notice Immutable logic implementation address for a Beefy Vault wrapper
+   */
   address public immutable implementation;
 
+  /**
+   * @dev Emitted when a new proxy is deployed
+   */
   event ProxyCreated(address proxy);
 
-  // Initializes the Factory with an instance of the Beefy Vault Wrapper
+  /**
+   * @dev Deploys the instance of a wrapper and sets the implementation
+   */
   constructor() {
     implementation = address(new BeefyWrapper());
   }
 
-  // Creates a new Beefy Vault wrapper as a proxy of the template instance
-  // @param _vault reference to the cloned Beefy Vault
-  // @return proxy reference to the new proxied Beefy Vault wrapper
-  function clone(
-    address _vault
-  ) external returns (address proxy) {
+  /**
+   * @notice Creates a new Beefy Vault wrapper
+   * @dev Wrapper is initialized with "w" prepended to the vault name and symbol
+   * @param _vault address of underlying Beefy Vault
+   * @return proxy address of deployed wrapper
+   */
+  function clone(address _vault) external returns (address proxy) {
     proxy = implementation.clone();
     IWrapper(proxy).initialize(
       _vault,
