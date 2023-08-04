@@ -21,10 +21,6 @@ contract StrategyQLP is StratFeeManagerInitializable {
         address token;
         bytes path;
         uint256 minSwap;
-        uint256 duration;
-        uint256 periodFinish;
-        uint256 rate;
-        uint256 lastClaimTime;
     }
 
     // Tokens used
@@ -133,40 +129,14 @@ contract StrategyQLP is StratFeeManagerInitializable {
         }
     }
 
-    // claim vested rewards and swap to native
+    // swap to native
     function swapRewards() internal {
         for (uint i; i < rewards.length;) {
-            uint256 amount = claimReward(i);
             Reward memory reward = rewards[i];
+            uint256 amount = IERC20(reward.token).balanceOf(address(this));
             if (amount > reward.minSwap) AlgebraUtils.swap(unirouter, reward.path, amount);
             unchecked { ++i; }
         }
-    }
-
-    // vest rewards and notify rewards if period ended or higher rate can be achieved
-    function claimReward(uint256 _id) internal returns (uint256 earned) {
-        Reward storage reward = rewards[_id];
-        earned = claimable(_id);
-        reward.lastClaimTime = Math.min(block.timestamp, reward.periodFinish);
-
-        uint256 rewardBal = IERC20(reward.token).balanceOf(address(this));
-        if (earned > rewardBal) {
-            earned = rewardBal;
-        }
-        emit ClaimReward(reward.token, earned);
-
-        uint256 newRewardRate = (rewardBal - earned) / reward.duration;
-        if (block.timestamp >= reward.periodFinish || newRewardRate > reward.rate) {
-            reward.rate = newRewardRate;
-            reward.periodFinish = block.timestamp + reward.duration;
-            emit UpdateReward(reward.token, rewardBal, newRewardRate);
-        }
-    }
-
-    // view claimable vested amount of reward
-    function claimable(uint256 _id) public view returns (uint256) {
-        Reward memory reward = rewards[_id];
-        return reward.rate * (Math.min(block.timestamp, reward.periodFinish) - reward.lastClaimTime);
     }
 
     // performance fees
@@ -309,15 +279,13 @@ contract StrategyQLP is StratFeeManagerInitializable {
     function addReward(
         address _token,
         bytes calldata _path,
-        uint256 _minSwap,
-        uint256 _duration
+        uint256 _minSwap
     ) external onlyOwner {
         require(_token != want, "!want");
         require(_token != native, "!native");
-        require(_duration >= 1 days, "short duration");
         IERC20(_token).safeApprove(unirouter, type(uint).max);
 
-        Reward memory reward = Reward(_token, _path, _minSwap, _duration, 0, 0, 0);
+        Reward memory reward = Reward(_token, _path, _minSwap);
         rewards.push(reward);
     }
 
