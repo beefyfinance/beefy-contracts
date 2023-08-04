@@ -8,11 +8,11 @@ import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../../interfaces/common/IUniswapV2Pair.sol";
 import "../../interfaces/common/IMasterChef.sol";
-import "../Common/StratFeeManager.sol";
+import "../Common/StratFeeManagerInitializable.sol";
 import "../../utils/StringUtils.sol";
 import "../../utils/GasFeeThrottler.sol";
 
-contract StrategyCommonChefLP is StratFeeManager, GasFeeThrottler {
+contract StrategyCommonChefLP is StratFeeManagerInitializable, GasFeeThrottler {
     using SafeERC20 for IERC20;
 
     // Tokens used
@@ -40,15 +40,16 @@ contract StrategyCommonChefLP is StratFeeManager, GasFeeThrottler {
     event Withdraw(uint256 tvl);
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
-    constructor(
+    function initialize(
         address _want,
         uint256 _poolId,
         address _chef,
-        CommonAddresses memory _commonAddresses,
         address[] memory _outputToNativeRoute,
         address[] memory _outputToLp0Route,
-        address[] memory _outputToLp1Route
-    ) StratFeeManager(_commonAddresses) {
+        address[] memory _outputToLp1Route,
+        CommonAddresses calldata _commonAddresses
+    ) public initializer {
+        __StratFeeManager_init(_commonAddresses);
         want = _want;
         poolId = _poolId;
         chef = _chef;
