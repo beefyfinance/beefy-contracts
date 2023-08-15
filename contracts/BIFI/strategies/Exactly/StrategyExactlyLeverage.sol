@@ -154,7 +154,7 @@ contract StrategyExactlyLeverage is StratFeeManagerInitializable {
     }
 
     /**
-     * @dev Withdraws directly from Exactly if the new LTV doesn't exceed the target LTV. Otherwise 
+     * @dev Withdraws directly from Exactly if the new LTV doesn't exceed the high LTV. Otherwise 
      * the supply and borrow needs to be reduced by an amount to achieve the target LTV, and then 
      * an extra amount needs to withdrawn while maintaining target LTV.
      * @param _amount funds to withdraw from the lending pools
@@ -235,13 +235,12 @@ contract StrategyExactlyLeverage is StratFeeManagerInitializable {
         if (withdrawing) {
             (uint256 actualRepay,) = IExactlyMarket(eToken).repay(amounts[0], address(this));
             IExactlyMarket(eToken).withdraw(actualRepay + withdrawAmount, address(this), address(this));
-            IERC20(want).safeTransfer(balancerVault, amounts[0] + feeAmounts[0]);
         } else {
             IExactlyMarket(eToken).deposit(amounts[0], address(this));
             IExactlyMarket(eToken).borrow(amounts[0] + feeAmounts[0], address(this), address(this));
-            IERC20(want).safeTransfer(balancerVault, amounts[0] + feeAmounts[0]);
         }
 
+        IERC20(want).safeTransfer(balancerVault, amounts[0] + feeAmounts[0]);
         return true;
     }
 
@@ -341,7 +340,13 @@ contract StrategyExactlyLeverage is StratFeeManagerInitializable {
                 if (rewardRoutes[rewards[i]].uniswapRoute.length != 0) {
                     UniswapV3Utils.swap(unirouter, rewardRoutes[rewards[i]].uniswapRoute, bal);
                 } else {
-                    ISolidlyRouter(veloRouter).swapExactTokensForTokens(bal, 0, rewardRoutes[rewards[i]].solidlyRoute, address(this), block.timestamp);
+                    ISolidlyRouter(veloRouter).swapExactTokensForTokens(
+                        bal,
+                        0,
+                        rewardRoutes[rewards[i]].solidlyRoute,
+                        address(this),
+                        block.timestamp
+                    );
                 }
             }
             unchecked { ++i; }
