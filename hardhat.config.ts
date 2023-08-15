@@ -150,6 +150,12 @@ const config: DeploymentConfig = {
       chainId: 1101,
       accounts,
     },
+    base: {
+      url: process.env.BASE_RPC || "https://mainnet.base.org",
+      chainId: 8453,
+      accounts,
+      gasPrice: 100000,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
@@ -157,6 +163,9 @@ const config: DeploymentConfig = {
     apiKey: {
       polygon: process.env.POLYGON_API_KEY!,
       zkevm: process.env.ZKEVM_API_KEY!,
+      bsc: process.env.BSC_API_KEY!,
+      optimisticEthereum: process.env.OPTIMISM_API_KEY!,
+      base: process.env.BASE_API_KEY!,
     },
     customChains: [
       {
@@ -181,6 +190,14 @@ const config: DeploymentConfig = {
         urls: {
           apiURL: "https://api-zkevm.polygonscan.com/api",
           browserURL: "https://zkevm.polygonscan.com/",
+        },
+      },
+      {
+        network: "base",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://api.basescan.org/api",
+          browserURL: "https://basescan.org/",
         },
       },
     ],
