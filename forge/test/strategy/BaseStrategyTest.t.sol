@@ -179,6 +179,14 @@ abstract contract BaseStrategyTest is Test {
         return string(abi.encodePacked("0x", converted));
     }
 
+    function addrToStr(address a) public pure returns (string memory) {
+        return bytesToStr(abi.encodePacked(a));
+    }
+
+    function boolToStr(bool b) public pure returns (string memory) {
+        return b ? 'true' : 'false';
+    }
+
     function routeToStr(address[] memory a) public pure returns (string memory t) {
         if (a.length == 0) return "[]";
         if (a.length == 1) return string.concat("[", bytesToStr(abi.encodePacked(a[0])), "]");

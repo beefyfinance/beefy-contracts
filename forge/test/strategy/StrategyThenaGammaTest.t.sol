@@ -28,7 +28,8 @@ contract StrategyThenaGammaTest is BaseStrategyTest {
     address constant native = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
     address constant the = 0xF4C8E32EaDEC4BFe97E0F595AdD0f4450a863a11;
     address constant unirouter = 0x327Dd3208f0bCF590A66110aCB6e5e6941A4EfA0;
-    address constant wusdr = 0x2952beb1326acCbB5243725bd4Da2fC937BCa087;
+    address constant wusdrOld = 0x2952beb1326acCbB5243725bd4Da2fC937BCa087;
+    address constant wusdr = 0x9467f15f44A8641389556387b43d9ED3f6981818;
     address constant bnbx = 0x1bdd3Cf7F79cfB8EdbB955f20ad99211551BA275;
     address constant usdc = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
     address constant usdt = 0x55d398326f99059fF775485246999027B3197955;
@@ -41,13 +42,20 @@ contract StrategyThenaGammaTest is BaseStrategyTest {
 
     bytes outputToNative = AlgebraUtils.routeToPath(route(the, native));
 
-    // WUSDR-DOLA
-    address constant want = 0x92104a7BeC32297DdD022A8f242bf498d0470876;
-    address constant rewardPool = 0x2174e40F56806D32f56Ad95202a4137B9F513E0b;
-    address[] lp0Route = [native, usdt, usdc, wusdr];
-    address[] lp1Route = [native, usdt, usdc, wusdr, 0x2F29Bc0FFAF9bff337b31CBe6CB5Fb3bf12e5840];
-    bytes nativeToLp0 = AlgebraUtils.routeToPath(lp0Route);
+    // USDC-wUSDRv3
+    address constant want = 0xF7369B1D005F2cbB1887233B5aa0CB0B39fB9891;
+    address constant rewardPool = 0x56019Fe949C29Ec8b895cFFAb3292564CD1C3e42;
+    address[] lp1Route = [native, usdt, usdc, wusdr];
+    bytes nativeToLp0 = AlgebraUtils.routeToPath(route(native, usdt, usdc));
     bytes nativeToLp1 = AlgebraUtils.routeToPath(lp1Route);
+
+    // WUSDR-DOLA
+//    address constant want = 0x92104a7BeC32297DdD022A8f242bf498d0470876;
+//    address constant rewardPool = 0x2174e40F56806D32f56Ad95202a4137B9F513E0b;
+//    address[] lp0Route = [native, usdt, usdc, wusdrOld];
+//    address[] lp1Route = [native, usdt, usdc, wusdrOld, 0x2F29Bc0FFAF9bff337b31CBe6CB5Fb3bf12e5840];
+//    bytes nativeToLp0 = AlgebraUtils.routeToPath(lp0Route);
+//    bytes nativeToLp1 = AlgebraUtils.routeToPath(lp1Route);
 
     // ETH-ankrETH
 //    address constant want = 0x5c15842fCC12313C4f94dFB6fad1Af3f989D33e9;
@@ -106,7 +114,7 @@ contract StrategyThenaGammaTest is BaseStrategyTest {
     // wUSDR-USDC
 //    address constant want = 0x339685503dD534D27ce4a064314c2E5c7144aa92;
 //    address constant rewardPool = 0xaD11A9034fB8657ebBB2FdD75f7254C2805F4981;
-//    address[] lp0Route = [native, usdt, usdc, wusdr];
+//    address[] lp0Route = [native, usdt, usdc, wusdrOld];
 //    bytes nativeToLp0 = AlgebraUtils.routeToPath(lp0Route);
 //    bytes nativeToLp1 = AlgebraUtils.routeToPath(route(native, usdt, usdc));
 
@@ -156,7 +164,7 @@ contract StrategyThenaGammaTest is BaseStrategyTest {
         skip(1 days);
         console.log("Harvesting vault");
         vm.prank(strategy.keeper());
-        strategy.setFastQuote(false);
+        strategy.setFastQuote(true);
         strategy.harvest();
         console.log("Vault balance", strategy.balanceOfPool());
         assertGt(vault.balance(), vaultBalance, "Harvested 0");
