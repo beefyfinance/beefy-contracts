@@ -52,9 +52,10 @@ abstract contract BeefyERC721Enumerable is ERC721, IERC721Enumerable {
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256 tokenId
+        uint256 tokenId,
+        uint256 batchSize
     ) internal virtual override {
-        super._beforeTokenTransfer(from, to, tokenId);
+        super._beforeTokenTransfer(from, to, tokenId, batchSize);
 
         // Only allow one NFT for each address.
         require(_ownedTokens[to][0] == 0, "to: address already owns NFT");
