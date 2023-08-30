@@ -10,9 +10,8 @@ import "../../interfaces/common/ISolidlyPair.sol";
 import "../../interfaces/common/IVelodromeGauge.sol";
 import "../../interfaces/common/IERC20Extended.sol";
 import "../Common/StratFeeManagerInitializable.sol";
-import "../../utils/GasFeeThrottler.sol";
 
-contract StrategyCommonVelodromeGaugeV2 is StratFeeManagerInitializable, GasFeeThrottler {
+contract StrategyVelodromeGaugeV2 is StratFeeManagerInitializable {
     using SafeERC20 for IERC20;
 
     // Tokens used
@@ -68,8 +67,8 @@ contract StrategyCommonVelodromeGaugeV2 is StratFeeManagerInitializable, GasFeeT
 
         output = outputToNativeRoute[0].from;
         native = outputToNativeRoute[outputToNativeRoute.length -1].to;
-        lpToken0 = outputToLp0Route[outputToLp0Route.length - 1].to;
-        lpToken1 = outputToLp1Route[outputToLp1Route.length - 1].to;
+        lpToken0 = ISolidlyPair(want).token0();
+        lpToken1 = ISolidlyPair(want).token1();
 
         _giveAllowances();
         
@@ -116,16 +115,12 @@ contract StrategyCommonVelodromeGaugeV2 is StratFeeManagerInitializable, GasFeeT
         }
     }
 
-    function harvest() external gasThrottle virtual {
+    function harvest() external virtual {
         _harvest(tx.origin);
     }
 
-    function harvest(address callFeeRecipient) external gasThrottle virtual {
+    function harvest(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
-    }
-
-    function managerHarvest() external onlyManager {
-        _harvest(tx.origin);
     }
 
     // compounds earnings and charges performance fee
@@ -235,10 +230,6 @@ contract StrategyCommonVelodromeGaugeV2 is StratFeeManagerInitializable, GasFeeT
         } else {
             setWithdrawalFee(10);
         }
-    }
-
-    function setShouldGasThrottle(bool _shouldGasThrottle) external onlyManager {
-        shouldGasThrottle = _shouldGasThrottle;
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
