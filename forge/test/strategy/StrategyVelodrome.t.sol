@@ -30,8 +30,8 @@ contract StrategyVelodrome is BaseStrategyTest {
     address constant usdc = 0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA;
 
     // DAI-USDbC
-    address constant want = 0x6EAB8c1B93f5799daDf2C687a30230a540DbD636;
-    address constant gauge = 0xCF1D5Aa63083fda05c7f8871a9fDbfed7bA49060;
+//    address constant want = 0x6EAB8c1B93f5799daDf2C687a30230a540DbD636;
+//    address constant gauge = 0xCF1D5Aa63083fda05c7f8871a9fDbfed7bA49060;
 
 //    "name": "aerodrome-wusdr-usdbc",
 //    address constant want = 0x3Fc28BFac25fC8e93B5b2fc15EfBBD5a8aA44eFe;
@@ -54,8 +54,8 @@ contract StrategyVelodrome is BaseStrategyTest {
 //    address constant gauge = 0xeca7Ff920E7162334634c721133F3183B83B0323;
 
 // "name": "aerodrome-mai-usdbc",
-//    address constant want = 0xf6Aec4F97623E691a9426a69BaF5501509fCa05D;
-//    address constant gauge = 0xC01E2ff20501839db7B28F5Cb3eD2876fEa3d6b1;
+    address constant want = 0xf6Aec4F97623E691a9426a69BaF5501509fCa05D;
+    address constant gauge = 0xC01E2ff20501839db7B28F5Cb3eD2876fEa3d6b1;
 
 //"name": "aerodrome-dola-usdbc",
 //    address constant want = 0x0B25c51637c43decd6CC1C1e3da4518D54ddb528;
@@ -142,18 +142,18 @@ contract StrategyVelodrome is BaseStrategyTest {
         deal(vault.want(), address(user), wantAmount);
         initBase(vault, IStrategy(address(strategy)));
 
-        skip(1 weeks);
-        address[] memory gauges = new address[](1);
-        gauges[0] = gauge;
-        voter.distribute(gauges);
-        address aeroUsdcLp = 0x2223F9FE624F69Da4D8256A7bCc9104FBA7F8f75;
-        address aeroEthLP = 0x7f670f78B17dEC44d5Ef68a48740b6f8849cc2e6;
-        deal(output, aeroUsdcLp, 1_000_000 * 1e18);
-        deal(usdc, aeroUsdcLp, 1_000_000 * 1e6);
-        deal(output, aeroEthLP, 1_000_000 * 1e18);
-        deal(native, aeroEthLP, 600 * 1e18);
-        IPool(aeroUsdcLp).mint(address(1));
-        IPool(aeroEthLP).mint(address(1));
+//        skip(1 weeks);
+//        address[] memory gauges = new address[](1);
+//        gauges[0] = strategy.gauge();
+//        voter.distribute(gauges);
+//        address aeroUsdcLp = 0x2223F9FE624F69Da4D8256A7bCc9104FBA7F8f75;
+//        address aeroEthLP = 0x7f670f78B17dEC44d5Ef68a48740b6f8849cc2e6;
+//        deal(output, aeroUsdcLp, 1_000_000 * 1e18);
+//        deal(usdc, aeroUsdcLp, 1_000_000 * 1e6);
+//        deal(output, aeroEthLP, 1_000_000 * 1e18);
+//        deal(native, aeroEthLP, 600 * 1e18);
+//        IPool(aeroUsdcLp).mint(address(1));
+//        IPool(aeroEthLP).mint(address(1));
     }
 
     function test_printRoutes() public view {
