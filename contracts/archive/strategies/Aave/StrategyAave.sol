@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "../../interfaces/aave/IDataProvider.sol";
-import "../../interfaces/aave/IIncentivesController.sol";
+import "../../interfaces/aave/IAaveV3Incentives.sol";
 import "../../interfaces/aave/ILendingPool.sol";
 import "../../interfaces/common/IUniswapRouterETH.sol";
 import "../Common/FeeManager.sol";
@@ -20,19 +20,21 @@ contract StrategyAave is StratManager, FeeManager {
     using SafeMath for uint256;
 
     // Tokens used
-    address constant public wmatic = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
-    address constant public eth = address(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619);
+    address public native;
     address public want;
     address public aToken;
     address public varDebtToken;
 
     // Third party contracts
-    address constant public dataProvider = address(0x7551b5D2763519d4e37e8B81929D336De671d46d);
-    address constant public lendingPool = address(0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf);
-    address constant public incentivesController = address(0x357D51124f59836DeD84c8a1730D72B749d8BC23);
+    address public dataProvider;
+    address public lendingPool;
+    address public incentivesController;
 
     // Routes
-    address[] public wmaticToWantRoute;
+    address[] public nativeToWantRoute;
+
+    bool public harvestOnDeposit;
+    uint256 public lastHarvest;
 
     /**
      * @dev Variables that can be changed to config profitability and risk:
@@ -52,22 +54,31 @@ contract StrategyAave is StratManager, FeeManager {
 
     /**
      * @dev Helps to differentiate borrowed funds that shouldn't be used in functions like 'deposit()'
-     * as they're required to deleverage correctly.  
+     * as they're required to deleverage correctly.
      */
     uint256 public reserves = 0;
 
     /**
      * @dev Events that the contract emits
      */
-    event StratHarvest(address indexed harvester);
+    event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
+    event Deposit(uint256 tvl);
+    event Withdraw(uint256 tvl);
+    event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
     event StratRebalance(uint256 _borrowRate, uint256 _borrowDepth);
+    event SetEMode(uint8 eMode, uint256 borrowRateMax, uint256 borrowRate, uint256 borrowDepth);
 
     constructor(
         address _want,
+        address _native,
         uint256 _borrowRate,
         uint256 _borrowRateMax,
         uint256 _borrowDepth,
         uint256 _minLeverage,
+        uint8 _eMode,
+        address _dataProvider,
+        address _lendingPool,
+        address _incentivesController,
         address _vault,
         address _unirouter,
         address _keeper,
@@ -75,18 +86,23 @@ contract StrategyAave is StratManager, FeeManager {
         address _beefyFeeRecipient
     ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
         want = _want;
-        (aToken,,varDebtToken) = IDataProvider(dataProvider).getReserveTokensAddresses(want);
+        native = _native;
 
         borrowRate = _borrowRate;
         borrowRateMax = _borrowRateMax;
         borrowDepth = _borrowDepth;
         minLeverage = _minLeverage;
+        dataProvider = _dataProvider;
+        lendingPool = _lendingPool;
+        incentivesController = _incentivesController;
 
-        if (want == eth) {
-            wmaticToWantRoute = [wmatic, eth];
-        } else if (want != wmatic) {
-            wmaticToWantRoute = [wmatic, eth, want];
+        (aToken,,varDebtToken) = IDataProvider(dataProvider).getReserveTokensAddresses(want);
+
+        if (_eMode != 0) {
+            ILendingPool(lendingPool).setUserEMode(_eMode);
         }
+
+        nativeToWantRoute = [native, want];
 
         _giveAllowances();
     }
@@ -97,6 +113,7 @@ contract StrategyAave is StratManager, FeeManager {
 
         if (wantBal > 0) {
             _leverage(wantBal);
+            emit Deposit(balanceOf());
         }
     }
 
@@ -110,12 +127,13 @@ contract StrategyAave is StratManager, FeeManager {
         for (uint i = 0; i < borrowDepth; i++) {
             ILendingPool(lendingPool).deposit(want, _amount, address(this), 0);
             _amount = _amount.mul(borrowRate).div(100);
-            ILendingPool(lendingPool).borrow(want, _amount, INTEREST_RATE_MODE, 0, address(this));
+            if (_amount > 0) {
+                ILendingPool(lendingPool).borrow(want, _amount, INTEREST_RATE_MODE, 0, address(this));
+            }
         }
 
         reserves = reserves.add(_amount);
     }
-
 
     /**
      * @dev Incrementally alternates between paying part of the debt and withdrawing part of the supplied
@@ -123,7 +141,7 @@ contract StrategyAave is StratManager, FeeManager {
      * from the system
      */
     function _deleverage() internal {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
         (uint256 supplyBal, uint256 borrowBal) = userReserves();
 
         while (wantBal < borrowBal) {
@@ -133,11 +151,15 @@ contract StrategyAave is StratManager, FeeManager {
             uint256 targetSupply = borrowBal.mul(100).div(borrowRate);
 
             ILendingPool(lendingPool).withdraw(want, supplyBal.sub(targetSupply), address(this));
-            wantBal = IERC20(want).balanceOf(address(this));
+            wantBal = balanceOfWant();
         }
 
-        ILendingPool(lendingPool).repay(want, uint256(-1), INTEREST_RATE_MODE, address(this));
-        ILendingPool(lendingPool).withdraw(want, type(uint).max, address(this));
+        if (borrowBal > 0) {
+            ILendingPool(lendingPool).repay(want, uint256(-1), INTEREST_RATE_MODE, address(this));
+        }
+        if (supplyBal > 0) {
+            ILendingPool(lendingPool).withdraw(want, type(uint).max, address(this));
+        }
 
         reserves = 0;
     }
@@ -151,16 +173,19 @@ contract StrategyAave is StratManager, FeeManager {
     function deleverageOnce(uint _borrowRate) external onlyManager {
         require(_borrowRate <= borrowRateMax, "!safe");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
-        ILendingPool(lendingPool).repay(want, wantBal, INTEREST_RATE_MODE, address(this));
+        uint256 wantBal = balanceOfWant();
+        if (wantBal > 0) {
+            ILendingPool(lendingPool).repay(want, wantBal, INTEREST_RATE_MODE, address(this));
+        }
 
         (uint256 supplyBal, uint256 borrowBal) = userReserves();
         uint256 targetSupply = borrowBal.mul(100).div(_borrowRate);
 
-        ILendingPool(lendingPool).withdraw(want, supplyBal.sub(targetSupply), address(this));
+        if (supplyBal.sub(targetSupply) > 0) {
+            ILendingPool(lendingPool).withdraw(want, supplyBal.sub(targetSupply), address(this));
+        }
 
-        wantBal = IERC20(want).balanceOf(address(this));
-        reserves = wantBal;
+        reserves = balanceOfWant();
     }
 
     /**
@@ -176,44 +201,70 @@ contract StrategyAave is StratManager, FeeManager {
         borrowRate = _borrowRate;
         borrowDepth = _borrowDepth;
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
         _leverage(wantBal);
 
-        StratRebalance(_borrowRate, _borrowDepth);
+        emit StratRebalance(_borrowRate, _borrowDepth);
+    }
+
+    function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            require(msg.sender == vault, "!vault");
+            _harvest(tx.origin);
+        }
+    }
+
+    function harvest() external virtual {
+        _harvest(tx.origin);
+    }
+
+    function harvest(address callFeeRecipient) external virtual {
+        _harvest(callFeeRecipient);
+    }
+
+    function managerHarvest() external onlyManager {
+        _harvest(tx.origin);
     }
 
     // compounds earnings and charges performance fee
-    function harvest() external whenNotPaused {
+    function _harvest(address callFeeRecipient) internal whenNotPaused {
         address[] memory assets = new address[](2);
         assets[0] = aToken;
         assets[1] = varDebtToken;
-        IIncentivesController(incentivesController).claimRewards(assets, type(uint).max, address(this));
+        IAaveV3Incentives(incentivesController).claimRewards(assets, type(uint).max, address(this), native);
 
-        chargeFees();
-        swapRewards();
-        deposit();
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        if (nativeBal > 0) {
+            chargeFees(callFeeRecipient);
+            swapRewards();
+            uint256 wantHarvested = availableWant();
+            deposit();
 
-        emit StratHarvest(msg.sender);
+            lastHarvest = block.timestamp;
+            emit StratHarvest(msg.sender, wantHarvested, balanceOf());
+        }
     }
 
     // performance fees
-    function chargeFees() internal {
-        uint256 wmaticFeeBal = IERC20(wmatic).balanceOf(address(this)).mul(45).div(1000);
+    function chargeFees(address callFeeRecipient) internal {
+        uint256 nativeFeeBal = IERC20(native).balanceOf(address(this)).mul(45).div(1000);
 
-        uint256 callFeeAmount = wmaticFeeBal.mul(callFee).div(MAX_FEE);
-        IERC20(wmatic).safeTransfer(tx.origin, callFeeAmount);
+        uint256 callFeeAmount = nativeFeeBal.mul(callFee).div(MAX_FEE);
+        IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = wmaticFeeBal.mul(beefyFee).div(MAX_FEE);
-        IERC20(wmatic).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
+        uint256 beefyFeeAmount = nativeFeeBal.mul(beefyFee).div(MAX_FEE);
+        IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFee = wmaticFeeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(wmatic).safeTransfer(strategist, strategistFee);
+        uint256 strategistFeeAmount = nativeFeeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        IERC20(native).safeTransfer(strategist, strategistFeeAmount);
+
+        emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
     // swap rewards to {want}
     function swapRewards() internal {
-        uint256 wmaticBal = IERC20(wmatic).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(wmaticBal, 0, wmaticToWantRoute, address(this), now);
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(nativeBal, 0, nativeToWantRoute, address(this), now);
     }
 
     /**
@@ -225,22 +276,22 @@ contract StrategyAave is StratManager, FeeManager {
         require(msg.sender == vault, "!vault");
 
         uint256 wantBal = availableWant();
-
         if (wantBal < _amount) {
             _deleverage();
-            wantBal = IERC20(want).balanceOf(address(this));
+            wantBal = balanceOfWant();
         }
 
         if (wantBal > _amount) {
             wantBal = _amount;
         }
 
-        if (tx.origin == owner() || paused()) {
-            IERC20(want).safeTransfer(vault, wantBal);
-        } else {
+        if (tx.origin != owner() && !paused()) {
             uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFeeAmount));
+            wantBal = wantBal.sub(withdrawalFeeAmount);
         }
+
+        IERC20(want).safeTransfer(vault, wantBal);
+        emit Withdraw(balanceOf());
 
         if (!paused()) {
             _leverage(availableWant());
@@ -252,8 +303,7 @@ contract StrategyAave is StratManager, FeeManager {
      * @return how much {want} the contract holds without reserves
      */
     function availableWant() public view returns (uint256) {
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
-        return wantBal.sub(reserves);
+        return balanceOfWant().sub(reserves);
     }
 
     // return supply and borrow balance
@@ -290,13 +340,66 @@ contract StrategyAave is StratManager, FeeManager {
         return supplyBal.sub(borrowBal);
     }
 
+    function nativeToWant() public view returns (address[] memory) {
+        return nativeToWantRoute;
+    }
+
+    // returns rewards unharvested
+    function rewardsAvailable() public view returns (uint256) {
+        address[] memory assets = new address[](2);
+        assets[0] = aToken;
+        assets[1] = varDebtToken;
+        return IAaveV3Incentives(incentivesController).getUserRewards(assets, address(this), native);
+    }
+
+    // native reward amount for calling harvest
+    function callReward() public view returns (uint256) {
+        return rewardsAvailable().mul(45).div(1000).mul(callFee).div(MAX_FEE);
+    }
+
+    // returns strategy's eMode
+    function eMode() external view returns (uint256) {
+        return ILendingPool(lendingPool).getUserEMode(address(this));
+    }
+
+    // set strategy to a new eMode and set borrowRateMax to the loan-to-value of the new eMode category
+    function setEMode(uint8 _eMode, uint256 _borrowRateMax, uint256 _borrowRate, uint256 _borrowDepth) external onlyManager {
+        _deleverage();
+        ILendingPool(lendingPool).setUserEMode(_eMode);
+
+        if (_eMode != 0) {
+            (uint16 ltv,,,,) = ILendingPool(lendingPool).getEModeCategoryData(_eMode);
+            borrowRateMax = uint256(ltv).div(100);
+        } else {
+            borrowRateMax = _borrowRateMax;
+        }
+
+        require(_borrowRate <= borrowRateMax, "!rate");
+        require(_borrowDepth <= BORROW_DEPTH_MAX, "!depth");
+        borrowRate = _borrowRate;
+        borrowDepth = _borrowDepth;
+
+        _leverage(balanceOfWant());
+
+        emit SetEMode(_eMode, borrowRateMax, borrowRate, borrowDepth);
+    }
+
+    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+        harvestOnDeposit = _harvestOnDeposit;
+        if (harvestOnDeposit) {
+            setWithdrawalFee(0);
+        } else {
+            setWithdrawalFee(10);
+        }
+    }
+
     // called as part of strat migration. Sends all the available funds back to the vault.
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
         _deleverage();
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
         IERC20(want).transfer(vault, wantBal);
     }
 
@@ -322,11 +425,11 @@ contract StrategyAave is StratManager, FeeManager {
 
     function _giveAllowances() internal {
         IERC20(want).safeApprove(lendingPool, uint256(-1));
-        IERC20(wmatic).safeApprove(unirouter, uint256(-1));
+        IERC20(native).safeApprove(unirouter, uint256(-1));
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(lendingPool, 0);
-        IERC20(wmatic).safeApprove(unirouter, 0);
+        IERC20(native).safeApprove(unirouter, 0);
     }
-} 
+}

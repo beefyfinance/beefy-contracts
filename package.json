@@ -68,7 +68,6 @@
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin-2/contracts": "npm:@openzeppelin/contracts@2.5.1",
     "@openzeppelin-4/contracts": "npm:@openzeppelin/contracts",
-    "@openzeppelin/contracts": "^3.4.2",
     "@openzeppelin/contracts-upgradeable": "^4.9.3",
     "@openzeppelin/hardhat-upgrades": "^1.21.0",
     "@openzeppelin/upgrades-core": "^1.20.4",
