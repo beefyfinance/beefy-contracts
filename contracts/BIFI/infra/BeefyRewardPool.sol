@@ -135,9 +135,9 @@ contract BeefyRewardPool is LPTokenWrapperInitializable, OwnableUpgradeable {
         if (_reward == address(stakedToken)) revert StakedTokenIsNotAReward();
         if (_duration < 1 days) revert ShortDuration();
         if (_reward != rewardTokens[rewardTokenIndex[_reward]]) {
-            if (rewardTokens.length > rewardMax - 1) revert TooManyRewards();
             rewardTokenIndex[_reward] = rewardTokens.length;
             rewardTokens.push(_reward);
+            if (rewardTokens.length > rewardMax) revert TooManyRewards();
         }
 
         uint256 leftover;
