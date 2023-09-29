@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0; 
 
+import "@openzeppelin-4/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/beethovenx/IBalancerVault.sol";
 import "./BeefyBalancerStructs.sol";
 
@@ -13,6 +14,27 @@ library BalancerActionsLib {
             unchecked { ++i; }
         }
         bytes memory userData = abi.encode(1, amounts, 1);
+
+        IBalancerVault.JoinPoolRequest memory request = IBalancerVault.JoinPoolRequest(lpTokens, amounts, userData, false);
+        IBalancerVault(_vault).joinPool(_poolId, address(this), address(this), request);
+    }
+
+     function multiJoin(address _vault, address _want, bytes32 _poolId, address _token0In, address _token1In, uint256 _amount0In, uint256 _amount1In) internal {
+        (address[] memory lpTokens,uint256[] memory balances,) = IBalancerVault(_vault).getPoolTokens(_poolId);
+        uint256 supply = IERC20(_want).totalSupply();
+        uint256[] memory amounts = new uint256[](lpTokens.length);
+        for (uint256 i = 0; i < amounts.length;) {
+            if (lpTokens[i] == _token0In) amounts[i] = _amount0In;
+            else if (lpTokens[i] == _token1In) amounts[i] = _amount1In;
+            else amounts[i] = 0;
+            unchecked { ++i; }
+        }
+
+        uint256 bpt0 = (amounts[0] * supply / balances[0]) - 100;
+        uint256 bpt1 = (amounts[1] * supply / balances[1]) - 100;
+
+        uint256 bptOut = bpt0 > bpt1 ? bpt1 : bpt0;
+        bytes memory userData = abi.encode(3, bptOut);
 
         IBalancerVault.JoinPoolRequest memory request = IBalancerVault.JoinPoolRequest(lpTokens, amounts, userData, false);
         IBalancerVault(_vault).joinPool(_poolId, address(this), address(this), request);
