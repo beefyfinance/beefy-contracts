@@ -33,6 +33,7 @@
     "test:harvester": "hardhat test --network localhost test/infra/BeefyAutoHarvester.test.ts",
     "deploy:chef": "hardhat run scripts/vault/deploy-generic-chef-strat.ts --network",
     "deploy:balancer": "hardhat run scripts/vault/deploy-balancer-strat-type.ts --network",
+    "deploy:aura": "hardhat run scripts/vault/deploy-balancer-strat-eth.ts --network",
     "deploy:bifiMaxi": "hardhat run scripts/vault/deploy-bifi-maxi.js --network",
     "deploy:curve": "hardhat run scripts/vault/deploy-curve-strat.ts --network",
     "deploy:rewardPool": "hardhat run scripts/vault/deploy-generic-rewardPool-strat.ts --network",
@@ -56,6 +57,7 @@
     "installForge": ". scripts/forge/installForge.sh",
     "forgeTest:vault": "forge test --force --fork-url https://rpc.ftm.tools --match-contract ProdVaultTest",
     "forgeTest:wrapper": "forge test --force --fork-url https://arb1.arbitrum.io/rpc --match-contract WrapperTest",
+    "forgeTest:aura": "forge test --force --fork-url https://rpc.ankr.com/eth --match-contract StrategyAuraGyroTest",
     "deploy:vaultFactory": "hardhat run scripts/deploy-vault-proxyFactory.js --network",
     "fork:bsc": "hardhat node --fork bsc",
     "deploy:tutorial": "hardhat run tutorials/deploy-pancakeswap-vault.js --network localhost"
