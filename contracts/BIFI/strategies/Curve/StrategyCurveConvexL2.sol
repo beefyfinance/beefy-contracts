@@ -7,7 +7,7 @@ import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../interfaces/common/IWrappedNative.sol";
 import "../../interfaces/convex/IConvex.sol";
 import "../../interfaces/curve/ICrvMinter.sol";
-import "../../interfaces/curve/ICurveRouter.sol";
+import "../../interfaces/curve/ICurveRouterV1.sol";
 import "../../interfaces/curve/IRewardsGauge.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 import "../../utils/UniV3Actions.sol";
@@ -31,11 +31,6 @@ contract StrategyCurveConvexL2 is StratFeeManagerInitializable {
     address public rewardPool; // convex base reward pool
     uint public pid; // convex booster poolId
 
-    struct CurveRoute {
-        address[9] route;
-        uint256[3][4] swapParams;
-        uint minAmount; // minimum amount to be swapped to native
-    }
     CurveRoute[] public curveRewards;
 
     struct RewardV3 {
@@ -67,7 +62,7 @@ contract StrategyCurveConvexL2 is StratFeeManagerInitializable {
         address _gauge,
         uint _pid,
         bytes calldata _nativeToDepositPath,
-        CurveRoute calldata _crvToNative,
+        CurveRoute[] calldata _rewardsToNative,
         CurveRoute calldata _depositToWant,
         CommonAddresses calldata _commonAddresses
     ) public initializer {
@@ -85,8 +80,11 @@ contract StrategyCurveConvexL2 is StratFeeManagerInitializable {
             isCrvMintable = true;
         }
 
-        if (_crvToNative.route[0] != address(0)) {
-            addReward(_crvToNative.route, _crvToNative.swapParams, _crvToNative.minAmount);
+        for (uint i; i < _rewardsToNative.length; i++) {
+            addReward(_rewardsToNative[i].route, _rewardsToNative[i].swapParams, _rewardsToNative[i].minAmount);
+        }
+        if (_rewardsToNative.length > 1) {
+            isCurveRewardsClaimable = true;
         }
         setNativeToDepositPath(_nativeToDepositPath);
         setDepositToWant(_depositToWant.route, _depositToWant.swapParams, _depositToWant.minAmount);
@@ -189,7 +187,7 @@ contract StrategyCurveConvexL2 is StratFeeManagerInitializable {
         for (uint i; i < curveRewards.length; ++i) {
             uint bal = IERC20(curveRewards[i].route[0]).balanceOf(address(this));
             if (bal > curveRewards[i].minAmount) {
-                ICurveRouter(curveRouter).exchange_multiple(curveRewards[i].route, curveRewards[i].swapParams, bal, 0);
+                ICurveRouterV1(curveRouter).exchange(curveRewards[i].route, curveRewards[i].swapParams, bal, 0);
             }
         }
         for (uint i; i < rewardsV3.length; ++i) {
@@ -226,7 +224,7 @@ contract StrategyCurveConvexL2 is StratFeeManagerInitializable {
 
         uint bal = IERC20(depositToWant.route[0]).balanceOf(address(this));
         if (bal > depositToWant.minAmount) {
-            ICurveRouter(curveRouter).exchange_multiple(depositToWant.route, depositToWant.swapParams, bal, 0);
+            ICurveRouterV1(curveRouter).exchange(depositToWant.route, depositToWant.swapParams, bal, 0);
         }
     }
 
@@ -252,7 +250,7 @@ contract StrategyCurveConvexL2 is StratFeeManagerInitializable {
         nativeToDepositPath = _nativeToDepositPath;
     }
 
-    function setDepositToWant(address[9] calldata _route, uint[3][4] calldata _swapParams, uint minAmount) public onlyManager {
+    function setDepositToWant(address[11] calldata _route, uint[5][5] calldata _swapParams, uint minAmount) public onlyManager {
         address token = _route[0];
         _checkSwapToken(token, true);
 
@@ -261,7 +259,7 @@ contract StrategyCurveConvexL2 is StratFeeManagerInitializable {
         _approve(token, curveRouter, type(uint).max);
     }
 
-    function addReward(address[9] calldata _rewardToNativeRoute, uint[3][4] calldata _swapParams, uint _minAmount) public onlyManager {
+    function addReward(address[11] calldata _rewardToNativeRoute, uint[5][5] calldata _swapParams, uint _minAmount) public onlyManager {
         address token = _rewardToNativeRoute[0];
         _checkSwapToken(token, false);
 
@@ -314,11 +312,11 @@ contract StrategyCurveConvexL2 is StratFeeManagerInitializable {
         }
     }
 
-    function depositToWantRoute() external view returns (address[9] memory, uint256[3][4] memory, uint) {
+    function depositToWantRoute() external view returns (address[11] memory, uint256[5][5] memory, uint) {
         return (depositToWant.route, depositToWant.swapParams, depositToWant.minAmount);
     }
 
-    function curveReward(uint i) external view returns (address[9] memory, uint256[3][4] memory, uint) {
+    function curveReward(uint i) external view returns (address[11] memory, uint256[5][5] memory, uint) {
         return (curveRewards[i].route, curveRewards[i].swapParams, curveRewards[i].minAmount);
     }
 
