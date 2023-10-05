@@ -1,28 +1,17 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.19;
 
 import { IERC20MetadataUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+
 import { IUniswapV2Pair } from "../../interfaces/common/IUniswapV2Pair.sol";
-import { BeefyOracleHelper } from "./BeefyOracleHelper.sol";
+import { BeefyOracleHelper, IBeefyOracle, BeefyOracleErrors } from "./BeefyOracleHelper.sol";
 
 /// @title Beefy Oracle for UniswapV2
 /// @author Beefy, @kexley
 /// @notice On-chain oracle using UniswapV2
 /// @dev Observations are stored here as UniswapV2 pairs do not store historical observations
 contract BeefyOracleUniswapV2 {
-
-    /// @dev Array length is not correct
-    error ArrayLength();
-
-    /// @dev No price for base token
-    /// @param token Base token
-    error NoBasePrice(address token);
-
-    /// @dev Token is not present in the pair
-    /// @param token Input token
-    /// @param pair UniswapV2 pair
-    error TokenNotInPair(address token, address pair);
 
     /// @dev Struct of stored price averages and the most recent observation of a pair
     /// @param priceAverage0 Average price of token0
@@ -128,17 +117,17 @@ contract BeefyOracleUniswapV2 {
             abi.decode(_data, (address[], address[], uint256[]));
 
         if (tokens.length != pairs.length + 1 || tokens.length != twapPeriods.length + 1) {
-            revert ArrayLength();
+            revert BeefyOracleErrors.ArrayLength();
         }
 
         uint256 basePrice = IBeefyOracle(msg.sender).getPrice(tokens[0]);
-        if (basePrice == 0) revert NoBasePrice();
+        if (basePrice == 0) revert BeefyOracleErrors.NoBasePrice(tokens[0]);
 
         for (uint i; i < pairs.length; i++) {
             address token = tokens[i];
             address pair = pairs[i];
             if (token != IUniswapV2Pair(pair).token0() || token != IUniswapV2Pair(pair).token1()) {
-                revert TokenNotInPair();
+                revert BeefyOracleErrors.TokenNotInPair(token, pair);
             }
         }
     }

@@ -1,27 +1,16 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.19;
 
 import { IERC20MetadataUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-import { BeefyOracleHelper } from "./BeefyOracleHelper.sol";
-import { UniswapV3OracleLibrary } from "../../utils/UniswapV3OracleLibrary.sol";
+
+import { UniswapV3OracleLibrary, IUniswapV3Pool } from "../../utils/UniswapV3OracleLibrary.sol";
+import { BeefyOracleHelper, IBeefyOracle, BeefyOracleErrors } from "./BeefyOracleHelper.sol";
 
 /// @title Beefy Oracle for UniswapV3
 /// @author Beefy, @kexley
 /// @notice On-chain oracle using UniswapV3
 library BeefyOracleUniswapV3 {
-
-    /// @dev Array length is not correct
-    error ArrayLength();
-
-    /// @dev No price for base token
-    /// @param token Base token
-    error NoBasePrice(address token);
-
-    /// @dev Token is not present in the pool
-    /// @param token Input token
-    /// @param pair UniswapV3 pool
-    error TokenNotInPool(address token, address pool);
 
     /// @notice Fetch price from the UniswapV3 pools using the TWAP observations
     /// @param _data Payload from the central oracle with the addresses of the token route, pool 
@@ -61,16 +50,18 @@ library BeefyOracleUniswapV3 {
         (address[] memory tokens, address[] memory pools, uint256[] memory twapPeriods) = 
             abi.decode(_data, (address[], address[], uint256[]));
 
-        if (tokens.length != pools.length + 1 || tokens.length != twapPeriods.length + 1) revert ArrayLength();
+        if (tokens.length != pools.length + 1 || tokens.length != twapPeriods.length + 1) {
+            revert BeefyOracleErrors.ArrayLength();
+        }
         
         uint256 basePrice = IBeefyOracle(msg.sender).getPrice(tokens[0]);
-        if (basePrice == 0) revert NoBasePrice(tokens[0]);
+        if (basePrice == 0) revert BeefyOracleErrors.NoBasePrice(tokens[0]);
 
         for (uint i; i < pools.length; i++) {
             address token = tokens[i];
             address pool = pools[i];
             if (token != IUniswapV3Pool(pool).token0() || token != IUniswapV3Pool(pool).token1()) {
-                revert TokenNotInPool(token, pool);
+                revert BeefyOracleErrors.TokenNotInPair(token, pool);
             }
         }
     }

@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.19;
 
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { IERC20MetadataUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
 import { IBeefyOracle } from "../interfaces/oracle/IBeefyOracle.sol";
 import { BytesLib } from "../utils/BytesLib.sol";
 
 /// @title Beefy Swapper
 /// @author Beefy, @kexley
-/// @notice Centralized swapper for strategies
+/// @notice Centralized swapper
 contract BeefySwapper is OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20MetadataUpgradeable;
     using BytesLib for bytes;
@@ -19,10 +20,20 @@ contract BeefySwapper is OwnableUpgradeable {
     /// @param token Address of token that failed the price update
     error PriceFailed(address token);
 
+    /// @dev No swap data has been set by the owner
+    /// @param fromToken Token to swap from
+    /// @param toToken Token to swap to
+    error NoSwapData(address fromToken, address toToken);
+
     /// @dev Swap call failed
     /// @param router Target address of the failed swap call
     /// @param data Payload of the failed call
     error SwapFailed(address router, bytes data);
+
+    /// @dev Not enough output was returned from the swap
+    /// @param amountOut Amount returned by the swap
+    /// @param minAmountOut Minimum amount required from the swap
+    error SlippageExceeded(uint256 amountOut, uint256 minAmountOut);
 
     /// @dev Stored data for a swap
     /// @param router Target address that will handle the swap
@@ -66,15 +77,15 @@ contract BeefySwapper is OwnableUpgradeable {
     /// swap the _toToken token is sent directly to the caller
     /// @param _fromToken Token to swap from
     /// @param _toToken Token to swap to
-    /// @param _amount Amount of _fromToken to use in the swap
-    /// @return outputAmount Amount of _toToken returned to the caller
+    /// @param _amountIn Amount of _fromToken to use in the swap
+    /// @return amountOut Amount of _toToken returned to the caller
     function swap(
         address _fromToken,
         address _toToken,
-        uint256 _amount
-    ) external returns (uint256 outputAmount) {
-        uint256 minAmountOut = _getMinAmount(_fromToken, _toToken, _amount);
-        outputAmount = _swap(_fromToken, _toToken, _amount, minAmountOut);
+        uint256 _amountIn
+    ) external returns (uint256 amountOut) {
+        uint256 minAmountOut = _getAmountOut(_fromToken, _toToken, _amountIn);
+        amountOut = _swap(_fromToken, _toToken, _amountIn, minAmountOut);
     }
 
     /// @notice Swap between two tokens with slippage provided by the caller
@@ -82,77 +93,92 @@ contract BeefySwapper is OwnableUpgradeable {
     /// swap the _toToken token is sent directly to the caller
     /// @param _fromToken Token to swap from
     /// @param _toToken Token to swap to
-    /// @param _amount Amount of _fromToken to use in the swap
+    /// @param _amountIn Amount of _fromToken to use in the swap
     /// @param _minAmountOut Minimum amount of _toToken that is acceptable to be returned to caller
-    /// @return outputAmount Amount of _toToken returned to the caller
+    /// @return amountOut Amount of _toToken returned to the caller
     function swap(
         address _fromToken,
         address _toToken,
-        uint256 _amount,
+        uint256 _amountIn,
         uint256 _minAmountOut
-    ) external returns (uint256 outputAmount) {
-        outputAmount = _swap(_fromToken, _toToken, _amount, _minAmountOut);
+    ) external returns (uint256 amountOut) {
+        amountOut = _swap(_fromToken, _toToken, _amountIn, _minAmountOut);
+    }
+
+    /// @notice Get the amount out from a simulated swap with slippage and non-fresh prices
+    /// @param _fromToken Token to swap from
+    /// @param _toToken Token to swap to
+    /// @param _amountIn Amount of _fromToken to use in the swap
+    /// @return amountOut Amount of _toTokens returned from the swap
+    function getAmountOut(
+        address _fromToken,
+        address _toToken,
+        uint256 _amountIn
+    ) external view returns (uint256 amountOut) {
+        (uint256 fromPrice, uint256 toPrice) = _getPrice(_fromToken, _toToken);
+        uint8 decimals0 = IERC20MetadataUpgradeable(_fromToken).decimals();
+        uint8 decimals1 = IERC20MetadataUpgradeable(_toToken).decimals();
+
+        amountOut = _calculateAmountOut(_amountIn, fromPrice, toPrice, decimals0, decimals1);
     }
 
     /// @dev Use the oracle to get prices for both _fromToken and _toToken and calculate the
     /// estimated output reduced by the slippage
     /// @param _fromToken Token to swap from
     /// @param _toToken Token to swap to
-    /// @param _amount Amount of _fromToken to use in the swap
-    /// @return minAmountOut Minimum amount of _toToken that is acceptable to be returned to caller
-    function _getMinAmount(
+    /// @param _amountIn Amount of _fromToken to use in the swap
+    /// @return amountOut Amount of _toToken returned by the swap
+    function _getAmountOut(
         address _fromToken,
         address _toToken,
-        uint256 _amount
-    ) private returns (uint256 minAmountOut) {
-        address[] memory tokens = new address[](2);
-        (tokens[0], tokens[1]) = (_fromToken, _toToken);
-        (uint256[] memory prices, bool[] memory successes) = oracle.getFreshPrice(tokens);
-        for (uint i; i < successes.length;) {
-            if (!successes[i]) revert PriceFailed(tokens[i]);
-            unchecked { i++; }
-        }
+        uint256 _amountIn
+    ) private returns (uint256 amountOut) {
+        (uint256 fromPrice, uint256 toPrice) = _getFreshPrice(_fromToken, _toToken);
+        uint8 decimals0 = IERC20MetadataUpgradeable(_fromToken).decimals();
+        uint8 decimals1 = IERC20MetadataUpgradeable(_toToken).decimals();
+        uint256 slippedAmountIn = _amountIn * slippage / 1 ether;
 
-        minAmountOut = (prices[0] * _amount * 10 ** IERC20MetadataUpgradeable(_toToken).decimals() * slippage) / 
-            (prices[1] * 10 ** IERC20MetadataUpgradeable(_fromToken).decimals() * 1 ether);
+        amountOut = _calculateAmountOut(slippedAmountIn, fromPrice, toPrice, decimals0, decimals1);
     }
 
     /// @dev _fromToken is pulled into this contract from the caller, swap is executed according to
     /// the stored data, resulting _toTokens are sent to the caller
     /// @param _fromToken Token to swap from
     /// @param _toToken Token to swap to
-    /// @param _amount Amount of _fromToken to use in the swap
+    /// @param _amountIn Amount of _fromToken to use in the swap
     /// @param _minAmountOut Minimum amount of _toToken that is acceptable to be returned to caller
-    /// @return outputAmount Amount of _toToken returned to the caller
+    /// @return amountOut Amount of _toToken returned to the caller
     function _swap(
         address _fromToken,
         address _toToken,
-        uint256 _amount,
+        uint256 _amountIn,
         uint256 _minAmountOut
-    ) private returns (uint256 outputAmount) {
-        IERC20MetadataUpgradeable(_fromToken).safeTransferFrom(msg.sender, address(this), _amount);
-        _executeSwap(_fromToken, _toToken, _amount, _minAmountOut);
-        outputAmount = IERC20MetadataUpgradeable(_toToken).balanceOf(address(this));
-        IERC20MetadataUpgradeable(_toToken).safeTransfer(msg.sender, outputAmount);
+    ) private returns (uint256 amountOut) {
+        IERC20MetadataUpgradeable(_fromToken).safeTransferFrom(msg.sender, address(this), _amountIn);
+        _executeSwap(_fromToken, _toToken, _amountIn, _minAmountOut);
+        amountOut = IERC20MetadataUpgradeable(_toToken).balanceOf(address(this));
+        if (amountOut < _minAmountOut) revert SlippageExceeded(amountOut, _minAmountOut);
+        IERC20MetadataUpgradeable(_toToken).safeTransfer(msg.sender, amountOut);
     }
 
     /// @dev Fetch the stored swap info for the route between the two tokens, insert the encoded
     /// balance and minimum output to the payload and call the stored router with the data
     /// @param _fromToken Token to swap from
     /// @param _toToken Token to swap to
-    /// @param _amount Amount of _fromToken to use in the swap
+    /// @param _amountIn Amount of _fromToken to use in the swap
     /// @param _minAmountOut Minimum amount of _toToken that is acceptable to be returned to caller
     function _executeSwap(
         address _fromToken,
         address _toToken,
-        uint256 _amount,
+        uint256 _amountIn,
         uint256 _minAmountOut
     ) private {
         SwapInfo memory swapData = swapInfo[_fromToken][_toToken];
         address router = swapData.router;
+        if (router == address(0)) revert NoSwapData(_fromToken, _toToken);
         bytes memory data = swapData.data;
 
-        data = _insertData(data, swapData.amountIndex, abi.encode(_amount));
+        data = _insertData(data, swapData.amountIndex, abi.encode(_amountIn));
 
         bytes memory minAmountData = swapData.minAmountSign >= 0
             ? abi.encode(_minAmountOut)
@@ -183,6 +209,62 @@ contract BeefySwapper is OwnableUpgradeable {
             _data.slice(_index + 32, data.length - (_index + 32))
         );
     }
+
+    /// @dev Fetch non-fresh prices from the oracle
+    /// @param _fromToken Token to swap from
+    /// @param _toToken Token to swap to
+    /// @return fromPrice Price of token to swap from
+    /// @return toPrice Price of token to swap to
+    function _getPrice(
+        address _fromToken,
+        address _toToken
+    ) private view returns (uint256 fromPrice, uint256 toPrice) {
+        address[] memory tokens = new address[](2);
+        (tokens[0], tokens[1]) = (_fromToken, _toToken);
+
+        uint256[] memory prices = oracle.getPrice(tokens);
+        (fromPrice, toPrice) = (prices[0], prices[1]);
+    }
+
+    /// @dev Fetch fresh prices from the oracle
+    /// @param _fromToken Token to swap from
+    /// @param _toToken Token to swap to
+    /// @return fromPrice Price of token to swap from
+    /// @return toPrice Price of token to swap to
+    function _getFreshPrice(
+        address _fromToken,
+        address _toToken
+    ) private returns (uint256 fromPrice, uint256 toPrice) {
+        address[] memory tokens = new address[](2);
+        (tokens[0], tokens[1]) = (_fromToken, _toToken);
+        uint256[] memory prices = new uint256[](2);
+        bool[] memory successes = new bool[](2);
+
+        (prices, successes) = oracle.getFreshPrice(tokens);
+        for (uint i; i < successes.length;) {
+            if (!successes[i]) revert PriceFailed(tokens[i]);
+            unchecked { ++i; }
+        }
+        (fromPrice, toPrice) = (prices[0], prices[1]);
+    }
+
+    /// @dev Calculate the amount out given the prices and the decimals of the tokens involved
+    /// @param _amountIn Amount of _fromToken to use in the swap
+    /// @param _price0 Price of the _fromToken
+    /// @param _price1 Price of the _toToken
+    /// @param _decimals0 Decimals of the _fromToken
+    /// @param _decimals1 Decimals of the _toToken
+    function _calculateAmountOut(
+        uint256 _amountIn,
+        uint256 _price0,
+        uint256 _price1,
+        uint8 _decimals0,
+        uint8 _decimals1
+    ) private pure returns (uint256 amountOut) {
+        amountOut = _amountIn * (_price0 * 10 ** _decimals1) / (_price1 * 10 ** _decimals0);
+    }
+
+    /* ----------------------------------- OWNER FUNCTIONS ----------------------------------- */
 
     /// @notice Owner function to set the stored swap info for the route between two tokens
     /// @dev No validation checks

@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.19;
 
 import { IChainlink } from "../../interfaces/oracle/IChainlink.sol";
-import { BeefyOracleHelper } from "./BeefyOracleHelper.sol";
+import { BeefyOracleHelper, BeefyOracleErrors } from "./BeefyOracleHelper.sol";
 
 /// @title Beefy Oracle using Chainlink
 /// @author Beefy, @kexley
 /// @notice On-chain oracle using Chainlink
 library BeefyOracleChainlink {
-
-    /// @dev No response from the Chainlink feed
-    error NoAnswer();
 
     /// @notice Fetch price from the Chainlink feed and scale to 18 decimals
     /// @param _data Payload from the central oracle with the address of the Chainlink feed
@@ -33,7 +30,7 @@ library BeefyOracleChainlink {
         address chainlink = abi.decode(_data, (address));
         try IChainlink(chainlink).decimals() returns (uint8) {
             try IChainlink(chainlink).latestAnswer() returns (int256) {
-            } catch { revert NoAnswer(); }
-        } catch { revert NoAnswer(); }
+            } catch { revert BeefyOracleErrors.NoAnswer(); }
+        } catch { revert BeefyOracleErrors.NoAnswer(); }
     }
 }

@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.19;
 
 import { IERC20MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+
 import { IBeefyOracle } from "../../interfaces/oracle/IBeefyOracle.sol";
+import { BeefyOracleErrors } from "./BeefyOracleErrors.sol";
 
 /// @title Beefy Oracle Helper
 /// @author Beefy, @kexley

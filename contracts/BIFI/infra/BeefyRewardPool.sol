@@ -2,186 +2,423 @@
 
 pragma solidity 0.8.19;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { SafeERC20Upgradeable, IERC20Upgradeable, IERC20PermitUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import "../utils/LPTokenWrapperInitializable.sol";
-
-contract BeefyRewardPool is LPTokenWrapperInitializable, OwnableUpgradeable {
+/// @title Reward pool for BIFI
+/// @author kexley, Beefy
+/// @notice Multi-reward staking contract for BIFI
+/// @dev Multiple rewards can be added to this contract by the owner. A receipt token is issued for 
+/// staking and is used for withdrawing the staked BIFI.
+contract BeefyRewardPool is ERC20Upgradeable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    /// @dev Information for a particular reward
+    /// @param periodFinish End timestamp of reward distribution
+    /// @param duration Distribution length of time in seconds
+    /// @param lastUpdateTime Latest timestamp of an update
+    /// @param rate Distribution speed in wei per second
+    /// @param rewardPerTokenStored Stored reward value per staked token in 18 decimals
+    /// @param userRewardPerTokenPaid Stored reward value per staked token in 18 decimals at the 
+    /// last time a user was paid the reward
+    /// @param earned Value of reward still owed to the user
     struct RewardInfo {
         uint256 periodFinish;
         uint256 duration;
         uint256 lastUpdateTime;
-        uint256 rewardRate;
+        uint256 rate;
         uint256 rewardPerTokenStored;
         mapping(address => uint256) userRewardPerTokenPaid;
-        mapping(address => uint256) rewardsEarned;
+        mapping(address => uint256) earned;
     }
 
-    mapping(address => RewardInfo) public rewardInfo;
-    address[] public rewardTokens;
-    mapping(address => uint256) public rewardTokenIndex;
-    uint256 public rewardMax;
+    /// @notice BIFI token address
+    IERC20Upgradeable public stakedToken;
 
-    event RewardAdded(address indexed reward, uint256 amount);
+    /// @notice Array of reward addresses
+    address[] public rewards;
+
+    /// @notice Whitelist of manager addresses
+    mapping(address => bool) public whitelisted;
+
+    /// @notice Limit to the number of rewards an owner can add
+    uint256 private rewardMax;
+
+    /// @notice Location of a reward in the reward array
+    mapping(address => uint256) private index;
+
+    /// @dev Each reward address has a new unique identifier each time it is initialized. This is 
+    /// to prevent old mappings from being reused when removing and re-adding a reward.
+    mapping(address => bytes32) private _id;
+
+    /// @dev Each identifier relates to reward information
+    mapping(bytes32 => RewardInfo) private _rewardInfo;
+
+    /// @notice User has staked an amount
     event Staked(address indexed user, uint256 amount);
+    /// @notice User has withdrawn an amount
     event Withdrawn(address indexed user, uint256 amount);
+    /// @notice A reward has been paid to the user
     event RewardPaid(address indexed user, address indexed reward, uint256 amount);
+    /// @notice A new reward has been added to be distributed
+    event AddReward(address reward);
+    /// @notice More of an existing reward has been added to be distributed
+    event NotifyReward(address indexed reward, uint256 amount, uint256 duration);
+    /// @notice A reward has been removed from distribution and sent to the recipient
+    event RemoveReward(address reward, address recipient);
+    /// @notice The owner has removed tokens that are not supported by this contract
+    event RescueTokens(address token, address recipient);
+    /// @notice An address has been added to or removed from the whitelist
+    event SetWhitelist(address manager, bool whitelist);
 
-    error EmptyStake();
-    error EmptyWithdraw();
+    /// @notice Caller is not a manager
+    error NotManager(address caller);
+    /// @notice The staked token cannot be added as a reward
     error StakedTokenIsNotAReward();
-    error ShortDuration();
+    /// @notice The duration is too short to be set
+    error ShortDuration(uint256 duration);
+    /// @notice There are already too many rewards
     error TooManyRewards();
-    error OverNotify();
-    error RewardNotFound();
+    /// @notice The reward has not been found in the array
+    error RewardNotFound(address reward);
+    /// @notice The owner cannot withdraw the staked token
     error WithdrawingStakedToken();
-    error WithdrawingRewardToken();
+    /// @notice the owner cannot withdraw an existing reward without first removing it from the array
+    error WithdrawingRewardToken(address reward);
 
-    function initialize(address _stakedToken) external initializer {
-        __LPTokenWrapper_init(_stakedToken);
-        __Ownable_init();
-        rewardMax = 10;
-    }
-
-    modifier updateReward(address _account) {
-        for (uint i; i < rewardTokens.length; ++i) {
-            address reward = rewardTokens[i];
-            rewardInfo[reward].rewardPerTokenStored = rewardPerToken(reward);
-            rewardInfo[reward].lastUpdateTime = lastTimeRewardApplicable(reward);
-            if (_account != address(0)) {
-                rewardInfo[reward].rewardsEarned[_account] = earned(_account, reward);
-                rewardInfo[reward].userRewardPerTokenPaid[_account] = 
-                    rewardInfo[reward].rewardPerTokenStored;
-            }
-        }
+    /// @dev Triggers reward updates on every user interaction
+    /// @param _user Address of the user making an interaction
+    modifier update(address _user) {
+        _update(_user);
         _;
     }
 
-    function lastTimeRewardApplicable(address _reward) public view returns (uint256) {
-        return 
-            block.timestamp > rewardInfo[_reward].periodFinish 
-                ? rewardInfo[_reward].periodFinish
-                : block.timestamp;
+    /// @dev Only a manager can call these modified functions
+    modifier onlyManager {
+        if (msg.sender != owner() || whitelisted[msg.sender]) revert NotManager(msg.sender);
+        _;
     }
 
-    function rewardPerToken(address _reward) public view returns (uint256) {
-        if (totalSupply() == 0) {
-            return rewardInfo[_reward].rewardPerTokenStored;
+    /* ---------------------------------- EXTERNAL FUNCTIONS ---------------------------------- */
+
+    /// @notice Initialize the contract, callable only once
+    /// @param _stakedToken BIFI token address
+    function initialize(address _stakedToken) external initializer {
+        __ERC20_init("Beefy Reward Pool", "rBIFI");
+        __Ownable_init();
+        stakedToken = IERC20Upgradeable(_stakedToken);
+        rewardMax = 100;
+    }
+
+    /// @notice Stake BIFI tokens
+    /// @dev An equal number of receipt tokens will be minted to the caller
+    /// @param _amount Amount of BIFI to stake
+    function stake(uint256 _amount) external update(msg.sender) {
+        _stake(_amount);
+    }
+
+    /// @notice Stake BIFI tokens with a permit
+    /// @dev An equal number of receipt tokens will be minted to the caller
+    /// @param _amount Amount of BIFI to stake
+    /// @param _deadline Timestamp of the deadline after which the permit is invalid
+    /// @param _v Part of a signature
+    /// @param _r Part of a signature
+    /// @param _s Part of a signature
+    function stakeWithPermit(
+        uint256 _amount,
+        uint256 _deadline,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external update(msg.sender) {
+        IERC20PermitUpgradeable(address(stakedToken)).permit(
+            msg.sender, address(this), _amount, _deadline, _v, _r, _s
+        );
+        _stake(_amount);
+    }
+
+    /// @notice Withdraw BIFI tokens
+    /// @dev Burns an equal number of receipt tokens from the caller
+    /// @param _amount Amount of BIFI to withdraw
+    function withdraw(uint256 _amount) external update(msg.sender) {
+        _withdraw(_amount);
+    }
+
+    /// @notice Withdraw all of the caller's BIFI tokens and claim rewards
+    /// @dev Burns all receipt tokens owned by the caller
+    function exit() external update(msg.sender) {
+        _withdraw(balanceOf(msg.sender));
+        _getReward();
+    }
+
+    /// @notice Claim all the caller's earned rewards 
+    function getReward() external update(msg.sender) {
+        _getReward();
+    }
+
+    /// @notice View the amount of rewards earned by the user
+    /// @param _user User to view the earned rewards for
+    /// @return rewardTokens Address array of the rewards
+    /// @return earnedAmounts Amounts of the user's earned rewards
+    function earned(address _user) external view returns (
+        address[] memory rewardTokens,
+        uint256[] memory earnedAmounts
+    ) {
+        uint256 rewardLength = rewards.length;
+        for (uint i; i < rewardLength;) {
+            earnedAmounts[i] = _earned(_user, rewards[i]);
+            unchecked { ++i; }
         }
-        return
-            rewardInfo[_reward].rewardPerTokenStored + (
-                (lastTimeRewardApplicable(_reward) - rewardInfo[_reward].lastUpdateTime) 
-                * rewardInfo[_reward].rewardRate
-                * 1e18 
-                / totalSupply()
-            );
+        rewardTokens = rewards;
     }
 
-    function earned(address _account, address _reward) public view returns (uint256) {
-        return
-            rewardInfo[_reward].rewardsEarned[_account] + (
-                balanceOf(_account) * 
-                (rewardPerToken(_reward) - rewardInfo[_reward].userRewardPerTokenPaid[_account]) 
-                / 1e18
-            );
+    /// @notice View the amount of a single reward earned by the user
+    /// @param _user User to view the earned reward for
+    /// @param _reward Reward to calculate the earned amount for
+    /// @return earnedAmount Amount of the user's earned reward
+    function earned(address _user, address _reward) external view returns (uint256 earnedAmount) {
+        earnedAmount = _earned(_user, _reward);
     }
 
-    function stake(uint256 _amount) public override updateReward(msg.sender) {
-        if (_amount == 0) revert EmptyStake();
-        super.stake(_amount);
-        emit Staked(msg.sender, _amount);
+    /// @notice View the reward information
+    /// @dev The active reward information is automatically selected from the id mapping
+    /// @param _reward Address of the reward to get the information for
+    /// @return periodFinish End timestamp of reward distribution
+    /// @return duration Distribution length of time in seconds
+    /// @return lastUpdateTime Latest timestamp of an update
+    /// @return rate Distribution speed in wei per second
+    function rewardInfo(address _reward) external view returns (
+        uint256 periodFinish,
+        uint256 duration,
+        uint256 lastUpdateTime,
+        uint256 rate
+    ) {
+        RewardInfo storage info = _getRewardInfo(_reward);
+        periodFinish = info.periodFinish;
+        duration = info.duration;
+        lastUpdateTime = info.lastUpdateTime;
+        rate = info.rate;
     }
 
-    function withdraw(uint256 _amount) public override updateReward(msg.sender) {
-        if (_amount == 0) revert EmptyWithdraw();
-        super.withdraw(_amount);
-        emit Withdrawn(msg.sender, _amount);
+    /* ------------------------------- ERC20 OVERRIDE FUNCTIONS ------------------------------- */
+
+    /// @notice Update rewards for both source and recipient and then transfer receipt tokens to 
+    /// the recipient address
+    /// @dev Overrides the ERC20 implementation to add the reward update
+    /// @param _to Recipient address of the token transfer
+    /// @param _value Amount to transfer
+    /// @return success Transfer was successful or not
+    function transfer(address _to, uint256 _value) public override returns (bool success) {
+        _update(msg.sender);
+        _update(_to);
+        return super.transfer(_to, _value);
     }
 
-    function exit() external {
-        withdraw(balanceOf(msg.sender));
-        getReward();
+    /// @notice Update rewards for both source and recipient and then transfer receipt tokens from
+    /// the source address to the recipient address
+    /// @dev Overrides the ERC20 implementation to add the reward update
+    /// @param _from Source address of the token transfer
+    /// @param _to Recipient address of the token transfer
+    /// @param _value Amount to transfer
+    /// @return success Transfer was successful or not
+    function transferFrom(address _from, address _to, uint256 _value) public override returns (bool) {
+        _update(_from);
+        _update(_to);
+        return super.transferFrom(_from, _to, _value);
     }
 
-    function getReward() public updateReward(msg.sender) {
-        for (uint i; i < rewardTokens.length; ++i) {
-            address reward = rewardTokens[i];
-            uint256 rewardEarned = earned(msg.sender, reward);
-            if (rewardEarned > 0) {
-                rewardInfo[reward].rewardsEarned[msg.sender] = 0;
-                _safeRewardTransfer(reward, msg.sender, rewardEarned);
-                emit RewardPaid(msg.sender, reward, rewardEarned);
-            }
-        }
-    }
+    /* ----------------------------------- OWNER FUNCTIONS ------------------------------------ */
 
-    function getReward(address _reward) external updateReward(msg.sender) {
-        uint256 rewardEarned = earned(msg.sender, _reward);
-        if (rewardEarned > 0) {
-            rewardInfo[_reward].rewardsEarned[msg.sender] = 0;
-            _safeRewardTransfer(_reward, msg.sender, rewardEarned);
-            emit RewardPaid(msg.sender, _reward, rewardEarned);
-        }
-    }
-
+    /// @notice Manager function to start a reward distribution
+    /// @dev Must approve this contract to spend the reward amount before calling this function. 
+    /// New rewards will be assigned a id using their address and the block timestamp.
+    /// @param _reward Address of the reward
+    /// @param _amount Amount of reward
+    /// @param _duration Duration of the reward distribution in seconds
     function notifyRewardAmount(
         address _reward,
         uint256 _amount,
         uint256 _duration
-    ) external onlyOwner updateReward(address(0)) {
+    ) external onlyManager update(address(0)) {
         if (_reward == address(stakedToken)) revert StakedTokenIsNotAReward();
-        if (_duration < 1 days) revert ShortDuration();
-        if (_reward != rewardTokens[rewardTokenIndex[_reward]]) {
-            rewardTokenIndex[_reward] = rewardTokens.length;
-            rewardTokens.push(_reward);
-            if (rewardTokens.length > rewardMax) revert TooManyRewards();
+        if (_duration < 1 days) revert ShortDuration(_duration);
+
+        if (!_rewardExists(_reward)) {
+            _id[_reward] = keccak256(abi.encodePacked(_reward, block.timestamp));
+            uint256 rewardLength = rewards.length;
+            if (rewards.length + 1 > rewardMax) revert TooManyRewards();
+            index[_reward] = rewardLength;
+            rewards.push(_reward);
+            emit AddReward(_reward);
         }
 
+        IERC20Upgradeable(_reward).safeTransferFrom(msg.sender, address(this), _amount);
+
+        RewardInfo storage rewardData = _getRewardInfo(_reward);
         uint256 leftover;
-        if (block.timestamp < rewardInfo[_reward].periodFinish) {
-            uint256 remaining = rewardInfo[_reward].periodFinish - block.timestamp;
-            leftover = remaining * rewardInfo[_reward].rewardRate;
+
+        if (block.timestamp < rewardData.periodFinish) {
+            uint256 remaining = rewardData.periodFinish - block.timestamp;
+            leftover = remaining * rewardData.rate;
         }
-        if (_amount + leftover > IERC20Upgradeable(_reward).balanceOf(address(this))) revert OverNotify();
-        rewardInfo[_reward].rewardRate = (_amount + leftover) / _duration;
-        rewardInfo[_reward].lastUpdateTime = block.timestamp;
-        rewardInfo[_reward].periodFinish = block.timestamp + _duration;
-        rewardInfo[_reward].duration = _duration;
-        emit RewardAdded(_reward, _amount);
+
+        rewardData.rate = (_amount + leftover) / _duration;
+        rewardData.lastUpdateTime = block.timestamp;
+        rewardData.periodFinish = block.timestamp + _duration;
+        rewardData.duration = _duration;
+
+        emit NotifyReward(_reward, _amount, _duration);
     }
 
-    function removeReward(address _reward) external onlyOwner updateReward(address(0)) {
-        if (_reward != rewardTokens[rewardTokenIndex[_reward]]) revert RewardNotFound();
-        if (block.timestamp < rewardInfo[_reward].periodFinish) {
-            uint256 remaining = rewardInfo[_reward].periodFinish - block.timestamp;
-            uint256 leftover = remaining * rewardInfo[_reward].rewardRate;
-            if (leftover > 0) IERC20Upgradeable(_reward).safeTransfer(owner(), leftover);
-            rewardInfo[_reward].periodFinish = block.timestamp;
-        }
-        address endToken = rewardTokens[rewardTokens.length - 1];
-        rewardTokenIndex[endToken] = rewardTokenIndex[_reward];
-        rewardTokens[rewardTokenIndex[_reward]] = endToken;
-        rewardTokens.pop();
+    /// @notice Owner function to remove a reward from this contract
+    /// @dev All unclaimed earnings are ignored. Re-adding the reward will have a new set of
+    /// reward information so any unclaimed earnings cannot be recovered
+    /// @param _reward Address of the reward to be removed
+    /// @param _recipient Address of the recipient that the removed reward was sent to
+    function removeReward(address _reward, address _recipient) external onlyOwner {
+        if (!_rewardExists(_reward)) revert RewardNotFound(_reward);
+
+        uint256 replacedIndex = index[_reward];
+        address endToken = rewards[rewards.length - 1];
+        rewards[replacedIndex] = endToken;
+        index[endToken] = replacedIndex;
+        rewards.pop();
+
+        uint256 rewardBal = IERC20Upgradeable(_reward).balanceOf(address(this));
+        IERC20Upgradeable(_reward).safeTransfer(_recipient, rewardBal);
+
+        emit RemoveReward(_reward, _recipient);
     }
 
-    function inCaseTokensGetStuck(address _token) external onlyOwner {
+    /// @notice Owner function to remove unsupported tokens sent to this contract
+    /// @param _token Address of the token to be removed
+    /// @param _recipient Address of the recipient that the removed token was sent to
+    function rescueTokens(address _token, address _recipient) external onlyOwner {
         if (_token == address(stakedToken)) revert WithdrawingStakedToken();
-        if (_token == rewardTokens[rewardTokenIndex[_token]]) revert WithdrawingRewardToken();
+        if (_rewardExists(_token)) revert WithdrawingRewardToken(_token);
 
         uint256 amount = IERC20Upgradeable(_token).balanceOf(address(this));
-        IERC20Upgradeable(_token).safeTransfer(owner(), amount);
+        IERC20Upgradeable(_token).safeTransfer(_recipient, amount);
+        emit RescueTokens(_token, _recipient);
     }
 
-    function _safeRewardTransfer(address _reward, address _recipient, uint256 _amount) internal {
+    /// @notice Owner function to add addresses to the whitelist
+    /// @param _manager Address able to call manager functions
+    /// @param _whitelisted Whether to add or remove from whitelist
+    function setWhitelist(address _manager, bool _whitelisted) external onlyOwner {
+        whitelisted[_manager] = _whitelisted;
+        emit SetWhitelist(_manager, _whitelisted);
+    }
+
+    /* ---------------------------------- INTERNAL FUNCTIONS ---------------------------------- */
+
+    /// @dev Update the rewards and earnings for a user
+    /// @param _user Address to update the earnings for
+    function _update(address _user) private {
+        uint256 rewardLength = rewards.length;
+        for (uint i; i < rewardLength;) {
+            address reward = rewards[i];
+            RewardInfo storage rewardData = _getRewardInfo(reward);
+            rewardData.rewardPerTokenStored = _rewardPerToken(reward);
+            rewardData.lastUpdateTime = _lastTimeRewardApplicable(rewardData.periodFinish);
+            if (_user != address(0)) {
+                rewardData.earned[_user] = _earned(_user, reward);
+                rewardData.userRewardPerTokenPaid[_user] = rewardData.rewardPerTokenStored;
+            }
+            unchecked { ++i; } 
+        }
+    }
+
+    /// @dev Stake BIFI tokens and mint the caller receipt tokens
+    /// @param _amount Amount of BIFI to stake
+    function _stake(uint256 _amount) private {
+        _mint(msg.sender, _amount);
+        stakedToken.safeTransferFrom(msg.sender, address(this), _amount);
+        emit Staked(msg.sender, _amount);
+    }
+
+    /// @dev Withdraw BIFI tokens and burn an equal number of receipt tokens from the caller
+    /// @param _amount Amount of BIFI to withdraw
+    function _withdraw(uint256 _amount) private {
+        _burn(msg.sender, _amount);
+        stakedToken.safeTransfer(msg.sender, _amount);
+        emit Withdrawn(msg.sender, _amount);
+    }
+
+    /// @dev Claim all the caller's earned rewards 
+    function _getReward() private {
+        uint256 rewardLength = rewards.length;
+        for (uint i; i < rewardLength;) {
+            address reward = rewards[i];
+            uint256 rewardEarned = _earned(msg.sender, reward);
+            if (rewardEarned > 0) {
+                _getRewardInfo(reward).earned[msg.sender] = 0;
+                _rewardTransfer(reward, msg.sender, rewardEarned);
+                emit RewardPaid(msg.sender, reward, rewardEarned);
+            }
+            unchecked { ++i; }
+        }
+    }
+
+    /// @dev Return either the period finish or the current timestamp, whichever is earliest
+    /// @param _periodFinish End timestamp of the reward distribution
+    /// @return timestamp Earliest timestamp out of the period finish or block timestamp 
+    function _lastTimeRewardApplicable(uint256 _periodFinish) private view returns (uint256 timestamp) {
+        timestamp = block.timestamp > _periodFinish ? _periodFinish : block.timestamp;
+    }
+
+    /// @dev Calculate the reward amount per BIFI token
+    /// @param _reward Address of the reward
+    /// @return rewardPerToken Reward amount per BIFI token
+    function _rewardPerToken(address _reward) private view returns (uint256 rewardPerToken) {
+        RewardInfo storage rewardData = _getRewardInfo(_reward);
+        if (totalSupply() == 0) {
+            rewardPerToken = rewardData.rewardPerTokenStored;
+        } else {
+            rewardPerToken = rewardData.rewardPerTokenStored + (
+                (_lastTimeRewardApplicable(rewardData.periodFinish) - rewardData.lastUpdateTime) 
+                * rewardData.rate
+                * 1e18 
+                / totalSupply()
+            );
+        }
+    }
+
+    /// @dev Calculate the reward amount earned by the user
+    /// @param _user Address of the user
+    /// @param _reward Address of the reward
+    /// @return earnedAmount Amount of reward earned by the user
+    function _earned(address _user, address _reward) private view returns (uint256 earnedAmount) {
+        RewardInfo storage rewardData = _getRewardInfo(_reward);
+        earnedAmount = rewardData.earned[_user] + (
+            balanceOf(_user) * 
+            (_rewardPerToken(_reward) - rewardData.userRewardPerTokenPaid[_user]) 
+            / 1e18
+        );
+    }
+
+    /// @dev Return the most current reward information for a reward
+    /// @param _reward Address of the reward
+    /// @return info Reward information for the reward
+    function _getRewardInfo(address _reward) private view returns(RewardInfo storage info) {
+        info = _rewardInfo[_id[_reward]];
+    }
+
+    /// @dev Check if a reward exists in the reward array already
+    /// @param _reward Address of the reward
+    /// @return exists Returns true if token is in the array
+    function _rewardExists(address _reward) private view returns (bool exists) {
+        exists = _reward == rewards[index[_reward]];
+    }
+
+    /// @dev Transfer at most the balance of the reward on this contract to avoid errors
+    /// @param _reward Address of the reward
+    /// @param _recipient Address of the recipient of the reward
+    /// @param _amount Amount of the reward to be sent to the recipient
+    function _rewardTransfer(address _reward, address _recipient, uint256 _amount) private {
         uint256 rewardBal = IERC20Upgradeable(_reward).balanceOf(address(this));
-        if (_amount > rewardBal) {
-            _amount = rewardBal;
-        }
-        if (_amount > 0) {
-            IERC20Upgradeable(_reward).safeTransfer(_recipient, _amount);
-        }
+        if (_amount > rewardBal) _amount = rewardBal;
+        if (_amount > 0) IERC20Upgradeable(_reward).safeTransfer(_recipient, _amount);
     }
 }
