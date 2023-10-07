@@ -6,14 +6,14 @@ import "../../../node_modules/forge-std/src/Test.sol";
 import "../interfaces/IVault.sol";
 import "../interfaces/IStrategy.sol";
 import "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
-import "../../../contracts/BIFI/strategies/Balancer/StrategyAuraGyroMainnet.sol";
+import "../../../contracts/BIFI/strategies/Balancer/StrategyAuraMainnet.sol";
 import "../../../contracts/BIFI/strategies/Balancer/BeefyBalancerStructs.sol";
 import "../../../contracts/BIFI/strategies/Common/StratFeeManager.sol";
 
-contract StrategyAuraGyroTest is Test {
+contract StrategyAuraMainnetTest is Test {
 
     BeefyVaultV7 vault;
-    StrategyAuraGyroMainnet strategy;
+    StrategyAuraMainnet strategy;
 
     struct CommonAddresses {
         address vault;
@@ -29,28 +29,26 @@ contract StrategyAuraGyroTest is Test {
     address feeRecipient = 0x8237f3992526036787E8178Def36291Ab94638CD;
     address feeConfig = 0x3d38BA27974410679afF73abD096D7Ba58870EAd;
 
-    address want = 0x52b69d6b3eB0BD6b2b4A48a316Dfb0e1460E67E4;
-    address lp0 = 0x183015a9bA6fF60230fdEaDc3F43b3D788b13e21;
-    address lp1 = 0x83F20F44975D03b1b09e64809B757c47f942BEeA;
+    address want = 0x8353157092ED8Be69a9DF8F95af097bbF33Cb2aF;
+    address usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address booster = 0xA57b8d98dAE62B26Ec3bcC4a365338157060B234;
     address router = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
     address native = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address bal = 0xba100000625a3754423978a60c9317c58a424e3D;
     address aura = 0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF;
-    address dai = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
-    uint256 pid = 166;
+    uint256 pid = 157;
+    bool inputIsComposable = true;
+    bool composable = true;
 
     error PPFS_NOT_INCREASED();
 
     function routes() public view returns (
         BeefyBalancerStructs.BatchSwapStruct[] memory _outputToNativeRoute,
-        BeefyBalancerStructs.BatchSwapStruct[] memory _nativeToLp0Route,
-        BeefyBalancerStructs.BatchSwapStruct[] memory _lp0ToLp1Route,
+        BeefyBalancerStructs.BatchSwapStruct[] memory _nativeToInputRoute,
         BeefyBalancerStructs.BatchSwapStruct[] memory _auraToNativeRoute,
         address[] memory _outputToNativeAssests,
-        address[] memory _nativeToLp0Assests,
-        address[] memory _lp0ToLp1Assests,
+        address[] memory _nativeToInputAssests,
         address[] memory _auraToNativeAssests
     ) {
         _outputToNativeRoute = new BeefyBalancerStructs.BatchSwapStruct[](1);
@@ -60,23 +58,16 @@ contract StrategyAuraGyroTest is Test {
             assetOutIndex: 1
         });
 
-        _nativeToLp0Route = new BeefyBalancerStructs.BatchSwapStruct[](2);
-        _nativeToLp0Route[0] = BeefyBalancerStructs.BatchSwapStruct({
-            poolId: 0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a,
+        _nativeToInputRoute = new BeefyBalancerStructs.BatchSwapStruct[](2);
+        _nativeToInputRoute[0] = BeefyBalancerStructs.BatchSwapStruct({
+            poolId: 0x96646936b91d6b9d7d0c47c496afbf3d6ec7b6f8000200000000000000000019,
             assetInIndex: 0,
             assetOutIndex: 1
         });
-         _nativeToLp0Route[1] = BeefyBalancerStructs.BatchSwapStruct({
-            poolId: 0x20a61b948e33879ce7f23e535cc7baa3bc66c5a9000000000000000000000555,
+        _nativeToInputRoute[1] = BeefyBalancerStructs.BatchSwapStruct({
+            poolId: 0x8353157092ed8be69a9df8f95af097bbf33cb2af0000000000000000000005d9,
             assetInIndex: 1,
             assetOutIndex: 2
-        });
-
-        _lp0ToLp1Route = new BeefyBalancerStructs.BatchSwapStruct[](1);
-        _lp0ToLp1Route[0] = BeefyBalancerStructs.BatchSwapStruct({
-            poolId: 0x52b69d6b3eb0bd6b2b4a48a316dfb0e1460e67e40002000000000000000005f3,
-            assetInIndex: 0,
-            assetOutIndex: 1
         });
 
         _auraToNativeRoute = new BeefyBalancerStructs.BatchSwapStruct[](1);
@@ -90,14 +81,10 @@ contract StrategyAuraGyroTest is Test {
         _outputToNativeAssests[0] = bal;
         _outputToNativeAssests[1] = native;
 
-        _nativeToLp0Assests = new address[](3);
-        _nativeToLp0Assests[0] = native;
-        _nativeToLp0Assests[1] = dai;
-        _nativeToLp0Assests[2] = lp0;
-
-        _lp0ToLp1Assests = new address[](2);
-        _lp0ToLp1Assests[0] = lp0;
-        _lp0ToLp1Assests[1] = lp1;
+        _nativeToInputAssests = new address[](3);
+        _nativeToInputAssests[0] = native;
+        _nativeToInputAssests[1] = usdc;
+        _nativeToInputAssests[2] = want;
 
         _auraToNativeAssests = new address[](2);
         _auraToNativeAssests[0] = aura;
@@ -106,16 +93,14 @@ contract StrategyAuraGyroTest is Test {
 
     function setUp() public {
         vault = new BeefyVaultV7();
-        strategy = new StrategyAuraGyroMainnet();
+        strategy = new StrategyAuraMainnet();
 
         (
             BeefyBalancerStructs.BatchSwapStruct[] memory _outputToNativeRoute,
-            BeefyBalancerStructs.BatchSwapStruct[] memory _nativeToLp0Route,
-            BeefyBalancerStructs.BatchSwapStruct[] memory _lp0ToLp1Route,
+            BeefyBalancerStructs.BatchSwapStruct[] memory _nativeToInputRoute,
             BeefyBalancerStructs.BatchSwapStruct[] memory _auraToNativeRoute,
             address[] memory _outputToNativeAssests,
-            address[] memory _nativeToLp0Assests,
-            address[] memory _lp0ToLp1Assests,
+            address[] memory _nativeToInputAssests,
             address[] memory _auraToNativeAssests
         ) = routes();   
 
@@ -131,13 +116,13 @@ contract StrategyAuraGyroTest is Test {
         vault.initialize(IStrategyV7(address(strategy)), "MooTest", "mooTest", 0);
         strategy.initialize(
             want,
-            _nativeToLp0Route,
-            _lp0ToLp1Route,
+            inputIsComposable,
+            _nativeToInputRoute,
             _outputToNativeRoute,
             booster,
             pid,
-            _nativeToLp0Assests,
-            _lp0ToLp1Assests,
+            composable,
+            _nativeToInputAssests,
             _outputToNativeAssests,
             commonAddresses
         );
