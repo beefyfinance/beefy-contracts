@@ -60,16 +60,42 @@ contract BeefySwapper is OwnableUpgradeable {
     /// @notice Minimum acceptable percentage slippage output in 18 decimals
     uint256 public slippage;
 
+    /// @notice Swap between two tokens
+    /// @param caller Address of the caller of the swap
+    /// @param fromToken Address of the source token
+    /// @param toToken Address of the destination token
+    /// @param amountIn Amount of source token inputted to the swap
+    /// @param amountOut Amount of destination token outputted from the swap
+    event Swap(
+        address indexed caller,
+        address indexed fromToken,
+        address indexed toToken,
+        uint256 amountIn,
+        uint256 amountOut
+    );
+
     /// @notice Set new swap info for the route between two tokens
+    /// @param fromToken Address of the source token
+    /// @param toToken Address of the destination token
+    /// @param swapInfo Struct of stored swap information for the pair of tokens
     event SetSwapInfo(address indexed fromToken, address indexed toToken, SwapInfo swapInfo);
 
     /// @notice Set a new oracle
+    /// @param oracle New oracle address
     event SetOracle(address oracle);
+
+    /// @notice Set a new slippage
+    /// @param slippage New slippage amount
+    event SetSlippage(uint256 slippage);
 
     /// @notice Initialize the contract
     /// @dev Ownership is transferred to msg.sender
-    function initialize() external initializer {
+    /// @param _oracle Oracle to find prices for tokens
+    /// @param _slippage Acceptable slippage for any swap
+    function initialize(address _oracle, uint256 _slippage) external initializer {
         __Ownable_init();
+        oracle = IBeefyOracle(_oracle);
+        slippage = _slippage;
     }
 
     /// @notice Swap between two tokens with slippage calculated using the oracle
@@ -115,10 +141,10 @@ contract BeefySwapper is OwnableUpgradeable {
         address _toToken,
         uint256 _amountIn
     ) external view returns (uint256 amountOut) {
-        (uint256 fromPrice, uint256 toPrice) = _getPrice(_fromToken, _toToken);
+        (uint256 fromPrice, uint256 toPrice) = 
+            (oracle.getPrice(_fromToken), oracle.getPrice(_toToken));
         uint8 decimals0 = IERC20MetadataUpgradeable(_fromToken).decimals();
         uint8 decimals1 = IERC20MetadataUpgradeable(_toToken).decimals();
-
         amountOut = _calculateAmountOut(_amountIn, fromPrice, toPrice, decimals0, decimals1);
     }
 
@@ -137,7 +163,6 @@ contract BeefySwapper is OwnableUpgradeable {
         uint8 decimals0 = IERC20MetadataUpgradeable(_fromToken).decimals();
         uint8 decimals1 = IERC20MetadataUpgradeable(_toToken).decimals();
         uint256 slippedAmountIn = _amountIn * slippage / 1 ether;
-
         amountOut = _calculateAmountOut(slippedAmountIn, fromPrice, toPrice, decimals0, decimals1);
     }
 
@@ -159,6 +184,7 @@ contract BeefySwapper is OwnableUpgradeable {
         amountOut = IERC20MetadataUpgradeable(_toToken).balanceOf(address(this));
         if (amountOut < _minAmountOut) revert SlippageExceeded(amountOut, _minAmountOut);
         IERC20MetadataUpgradeable(_toToken).safeTransfer(msg.sender, amountOut);
+        emit Swap(msg.sender, _fromToken, _toToken, _amountIn, amountOut);
     }
 
     /// @dev Fetch the stored swap info for the route between the two tokens, insert the encoded
@@ -183,7 +209,7 @@ contract BeefySwapper is OwnableUpgradeable {
         bytes memory minAmountData = swapData.minAmountSign >= 0
             ? abi.encode(_minAmountOut)
             : abi.encode(-int256(_minAmountOut));
-            
+        
         data = _insertData(data, swapData.minIndex, minAmountData);
 
         IERC20MetadataUpgradeable(_fromToken).forceApprove(router, type(uint256).max);
@@ -206,24 +232,8 @@ contract BeefySwapper is OwnableUpgradeable {
                 _data.slice(0, _index),
                 _newData
             ),
-            _data.slice(_index + 32, data.length - (_index + 32))
+            _data.slice(_index + 32, _data.length - (_index + 32))
         );
-    }
-
-    /// @dev Fetch non-fresh prices from the oracle
-    /// @param _fromToken Token to swap from
-    /// @param _toToken Token to swap to
-    /// @return fromPrice Price of token to swap from
-    /// @return toPrice Price of token to swap to
-    function _getPrice(
-        address _fromToken,
-        address _toToken
-    ) private view returns (uint256 fromPrice, uint256 toPrice) {
-        address[] memory tokens = new address[](2);
-        (tokens[0], tokens[1]) = (_fromToken, _toToken);
-
-        uint256[] memory prices = oracle.getPrice(tokens);
-        (fromPrice, toPrice) = (prices[0], prices[1]);
     }
 
     /// @dev Fetch fresh prices from the oracle
@@ -235,17 +245,11 @@ contract BeefySwapper is OwnableUpgradeable {
         address _fromToken,
         address _toToken
     ) private returns (uint256 fromPrice, uint256 toPrice) {
-        address[] memory tokens = new address[](2);
-        (tokens[0], tokens[1]) = (_fromToken, _toToken);
-        uint256[] memory prices = new uint256[](2);
-        bool[] memory successes = new bool[](2);
-
-        (prices, successes) = oracle.getFreshPrice(tokens);
-        for (uint i; i < successes.length;) {
-            if (!successes[i]) revert PriceFailed(tokens[i]);
-            unchecked { ++i; }
-        }
-        (fromPrice, toPrice) = (prices[0], prices[1]);
+        bool success;
+        (fromPrice, success) = oracle.getFreshPrice(_fromToken);
+        if (!success) revert PriceFailed(_fromToken);
+        (toPrice, success) = oracle.getFreshPrice(_toToken);
+        if (!success) revert PriceFailed(_toToken);
     }
 
     /// @dev Calculate the amount out given the prices and the decimals of the tokens involved
@@ -280,11 +284,37 @@ contract BeefySwapper is OwnableUpgradeable {
         emit SetSwapInfo(_fromToken, _toToken, _swapInfo);
     }
 
+    /// @notice Owner function to set multiple stored swap info for the routes between two tokens
+    /// @dev No validation checks
+    /// @param _fromTokens Tokens to swap from
+    /// @param _toTokens Tokens to swap to
+    /// @param _swapInfos Swap infos to store
+    function setSwapInfos(
+        address[] calldata _fromTokens,
+        address[] calldata _toTokens,
+        SwapInfo[] calldata _swapInfos
+    ) external onlyOwner {
+        uint256 tokenLength = _fromTokens.length;
+        for (uint i; i < tokenLength;) {
+            swapInfo[_fromTokens[i]][_toTokens[i]] = _swapInfos[i];
+            emit SetSwapInfo(_fromTokens[i], _toTokens[i], _swapInfos[i]);
+            unchecked { ++i; }
+        }
+    }
+
     /// @notice Owner function to set the oracle used to calculate the minimum outputs
     /// @dev No validation checks
     /// @param _oracle Address of the new oracle
     function setOracle(address _oracle) external onlyOwner {
         oracle = IBeefyOracle(_oracle);
         emit SetOracle(_oracle);
+    }
+
+    /// @notice Owner function to set the slippage
+    /// @param _slippage Acceptable slippage level
+    function setSlippage(uint256 _slippage) external onlyOwner {
+        if (_slippage > 1 ether) _slippage = 1 ether;
+        slippage = _slippage;
+        emit SetSlippage(_slippage);
     }
 }

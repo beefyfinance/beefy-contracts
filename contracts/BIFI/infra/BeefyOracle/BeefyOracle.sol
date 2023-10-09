@@ -37,12 +37,19 @@ contract BeefyOracle is OwnableUpgradeable {
     uint256 public staleness;
 
     /// @notice Price of a token has been updated
+    /// @param token Token address
+    /// @param price New price
+    /// @param timestamp Timestamp of price fetch
     event PriceUpdated(address indexed token, uint256 price, uint256 timestamp);
 
     /// @notice New oracle has been set
+    /// @param token Token address
+    /// @param oracle Library address for price fetch
+    /// @param data Data to pass to library to calculate the price for that token
     event SetOracle(address indexed token, address oracle, bytes data);
 
     /// @notice New staleness has been set
+    /// @param staleness Length of time a price stays fresh for
     event SetStaleness(uint256 staleness);
 
     /// @notice Initialize the contract
@@ -58,33 +65,12 @@ contract BeefyOracle is OwnableUpgradeable {
         price = latestPrice[_token].price;
     }
 
-    /// @notice Fetch the most recent stored price for an array of tokens
-    /// @param _tokens Addresses of the tokens being fetched
-    /// @return prices Prices of the tokens
-    function getPrice(address[] calldata _tokens) external view returns (uint256[] memory prices) {
-        for (uint i; i < _tokens.length; i++) {
-            prices[i] = latestPrice[_tokens[i]].price;
-        }
-    }
-
     /// @notice Fetch an updated price for a token
     /// @param _token Address of the token being fetched
     /// @return price Updated price of the token
     /// @return success Price update was success or not
     function getFreshPrice(address _token) external returns (uint256 price, bool success) {
         (price, success) = _getFreshPrice(_token);
-    }
-
-    /// @notice Fetch updated prices for an array of tokens
-    /// @param _tokens Addresses of the tokens being fetched
-    /// @return prices Updated prices of the tokens
-    /// @return successes Price updates were a success or not
-    function getFreshPrice(
-        address[] calldata _tokens
-    ) external returns (uint256[] memory prices, bool[] memory successes) {
-        for (uint i; i < _tokens.length; i++) {
-            (prices[i], successes[i]) = _getFreshPrice(_tokens[i]);
-        }
     }
 
     /// @dev If the price is stale then calculate a new price by delegating to the sub oracle
@@ -104,6 +90,8 @@ contract BeefyOracle is OwnableUpgradeable {
         }
     }
 
+    /* ----------------------------------- OWNER FUNCTIONS ----------------------------------- */
+
     /// @notice Owner function to set a sub oracle and data for a token
     /// @dev The payload will be validated against the library
     /// @param _token Address of the token being fetched
@@ -118,14 +106,15 @@ contract BeefyOracle is OwnableUpgradeable {
     /// @param _tokens Addresses of the tokens being fetched
     /// @param _oracles Addresses of the libraries used to calculate the price
     /// @param _datas Payloads specific to the tokens that will be used by the libraries
-    function setOracle(
+    function setOracles(
         address[] calldata _tokens,
         address[] calldata _oracles,
         bytes[] calldata _datas
     ) external onlyOwner {
-        for (uint i; i < _tokens.length;) {
+        uint256 tokenLength = _tokens.length;
+        for (uint i; i < tokenLength;) {
             _setOracle(_tokens[i], _oracles[i], _datas[i]);
-            unchecked { i++; }
+            unchecked { ++i; }
         }
     }
 
@@ -136,6 +125,7 @@ contract BeefyOracle is OwnableUpgradeable {
     function _setOracle(address _token, address _oracle, bytes calldata _data) private {
         ISubOracle(_oracle).validateData(_data);
         subOracle[_token] = SubOracle({oracle: _oracle, data: _data});
+        _getFreshPrice(_token);
         emit SetOracle(_token, _oracle, _data);
     }
 
