@@ -36,6 +36,12 @@ contract BeefyOracleUniswapV2 {
     /// @notice Stored last average prices of tokens in a pair
     mapping(address => Price) public prices;
 
+    /// @notice Pair has been updated with average prices
+    /// @param pair Pair address
+    /// @param priceAverage0 Average price of token0
+    /// @param priceAverage1 Average price of token1
+    event PairUpdated(address indexed pair, uint256 priceAverage0, uint256 priceAverage1);
+
     /// @notice Fetch price from the UniswapV2 pairs using the TWAP observations
     /// @param _data Payload from the central oracle with the addresses of the token route, pairs 
     /// route and TWAP periods in seconds
@@ -46,10 +52,12 @@ contract BeefyOracleUniswapV2 {
             abi.decode(_data, (address[], address[], uint256[]));
 
         uint256 amount = 10 ** IERC20MetadataUpgradeable(tokens[0]).decimals();
-        for (uint i; i < pairs.length; i++) {
+        uint256 pairLength = pairs.length;
+        for (uint i; i < pairLength;) {
             address pair = pairs[i];
             _updatePair(pair, twapPeriods[i]);
             amount = _getAmountOut(pair, tokens[i], amount);
+            unchecked { ++i; }
         }
 
         price = BeefyOracleHelper.priceFromBaseToken(
@@ -59,38 +67,36 @@ contract BeefyOracleUniswapV2 {
     }
 
     /// @dev Update the stored price averages and observation for a UniswapV2 pair if outside the TWAP
-    /// period or tracking a new pair
+    /// period or tracking a new pair. Initial average prices should not be trusted
     /// @param _pair UniswapV2 pair to update
-    /// @param _twapPeriod TWAP period minimum in seconds 
+    /// @param _twapPeriod TWAP period minimum in seconds
     function _updatePair(address _pair, uint256 _twapPeriod) private {
         Observation memory observation = prices[_pair].observation;
-        (uint112 reserve0, uint112 reserve1, uint256 lastUpdate) = IUniswapV2Pair(_pair).getReserves();
+        uint256 timeElapsed = block.timestamp - observation.timestamp;
 
-        if (prices[_pair].observation.timestamp == 0) {
-            prices[_pair] = Price({
-                priceAverage0: uint256(reserve1 * 1 ether / reserve0),
-                priceAverage1: uint256(reserve0 * 1 ether / reserve1),
-                observation: Observation({
-                    price0: IUniswapV2Pair(_pair).price0CumulativeLast(),
-                    price1: IUniswapV2Pair(_pair).price1CumulativeLast(),
-                    timestamp: lastUpdate
-                })
-            });
-        } else {
-            uint256 timeElapsed = lastUpdate - observation.timestamp;
-            if (timeElapsed > _twapPeriod) {
-                uint256 price0 = IUniswapV2Pair(_pair).price0CumulativeLast();
-                uint256 price1 = IUniswapV2Pair(_pair).price1CumulativeLast();
-                prices[_pair] = Price({
-                    priceAverage0: (price0 - observation.price0) * 1 ether / timeElapsed,
-                    priceAverage1: (price1 - observation.price1) * 1 ether / timeElapsed,
-                    observation: Observation({
-                        price0: price0,
-                        price1: price1,
-                        timestamp: lastUpdate
-                    })
-                });
+        if (timeElapsed > _twapPeriod) {
+            (uint112 reserve0, uint112 reserve1, uint256 lastUpdate) = IUniswapV2Pair(_pair).getReserves();
+            uint256 price0 = IUniswapV2Pair(_pair).price0CumulativeLast();
+            uint256 price1 = IUniswapV2Pair(_pair).price1CumulativeLast();
+
+            if (block.timestamp > lastUpdate) {
+                uint256 unsyncTime = block.timestamp - lastUpdate;
+                price0 += (2**112 * uint256(reserve1) / reserve0) * unsyncTime;
+                price1 += (2**112 * uint256(reserve0) / reserve1) * unsyncTime;
             }
+
+            uint256 priceAverage0;
+            uint256 priceAverage1;
+            if (prices[_pair].observation.timestamp > 0) {
+                priceAverage0 = (price0 - observation.price0) * 1 ether / (timeElapsed * 2**112);
+                priceAverage1 = (price1 - observation.price1) * 1 ether / (timeElapsed * 2**112);
+            } else {
+                priceAverage0 = uint256(reserve1) * 1 ether / reserve0;
+                priceAverage1 = uint256(reserve0) * 1 ether / reserve1;
+            }
+
+            prices[_pair] = Price(priceAverage0, priceAverage1, Observation(price0, price1, lastUpdate));
+            emit PairUpdated(_pair, priceAverage0, priceAverage1);
         }
     }
 
@@ -123,12 +129,21 @@ contract BeefyOracleUniswapV2 {
         uint256 basePrice = IBeefyOracle(msg.sender).getPrice(tokens[0]);
         if (basePrice == 0) revert BeefyOracleErrors.NoBasePrice(tokens[0]);
 
-        for (uint i; i < pairs.length; i++) {
-            address token = tokens[i];
+        uint256 pairLength = pairs.length;
+        for (uint i; i < pairLength;) {
+            address fromToken = tokens[i];
+            address toToken = tokens[i + 1];
             address pair = pairs[i];
-            if (token != IUniswapV2Pair(pair).token0() || token != IUniswapV2Pair(pair).token1()) {
-                revert BeefyOracleErrors.TokenNotInPair(token, pair);
+            address token0 = IUniswapV2Pair(pair).token0();
+            address token1 = IUniswapV2Pair(pair).token1();
+            
+            if (fromToken != token0 && fromToken != token1) {
+                revert BeefyOracleErrors.TokenNotInPair(fromToken, pair);
             }
+            if (toToken != token0 && toToken != token1) {
+                revert BeefyOracleErrors.TokenNotInPair(toToken, pair);
+            }
+            unchecked { ++i; }
         }
     }
 }

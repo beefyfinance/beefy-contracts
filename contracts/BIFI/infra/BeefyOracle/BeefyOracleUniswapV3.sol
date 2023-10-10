@@ -10,7 +10,7 @@ import { BeefyOracleHelper, IBeefyOracle, BeefyOracleErrors } from "./BeefyOracl
 /// @title Beefy Oracle for UniswapV3
 /// @author Beefy, @kexley
 /// @notice On-chain oracle using UniswapV3
-library BeefyOracleUniswapV3 {
+contract BeefyOracleUniswapV3 {
 
     /// @notice Fetch price from the UniswapV3 pools using the TWAP observations
     /// @param _data Payload from the central oracle with the addresses of the token route, pool 
@@ -33,9 +33,7 @@ library BeefyOracleUniswapV3 {
 
         uint256 amountOut = UniswapV3OracleLibrary.getQuoteAtTick(
             int24(chainedTick),
-            uint128(10 ** IERC20MetadataUpgradeable(tokens[0]).decimals()),
-            tokens[0],
-            tokens[tokens.length - 1]
+            10 ** IERC20MetadataUpgradeable(tokens[0]).decimals()
         );
 
         price = BeefyOracleHelper.priceFromBaseToken(
@@ -57,12 +55,21 @@ library BeefyOracleUniswapV3 {
         uint256 basePrice = IBeefyOracle(msg.sender).getPrice(tokens[0]);
         if (basePrice == 0) revert BeefyOracleErrors.NoBasePrice(tokens[0]);
 
-        for (uint i; i < pools.length; i++) {
-            address token = tokens[i];
+        uint256 poolLength = pools.length;
+        for (uint i; i < poolLength;) {
+            address fromToken = tokens[i];
+            address toToken = tokens[i + 1];
             address pool = pools[i];
-            if (token != IUniswapV3Pool(pool).token0() || token != IUniswapV3Pool(pool).token1()) {
-                revert BeefyOracleErrors.TokenNotInPair(token, pool);
+            address token0 = IUniswapV3Pool(pool).token0();
+            address token1 = IUniswapV3Pool(pool).token1();
+
+            if (fromToken != token0 && fromToken != token1) {
+                revert BeefyOracleErrors.TokenNotInPair(fromToken, pool);
             }
+            if (toToken != token0 && toToken != token1) {
+                revert BeefyOracleErrors.TokenNotInPair(toToken, pool);
+            }
+            unchecked { ++i; }
         }
     }
 }

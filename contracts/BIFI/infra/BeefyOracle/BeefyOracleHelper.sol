@@ -28,7 +28,7 @@ library BeefyOracleHelper {
         (uint256 basePrice,) = IBeefyOracle(_oracle).getFreshPrice(_baseToken);
         uint8 decimals = IERC20MetadataUpgradeable(_token).decimals();
         _amountOut = scaleAmount(_amountOut, decimals);
-        price = _amountOut * 1 ether / basePrice;
+        price =  basePrice * 1 ether / _amountOut;
     }
 
     /// @dev Scale an input amount to 18 decimals

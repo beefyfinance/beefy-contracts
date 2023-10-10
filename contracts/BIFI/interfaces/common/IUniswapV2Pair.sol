@@ -12,4 +12,5 @@ interface IUniswapV2Pair {
     function kLast() external view returns (uint256);
     function price0CumulativeLast() external view returns (uint256);
     function price1CumulativeLast() external view returns (uint256);
+    function sync() external;
 }
