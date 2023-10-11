@@ -222,7 +222,11 @@ contract BeefyRewardPool is ERC20Upgradeable, OwnableUpgradeable {
     /// @param _to Recipient address of the token transfer
     /// @param _value Amount to transfer
     /// @return success Transfer was successful or not
-    function transferFrom(address _from, address _to, uint256 _value) public override returns (bool) {
+    function transferFrom(
+        address _from,
+        address _to,
+        uint256 _value
+    ) public override returns (bool success) {
         _update(_from);
         _update(_to);
         return super.transferFrom(_from, _to, _value);

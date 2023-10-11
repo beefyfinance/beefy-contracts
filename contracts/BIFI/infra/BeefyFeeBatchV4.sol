@@ -313,39 +313,6 @@ contract BeefyFeeBatchV4 is OwnableUpgradeable {
         emit SetDuration(_duration);
     }
 
-    /* -------------------------------- REWARD POOL MANAGEMENT -------------------------------- */
-
-    /// @notice Set the whitelist status of a manager for the reward pool
-    /// @param _manager Address of the manager
-    /// @param _whitelisted Status of the manager on the whitelist
-    function setWhitelistOfRewardPool(address _manager, bool _whitelisted) external onlyOwner {
-        IBeefyRewardPool(rewardPool).setWhitelist(_manager, _whitelisted);
-        emit SetWhitelistOfRewardPool(_manager, _whitelisted);
-    }
-
-    /// @notice Remove a reward from the reward pool distribution
-    /// @param _reward Address of the reward to remove
-    /// @param _recipient Address to send the reward to
-    function removeRewardFromRewardPool(address _reward, address _recipient) external onlyOwner {
-        IBeefyRewardPool(rewardPool).removeReward(_reward, _recipient);
-        emit RemoveRewardFromRewardPool(_reward, _recipient);
-    }
-
-    /// @notice Rescue an unsupported token from the reward pool
-    /// @param _token Address of the token to remove
-    /// @param _recipient Address to send the token to
-    function rescueTokensFromRewardPool(address _token, address _recipient) external onlyOwner {
-        IBeefyRewardPool(rewardPool).rescueTokens(_token, _recipient);
-        emit RescueTokensFromRewardPool(_token, _recipient);
-    }
-
-    /// @notice Transfer ownership of the reward pool to a new owner
-    /// @param _owner New owner of the reward pool
-    function transferOwnershipOfRewardPool(address _owner) external onlyOwner {
-        IBeefyRewardPool(rewardPool).transferOwnership(_owner);
-        emit TransferOwnershipOfRewardPool(_owner);
-    }
-
     /* ------------------------------------- SWEEP TOKENS ------------------------------------- */
 
     /// @notice Rescue an unsupported token
