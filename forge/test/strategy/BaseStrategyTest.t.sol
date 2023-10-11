@@ -197,7 +197,7 @@ abstract contract BaseStrategyTest is Test {
         t = string.concat(t, "]");
     }
 
-    function uintsToStr(uint[3] memory a) public pure returns (string memory t) {
+    function uintsToStr(uint[5] memory a) public pure returns (string memory t) {
         if (a.length == 0) return "[]";
         if (a.length == 1) return string.concat("[", vm.toString(a[0]), "]");
         t = string.concat("[", vm.toString(a[0]));

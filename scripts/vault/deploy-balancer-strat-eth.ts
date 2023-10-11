@@ -2,38 +2,36 @@ import hardhat, { ethers, web3 } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
 import vaultV7 from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7.sol/BeefyVaultV7.json";
 import vaultV7Factory from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
-import stratAbi from "../../artifacts/contracts/BIFI/strategies/Balancer/StrategyAuraBalancerMultiRewardGaugeUniV3.sol/StrategyAuraBalancerMultiRewardGaugeUniV3.json";
+import stratAbi from "../../artifacts/contracts/BIFI/strategies/Balancer/StrategyAuraGyroMainnet.sol/StrategyAuraGyroMainnet.json";
 
 const {
   platforms: { balancer, beefyfinance },
   tokens: {
     BAL: { address: BAL },
     ETH: { address: ETH },
-    bbaUSDC: { address: bbaUSDC },
-    bbaUSD: { address: bbaUSD },
-    USDC: { address: USDC },
-    MAI: { address: MAI },
+    cbETH: { address: cbETH },
+    wstETH: { address: wstETH },
     AURA: { address: AURA },
-    rETH: { address: rETH },
+    
   },
 } = addressBook.ethereum;
 
 const bytes0 = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
-const booster = web3.utils.toChecksumAddress("0x7818A1DA7BD1E64c199029E86Ba244a9798eEE10");
-const want = web3.utils.toChecksumAddress("0x334C96d792e4b26B841d28f53235281cec1be1F2");
+const booster = web3.utils.toChecksumAddress("0xA57b8d98dAE62B26Ec3bcC4a365338157060B234");
+const want = web3.utils.toChecksumAddress("0xf01b0684C98CD7aDA480BFDF6e43876422fa1Fc1");
 
 const vaultParams = {
-  mooName: "Moo Aura rETH-bbaUSD",
-  mooSymbol: "mooAurarETH-bbaUSD",
+  mooName: "Moo Aura Gyro wstETH-ETH",
+  mooSymbol: "mooAuraGyrowstETH-ETH",
   delay: 21600,
 };
 
 const strategyParams = {
   want: want,
   booster: booster,
-  pid: 52,
-  input: rETH,
+  pid: 162,
+  input: wstETH,
   isComposable: false,
   unirouter: balancer.router,
   strategist: process.env.STRATEGIST_ADDRESS,
@@ -41,7 +39,7 @@ const strategyParams = {
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   beefyFeeConfig: beefyfinance.beefyFeeConfig,
   beefyVaultProxy: "0xC551dDCE8e5E657503Cd67A39713c06F2c0d2e97", //beefyfinance.vaultProxy,
-  strategyImplementation: "0xc0fbb8F79e6AB8cB0dCE77359748517F9DF1FE19",
+  strategyImplementation: "0x2b494952C10632B11fEf3139C38fE2AD939F4243",
   useVaultProxy: true,
   outputToNativeAssets: [
     BAL, 
@@ -54,17 +52,28 @@ const strategyParams = {
             1
         ]  
     ],
-  nativeToWantAssets: [
+  nativeToLp0Assets: [
     ETH,
-    rETH
+    wstETH
   ],
-  nativeToWantRouteBytes: [
+  nativeToLp0RouteBytes: [
         [
-            "0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112",
+            "0x93d199263632a4ef4bb438f1feb99e57b4b5f0bd0000000000000000000005c2",
             0,
             1
         ]
     ],
+    lp0ToLp1Assets: [
+      wstETH,
+      ETH
+    ],
+    lp0ToLp1RouteBytes: [
+          [
+              "0x93d199263632a4ef4bb438f1feb99e57b4b5f0bd0000000000000000000005c2",
+              0,
+              1
+          ]
+      ],
     auraToNativeAssets: [AURA, ETH],
     auraToNativePath: [
         [
@@ -125,12 +134,13 @@ async function main() {
 
   const strategyConstructorArguments = [
     strategyParams.want,
-    strategyParams.isComposable,
-    strategyParams.nativeToWantRouteBytes,
+    strategyParams.nativeToLp0RouteBytes,
+    strategyParams.lp0ToLp1RouteBytes,
     strategyParams.outputToNativeRouteBytes,
     strategyParams.booster,
     strategyParams.pid,
-    strategyParams.nativeToWantAssets,
+    strategyParams.nativeToLp0Assets,
+    strategyParams.lp0ToLp1Assets,
     strategyParams.outputToNativeAssets,
     [vault,
     strategyParams.unirouter,

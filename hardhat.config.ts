@@ -161,6 +161,7 @@ const config: DeploymentConfig = {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
     apiKey: {
+      mainnet: process.env.MAINNET_API_KEY!,
       polygon: process.env.POLYGON_API_KEY!,
       zkevm: process.env.ZKEVM_API_KEY!,
       bsc: process.env.BSC_API_KEY!,
