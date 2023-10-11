@@ -25,7 +25,7 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
     address public native = PROD_STRAT.native();
     address constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address constant crv = 0x8Ee73c484A26e0A5df2Ee2a4960B789967dd0415;
-    address constant curveRouter = 0xC02b26ba08c3507D46E5c45fA09FEf44a7C5378d;
+    address constant curveRouter = 0xd6681e74eEA20d196c15038C580f721EF2aB6320;
 
     address constant usdc = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     address constant cbEth = 0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22;
@@ -41,49 +41,70 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
     uint24[] fee10000 = [10000];
     uint24[] fee10000_500 = [10000, 500];
 
+    // usd+-crvusd
+//    address want = 0xda3de145054ED30Ee937865D31B500505C4bDfe7;
+//    address gauge = 0xc0798d022eEE81F1408895325A9fBe171d2a24f1;
+//    uint pid = 42069;
+//    bytes nativeToDepositPath = "";
+//    address[11] depositToWant = [native, baseTriCrypto, baseCrvUSD, want, want];
+//    uint[5][5] depositToWantParams = [[2, 0, 1, 2, 3], [1, 0, 4, 1, 2]];
 
     // crv-crvusd
     address want = 0x6DfE79cecE4f64c1a34F48cF5802492aB595257E;
     address gauge = 0x89289DC2192914a9F0674f1E9A17C56456549b8A;
     uint pid = 42069;
     bytes nativeToDepositPath = "";
-    address[9] depositToWant = [native, baseTriCrypto, baseCrvUSD, baseCrvCrvUSDPool, want];
-    uint[3][4] depositToWantParams = [[2,0,3], [1,0,7]];
+    address[11] depositToWant = [native, baseTriCrypto, baseCrvUSD, baseCrvCrvUSDPool, want];
+    uint[5][5] depositToWantParams = [[2, 0, 1, 2, 3], [1, 0, 4, 2, 2]];
 
     // 4-pool
 //    address want = 0xf6C5F01C7F3148891ad0e19DF78743D31E390D1f;
 //    address gauge = 0x79edc58C471Acf2244B8f93d6f425fD06A439407;
 //    uint pid = 42069;
 //    bytes nativeToDepositPath = "";
-//    address[9] depositToWant = [native, baseTriCrypto, baseCrvUSD, want, want];
-//    uint[3][4] depositToWantParams = [[2,0,3], [3,0,10]];
+//    address[11] depositToWant = [native, baseTriCrypto, baseCrvUSD, want, want];
+//    uint[5][5] depositToWantParams = [[2, 0, 1, 2, 3], [3, 0, 4, 1, 4]];
 
     // TriCrypto
 //    address want = 0x6e53131F68a034873b6bFA15502aF094Ef0c5854;
 //    address gauge = 0x93933FA992927284e9d508339153B31eb871e1f4;
 //    uint pid = 42069;
 //    bytes nativeToDepositPath = "";
-//    address[9] depositToWant = [native, want, want];
-//    uint[3][4] depositToWantParams = [[2,0,8]];
+//    address[11] depositToWant = [native, want, want];
+//    uint[5][5] depositToWantParams = [[2, 0, 4, 2, 3]];
 
     // cbETH-ETH
 //    address want = 0x98244d93D42b42aB3E3A4D12A5dc0B3e7f8F32f9;
 //    address gauge = 0xE9c898BA654deC2bA440392028D2e7A194E6dc3e;
 //    uint pid = 42069;
 //    bytes nativeToDepositPath = "";
-//    address[9] depositToWant = [native, 0x11C1fBd4b3De66bC0565779b35171a6CF3E71f59, want];
-//    uint[3][4] depositToWantParams = [[0,0,7]];
+//    address[11] depositToWant = [native, 0x11C1fBd4b3De66bC0565779b35171a6CF3E71f59, want];
+//    uint[5][5] depositToWantParams = [[0, 0, 4, 2, 2]];
 
-    StrategyCurveConvexL2.CurveRoute depositToWantRoute = StrategyCurveConvexL2.CurveRoute(
-        depositToWant, depositToWantParams, 0);
-
+    CurveRoute depositToWantRoute = CurveRoute(depositToWant, depositToWantParams, 0);
     address unirouter = uniV3;
     address[] rewardsV3;
     uint24[] rewardsV3Fee = fee10000_500;
 
-    address[9] crvToNative = [crv, baseCrvCrvUSDPool, baseCrvUSD, baseTriCrypto, native];
-    uint[3][4] crvParams = [[0, 1, 3], [0, 2, 3]];
-    StrategyCurveConvexL2.CurveRoute crvToNativeRoute = StrategyCurveConvexL2.CurveRoute(crvToNative, crvParams, 0);
+    address[11] crvToNative = [crv, baseCrvCrvUSDPool, baseCrvUSD, baseTriCrypto, native];
+    uint[5][5] crvParams = [[0, 1, 1, 2, 2], [0, 2, 1, 2, 3]];
+    CurveRoute crvToNativeRoute = CurveRoute(crvToNative, crvParams, 0);
+
+    address[11] crvUsdToNative = [baseCrvUSD, baseTriCrypto, native];
+    uint[5][5] crvUsdToNativeParams = [[0, 2, 1, 2, 3]];
+    CurveRoute crvUsdToNativeRoute = CurveRoute(crvUsdToNative, crvUsdToNativeParams, 0);
+
+    address baseUsdPlus = 0xB79DD08EA68A908A97220C76d19A6aA9cBDE4376;
+    address[11] usdPlusToNative = [baseUsdPlus, want, baseCrvUSD, baseTriCrypto, native];
+    uint[5][5] usdPlusParams = [[0, 1, 1, 1, 2], [0, 2, 1, 2, 3]];
+    CurveRoute usdPlusRoute = CurveRoute(usdPlusToNative, usdPlusParams, 0);
+
+    function rewardsToNative() internal view returns (CurveRoute[] memory rewards) {
+        rewards = new CurveRoute[](2);
+        rewards[0] = crvToNativeRoute;
+        rewards[1] = crvUsdToNativeRoute;
+//        rewards[2] = usdPlusRoute;
+    }
 
     IVault vault;
     StrategyCurveConvexL2 strategy;
@@ -111,7 +132,7 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
                 beefyFeeRecipient: PROD_STRAT.beefyFeeRecipient(),
                 beefyFeeConfig: PROD_STRAT.beefyFeeConfig()
             });
-            strategy.initialize(native, curveRouter, want, gauge, pid, nativeToDepositPath, crvToNativeRoute, depositToWantRoute, commons);
+            strategy.initialize(native, curveRouter, want, gauge, pid, nativeToDepositPath, rewardsToNative(), depositToWantRoute, commons);
             console.log("Strategy initialized", IERC20Extended(strategy.want()).symbol(), strategy.pid(), strategy.rewardPool());
 
             if (nativeToDepositPath.length > 0) {
@@ -146,7 +167,7 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
             beefyFeeConfig : PROD_STRAT.beefyFeeConfig()
         });
         console.log("Init Strategy NO_PID");
-        strategyNoPid.initialize(native, curveRouter, want, gauge, strategy.NO_PID(), nativeToDepositPath, crvToNativeRoute, depositToWantRoute, commons);
+        strategyNoPid.initialize(native, curveRouter, want, gauge, strategy.NO_PID(), nativeToDepositPath, rewardsToNative(), depositToWantRoute, commons);
 
         user.approve(want, address(vaultNoPid), wantAmount);
         user.depositAll(vaultNoPid);
@@ -203,15 +224,17 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
 
     function test_setDepositToWant() external {
         vm.startPrank(strategy.keeper());
-        uint[3][4] memory p;
+        address[11] memory r;
+        uint[5][5] memory p;
         console.log("Want as deposit token reverts");
-        address w = strategy.want();
+        r[0] = strategy.want();
         vm.expectRevert();
-        strategy.setDepositToWant([w, a0, a0, a0, a0, a0, a0, a0, a0], p, 1e18);
+        strategy.setDepositToWant(r, p, 1e18);
 
         console.log("Deposit token approved on curve router");
         address token = native;
-        strategy.setDepositToWant([token, a0, a0, a0, a0, a0, a0, a0, a0], p, 1e18);
+        r[0] = token;
+        strategy.setDepositToWant(r, p, 1e18);
         uint allowed = IERC20(token).allowance(address(strategy), strategy.curveRouter());
         assertEq(allowed, type(uint).max);
     }
@@ -245,10 +268,10 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
         strategy.resetRewardsV3();
 
         console.log("Add curveReward");
-        uint[3] memory p = [uint(1),uint(0), uint(0)];
-        uint[3][4] memory _params = [p,p,p,p];
-        strategy.addReward([crv,a0,a0,a0,a0,a0,a0,a0,a0], _params, 1);
-        (address[9] memory r, uint256[3][4] memory params, uint minAmount) = strategy.curveReward(0);
+        uint[5] memory p = [uint(1),uint(0), uint(0), uint(0), uint(0)];
+        uint[5][5] memory _params = [p,p,p,p,p];
+        strategy.addReward([crv,a0,a0,a0,a0,a0,a0,a0,a0,a0,a0], _params, 1);
+        (address[11] memory r, uint256[5][5] memory params, uint minAmount) = strategy.curveReward(0);
         address token0 = r[0];
         assertEq(token0, crv, "!crv");
         assertEq(params[0][0], _params[0][0], "!params");
@@ -301,7 +324,7 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
 
         address[] memory rewards = new address[](strategy.curveRewardsLength() + strategy.rewardsV3Length());
         for(uint i; i < strategy.curveRewardsLength(); ++i) {
-            (address[9] memory route,,) = strategy.curveReward(i);
+            (address[11] memory route,,) = strategy.curveReward(i);
             rewards[i] = route[0];
         }
         for(uint i; i < strategy.rewardsV3Length(); ++i) {
@@ -327,7 +350,9 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
                 IRewardsGauge(strategy.gauge()).claim_rewards(address(strategy));
             }
             if (strategy.isCrvMintable()) {
+                vm.startPrank(address(strategy));
                 strategy.minter().mint(strategy.gauge());
+                vm.stopPrank();
             }
             for (uint i; i < rewards.length; ++i) {
                 string memory s = IERC20Extended(rewards[i]).symbol();
@@ -357,10 +382,19 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
         console.log(string.concat('pid: ', vm.toString(pid), ','));
         console.log(string.concat('nativeToDeposit: "', bytesToStr(nativeToDepositPath), '",'));
         console.log('depositToWant:', string.concat(curveRouteToStr(depositToWantRoute), ','));
-        console.log('crvToNative:', string.concat(curveRouteToStr(crvToNativeRoute), ','));
+        string memory rewards = '[';
+        CurveRoute[] memory r = rewardsToNative();
+        for (uint i; i < r.length; i++) {
+            rewards = string.concat(rewards, curveRouteToStr(r[i]));
+            if (i != r.length - 1) {
+                rewards = string.concat(rewards, ',');
+            }
+        }
+        rewards = string.concat(rewards, '],');
+        console.log('rewardsToNative:', rewards);
     }
 
-    function curveRouteToStr(StrategyCurveConvexL2.CurveRoute memory a) public pure returns (string memory t) {
+    function curveRouteToStr(CurveRoute memory a) public pure returns (string memory t) {
         t = string.concat('[\n["', addrToStr(a.route[0]), '"');
         for (uint i = 1; i < a.route.length; i++) {
             t = string.concat(t, ", ", string.concat('"', addrToStr(a.route[i]), '"'));
