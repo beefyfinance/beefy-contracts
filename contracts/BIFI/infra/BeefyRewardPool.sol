@@ -42,11 +42,11 @@ contract BeefyRewardPool is ERC20Upgradeable, OwnableUpgradeable {
     /// @notice Whitelist of manager addresses
     mapping(address => bool) public whitelisted;
 
-    /// @notice Limit to the number of rewards an owner can add
+    /// @dev Limit to the number of rewards an owner can add
     uint256 private rewardMax;
 
-    /// @notice Location of a reward in the reward array
-    mapping(address => uint256) private index;
+    /// @dev Location of a reward in the reward array
+    mapping(address => uint256) private _index;
 
     /// @dev Each reward address has a new unique identifier each time it is initialized. This is 
     /// to prevent old mappings from being reused when removing and re-adding a reward.
@@ -96,7 +96,7 @@ contract BeefyRewardPool is ERC20Upgradeable, OwnableUpgradeable {
 
     /// @dev Only a manager can call these modified functions
     modifier onlyManager {
-        if (msg.sender != owner() || whitelisted[msg.sender]) revert NotManager(msg.sender);
+        if (!whitelisted[msg.sender]) revert NotManager(msg.sender);
         _;
     }
 
@@ -115,27 +115,29 @@ contract BeefyRewardPool is ERC20Upgradeable, OwnableUpgradeable {
     /// @dev An equal number of receipt tokens will be minted to the caller
     /// @param _amount Amount of BIFI to stake
     function stake(uint256 _amount) external update(msg.sender) {
-        _stake(_amount);
+        _stake(msg.sender, _amount);
     }
 
     /// @notice Stake BIFI tokens with a permit
     /// @dev An equal number of receipt tokens will be minted to the caller
+    /// @param _user User to stake for
     /// @param _amount Amount of BIFI to stake
     /// @param _deadline Timestamp of the deadline after which the permit is invalid
     /// @param _v Part of a signature
     /// @param _r Part of a signature
     /// @param _s Part of a signature
     function stakeWithPermit(
+        address _user,
         uint256 _amount,
         uint256 _deadline,
         uint8 _v,
         bytes32 _r,
         bytes32 _s
-    ) external update(msg.sender) {
+    ) external update(_user) {
         IERC20PermitUpgradeable(address(stakedToken)).permit(
-            msg.sender, address(this), _amount, _deadline, _v, _r, _s
+            _user, address(this), _amount, _deadline, _v, _r, _s
         );
-        _stake(_amount);
+        _stake(_user, _amount);
     }
 
     /// @notice Withdraw BIFI tokens
@@ -166,10 +168,12 @@ contract BeefyRewardPool is ERC20Upgradeable, OwnableUpgradeable {
         uint256[] memory earnedAmounts
     ) {
         uint256 rewardLength = rewards.length;
+        uint256[] memory amounts = new uint256[](rewardLength);
         for (uint i; i < rewardLength;) {
-            earnedAmounts[i] = _earned(_user, rewards[i]);
+            amounts[i] = _earned(_user, rewards[i]);
             unchecked { ++i; }
         }
+        earnedAmounts = amounts;
         rewardTokens = rewards;
     }
 
@@ -183,22 +187,23 @@ contract BeefyRewardPool is ERC20Upgradeable, OwnableUpgradeable {
 
     /// @notice View the reward information
     /// @dev The active reward information is automatically selected from the id mapping
-    /// @param _reward Address of the reward to get the information for
+    /// @param _rewardId Index of the reward in the array to get the information for
+    /// @return reward Address of the reward
     /// @return periodFinish End timestamp of reward distribution
     /// @return duration Distribution length of time in seconds
     /// @return lastUpdateTime Latest timestamp of an update
     /// @return rate Distribution speed in wei per second
-    function rewardInfo(address _reward) external view returns (
+    function rewardInfo(uint256 _rewardId) external view returns (
+        address reward,
         uint256 periodFinish,
         uint256 duration,
         uint256 lastUpdateTime,
         uint256 rate
     ) {
-        RewardInfo storage info = _getRewardInfo(_reward);
-        periodFinish = info.periodFinish;
-        duration = info.duration;
-        lastUpdateTime = info.lastUpdateTime;
-        rate = info.rate;
+        reward = rewards[_rewardId];
+        RewardInfo storage info = _getRewardInfo(reward);
+        (periodFinish, duration, lastUpdateTime, rate) =
+            (info.periodFinish, info.duration, info.lastUpdateTime, info.rate);
     }
 
     /* ------------------------------- ERC20 OVERRIDE FUNCTIONS ------------------------------- */
@@ -246,13 +251,13 @@ contract BeefyRewardPool is ERC20Upgradeable, OwnableUpgradeable {
         uint256 _duration
     ) external onlyManager update(address(0)) {
         if (_reward == address(stakedToken)) revert StakedTokenIsNotAReward();
-        if (_duration < 1 days) revert ShortDuration(_duration);
+        if (_duration < 1 hours) revert ShortDuration(_duration);
 
         if (!_rewardExists(_reward)) {
             _id[_reward] = keccak256(abi.encodePacked(_reward, block.timestamp));
             uint256 rewardLength = rewards.length;
             if (rewards.length + 1 > rewardMax) revert TooManyRewards();
-            index[_reward] = rewardLength;
+            _index[_reward] = rewardLength;
             rewards.push(_reward);
             emit AddReward(_reward);
         }
@@ -283,10 +288,10 @@ contract BeefyRewardPool is ERC20Upgradeable, OwnableUpgradeable {
     function removeReward(address _reward, address _recipient) external onlyOwner {
         if (!_rewardExists(_reward)) revert RewardNotFound(_reward);
 
-        uint256 replacedIndex = index[_reward];
+        uint256 replacedIndex = _index[_reward];
         address endToken = rewards[rewards.length - 1];
         rewards[replacedIndex] = endToken;
-        index[endToken] = replacedIndex;
+        _index[endToken] = replacedIndex;
         rewards.pop();
 
         uint256 rewardBal = IERC20Upgradeable(_reward).balanceOf(address(this));
@@ -335,10 +340,11 @@ contract BeefyRewardPool is ERC20Upgradeable, OwnableUpgradeable {
     }
 
     /// @dev Stake BIFI tokens and mint the caller receipt tokens
+    /// @param _user Address of the user to stake for
     /// @param _amount Amount of BIFI to stake
-    function _stake(uint256 _amount) private {
-        _mint(msg.sender, _amount);
-        stakedToken.safeTransferFrom(msg.sender, address(this), _amount);
+    function _stake(address _user, uint256 _amount) private {
+        _mint(_user, _amount);
+        stakedToken.safeTransferFrom(_user, address(this), _amount);
         emit Staked(msg.sender, _amount);
     }
 
@@ -413,7 +419,7 @@ contract BeefyRewardPool is ERC20Upgradeable, OwnableUpgradeable {
     /// @param _reward Address of the reward
     /// @return exists Returns true if token is in the array
     function _rewardExists(address _reward) private view returns (bool exists) {
-        exists = _reward == rewards[index[_reward]];
+        if (rewards.length > 0) exists = _reward == rewards[_index[_reward]];
     }
 
     /// @dev Transfer at most the balance of the reward on this contract to avoid errors

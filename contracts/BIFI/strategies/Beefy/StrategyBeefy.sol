@@ -283,7 +283,9 @@ contract StrategyBeefy is StratFeeManagerInitializable {
         if (_reward == want || _reward == native || _reward == rewardPool) {
             revert RewardNotAllowed(_reward);
         }
-        if (_reward == rewards[index[_reward]]) revert RewardAlreadySet(_reward);
+        if (rewards.length > 0) {
+            if (_reward == rewards[index[_reward]]) revert RewardAlreadySet(_reward);
+        }
         index[_reward] = rewards.length;
         rewards.push(_reward);
         IERC20Upgradeable(_reward).forceApprove(unirouter, type(uint).max);
