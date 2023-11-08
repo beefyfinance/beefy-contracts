@@ -17,7 +17,7 @@ remappings = [
 evm_version = 'shanghai'
 # gas_reports = ['*']
 ## Sets the concrete solc version to use, this overrides the `auto_detect_solc` value
-solc_version = '0.8.15'
+solc_version = '0.8.19'
 # auto_detect_solc = true
 # offline = false
 optimizer = true
@@ -36,6 +36,7 @@ verbosity = 2
 # block_coinbase = '0x0000000000000000000000000000000000000000'
 # block_timestamp = 0
 # block_difficulty = 0
+fs_permissions = [{ access = "read", path = "./"}]
 
 # These^ are all the available config options
 # Docs at https://github.com/gakonst/foundry/tree/master/config

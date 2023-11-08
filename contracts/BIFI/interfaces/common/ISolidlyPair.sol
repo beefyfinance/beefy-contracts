@@ -10,4 +10,5 @@ interface ISolidlyPair {
     function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
     function stable() external view returns (bool);
     function getAmountOut(uint256 amountIn, address tokenIn) external view returns (uint256);
+    function quote(address tokenIn, uint256 amountIn, uint256 granularity) external returns (uint256 amountOut);
 }
