@@ -27,6 +27,7 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
     address constant crv = 0xD533a949740bb3306d119CC777fa900bA034cd52;
     address constant cvx = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
     address constant triCrypto = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
+    address constant triCrv = 0x4eBdF703948ddCEA3B11f675B4D1Fba9d2414A14;
     address constant usdt = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address constant crv3pool = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
     address constant crv3poolLp = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
@@ -37,18 +38,63 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
     address constant wbtc = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
     address constant sbtcPool = 0xf253f83AcA21aAbD2A20553AE0BF7F65C755A07F;
     address constant sbtcLp = 0x051d7e5609917Bd9b73f04BAc0DED8Dd46a74301;
+    address constant wstEth = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
+    address constant crvUsd = 0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E;
 
     address constant uniV3 = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     address constant uniV2 = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address constant uniV3Quoter = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
     ICrvMinter public constant minter = ICrvMinter(0xd061D61a4d941c39E5453435B6345Dc261C2fcE0);
     address a0 = address(0);
+    uint24[] fee100 = [100];
     uint24[] fee500 = [500];
     uint24[] fee3000 = [3000];
     uint24[] fee10000 = [10000];
     uint24[] fee10000_500 = [10000, 500];
     bytes crvToNativeUniV3 = routeToPath(route(crv, native), fee3000);
     bytes cvxToNativeUniV3 = routeToPath(route(cvx, native), fee10000);
+
+    // crvUSD-sDAI
+    address want = 0x1539c2461d7432cc114b0903f1824079BfCA2C92;
+    address gauge = 0x2B5a5e182768a18C70EDd265240578a72Ca475ae;
+    uint pid = 42069;
+    bytes crvToNativePath = crvToNativeUniV3;
+    bytes cvxToNativePath = cvxToNativeUniV3;
+    bytes nativeToDepositPath = "";
+    address[9] depositToWant = [native, triCrv, crvUsd, want, want];
+    uint[3][4] depositToWantParams = [[1,0,3],[0,0,7]];
+    address unirouter = uniV3;
+    address[] rewardsV2;
+    address[] rewardsV3;
+    uint24[] rewardsV3Fee = fee100;
+
+    // TryLSD
+//    address want = 0x2570f1bD5D2735314FC102eb12Fc1aFe9e6E7193;
+//    address gauge = 0xeA012f5b25Fa0D8e46123B85f585d0A5075e96b5;
+//    uint pid = 251;
+//    bytes crvToNativePath = crvToNativeUniV3;
+//    bytes cvxToNativePath = cvxToNativeUniV3;
+//    bytes nativeToDepositPath = routeToPath(route(native, wstEth), fee100);
+//    address[9] depositToWant = [wstEth, want, want];
+//    uint[3][4] depositToWantParams = [[0,0,8]];
+//    address unirouter = uniV3;
+//    address[] rewardsV2;
+//    address[] rewardsV3;
+//    uint24[] rewardsV3Fee = fee100;
+
+    // TriCryptoLLama
+//    address want = 0x2889302a794dA87fBF1D6Db415C1492194663D13;
+//    address gauge = 0x60d3d7eBBC44Dc810A743703184f062d00e6dB7e;
+//    uint pid = 197;
+//    bytes crvToNativePath = crvToNativeUniV3;
+//    bytes cvxToNativePath = cvxToNativeUniV3;
+//    bytes nativeToDepositPath = routeToPath(route(native, wstEth), fee100);
+//    address[9] depositToWant = [wstEth, want, want];
+//    uint[3][4] depositToWantParams = [[2,0,8]];
+//    address unirouter = uniV3;
+//    address[] rewardsV2;
+//    address[] rewardsV3 = [wstEth, native];
+//    uint24[] rewardsV3Fee = fee100;
 
     // crvUSD-USDC
 //    address want = 0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E;
@@ -78,19 +124,19 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
 //    address[] rewardsV3;
 //    uint24[] rewardsV3Fee = fee10000_500;
 
-    // TriCryptoUSDC
-    address want = 0x7F86Bf177Dd4F3494b841a37e810A34dD56c829B;
-    address gauge = 0x85D44861D024CB7603Ba906F2Dc9569fC02083F6;
-    uint pid = 189;
-    bytes crvToNativePath = crvToNativeUniV3;
-    bytes cvxToNativePath = cvxToNativeUniV3;
-    bytes nativeToDepositPath = "";
-    address[9] depositToWant = [native, want, want];
-    uint[3][4] depositToWantParams = [[2,0,8]];
-    address unirouter = uniV3;
-    address[] rewardsV2;
-    address[] rewardsV3;
-    uint24[] rewardsV3Fee = fee10000_500;
+//    // TriCryptoUSDC
+//    address want = 0x7F86Bf177Dd4F3494b841a37e810A34dD56c829B;
+//    address gauge = 0x85D44861D024CB7603Ba906F2Dc9569fC02083F6;
+//    uint pid = 189;
+//    bytes crvToNativePath = crvToNativeUniV3;
+//    bytes cvxToNativePath = cvxToNativeUniV3;
+//    bytes nativeToDepositPath = "";
+//    address[9] depositToWant = [native, want, want];
+//    uint[3][4] depositToWantParams = [[2,0,8]];
+//    address unirouter = uniV3;
+//    address[] rewardsV2;
+//    address[] rewardsV3;
+//    uint24[] rewardsV3Fee = fee10000_500;
 
     // wBETH
 //    address want = 0xBfAb6FA95E0091ed66058ad493189D2cB29385E6;
@@ -211,6 +257,7 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
             console.log("RewardV3", IERC20Extended(rewardsV3[0]).symbol(), bytesToStr(path));
             strategy.addRewardV3(path, 1000);
         }
+        strategy.setCrvMintable(true);
 
         deal(vault.want(), address(user), wantAmount);
         initBase(vault, IStrategy(address(strategy)));
@@ -301,6 +348,7 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
     function test_setCrvMintable() external {
         // only if convex
         if (strategy.rewardPool() == address(0)) return;
+        if (strategy.rewardsV3Length() > 2) return;
 
         _depositIntoVault(user, wantAmount);
         uint bal = vault.balance();
@@ -420,12 +468,17 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
         } else {
             console.log("Claim rewards on Curve");
             IRewardsGauge(strategy.gauge()).claim_rewards(address(strategy));
-            if (strategy.isCrvMintable()) {
-                minter.mint(strategy.gauge());
-            }
             for (uint i; i < rewards.length; ++i) {
                 string memory s = IERC20Extended(rewards[i]).symbol();
                 console2.log(s, IERC20(rewards[i]).balanceOf(address(strategy)));
+            }
+            if (strategy.isCrvMintable()) {
+                console.log("Mint CRV");
+                uint balBefore = IERC20(crv).balanceOf(address(strategy));
+                vm.startPrank(address(strategy));
+                minter.mint(strategy.gauge());
+                vm.stopPrank();
+                console2.log("CRV minted", IERC20(crv).balanceOf(address(strategy)) - balBefore);
             }
         }
 

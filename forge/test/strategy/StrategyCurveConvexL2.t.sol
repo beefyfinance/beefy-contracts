@@ -41,6 +41,14 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
     uint24[] fee10000 = [10000];
     uint24[] fee10000_500 = [10000, 500];
 
+    // eusd-crvusd
+    address want = 0x798D81d60966d2E909468d87e7e4b6A8DAFB1C36;
+    address gauge = 0xb2135e9B790C50Fa018ca14e4B04BDb4ADd2a61B;
+    uint pid = 42069;
+    bytes nativeToDepositPath = "";
+    address[11] depositToWant = [native, baseTriCrypto, baseCrvUSD, want, want];
+    uint[5][5] depositToWantParams = [[2, 0, 1, 2, 3], [1, 0, 4, 1, 2]];
+
     // usd+-crvusd
 //    address want = 0xda3de145054ED30Ee937865D31B500505C4bDfe7;
 //    address gauge = 0xc0798d022eEE81F1408895325A9fBe171d2a24f1;
@@ -50,12 +58,12 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
 //    uint[5][5] depositToWantParams = [[2, 0, 1, 2, 3], [1, 0, 4, 1, 2]];
 
     // crv-crvusd
-    address want = 0x6DfE79cecE4f64c1a34F48cF5802492aB595257E;
-    address gauge = 0x89289DC2192914a9F0674f1E9A17C56456549b8A;
-    uint pid = 42069;
-    bytes nativeToDepositPath = "";
-    address[11] depositToWant = [native, baseTriCrypto, baseCrvUSD, baseCrvCrvUSDPool, want];
-    uint[5][5] depositToWantParams = [[2, 0, 1, 2, 3], [1, 0, 4, 2, 2]];
+//    address want = 0x6DfE79cecE4f64c1a34F48cF5802492aB595257E;
+//    address gauge = 0x89289DC2192914a9F0674f1E9A17C56456549b8A;
+//    uint pid = 42069;
+//    bytes nativeToDepositPath = "";
+//    address[11] depositToWant = [native, baseTriCrypto, baseCrvUSD, baseCrvCrvUSDPool, want];
+//    uint[5][5] depositToWantParams = [[2, 0, 1, 2, 3], [1, 0, 4, 2, 2]];
 
     // 4-pool
 //    address want = 0xf6C5F01C7F3148891ad0e19DF78743D31E390D1f;
@@ -100,9 +108,9 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
     CurveRoute usdPlusRoute = CurveRoute(usdPlusToNative, usdPlusParams, 0);
 
     function rewardsToNative() internal view returns (CurveRoute[] memory rewards) {
-        rewards = new CurveRoute[](2);
+        rewards = new CurveRoute[](1);
         rewards[0] = crvToNativeRoute;
-        rewards[1] = crvUsdToNativeRoute;
+//        rewards[1] = crvUsdToNativeRoute;
 //        rewards[2] = usdPlusRoute;
     }
 
