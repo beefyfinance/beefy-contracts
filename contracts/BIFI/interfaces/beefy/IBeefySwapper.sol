@@ -21,4 +21,12 @@ interface IBeefySwapper {
         address _toToken,
         uint256 _amountIn
     ) external view returns (uint256 amountOut);
+
+    struct SwapInfo {
+        address router;
+        bytes data;
+        uint256 amountIndex;
+        uint256 minIndex;
+        int8 minAmountSign;
+    }
 }
