@@ -207,13 +207,13 @@ contract StrategyHop is StratFeeManagerInitializable {
         deposit();
     }
 
-    function _giveAllowances() internal {
+    function _giveAllowances() internal virtual {
         IERC20(want).safeApprove(rewardPool, type(uint).max);
         IERC20(output).safeApprove(unirouter, type(uint).max);
         IERC20(depositToken).safeApprove(stableRouter, type(uint).max);
     }
 
-    function _removeAllowances() internal {
+    function _removeAllowances() internal virtual {
         IERC20(want).safeApprove(rewardPool, 0);
         IERC20(output).safeApprove(unirouter, 0);
         IERC20(depositToken).safeApprove(stableRouter, 0);

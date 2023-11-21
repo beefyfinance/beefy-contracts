@@ -11,7 +11,7 @@ contract StrategyHopUniV3 is StrategyHop {
 
     // Routes
     bytes public outputToNativePath;
-    bytes public outputToWantPath;
+    bytes public outputToDepositPath;
 
     function initialize(
         address _want,
@@ -19,18 +19,19 @@ contract StrategyHopUniV3 is StrategyHop {
         address _stableRouter,
         address[] calldata _outputToNativeRoute,
         uint24[] calldata _outputToNativeFees,
-        address[] calldata _outputToWantRoute,
-        uint24[] calldata _outputToWantFees,
+        address[] calldata _outputToDepositRoute,
+        uint24[] calldata _outputToDepositFees,
         CommonAddresses calldata _commonAddresses
     ) public initializer {
         __StrategyHop_init(_want, _rewardPool, _stableRouter, _commonAddresses);
 
         output = _outputToNativeRoute[0];
         native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
-        depositIndex = IStableRouter(stableRouter).getTokenIndex(want);
+        depositToken = _outputToDepositRoute[_outputToDepositRoute.length - 1];
+        depositIndex = IStableRouter(stableRouter).getTokenIndex(depositToken);
 
         outputToNativePath = UniswapV3Utils.routeToPath(_outputToNativeRoute, _outputToNativeFees);
-        outputToWantPath = UniswapV3Utils.routeToPath(_outputToWantRoute, _outputToWantFees);
+        outputToDepositPath = UniswapV3Utils.routeToPath(_outputToDepositRoute, _outputToDepositFees);
 
         _giveAllowances();
     }
@@ -40,9 +41,9 @@ contract StrategyHopUniV3 is StrategyHop {
         UniswapV3Utils.swap(unirouter, outputToNativePath, toNative);
     }
 
-    function _swapToWant() internal virtual override {
-        uint256 toWant = IERC20(output).balanceOf(address(this));
-        UniswapV3Utils.swap(unirouter, outputToWantPath, toWant);
+    function _swapToDeposit() internal virtual override {
+        uint256 toDeposit = IERC20(output).balanceOf(address(this));
+        UniswapV3Utils.swap(unirouter, outputToDepositPath, toDeposit);
     }
 
     function _getAmountOut(uint256) internal view virtual override returns (uint256) {
@@ -53,7 +54,7 @@ contract StrategyHopUniV3 is StrategyHop {
         return UniswapV3Utils.pathToRoute(outputToNativePath);
     }
 
-    function outputToWant() external view virtual override returns (address[] memory) {
-        return UniswapV3Utils.pathToRoute(outputToWantPath);
+    function outputToDeposit() external view virtual override returns (address[] memory) {
+        return UniswapV3Utils.pathToRoute(outputToDepositPath);
     }
 }
