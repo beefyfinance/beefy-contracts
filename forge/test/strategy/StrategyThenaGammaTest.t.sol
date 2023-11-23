@@ -42,12 +42,18 @@ contract StrategyThenaGammaTest is BaseStrategyTest {
 
     bytes outputToNative = AlgebraUtils.routeToPath(route(the, native));
 
+    // BNB-rBNB
+    address constant want = 0x3513292A2E0e0C6FB0A82196D7ed8eB499fe5772;
+    address constant rewardPool = 0x0f75C0004bcda3DF44B8375197F3f2c0915edA8c;
+    bytes nativeToLp0 = "";
+    bytes nativeToLp1 = AlgebraUtils.routeToPath(route(native, 0xF027E525D491ef6ffCC478555FBb3CFabB3406a6));
+
     // USDC-wUSDRv3
-    address constant want = 0xF7369B1D005F2cbB1887233B5aa0CB0B39fB9891;
-    address constant rewardPool = 0x56019Fe949C29Ec8b895cFFAb3292564CD1C3e42;
-    address[] lp1Route = [native, usdt, usdc, wusdr];
-    bytes nativeToLp0 = AlgebraUtils.routeToPath(route(native, usdt, usdc));
-    bytes nativeToLp1 = AlgebraUtils.routeToPath(lp1Route);
+//    address constant want = 0xF7369B1D005F2cbB1887233B5aa0CB0B39fB9891;
+//    address constant rewardPool = 0x56019Fe949C29Ec8b895cFFAb3292564CD1C3e42;
+//    address[] lp1Route = [native, usdt, usdc, wusdr];
+//    bytes nativeToLp0 = AlgebraUtils.routeToPath(route(native, usdt, usdc));
+//    bytes nativeToLp1 = AlgebraUtils.routeToPath(lp1Route);
 
     // WUSDR-DOLA
 //    address constant want = 0x92104a7BeC32297DdD022A8f242bf498d0470876;

@@ -39,6 +39,10 @@ contract StrategyCvxStakingTest is BaseStrategyTest {
     address constant cvxFpis = 0xa2847348b58CEd0cA58d23c7e9106A49f1427Df6;
     address constant cvxFpisPool = 0xfBB481A443382416357fA81F16dB5A725DC6ceC8;
     address constant fxsFpisPool = 0xD4e2fdC354c5DFfb865798Ca98c2b9d5382F687C;
+    address constant prisma = 0xdA47862a83dac0c112BA89c6abC2159b95afd71C;
+    address constant prismaEthPool = 0x322135Dd9cBAE8Afa84727d9aE1434b5B3EBA44B;
+    address constant cvxPrisma = 0x34635280737b5BFe6c7DC2FC3065D60d66e78185;
+    address constant cvxPrismaPool = 0x3b21C2868B6028CfB38Ff86127eF22E68d16d53B;
 
     address[9] nativeToCvxCrv = [native, ethCrvPool, crv, cvxCrvPool, cvxCrv];
     uint[3][4] nativeToCvxCrvParams = [[0, 1, 3], [0, 1, 1]];
@@ -48,6 +52,9 @@ contract StrategyCvxStakingTest is BaseStrategyTest {
 
     address[9] nativeToCvxFpis = [native, ethFxsPool, fxs, fxsFpisPool, fpis, cvxFpisPool, cvxFpis];
     uint[3][4] nativeToCvxFpisParams = [[0, 1, 3], [0, 1, 3], [0, 1, 1]];
+
+    address[9] nativeToCvxPrisma = [native, prismaEthPool, prisma, cvxPrismaPool, cvxPrisma];
+    uint[3][4] nativeToCvxPrismaParams = [[0, 1, 3], [0, 1, 1]];
 
     address[9] threePoolToNativeRoute = [threePoolLp, threePool, usdt, triCrypto, native];
     uint[3][4] threePoolToNativeParams = [[0, 2, 12], [0, 2, 3]];
@@ -62,12 +69,17 @@ contract StrategyCvxStakingTest is BaseStrategyTest {
     uint[3][4] rewardParams = fpisToNativeParams;
     uint rewardMinAmount = 1e19;
 
-    address want = cvxFpis;
-//    address staking = 0x49b4d1dF40442f0C31b1BbAEA3EDE7c38e37E31a;
-    address staking = 0xfA87DB3EAa93B7293021e38416650D2E666bC483;
+    address want = cvxPrisma;
+    address staking = 0x0c73f1cFd5C9dFc150C8707Aa47Acbd14F0BE108;
     StrategyConvexStaking.CurveRoute nativeToWant = StrategyConvexStaking.CurveRoute(
-        nativeToCvxFpis, nativeToCvxFpisParams, 0
+        nativeToCvxPrisma, nativeToCvxPrismaParams, 0
     );
+
+//    address want = cvxFpis;
+//    address staking = 0xfA87DB3EAa93B7293021e38416650D2E666bC483;
+//    StrategyConvexStaking.CurveRoute nativeToWant = StrategyConvexStaking.CurveRoute(
+//        nativeToCvxFpis, nativeToCvxFpisParams, 0
+//    );
 
     uint24[] fee3000 = [3000];
     address uniV3Reward = usdc;
@@ -99,8 +111,8 @@ contract StrategyCvxStakingTest is BaseStrategyTest {
         strategy.initialize(want, staking, nativeToWant, commons);
         console.log("Strategy initialized");
 
-        strategy.addReward(rewardRoute, rewardParams, rewardMinAmount);
-        strategy.setCurveSwapMinAmount(1);
+//        strategy.addReward(rewardRoute, rewardParams, rewardMinAmount);
+//        strategy.setCurveSwapMinAmount(1);
 
         deal(vault.want(), address(user), wantAmount);
         initBase(vault, IStrategy(address(strategy)));
@@ -181,7 +193,7 @@ contract StrategyCvxStakingTest is BaseStrategyTest {
             console2.log(IERC20Extended(rewards[i]).symbol(), bal);
         }
         console.log("WETH", nativeBal);
-        deal(strategy.crv(), address(strategy), 1e20);
+//        deal(strategy.crv(), address(strategy), 1e20);
         deal(strategy.cvx(), address(strategy), 1e20);
 
         console.log("Harvest");

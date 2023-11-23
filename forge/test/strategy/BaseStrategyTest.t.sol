@@ -85,6 +85,8 @@ abstract contract BaseStrategyTest is Test {
 
         // trigger harvestOnDeposit
         _depositIntoVault(user, wantAmount);
+        // in case of lockedProfit harvested balance is not available right away
+        skip(1 days);
         assertGt(vault.getPricePerFullShare(), pps, "Not harvested");
         uint vaultBal = vault.balance();
 
@@ -108,6 +110,9 @@ abstract contract BaseStrategyTest is Test {
         skip(1 days);
         console.log("Harvesting vault");
         strategy.harvest();
+
+        // in case of lockedProfit harvested balance is not available right away
+        skip(1 days);
 
         uint256 vaultBalAfterHarvest = vault.balance();
         uint256 ppsAfterHarvest = vault.getPricePerFullShare();
