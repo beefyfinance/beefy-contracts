@@ -19,8 +19,12 @@ contract BeefyLastHarvestMulticall {
     function getLastHarvests(address[] calldata strategies) external view returns (uint[] memory) {
         uint[] memory results = new uint[](strategies.length);
 
-        for (uint i = 0; i < strategies.length; i++) {
+        for (uint i; i < strategies.length;) {
             results[i] = getUint(strategies[i], abi.encodeWithSignature("lastHarvest()"));
+
+            unchecked {
+                ++i;
+            }
         }
 
         return results;
