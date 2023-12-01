@@ -27,6 +27,7 @@ contract StrategyPrismaTest is BaseStrategyTest {
     address constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address constant crv = 0xD533a949740bb3306d119CC777fa900bA034cd52;
     address constant cvx = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+    address constant usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant prisma = 0xdA47862a83dac0c112BA89c6abC2159b95afd71C;
     address constant prismaEthPool = 0x322135Dd9cBAE8Afa84727d9aE1434b5B3EBA44B;
     address constant cvxPrisma = 0x34635280737b5BFe6c7DC2FC3065D60d66e78185;
@@ -45,12 +46,26 @@ contract StrategyPrismaTest is BaseStrategyTest {
     uint24[] fee10000 = [10000];
     uint24[] fee10000_500 = [10000, 500];
 
-    // mkUSD-FraxBP
-    address want = 0x0CFe5C777A7438C9Dd8Add53ed671cEc7A5FAeE5;
-    address rewardPool = 0x0Ae09f649e9dA1b6aEA0c10527aC4e8a88a37480;
-    address newRewardPool = 0x5F8D4319C27a940B5783b4495cCa6626E880532E;
-    address[11] depositToWant = [native, mkUSDEthPool, mkUSD, want, want];
+    // mkUSD-USDC
+//    address want = 0xF980B4A4194694913Af231De69AB4593f5E0fCDc;
+//    address rewardPool = 0xa68C880009B8e78CC42B215702573A7552ef2C68;
+//    address newRewardPool = 0x49cd193227a896F867AFDB6A5edFb53A3Ee7fb49;
+//    address[11] depositToWant = [native, mkUSDEthPool, mkUSD, 0xe09888EEab19bce85e67eDC59521F3f290B1BCcE, want];
+//    uint[5][5] depositToWantParams = [[0, 1, 1, 2, 2], [0, 0, 4, 1, 2]];
+
+    // PRISMA-cvxPRISMA
+    address want = 0x3b21C2868B6028CfB38Ff86127eF22E68d16d53B;
+    address rewardPool = 0xd91fBa4919b7BF3B757320ea48bA102F543dE341;
+    address newRewardPool = address(0);
+    address[11] depositToWant = [native, prismaEthPool, prisma, want, want];
     uint[5][5] depositToWantParams = [[0, 1, 1, 2, 2], [0, 0, 4, 1, 2]];
+
+    // mkUSD-FraxBP
+//    address want = 0x0CFe5C777A7438C9Dd8Add53ed671cEc7A5FAeE5;
+//    address rewardPool = 0x0Ae09f649e9dA1b6aEA0c10527aC4e8a88a37480;
+//    address newRewardPool = 0x5F8D4319C27a940B5783b4495cCa6626E880532E;
+//    address[11] depositToWant = [native, mkUSDEthPool, mkUSD, want, want];
+//    uint[5][5] depositToWantParams = [[0, 1, 1, 2, 2], [0, 0, 4, 1, 2]];
 
     // mkUSD-crvUSD
 //    address want = 0x3de254A0f838a844F727fee81040e0FA7884B935;
