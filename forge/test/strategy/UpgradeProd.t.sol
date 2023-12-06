@@ -11,6 +11,7 @@ import "../users/VaultUser.sol";
 import "../interfaces/IVault.sol";
 import "../interfaces/IStrategy.sol";
 import "../interfaces/IERC20Like.sol";
+import "../utils/Utils.sol";
 import "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
 
 contract UpgradeProd is Test {
@@ -51,6 +52,7 @@ contract UpgradeProd is Test {
         vault.upgradeStrat();
 
         console.log("Harvest");
+        strategy.harvest();
         uint256 vaultBalAfterHarvest = vault.balance();
         uint256 ppsAfterHarvest = vault.getPricePerFullShare();
         console.log("Balance", vaultBalance, vaultBalAfterHarvest);
@@ -75,5 +77,19 @@ contract UpgradeProd is Test {
         uint userBal = IERC20Like(vault.want()).balanceOf(address(user));
         console.log("User balance after withdrawal", userBal);
         assertGt(userBal, wantAmount * 99 / 100, "Expected balance increase");
+    }
+
+    function test_printCalls() public view {
+        bytes memory callData = abi.encodeCall(IVault.proposeStrat, (address(strategy)));
+        console.log("owner:", vault.owner());
+
+        console.log("\nPropose:");
+        console.log("target:", address(vault));
+        console.log("data:", Utils.bytesToStr(callData));
+
+        console.log("\nUpgrade:");
+        callData = abi.encodeCall(IVault.upgradeStrat, ());
+        console.log("target:", address(vault));
+        console.log("data:", Utils.bytesToStr(callData));
     }
 }
