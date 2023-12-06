@@ -160,6 +160,10 @@ abstract contract BaseStrategyTest is Test {
         }
     }
 
+    function toPath(address t1, address t2, uint24 fee) public pure returns (bytes memory path) {
+        return abi.encodePacked(t1, fee, t2);
+    }
+
     function route(address t1, address t2) internal pure returns (address[] memory _route) {
         _route = new address[](2);
         _route[0] = t1;
