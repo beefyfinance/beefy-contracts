@@ -38,6 +38,7 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
 
         lockDuration = 1 days;
         setWithdrawalFee(0);
+        _giveAllowances();
     }
 
     // it calculates how much 'want' the strategy has working in the farm.

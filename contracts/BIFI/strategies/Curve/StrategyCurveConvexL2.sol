@@ -135,9 +135,20 @@ contract StrategyCurveConvexL2 is StratFeeManagerInitializable {
     function _withdraw(uint256 _amount) internal {
         if (_amount > 0) {
             if (rewardPool != address(0)) {
-                IConvexRewardPool(rewardPool).withdrawAndUnwrap(_amount, false);
+                IConvexRewardPool(rewardPool).withdraw(_amount, false);
             } else {
                 IRewardsGauge(gauge).withdraw(_amount);
+            }
+        }
+    }
+
+    function _emergencyWithdraw() internal {
+        uint amount = balanceOfPool();
+        if (amount > 0) {
+            if (rewardPool != address(0)) {
+                IConvexRewardPool(rewardPool).emergencyWithdraw(amount);
+            } else {
+                IRewardsGauge(gauge).withdraw(amount);
             }
         }
     }
@@ -176,7 +187,7 @@ contract StrategyCurveConvexL2 is StratFeeManagerInitializable {
 
     function _claim() internal {
         if (rewardPool != address(0)) {
-            IConvexRewardPool(rewardPool).getReward();
+            IConvexRewardPool(rewardPool).getReward(address(this));
         } else {
             if (isCrvMintable) minter.mint(gauge);
             if (isCurveRewardsClaimable) IRewardsGauge(gauge).claim_rewards(address(this));
@@ -349,10 +360,7 @@ contract StrategyCurveConvexL2 is StratFeeManagerInitializable {
         }
     }
 
-    function rewardsAvailable() external view returns (uint) {
-        if (rewardPool != address(0)) {
-            return IConvexRewardPool(rewardPool).earned(address(this));
-        }
+    function rewardsAvailable() external pure returns (uint) {
         return 0;
     }
 
