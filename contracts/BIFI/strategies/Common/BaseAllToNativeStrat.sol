@@ -9,11 +9,8 @@ import "../Common/StratFeeManagerInitializable.sol";
 abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
     using SafeERC20 for IERC20;
 
-    struct Reward {
-        address token;
-        uint minAmount; // minimum amount to be swapped to native
-    }
-    Reward[] public rewards;
+    address[] public rewards;
+    mapping(address => uint) public minAmounts; // rewards minimum amount to be swapped to native
 
     address public want;
     address public native;
@@ -27,13 +24,13 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
     event Withdraw(uint256 tvl);
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
-    function __BaseStrategy_init(address _want, address _native, Reward[] calldata _rewards, CommonAddresses calldata _commonAddresses) internal onlyInitializing {
+    function __BaseStrategy_init(address _want, address _native, address[] calldata _rewards, CommonAddresses calldata _commonAddresses) internal onlyInitializing {
         __StratFeeManager_init(_commonAddresses);
         want = _want;
         native = _native;
 
         for (uint i; i < _rewards.length; i++) {
-            addReward(_rewards[i].token, _rewards[i].minAmount);
+            addReward(_rewards[i]);
         }
 
         lockDuration = 1 days;
@@ -122,9 +119,9 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
 
     function _swapRewardsToNative() internal virtual {
         for (uint i; i < rewards.length; ++i) {
-            address token = rewards[i].token;
+            address token = rewards[i];
             uint256 amount = IERC20(token).balanceOf(address(this));
-            if (amount > rewards[i].minAmount) {
+            if (amount > minAmounts[token]) {
                 IBeefySwapper(unirouter).swap(token, native, amount);
             }
         }
@@ -147,12 +144,16 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
-    function addReward(address _token, uint _minAmount) public onlyManager {
+    function rewardsLength() external view returns (uint) {
+        return rewards.length;
+    }
+
+    function addReward(address _token) public onlyManager {
         require(_token != want, "!want");
         require(_token != native, "!native");
         _verifyRewardToken(_token);
 
-        rewards.push(Reward(_token, _minAmount));
+        rewards.push(_token);
         _approve(_token, unirouter, 0);
         _approve(_token, unirouter, type(uint).max);
     }
@@ -164,9 +165,13 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
 
     function resetRewards() external onlyManager {
         for (uint i; i < rewards.length; ++i) {
-            _approve(rewards[i].token, unirouter, 0);
+            _approve(rewards[i], unirouter, 0);
         }
         delete rewards;
+    }
+
+    function setRewardMinAmount(address token, uint minAmount) external onlyManager {
+        minAmounts[token] = minAmount;
     }
 
     function lockedProfit() public view returns (uint256) {
