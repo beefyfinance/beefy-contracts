@@ -10,7 +10,7 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
     using SafeERC20 for IERC20;
 
     address[] public rewards;
-    mapping(address => uint) public minAmounts; // rewards minimum amount to be swapped to native
+    mapping(address => uint) public minAmounts; // tokens minimum amount to be swapped
 
     address public want;
     address public native;
@@ -102,7 +102,7 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
         _claim();
         _swapRewardsToNative();
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
-        if (nativeBal > 0) {
+        if (nativeBal > minAmounts[native]) {
             _chargeFees(callFeeRecipient);
             _swapNativeToWant();
             uint256 wantHarvested = balanceOfWant();
