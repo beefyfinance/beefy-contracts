@@ -27,11 +27,16 @@ contract StrategyVelodrome is BaseStrategyTest {
     address constant unirouter = 0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43;
     IVoter constant voter = IVoter(0x16613524e02ad97eDfeF371bC883F2F5d6C480A5);
     address factory = ISolidlyRouter(unirouter).defaultFactory();
-    address constant usdc = 0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA;
+    address constant usdbc = 0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA;
+    address constant usdc = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
+
+    // "name": "aerodrome-dola-usdc",
+    address constant want = 0xf213F2D02837012dC0236cC105061e121bB03e37;
+    address constant gauge = 0xCCff5627cd544b4cBb7d048139C1A6b6Bde67885;
 
     // ovn-usd+
-    address constant want = 0x61366A4e6b1DB1b85DD701f2f4BFa275EF271197;
-    address constant gauge = 0x00B2149d89677a5069eD4D303941614A33700146;
+//    address constant want = 0x61366A4e6b1DB1b85DD701f2f4BFa275EF271197;
+//    address constant gauge = 0x00B2149d89677a5069eD4D303941614A33700146;
 
     // DAI-USDbC
 //    address constant want = 0x6EAB8c1B93f5799daDf2C687a30230a540DbD636;
@@ -80,45 +85,55 @@ contract StrategyVelodrome is BaseStrategyTest {
 
         outputToNative = new ISolidlyRouter.Route[](1);
         outputToNative[0] = ISolidlyRouter.Route(output, native, false, factory);
+        ISolidlyRouter.Route[] memory outputToUsdBc = new ISolidlyRouter.Route[](1);
         ISolidlyRouter.Route[] memory outputToUsdc = new ISolidlyRouter.Route[](1);
+        outputToUsdBc[0] = ISolidlyRouter.Route(output, usdbc, false, factory);
         outputToUsdc[0] = ISolidlyRouter.Route(output, usdc, false, factory);
 
         if (t0 == output) outputToLp0 = new ISolidlyRouter.Route[](0);
         else if (t0 == native) outputToLp0 = outputToNative;
+        else if (t0 == usdbc) outputToLp0 = outputToUsdBc;
         else if (t0 == usdc) outputToLp0 = outputToUsdc;
         else {
             outputToLp0 = new ISolidlyRouter.Route[](2);
             if (t1 == native) {
                 outputToLp0[0] = outputToNative[0];
                 outputToLp0[1] = ISolidlyRouter.Route(native, t0, stable, factory);
+            } else if (t1 == usdbc) {
+                outputToLp0[0] = outputToUsdBc[0];
+                outputToLp0[1] = ISolidlyRouter.Route(usdbc, t0, stable, factory);
             } else if (t1 == usdc) {
                 outputToLp0[0] = outputToUsdc[0];
                 outputToLp0[1] = ISolidlyRouter.Route(usdc, t0, stable, factory);
             } else {
                 // manual per want
                 outputToLp0 = new ISolidlyRouter.Route[](3);
-                outputToLp0[0] = outputToUsdc[0];
-                outputToLp0[1] = ISolidlyRouter.Route(usdc, t1, true, factory);
+                outputToLp0[0] = outputToUsdBc[0];
+                outputToLp0[1] = ISolidlyRouter.Route(usdbc, t1, true, factory);
                 outputToLp0[2] = ISolidlyRouter.Route(t1, t0, false, factory);
             }
         }
 
         if (t1 == output) outputToLp1 = new ISolidlyRouter.Route[](0);
         else if (t1 == native) outputToLp1 = outputToNative;
+        else if (t1 == usdbc) outputToLp1 = outputToUsdBc;
         else if (t1 == usdc) outputToLp1 = outputToUsdc;
         else {
             outputToLp1 = new ISolidlyRouter.Route[](2);
             if (t0 == native) {
                 outputToLp1[0] = outputToNative[0];
                 outputToLp1[1] = ISolidlyRouter.Route(native, t1, stable, factory);
+            } else if (t0 == usdbc) {
+                outputToLp1[0] = outputToUsdBc[0];
+                outputToLp1[1] = ISolidlyRouter.Route(usdbc, t1, stable, factory);
             } else if (t0 == usdc) {
                 outputToLp1[0] = outputToUsdc[0];
                 outputToLp1[1] = ISolidlyRouter.Route(usdc, t1, stable, factory);
             } else {
                 // manual per want
                 outputToLp1 = new ISolidlyRouter.Route[](2);
-                outputToLp1[0] = outputToUsdc[0];
-                outputToLp1[1] = ISolidlyRouter.Route(usdc, t1, true, factory);
+                outputToLp1[0] = outputToUsdBc[0];
+                outputToLp1[1] = ISolidlyRouter.Route(usdbc, t1, true, factory);
             }
         }
     }

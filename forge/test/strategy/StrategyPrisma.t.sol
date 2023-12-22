@@ -46,6 +46,13 @@ contract StrategyPrismaTest is BaseStrategyTest {
     uint24[] fee10000 = [10000];
     uint24[] fee10000_500 = [10000, 500];
 
+    // PRISMA-mkUSD
+    address want = 0x067079c14B85169e6a29703769dadDef90816f4C;
+    address rewardPool = 0xa9aA35B5481A7B7936d1680911D478F7A639fE48;
+    address newRewardPool = 0x48c5e00c63e327F73F789E300472F1744AAa7e34;
+    address[11] depositToWant = [native, prismaEthPool, prisma, 0x9D8108DDD8aD1Ee89d527C0C9e928Cb9D2BBa2d3, want];
+    uint[5][5] depositToWantParams = [[0, 1, 1, 2, 2], [1, 0, 4, 1, 2]];
+
     // mkUSD-USDC
 //    address want = 0xF980B4A4194694913Af231De69AB4593f5E0fCDc;
 //    address rewardPool = 0xa68C880009B8e78CC42B215702573A7552ef2C68;
@@ -54,11 +61,11 @@ contract StrategyPrismaTest is BaseStrategyTest {
 //    uint[5][5] depositToWantParams = [[0, 1, 1, 2, 2], [0, 0, 4, 1, 2]];
 
     // PRISMA-cvxPRISMA
-    address want = 0x3b21C2868B6028CfB38Ff86127eF22E68d16d53B;
-    address rewardPool = 0xd91fBa4919b7BF3B757320ea48bA102F543dE341;
-    address newRewardPool = address(0);
-    address[11] depositToWant = [native, prismaEthPool, prisma, want, want];
-    uint[5][5] depositToWantParams = [[0, 1, 1, 2, 2], [0, 0, 4, 1, 2]];
+//    address want = 0x3b21C2868B6028CfB38Ff86127eF22E68d16d53B;
+//    address rewardPool = 0xd91fBa4919b7BF3B757320ea48bA102F543dE341;
+//    address newRewardPool = address(0);
+//    address[11] depositToWant = [native, prismaEthPool, prisma, want, want];
+//    uint[5][5] depositToWantParams = [[0, 1, 1, 2, 2], [0, 0, 4, 1, 2]];
 
     // mkUSD-FraxBP
 //    address want = 0x0CFe5C777A7438C9Dd8Add53ed671cEc7A5FAeE5;
