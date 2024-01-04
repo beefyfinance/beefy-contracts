@@ -14,6 +14,7 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
 
     address public want;
     address public native;
+    address public depositToken;
     uint256 public lastHarvest;
     uint256 public totalLocked;
     uint256 public lockDuration;
@@ -44,7 +45,6 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
     function _withdraw(uint amount) internal virtual;
     function _emergencyWithdraw() internal virtual;
     function _claim() internal virtual;
-    function _swapNativeToWant() internal virtual;
     function _verifyRewardToken(address token) internal view virtual;
     function _giveAllowances() internal virtual;
     function _removeAllowances() internal virtual;
@@ -144,6 +144,22 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
+    function _swapNativeToWant() internal virtual {
+        if (depositToken == address(0)) {
+            _swap(native, want);
+        } else {
+            if (depositToken != native) {
+                _swap(native, depositToken);
+            }
+            _swap(depositToken, want);
+        }
+    }
+
+    function _swap(address tokenFrom, address tokenTo) internal {
+        uint bal = IERC20(tokenFrom).balanceOf(address(this));
+        IBeefySwapper(unirouter).swap(tokenFrom, tokenTo, bal);
+    }
+
     function rewardsLength() external view returns (uint) {
         return rewards.length;
     }
@@ -174,6 +190,19 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
         minAmounts[token] = minAmount;
     }
 
+    function setDepositToken(address token) public onlyManager {
+        if (token == address(0)) {
+            depositToken = address(0);
+            return;
+        }
+        require(token != want, "!want");
+        _verifyRewardToken(token);
+
+        depositToken = token;
+        _approve(token, unirouter, 0);
+        _approve(token, unirouter, type(uint).max);
+    }
+
     function lockedProfit() public view returns (uint256) {
         if (lockDuration == 0) return 0;
         uint256 elapsed = block.timestamp - lastHarvest;
@@ -191,7 +220,7 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
         return IERC20(want).balanceOf(address(this));
     }
 
-    function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
+    function setHarvestOnDeposit(bool _harvestOnDeposit) public onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
         if (harvestOnDeposit) {
             lockDuration = 0;

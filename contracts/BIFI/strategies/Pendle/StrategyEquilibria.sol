@@ -12,7 +12,6 @@ contract StrategyEquilibria is BaseAllToNativeStrat {
     IEqbBooster public booster;
     IRewardPool public rewardPool;
     IXEqb public xEqb;
-    address public depositToken;
     uint256 public pid;
     uint public lastEqbRedeem;
     uint public redeemDelay;
@@ -36,6 +35,7 @@ contract StrategyEquilibria is BaseAllToNativeStrat {
 
         __BaseStrategy_init(_want, _native, _rewards, _commonAddresses);
         setDepositToken(_depositToken);
+        setHarvestOnDeposit(true);
     }
 
     function balanceOfPool() public view override returns (uint) {
@@ -77,15 +77,6 @@ contract StrategyEquilibria is BaseAllToNativeStrat {
         }
     }
 
-    function _swapNativeToWant() internal override {
-        if (depositToken != native) {
-            uint nativeBal = IERC20(native).balanceOf(address(this));
-            IBeefySwapper(unirouter).swap(native, depositToken, nativeBal);
-        }
-        uint bal = IERC20(depositToken).balanceOf(address(this));
-        IBeefySwapper(unirouter).swap(depositToken, want, bal);
-    }
-
     function _verifyRewardToken(address token) internal view override {
         require(token != rewardPool.stakingToken(), "!stakingToken");
     }
@@ -98,15 +89,6 @@ contract StrategyEquilibria is BaseAllToNativeStrat {
     function _removeAllowances() internal override {
         _approve(want, address(booster), 0);
         _approve(native, address(unirouter), 0);
-    }
-
-    function setDepositToken(address token) public onlyManager {
-        require(token != want, "!want");
-        require(token != rewardPool.stakingToken(), "!stakingToken");
-
-        depositToken = token;
-        _approve(token, unirouter, 0);
-        _approve(token, unirouter, type(uint).max);
     }
 
     function setRedeemEqb(bool doRedeem, uint delay) external onlyManager {
