@@ -101,7 +101,7 @@ UPGRADER_PK=59c699...
 4. At this point you should be ready to deploy your vault to the BSC network. You can do this by simply running the following command `npx hardhat run tutorials/deploy-pancakeswap-vault.js --network bsc`.
 5. Once the script completes execution you should be able to verify that it deployed successfully using the links in the terminal or querying bscsan using the Vault or Strategy addresses. From here we recommend performing manual tests as suggested in the [readme.md][readme.md]. NOTE, YOU MUST PERMISSION THE VAULT TO TRANSFER YOUR FUNDS BY SUBMITTING AN `approve()` TRANSACTION TO THE LP TOKEN WITH THE VAULT ADDRESS AND THE AMOUNT.
 
-[readme.md]: beefy-contracts/readme.md
+[readme.md]: ../readme.md
 [node.js]: https://nodejs.org
 [yarn]: https://yarnpkg.com
 [solc]: https://docs.soliditylang.org
