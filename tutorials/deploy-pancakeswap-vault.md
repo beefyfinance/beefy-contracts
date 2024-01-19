@@ -38,7 +38,7 @@ UPGRADER_PK=59c699...
       },
    } = addressBook.bsc;
    
-   const newToken = web3.utils.toChecksumAddress("0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82");
+   const want = web3.utils.toChecksumAddress("0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82");
    ```
 
 3. Find the LP address (`lpAddresses.56`) and pool id (`pid`) of the LP token corresponding to the vault that will be deployed. These values can be found in PancakeSwap's [repository][repository].
@@ -51,8 +51,9 @@ UPGRADER_PK=59c699...
    - `outputToNativeRoute` is an array where the first element is the reward token (e.g. CAKE, JOE, etc.) and the second element is the native token (e.g. WBNB, WAVAX, etc.)
    - `outputToLp0Route` is the path from the reward token to the first token in the LP.
    - `outputToLp1Route` is the path from the reward token to the second token in the LP.
+   - `strategyImplementation` is an existing strategy implementation already deployed to the blockchain (leave empty on first deployment).
 
-7. Update the `contractNames` with the appropriate vault and strategy names.
+7. Update the `contractNames` with the strategy contract name you wish to use from the repo.
 8. In this tutorial we will be forking BSC, this creates a local version of BSC that we can deploy, and interact with. To fork the BSC chain you will need to use an archival node (Ankr public RPCs provide these).
 
 9. Run `npx hardhat node --fork bsc` to create a fork. A message similar to the following shall appear in the terminal.
