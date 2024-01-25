@@ -29,7 +29,7 @@ Once you are confident that everything works as expected you can do the official
 Make sure the strategy is verified in the scanner. A fool-proof way to verify is to flatten the strategy file using the `yarn flat-hardhat` command and removing the excess licenses from the flattened file. Verify the strategy contract using the flattened file as the source code, solidity version is typically 0.6.12 and is optimized to 200 runs. Constructor arguments can be found from the end of the input data in the contract creation transaction; they are padded out with a large number of 0s (include the 0s).
 
 ### 5.  Update the app
-The only file you really need to touch on the app is the respective pools.js located in the [vault](https://github.com/beefyfinance/beefy-app/tree/master/src/features/configure/vault) folder. This is the config file with all the live pools.  Just copy one of the other pools as template, paste it at the top (below the BIFI Maxi and boosted vaults) and fill it out with your data. `earnedTokenAddress`and `earnedContractAddress` should both be the address of the vault contract. These addresses must be checksummed. Use the `getPoolCreationTimestamp.js` script to get creation dates. You will also need to update the addressBook to the current version in package.json in order for Zap to work if the tokens are new to the address book. 
+The only file you really need to touch on the app is the respective json file located in the [vault](https://github.com/beefyfinance/beefy-v2/tree/main/src/config/vault) folder. This is the config file with all the live pools.  Just copy one of the other pools as template, paste it at the top (below the BIFI Maxi and boosted vaults) and fill it out with your data. `earnedTokenAddress`and `earnedContractAddress` should both be the address of the vault contract. These addresses must be checksummed. Use the `getPoolCreationTimestamp.js` script to get creation dates. You will also need to update the addressBook to the current version in package.json in order for Zap to work if the tokens are new to the address book. 
 
 ### 6. Test the vault
 
@@ -55,7 +55,7 @@ Run `yarn start` on the local app terminal and test the vault as if you were a u
 
 This is required so that maintainers can review everything before the vault is actually live on the app and manage it after its live.
 
-### 6. Update the API
+### 7. Update the API
 #### Existing platform
 If you're deploying a vault for a platform where we already have live vaults, you will probably only need to add some data to the respective config file in the [data](https://github.com/beefyfinance/beefy-api/tree/master/src/data) folder. For example if you're doing a new Pancakeswap LP vault, you only need to add the relevant data at [cakeLpPools.json](https://github.com/beefyfinance/beefy-api/blob/master/src/data/cakeLpPools.json)
 
