@@ -23,11 +23,15 @@ contract UpgradeProd is Test {
     VaultUser user;
 
     function setUp() public {
+        address _vault = vm.envOr("VAULT", address(0));
         address _strat = vm.envAddress("NEW_STRAT");
         strategy = IStrategy(_strat);
-        address _vault = strategy.vault();
-        vm.prank(strategy.owner());
-        strategy.setVault(_vault);
+        if (_vault == address(0)) {
+            _vault = strategy.vault();
+        } else {
+            vm.prank(strategy.owner());
+            strategy.setVault(_vault);
+        }
         console.log("Upgrading vault at", _vault);
         vault = IVault(_vault);
         console.log(vault.name(), vault.symbol());
@@ -51,8 +55,10 @@ contract UpgradeProd is Test {
         vm.prank(vault.owner());
         vault.upgradeStrat();
 
+        skip(1 days);
         console.log("Harvest");
         strategy.harvest();
+        skip(1 days);
         uint256 vaultBalAfterHarvest = vault.balance();
         uint256 ppsAfterHarvest = vault.getPricePerFullShare();
         console.log("Balance", vaultBalance, vaultBalAfterHarvest);
