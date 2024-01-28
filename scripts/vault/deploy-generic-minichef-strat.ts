@@ -5,6 +5,7 @@ import { verifyContract } from "../../utils/verifyContract";
 import vaultV7 from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7.sol/BeefyVaultV7.json";
 import vaultV7Factory from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
 
+
 const {
   platforms: { beefyfinance, synapse, sushi },
   tokens: {
@@ -25,8 +26,8 @@ if (!process.env.STRATEGIST_ADDRESS) {
 }
 
 const vaultParams = {
-  mooName: "Moo SynapseSushiLP ETH-SYN",
-  mooSymbol: "mooSynapseSushiLPETH-SYN",
+  mooName: "Moo SynapseLP ETH-SYN",
+  mooSymbol: "mooSynapseLPETH-SYN",
   delay: 21600,
 };
 
