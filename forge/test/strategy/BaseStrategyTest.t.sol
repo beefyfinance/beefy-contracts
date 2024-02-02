@@ -11,22 +11,52 @@ import "../users/VaultUser.sol";
 import "../interfaces/IERC20Like.sol";
 import "../interfaces/IVault.sol";
 import "../interfaces/IStrategy.sol";
+import "../../../contracts/BIFI/interfaces/common/IERC20Extended.sol";
+import "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
+import "../../../contracts/BIFI/strategies/Common/StratFeeManagerInitializable.sol";
 
 abstract contract BaseStrategyTest is Test {
 
-    IVault private vault;
+    IVault internal vault;
     IStrategy private strategy;
-    IERC20Like private want;
-    VaultUser private user;
-    uint private wantAmount = 50000 ether;
+    IERC20Like internal want;
+    VaultUser internal user;
+    uint internal wantAmount = 50000 ether;
+    address internal a0 = address(0);
 
-    function initBase(IVault _vault, IStrategy _strat) internal {
-        vault = _vault;
-        strategy = _strat;
-        want = IERC20Like(vault.want());
+    function setUp() public {
         user = new VaultUser();
+        address vaultAddress = vm.envOr("VAULT", address(0));
+        if (vaultAddress != address(0)) {
+            vault = IVault(vaultAddress);
+            strategy = IStrategy(createStrategy(vault.strategy()));
+            console.log("Testing vault at", vaultAddress);
+            console.log(vault.name(), vault.symbol());
+        } else {
+            bytes memory _default = '';
+            bytes memory initData = vm.envOr("INIT_DATA", _default);
+            if (initData.length > 0) {
+                BeefyVaultV7 vaultV7 = new BeefyVaultV7();
+                vault = IVault(address(vaultV7));
+                strategy = IStrategy(createStrategy(address(0)));
+                vaultV7.initialize(IStrategyV7(address(strategy)), "TestVault", "testVault", 0);
+
+                (bool success,) = address(strategy).call(initData);
+                assertTrue(success, "Strategy initialize not success");
+
+                strategy.setVault(address(vault));
+                assertEq(strategy.vault(), address(vault), "Vault not set");
+            } else {
+                strategy = IStrategy(createStrategy(address(0)));
+                vault = IVault(strategy.vault());
+            }
+        }
+
+        want = IERC20Like(vault.want());
         deal(vault.want(), address(user), wantAmount);
     }
+
+    function createStrategy(address _impl) internal virtual returns (address);
 
     function test_depositAndWithdraw() external {
         _depositIntoVault(user, wantAmount);

@@ -2,53 +2,30 @@
 
 pragma solidity ^0.8.12;
 
-//import "forge-std/Test.sol";
-import "../../../node_modules/forge-std/src/Test.sol";
-
-// Users
-import "../users/VaultUser.sol";
-// Interfaces
-import "../interfaces/IERC20Like.sol";
-import "../interfaces/IVault.sol";
-import "../interfaces/IStrategy.sol";
-import "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
-import "../../../contracts/BIFI/interfaces/common/IERC20Extended.sol";
 import "../../../contracts/BIFI/strategies/Curve/StrategyConvexStaking.sol";
-import "../../../contracts/BIFI/strategies/Common/StratFeeManager.sol";
 import "./BaseStrategyTest.t.sol";
 
 contract StrategyConvexStakingTest is BaseStrategyTest {
 
-    IVault vault;
-    VaultUser user = new VaultUser();
-    uint256 wantAmount = 500000 ether;
-    StrategyConvexStaking strategy = new StrategyConvexStaking();
+    StrategyConvexStaking strategy;
 
-    function setUp() public {
-        address vaultAddress = vm.envOr("VAULT", address(0));
-        if (vaultAddress != address(0)) {
-            vault = IVault(vaultAddress);
-            strategy = StrategyConvexStaking(payable(vault.strategy()));
-            console.log("Testing vault at", vaultAddress);
-            console.log(vault.name(), vault.symbol());
-        } else {
-            BeefyVaultV7 vaultV7 = new BeefyVaultV7();
-            vaultV7.initialize(IStrategyV7(address(strategy)), "TestVault", "testVault", 0);
-            vault = IVault(address(vaultV7));
+    function createStrategy(address _impl) internal override returns (address) {
+        if (_impl == a0) strategy = new StrategyConvexStaking();
+        else strategy = StrategyConvexStaking(payable(_impl));
+        return address(strategy);
+    }
 
-            bytes memory initData = vm.envBytes("INIT_DATA");
-            (bool success,) = address(strategy).call(initData);
-            assertTrue(success, "Strategy initialize not success");
+    address prisma = 0xdA47862a83dac0c112BA89c6abC2159b95afd71C;
+    address[9] rewardToNative = [prisma, 0x322135Dd9cBAE8Afa84727d9aE1434b5B3EBA44B, strategy.native()];
+    uint[3][4] rewardParams = [[1, 0, 3]];
 
-            strategy.setVault(address(vault));
-            assertEq(strategy.vault(), address(vault), "Vault not set");
+    address[9] rewardToNative2 = [0x4591DBfF62656E7859Afe5e45f6f47D3669fBB28, 0xc89570207c5BA1B0E3cD372172cCaEFB173DB270, strategy.native()];
+    uint[3][4] rewardParams2 = [[1, 0, 3]];
 
-//            strategy.addReward(rewardRoute, rewardParams, rewardMinAmount);
-//            strategy.setCurveSwapMinAmount(1);
-        }
-
-        deal(vault.want(), address(user), wantAmount);
-        initBase(vault, IStrategy(address(strategy)));
+    function addRewards() internal {
+        strategy.addReward(rewardToNative, rewardParams, 1e18);
+        strategy.addReward(rewardToNative2, rewardParams2, 1e18);
+//        strategy.setCurveSwapMinAmount(0);
     }
 
     function test_addRewards() external {
@@ -144,7 +121,7 @@ contract StrategyConvexStakingTest is BaseStrategyTest {
         }
         console.log("WETH", nativeBal);
         assertEq(crvBal, 0, "CRV not swapped");
-        assertEq(crvBal, 0, "CVX not swapped");
+        assertEq(cvxBal, 0, "CVX not swapped");
         assertEq(nativeBal, 0, "Native not swapped");
     }
 
@@ -186,21 +163,21 @@ contract StrategyConvexStakingTest is BaseStrategyTest {
     }
 
     function test_rewardsV3() external {
-        address usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-        bytes memory uniV3RewardPath = toPath(usdc, strategy.native(), 3000);
+        address dai = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+        bytes memory uniV3RewardPath = toPath(dai, strategy.native(), 3000);
         uint amount = 200 * 1e6;
 
         console.log("Add reward");
         vm.prank(strategy.owner());
         strategy.addRewardV3(uniV3RewardPath, 10);
-        deal(usdc, address(strategy), amount);
-        console.log(IERC20Extended(usdc).symbol(), IERC20(usdc).balanceOf(address(strategy)));
+        deal(dai, address(strategy), amount);
+        console.log(IERC20Extended(dai).symbol(), IERC20(dai).balanceOf(address(strategy)));
 
         skip(1 days);
         console.log("Harvest");
         strategy.harvest();
-        uint bal = IERC20(usdc).balanceOf(address(strategy));
-        console.log(IERC20Extended(usdc).symbol(), bal);
+        uint bal = IERC20(dai).balanceOf(address(strategy));
+        console.log(IERC20Extended(dai).symbol(), bal);
         assertEq(bal, 0, "Extra reward not swapped");
     }
 }

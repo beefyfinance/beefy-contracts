@@ -2,51 +2,17 @@
 
 pragma solidity ^0.8.12;
 
-//import "forge-std/Test.sol";
-import "../../../node_modules/forge-std/src/Test.sol";
-
-// Users
-import "../users/VaultUser.sol";
-// Interfaces
-import "./BaseStrategyTest.t.sol";
-import "../interfaces/IERC20Like.sol";
-import "../interfaces/IVault.sol";
-import "../interfaces/IStrategy.sol";
-import "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
-import "../../../contracts/BIFI/infra/SimpleSwapper.sol";
-import "../../../contracts/BIFI/interfaces/common/IERC20Extended.sol";
-import "../../../contracts/BIFI/strategies/Common/StratFeeManager.sol";
 import "../../../contracts/BIFI/strategies/Pendle/StrategyEquilibria.sol";
+import "./BaseStrategyTest.t.sol";
 
 contract StrategyEquilibriaTest is BaseStrategyTest {
 
-    IVault vault;
-    VaultUser user = new VaultUser();
-    uint256 wantAmount = 500000 ether;
-    StrategyEquilibria strategy = new StrategyEquilibria();
+    StrategyEquilibria strategy;
 
-    function setUp() public {
-        address vaultAddress = vm.envOr("VAULT", address(0));
-        if (vaultAddress != address(0)) {
-            vault = IVault(vaultAddress);
-            strategy = StrategyEquilibria(payable(vault.strategy()));
-            console.log("Testing vault at", vaultAddress);
-            console.log(vault.name(), vault.symbol());
-        } else {
-            BeefyVaultV7 vaultV7 = new BeefyVaultV7();
-            vaultV7.initialize(IStrategyV7(address(strategy)), "TestVault", "testVault", 0);
-            vault = IVault(address(vaultV7));
-
-            bytes memory initData = vm.envBytes("INIT_DATA");
-            (bool success,) = address(strategy).call(initData);
-            assertTrue(success, "Strategy initialize not success");
-
-            strategy.setVault(address(vault));
-            assertEq(strategy.vault(), address(vault), "Vault not set");
-        }
-
-        deal(vault.want(), address(user), wantAmount);
-        initBase(vault, IStrategy(address(strategy)));
+    function createStrategy(address _impl) internal override returns (address) {
+        if (_impl == a0) strategy = new StrategyEquilibria();
+        else strategy = StrategyEquilibria(_impl);
+        return address(strategy);
     }
 
     function test_rewards() external {

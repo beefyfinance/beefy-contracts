@@ -2,21 +2,9 @@
 
 pragma solidity ^0.8.12;
 
-//import "forge-std/Test.sol";
-import "../../../node_modules/forge-std/src/Test.sol";
-
-// Users
-import "../users/VaultUser.sol";
-// Interfaces
-import "../interfaces/IERC20Like.sol";
-import "../interfaces/IVault.sol";
-import "../interfaces/IStrategy.sol";
 import "../interfaces/IUniV3Quoter.sol";
-import "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
-import "../../../contracts/BIFI/interfaces/common/IERC20Extended.sol";
 import "../../../contracts/BIFI/strategies/Curve/StrategyConic.sol";
 import "../../../contracts/BIFI/strategies/Curve/ConicZap.sol";
-import "../../../contracts/BIFI/strategies/Common/StratFeeManager.sol";
 import "../../../contracts/BIFI/utils/UniswapV3Utils.sol";
 import "./BaseStrategyTest.t.sol";
 
@@ -34,7 +22,6 @@ contract StrategyConicTest is BaseStrategyTest {
 
     address constant uniV3 = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     address constant uniV3Quoter = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
-    address a0 = address(0);
     uint24[] fee500 = [500];
     uint24[] fee3000 = [3000];
     uint24[] fee10000 = [10000];
@@ -45,7 +32,6 @@ contract StrategyConicTest is BaseStrategyTest {
     address unirouter = uniV3;
 
     // crvETH
-    address want = 0x3565A68666FD3A6361F06f84637E805b727b4A47;
     bytes nativeToUnderlyingPath = "";
     address[9] nativeToUnderlying = [native, native, ETH, native, native];
     uint[3][4] nativeToUnderlyingParams = [[0,0,15],[0,0,15]];
@@ -65,48 +51,14 @@ contract StrategyConicTest is BaseStrategyTest {
 //    uint[3][4] nativeToUnderlyingParams = [[2,0,3]];
 //    StrategyConic.CurveRoute nativeToUnderlyingRoute = StrategyConic.CurveRoute(nativeToUnderlying, nativeToUnderlyingParams, 0);
 
-    address[] rewardsV3;
-    uint24[] rewardsV3Fee = fee10000_500;
     uint[3][4] nativeToFraxBp = [[2, 0, 3], [2, 1, 1], [1, 0, 7], [1, 0, 7]];
 
-    IVault vault;
     StrategyConic strategy;
-    VaultUser user;
-    uint256 wantAmount = 500000 ether;
 
-    function setUp() public {
-        user = new VaultUser();
-        address vaultAddress = vm.envOr("VAULT", address(0));
-        if (vaultAddress != address(0)) {
-            vault = IVault(vaultAddress);
-            strategy = StrategyConic(payable(vault.strategy()));
-            console.log("Testing vault at", vaultAddress);
-            console.log(vault.name(), vault.symbol());
-        } else {
-            BeefyVaultV7 vaultV7 = new BeefyVaultV7();
-            vault = IVault(address(vaultV7));
-            strategy = new StrategyConic();
-
-            vaultV7.initialize(IStrategyV7(address(strategy)), "TestVault", "testVault", 0);
-
-            StratFeeManagerInitializable.CommonAddresses memory commons = StratFeeManagerInitializable.CommonAddresses({
-                vault: address(vault),
-                unirouter: unirouter,
-                keeper: PROD_STRAT.keeper(),
-                strategist: address(user),
-                beefyFeeRecipient: PROD_STRAT.beefyFeeRecipient(),
-                beefyFeeConfig: PROD_STRAT.beefyFeeConfig()
-            });
-            strategy.initialize(want, crvToNativePath, cvxToNativePath, nativeToUnderlyingPath, nativeToUnderlyingRoute, commons);
-            console.log("Strategy initialized", IERC20Extended(strategy.want()).symbol(), strategy.conicPool());
-
-            if (nativeToUnderlyingPath.length > 0) {
-                console.log("nativeToUnderlyingPath", bytesToStr(nativeToUnderlyingPath));
-            }
-        }
-
-        deal(vault.want(), address(user), wantAmount);
-        initBase(vault, IStrategy(address(strategy)));
+    function createStrategy(address _impl) internal override returns (address) {
+        if (_impl == a0) strategy = new StrategyConic();
+        else strategy = StrategyConic(payable(_impl));
+        return address(strategy);
     }
 
     function test_zapIn() external {
@@ -123,7 +75,7 @@ contract StrategyConicTest is BaseStrategyTest {
         console.log('Estimate swap', swapAmountIn, swapAmountOut, amountMin);
         assertEq(swapAmountIn, amount, "swapAmountIn != amount");
         assertLt(swapAmountOut, swapAmountIn, "swapAmountOut >= swapAmountIn");
-        assertEq(swapTokenOut, want, "swapTokenOut != want");
+        assertEq(swapTokenOut, address(want), "swapTokenOut != want");
 
         deal(tokenIn, address(this), amount);
         if (tokenIn == native) {
@@ -137,7 +89,7 @@ contract StrategyConicTest is BaseStrategyTest {
 
         assertEq(IERC20(strategy.cnc()).balanceOf(address(zap)), 0);
         assertEq(IERC20(strategy.underlying()).balanceOf(address(zap)), 0);
-        assertEq(IERC20(want).balanceOf(address(zap)), 0);
+        assertEq(want.balanceOf(address(zap)), 0);
         assertEq(address(zap).balance, 0);
 
         uint mooBal = beefyVault.balanceOf(address(this));
@@ -154,8 +106,8 @@ contract StrategyConicTest is BaseStrategyTest {
         zap.estimateSwapOut(beefyVault, cvx, 1000);
 
         uint lpAmount = 10000;
-        deal(want, address(this), lpAmount);
-        IERC20(want).approve(address(vault), lpAmount);
+        deal(address(want), address(this), lpAmount);
+        want.approve(address(vault), lpAmount);
         vault.deposit(lpAmount);
         uint withdrawAmount = beefyVault.balanceOf(address(this));
 
@@ -166,14 +118,14 @@ contract StrategyConicTest is BaseStrategyTest {
         uint withdrawAmountAfterFee = withdrawAmount - (withdrawAmount * strategy.withdrawFee() / strategy.WITHDRAWAL_MAX());
         assertEq(swapAmountIn, withdrawAmountAfterFee, "swapAmountIn != amount");
         assertGt(swapAmountOut, swapAmountIn, "swapAmountOut < swapAmountIn");
-        assertEq(swapTokenIn, want, "swapTokenIn != want");
+        assertEq(swapTokenIn, address(want), "swapTokenIn != want");
 
         beefyVault.approve(address(zap), type(uint).max);
         zap.beefOutAndSwap(beefyVault, withdrawAmount, tokenOut, amountMin);
 
         assertEq(IERC20(strategy.cnc()).balanceOf(address(zap)), 0);
         assertEq(IERC20(strategy.underlying()).balanceOf(address(zap)), 0);
-        assertEq(IERC20(want).balanceOf(address(zap)), 0);
+        assertEq(want.balanceOf(address(zap)), 0);
 
         uint tokenBal = (tokenOut == native)
             ? address(this).balance
@@ -190,7 +142,7 @@ contract StrategyConicTest is BaseStrategyTest {
     function test_setNativeToUnderlying() external {
         console.log("Want as deposit token reverts");
         vm.expectRevert();
-        strategy.setNativeToUnderlyingRoute([want, a0, a0, a0, a0, a0, a0, a0, a0], nativeToFraxBp, 1e18);
+        strategy.setNativeToUnderlyingRoute([address(want), a0, a0, a0, a0, a0, a0, a0, a0], nativeToFraxBp, 1e18);
 
         console.log("Non-native as deposit token reverts");
         vm.expectRevert();

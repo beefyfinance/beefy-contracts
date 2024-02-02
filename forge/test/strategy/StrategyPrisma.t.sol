@@ -2,177 +2,24 @@
 
 pragma solidity ^0.8.12;
 
-//import "forge-std/Test.sol";
-import "../../../node_modules/forge-std/src/Test.sol";
-
-// Users
-import "../users/VaultUser.sol";
-// Interfaces
-import "../interfaces/IERC20Like.sol";
-import "../interfaces/IVault.sol";
-import "../interfaces/IStrategy.sol";
 import "../interfaces/IUniV3Quoter.sol";
-import "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
-import "../../../contracts/BIFI/interfaces/common/IERC20Extended.sol";
 import "../../../contracts/BIFI/strategies/Curve/StrategyPrisma.sol";
-import "../../../contracts/BIFI/strategies/Common/StratFeeManager.sol";
 import "../../../contracts/BIFI/utils/UniswapV3Utils.sol";
 import "./BaseStrategyTest.t.sol";
 
 contract StrategyPrismaTest is BaseStrategyTest {
 
-    IStrategy constant PROD_STRAT = IStrategy(0x2486c5fa59Ba480F604D5A99A6DAF3ef8A5b4D76);
-    address public native = PROD_STRAT.native();
-    address constant curveRouter = 0xF0d4c12A5768D806021F80a262B4d39d26C58b8D;
-    address constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    address constant crv = 0xD533a949740bb3306d119CC777fa900bA034cd52;
-    address constant cvx = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-    address constant usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address constant prisma = 0xdA47862a83dac0c112BA89c6abC2159b95afd71C;
-    address constant prismaEthPool = 0x322135Dd9cBAE8Afa84727d9aE1434b5B3EBA44B;
-    address constant cvxPrisma = 0x34635280737b5BFe6c7DC2FC3065D60d66e78185;
-    address constant cvxPrismaPool = 0x3b21C2868B6028CfB38Ff86127eF22E68d16d53B;
-    address constant triCRV = 0x4eBdF703948ddCEA3B11f675B4D1Fba9d2414A14;
-    address constant crvUSD = 0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E;
-    address constant mkUSD = 0x4591DBfF62656E7859Afe5e45f6f47D3669fBB28;
-    address constant mkUSDEthPool = 0xc89570207c5BA1B0E3cD372172cCaEFB173DB270;
-
-    address constant uniV3 = 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45;
-    address constant uniV3Quoter = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
-    uint constant minAmountToSwap = 1e17;
-    address a0 = address(0);
-    uint24[] fee500 = [500];
+    address uniV3Quoter = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
+    address crv = 0xD533a949740bb3306d119CC777fa900bA034cd52;
+    uint minAmountToSwap = 1e17;
     uint24[] fee3000 = [3000];
-    uint24[] fee10000 = [10000];
-    uint24[] fee10000_500 = [10000, 500];
 
-    // PRISMA-mkUSD
-    address want = 0x067079c14B85169e6a29703769dadDef90816f4C;
-    address rewardPool = 0xa9aA35B5481A7B7936d1680911D478F7A639fE48;
-    address newRewardPool = 0x48c5e00c63e327F73F789E300472F1744AAa7e34;
-    address[11] depositToWant = [native, prismaEthPool, prisma, 0x9D8108DDD8aD1Ee89d527C0C9e928Cb9D2BBa2d3, want];
-    uint[5][5] depositToWantParams = [[0, 1, 1, 2, 2], [1, 0, 4, 1, 2]];
-
-    // mkUSD-USDC
-//    address want = 0xF980B4A4194694913Af231De69AB4593f5E0fCDc;
-//    address rewardPool = 0xa68C880009B8e78CC42B215702573A7552ef2C68;
-//    address newRewardPool = 0x49cd193227a896F867AFDB6A5edFb53A3Ee7fb49;
-//    address[11] depositToWant = [native, mkUSDEthPool, mkUSD, 0xe09888EEab19bce85e67eDC59521F3f290B1BCcE, want];
-//    uint[5][5] depositToWantParams = [[0, 1, 1, 2, 2], [0, 0, 4, 1, 2]];
-
-    // PRISMA-cvxPRISMA
-//    address want = 0x3b21C2868B6028CfB38Ff86127eF22E68d16d53B;
-//    address rewardPool = 0xd91fBa4919b7BF3B757320ea48bA102F543dE341;
-//    address newRewardPool = address(0);
-//    address[11] depositToWant = [native, prismaEthPool, prisma, want, want];
-//    uint[5][5] depositToWantParams = [[0, 1, 1, 2, 2], [0, 0, 4, 1, 2]];
-
-    // mkUSD-FraxBP
-//    address want = 0x0CFe5C777A7438C9Dd8Add53ed671cEc7A5FAeE5;
-//    address rewardPool = 0x0Ae09f649e9dA1b6aEA0c10527aC4e8a88a37480;
-//    address newRewardPool = 0x5F8D4319C27a940B5783b4495cCa6626E880532E;
-//    address[11] depositToWant = [native, mkUSDEthPool, mkUSD, want, want];
-//    uint[5][5] depositToWantParams = [[0, 1, 1, 2, 2], [0, 0, 4, 1, 2]];
-
-    // mkUSD-crvUSD
-//    address want = 0x3de254A0f838a844F727fee81040e0FA7884B935;
-//    address rewardPool = 0x71aD6c1d92546065B13bf701a7524c69B409E25C;
-//    address newRewardPool = 0xf6aA46869220Ae703924d5331D88A21DceF3b19d;
-//    address[11] depositToWant = [native, triCRV, crvUSD, want, want];
-//    uint[5][5] depositToWantParams = [[1, 0, 1, 3, 4], [1, 0, 4, 1, 2]];
-
-    // ETH-PRISMA
-//    address want = 0xb34e1a3D07f9D180Bc2FDb9Fd90B8994423e33c1;
-//    address rewardPool = 0xB5376AB455194328Fe41450a587f11bcDA2363fa;
-//    address newRewardPool = 0x685E852E4c18c2c554a1D25c1197684fd9593145;
-//    address[11] depositToWant = [native, prismaEthPool, want];
-//    uint[5][5] depositToWantParams = [[0, 0, 4, 2, 2]];
-
-    CurveRoute depositToWantRoute = CurveRoute(depositToWant, depositToWantParams, 0);
-    bytes crvToNativeUniV3 = routeToPath(route(crv, native), fee3000);
-    bytes cvxToNativeUniV3 = routeToPath(route(cvx, native), fee10000);
-    bytes[] rewardsV3 = [crvToNativeUniV3, cvxToNativeUniV3];
-    address unirouter = uniV3;
-
-    address[11] cvxPrismaToNative = [cvxPrisma, cvxPrismaPool, prisma, prismaEthPool, native];
-    uint[5][5] cvxPrismaParams = [[1, 0, 1, 1, 2], [1, 0, 1, 2, 2]];
-    function rewardsToNative() internal view returns (CurveRoute[] memory rewards) {
-        rewards = new CurveRoute[](1);
-        rewards[0] = CurveRoute(cvxPrismaToNative, cvxPrismaParams, 0);
-    }
-
-    IVault vault;
     StrategyPrisma strategy;
-    VaultUser user;
-    uint256 wantAmount = 50000 ether;
 
-    function setUp() public {
-        user = new VaultUser();
-        address vaultAddress = vm.envOr("VAULT", address(0));
-        if (vaultAddress != address(0)) {
-            vault = IVault(vaultAddress);
-            strategy = StrategyPrisma(vault.strategy());
-            console.log("Testing vault at", vaultAddress);
-            console.log(vault.name(), vault.symbol());
-        } else {
-            BeefyVaultV7 vaultV7 = new BeefyVaultV7();
-            vault = IVault(address(vaultV7));
-            strategy = new StrategyPrisma();
-            vaultV7.initialize(IStrategyV7(address(strategy)), "TestVault", "testVault", 0);
-            StratFeeManagerInitializable.CommonAddresses memory commons = StratFeeManagerInitializable.CommonAddresses({
-                vault: address(vault),
-                unirouter: unirouter,
-                keeper: PROD_STRAT.keeper(),
-                strategist: address(user),
-                beefyFeeRecipient: PROD_STRAT.beefyFeeRecipient(),
-                beefyFeeConfig: PROD_STRAT.beefyFeeConfig()
-            });
-            strategy.initialize(want, rewardPool, rewardsV3, rewardsToNative(), depositToWantRoute, commons);
-            console.log("Strategy initialized", IERC20Extended(strategy.want()).symbol(), strategy.rewardPool());
-        }
-
-        deal(vault.want(), address(user), wantAmount);
-        initBase(vault, IStrategy(address(strategy)));
-    }
-
-    function test_setPrismaRewardPool() external {
-        if (newRewardPool == address(0)) return;
-        _depositIntoVault(user, wantAmount);
-
-        address oldRewardPool = strategy.rewardPool();
-        uint rewardPoolBal = IPrismaRewardPool(oldRewardPool).balanceOf(address(strategy));
-        assertEq(vault.balance(), rewardPoolBal, "RewardPool balance != vault balance");
-
-        console.log("Switch to new reward pool");
-        vm.prank(strategy.owner());
-        strategy.setPrismaRewardPool(newRewardPool);
-        rewardPoolBal = IPrismaRewardPool(oldRewardPool).balanceOf(address(strategy));
-        assertEq(rewardPoolBal, 0, "Old rewardPool balance != 0");
-        uint gaugeBal = IPrismaRewardPool(newRewardPool).balanceOf(address(strategy));
-        assertEq(vault.balance(), gaugeBal, "New rewardPool balance != vault balance");
-        user.withdrawAll(vault);
-        uint userBal = IERC20(want).balanceOf(address(user));
-        assertLe(userBal, wantAmount, "Expected userBal <= wantAmount");
-        assertGt(userBal, wantAmount * 99 / 100, "Expected userBal > wantAmount * 99 / 100");
-
-        _depositIntoVault(user, userBal);
-        console.log("setPrismaRewardPool bad pool reverts");
-        address badPool = strategy.want();
-        vm.prank(strategy.owner());
-        vm.expectRevert();
-        strategy.setPrismaRewardPool(badPool);
-
-        console.log("Switch back to old reward pool");
-        vm.prank(strategy.owner());
-        strategy.setPrismaRewardPool(oldRewardPool);
-        rewardPoolBal = IPrismaRewardPool(oldRewardPool).balanceOf(address(strategy));
-        assertEq(vault.balance(), rewardPoolBal, "RewardPool balance != vault balance");
-        gaugeBal = IPrismaRewardPool(newRewardPool).balanceOf(address(strategy));
-        assertEq(gaugeBal, 0, "New rewardPool balance != 0");
-        user.withdrawAll(vault);
-        uint userBalFinal = IERC20(want).balanceOf(address(user));
-        assertLe(userBalFinal, userBal, "Expected userBalFinal <= userBal");
-        assertGt(userBalFinal, userBal * 99 / 100, "Expected userBalFinal > userBal * 99 / 100");
+    function createStrategy(address _impl) internal override returns (address) {
+        if (_impl == a0) strategy = new StrategyPrisma();
+        else strategy = StrategyPrisma(_impl);
+        return address(strategy);
     }
 
     function test_setBoostDelegate() external {
@@ -223,7 +70,7 @@ contract StrategyPrismaTest is BaseStrategyTest {
     function test_setNativeToDepositPath() external {
         console.log("Non-native path reverts");
         vm.expectRevert();
-        strategy.setNativeToDepositPath(routeToPath(route(prisma, native), fee3000));
+        strategy.setNativeToDepositPath(routeToPath(route(crv, crv), fee3000));
     }
 
     function test_setDepositToWant() external {
@@ -236,7 +83,7 @@ contract StrategyPrismaTest is BaseStrategyTest {
         strategy.setDepositToWant(r, p, 1e18);
 
         console.log("Deposit token approved on curve router");
-        address token = native;
+        address token = strategy.native();
         r[0] = token;
         strategy.setDepositToWant(r, p, 1e18);
         uint allowed = IERC20(token).allowance(address(strategy), strategy.curveRouter());
@@ -322,39 +169,9 @@ contract StrategyPrismaTest is BaseStrategyTest {
                 assertEq(bal, 0, "Extra reward not swapped");
             }
         }
-        uint nativeBal = IERC20(native).balanceOf(address(strategy));
+        uint nativeBal = IERC20(strategy.native()).balanceOf(address(strategy));
         console.log("WETH", nativeBal);
         assertEq(nativeBal, 0, "Native not swapped");
-    }
-
-    function test_printRoutes() public view {
-        string memory symbol = IERC20Extended(want).symbol();
-        console.log(string.concat('mooName: "Moo Curve ', symbol, '",'));
-        console.log(string.concat('mooSymbol: "mooCurve', symbol, '",'));
-        console.log(string.concat('want: "', addrToStr(want), '",'));
-        console.log(string.concat('rewardPool: "', addrToStr(rewardPool), '",'));
-
-        string memory _rewardsV3 = '[';
-        for (uint i; i < rewardsV3.length; i++) {
-            _rewardsV3 = string.concat(_rewardsV3, '"', bytesToStr(rewardsV3[i]), '"');
-            if (i != rewardsV3.length - 1) {
-                _rewardsV3 = string.concat(_rewardsV3, ',');
-            }
-        }
-        _rewardsV3 = string.concat(_rewardsV3, '],');
-        console.log('rewardsV3:', _rewardsV3);
-
-        string memory rewards = '[';
-        CurveRoute[] memory r = rewardsToNative();
-        for (uint i; i < r.length; i++) {
-            rewards = string.concat(rewards, curveRouteToStr(r[i]));
-            if (i != r.length - 1) {
-                rewards = string.concat(rewards, ',');
-            }
-        }
-        rewards = string.concat(rewards, '],');
-        console.log('rewardsToNative:', rewards);
-        console.log('depositToWant:', string.concat(curveRouteToStr(depositToWantRoute), ','));
     }
 
     function curveRouteToStr(CurveRoute memory a) public pure returns (string memory t) {

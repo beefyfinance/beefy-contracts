@@ -2,54 +2,17 @@
 
 pragma solidity ^0.8.12;
 
-//import "forge-std/Test.sol";
-import "../../../node_modules/forge-std/src/Test.sol";
-
-// Users
-import "../users/VaultUser.sol";
-// Interfaces
-import "../interfaces/IERC20Like.sol";
-import "../interfaces/IVault.sol";
-import "../interfaces/IStrategy.sol";
-import "../interfaces/IUniV3Quoter.sol";
-import "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
-import "../../../contracts/BIFI/interfaces/common/IERC20Extended.sol";
 import "../../../contracts/BIFI/strategies/Curve/StrategyCurveConvexL2.sol";
-import "../../../contracts/BIFI/strategies/Common/StratFeeManager.sol";
-import "../../../contracts/BIFI/utils/UniswapV3Utils.sol";
 import "./BaseStrategyTest.t.sol";
 
 contract StrategyCurveConvexL2Test is BaseStrategyTest {
 
-    IVault vault;
-    StrategyCurveConvexL2 strategy = new StrategyCurveConvexL2();
-    VaultUser user = new VaultUser();
-    uint256 wantAmount = 50000 ether;
-    address want;
+    StrategyCurveConvexL2 strategy;
 
-    function setUp() public {
-        address vaultAddress = vm.envOr("VAULT", address(0));
-        if (vaultAddress != address(0)) {
-            vault = IVault(vaultAddress);
-            strategy = StrategyCurveConvexL2(vault.strategy());
-            console.log("Testing vault at", vaultAddress);
-            console.log(vault.name(), vault.symbol());
-        } else {
-            BeefyVaultV7 vaultV7 = new BeefyVaultV7();
-            vaultV7.initialize(IStrategyV7(address(strategy)), "TestVault", "testVault", 0);
-            vault = IVault(address(vaultV7));
-
-            bytes memory initData = vm.envBytes("INIT_DATA");
-            (bool success,) = address(strategy).call(initData);
-            assertTrue(success, "Strategy initialize not success");
-
-            strategy.setVault(address(vault));
-            assertEq(strategy.vault(), address(vault), "Vault not set");
-            console.log("Vault initialized", IERC20Extended(vault.want()).symbol());
-        }
-        want = strategy.want();
-        deal(vault.want(), address(user), wantAmount);
-        initBase(vault, IStrategy(address(strategy)));
+    function createStrategy(address _impl) internal override returns (address) {
+        if (_impl == a0) strategy = new StrategyCurveConvexL2();
+        else strategy = StrategyCurveConvexL2(_impl);
+        return address(strategy);
     }
 
     function test_initWithNoPid() external {
@@ -60,7 +23,7 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
         IVault vaultNoPid = IVault(address(vaultV7));
         StrategyCurveConvexL2 strategyNoPid = new StrategyCurveConvexL2();
 
-        deal(want, address(user), wantAmount);
+        deal(address(want), address(user), wantAmount);
 
         vaultV7.initialize(IStrategyV7(address(strategyNoPid)), "TestVault", "testVault", 0);
         StratFeeManagerInitializable.CommonAddresses memory commons = StratFeeManagerInitializable.CommonAddresses({
@@ -76,12 +39,12 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
             rewards[i] = strategy.rewards(i);
         }
         console.log("Init Strategy NO_PID");
-        strategyNoPid.initialize(strategy.native(), want, strategy.gauge(), strategy.NO_PID(), strategy.depositToken(), rewards, commons);
+        strategyNoPid.initialize(strategy.native(), address(want), strategy.gauge(), strategy.NO_PID(), strategy.depositToken(), rewards, commons);
 
-        user.approve(want, address(vaultNoPid), wantAmount);
+        user.approve(address(want), address(vaultNoPid), wantAmount);
         user.depositAll(vaultNoPid);
         user.withdrawAll(vaultNoPid);
-        uint wantBalanceFinal = IERC20(want).balanceOf(address(user));
+        uint wantBalanceFinal = want.balanceOf(address(user));
         console.log("Final user want balance", wantBalanceFinal);
         assertLe(wantBalanceFinal, wantAmount, "Expected wantBalanceFinal <= wantAmount");
         assertGt(wantBalanceFinal, wantAmount * 99 / 100, "Expected wantBalanceFinal > wantAmount * 99 / 100");
@@ -107,7 +70,7 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
         uint gaugeBal = IRewardsGauge(strategy.gauge()).balanceOf(address(strategy));
         assertEq(vault.balance(), gaugeBal, "Gauge balance != vault balance");
         user.withdrawAll(vault);
-        uint userBal = IERC20(want).balanceOf(address(user));
+        uint userBal = want.balanceOf(address(user));
         assertLe(userBal, wantAmount, "Expected userBal <= wantAmount");
         assertGt(userBal, wantAmount * 99 / 100, "Expected userBal > wantAmount * 99 / 100");
 
@@ -126,7 +89,7 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
         gaugeBal = IRewardsGauge(strategy.gauge()).balanceOf(address(strategy));
         assertEq(gaugeBal, 0, "Gauge balance != 0");
         user.withdrawAll(vault);
-        uint userBalFinal = IERC20(want).balanceOf(address(user));
+        uint userBalFinal = want.balanceOf(address(user));
         assertLe(userBalFinal, userBal, "Expected userBalFinal <= userBal");
         assertGt(userBalFinal, userBal * 99 / 100, "Expected userBalFinal > userBal * 99 / 100");
     }

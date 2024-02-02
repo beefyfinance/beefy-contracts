@@ -2,20 +2,8 @@
 
 pragma solidity ^0.8.12;
 
-//import "forge-std/Test.sol";
-import "../../../node_modules/forge-std/src/Test.sol";
-
-// Users
-import "../users/VaultUser.sol";
-// Interfaces
-import "../interfaces/IERC20Like.sol";
-import "../interfaces/IVault.sol";
-import "../interfaces/IStrategy.sol";
 import "../interfaces/IUniV3Quoter.sol";
-import "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
-import "../../../contracts/BIFI/interfaces/common/IERC20Extended.sol";
 import "../../../contracts/BIFI/strategies/Curve/StrategyCurveConvex.sol";
-import "../../../contracts/BIFI/strategies/Common/StratFeeManager.sol";
 import "../../../contracts/BIFI/utils/UniswapV3Utils.sol";
 import "./BaseStrategyTest.t.sol";
 
@@ -25,38 +13,17 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
     address constant crv = 0xD533a949740bb3306d119CC777fa900bA034cd52;
     address constant cvx = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
     address constant usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-
     address constant uniV3Quoter = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
-    ICrvMinter public constant minter = ICrvMinter(0xd061D61a4d941c39E5453435B6345Dc261C2fcE0);
-
-    address a0 = address(0);
+    ICrvMinter constant minter = ICrvMinter(0xd061D61a4d941c39E5453435B6345Dc261C2fcE0);
     uint24[] fee = [3000];
     uint[3][4] testParams = [[2, 0, 3], [2, 1, 1], [1, 0, 7], [1, 0, 7]];
 
-    IVault vault;
-    VaultUser user = new VaultUser();
-    uint256 wantAmount = 50000 ether;
-    StrategyCurveConvex strategy = new StrategyCurveConvex();
-    address want;
+    StrategyCurveConvex strategy;
 
-    function setUp() public {
-        BeefyVaultV7 vaultV7 = new BeefyVaultV7();
-        vaultV7.initialize(IStrategyV7(address(strategy)), "TestVault", "testVault", 0);
-        vault = IVault(address(vaultV7));
-
-        bytes memory initData = vm.envBytes("INIT_DATA");
-        (bool success,) = address(strategy).call(initData);
-        assertTrue(success, "Strategy initialize not success");
-
-        strategy.setVault(address(vault));
-        assertEq(strategy.vault(), address(vault), "Vault not set");
-        want = strategy.want();
-
-//        strategy.setCrvMintable(true);
-
-        deal(vault.want(), address(user), wantAmount);
-        initBase(vault, IStrategy(address(strategy)));
-        console.log("Vault initialized", IERC20Extended(want).symbol());
+    function createStrategy(address _impl) internal override returns (address) {
+        if (_impl == a0) strategy = new StrategyCurveConvex();
+        else strategy = StrategyCurveConvex(payable(_impl));
+        return address(strategy);
     }
 
     function test_initWithNoPid() external {
@@ -82,10 +49,10 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
         (,bytes memory cvxPath,) = strategy.rewardsV3(1);
         strategyNoPid.initialize(strategy.want(), strategy.gauge(), strategy.NO_PID(), crvPath, cvxPath, strategy.nativeToDepositPath(), depositToWantRoute, commons);
 
-        user.approve(want, address(vaultNoPid), wantAmount);
+        user.approve(address(want), address(vaultNoPid), wantAmount);
         user.depositAll(vaultNoPid);
         user.withdrawAll(vaultNoPid);
-        uint wantBalanceFinal = IERC20(want).balanceOf(address(user));
+        uint wantBalanceFinal = want.balanceOf(address(user));
         console.log("Final user want balance", wantBalanceFinal);
         assertLe(wantBalanceFinal, wantAmount, "Expected wantBalanceFinal <= wantAmount");
         assertGt(wantBalanceFinal, wantAmount * 99 / 100, "Expected wantBalanceFinal > wantAmount * 99 / 100");
@@ -109,7 +76,7 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
         uint gaugeBal = IRewardsGauge(strategy.gauge()).balanceOf(address(strategy));
         assertEq(vault.balance(), gaugeBal, "Gauge balance != vault balance");
         user.withdrawAll(vault);
-        uint userBal = IERC20(want).balanceOf(address(user));
+        uint userBal = want.balanceOf(address(user));
         assertLe(userBal, wantAmount, "Expected userBal <= wantAmount");
         assertGt(userBal, wantAmount * 99 / 100, "Expected userBal > wantAmount * 99 / 100");
 
@@ -125,7 +92,7 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
         gaugeBal = IRewardsGauge(strategy.gauge()).balanceOf(address(strategy));
         assertEq(gaugeBal, 0, "Gauge balance != 0");
         user.withdrawAll(vault);
-        uint userBalFinal = IERC20(want).balanceOf(address(user));
+        uint userBalFinal = want.balanceOf(address(user));
         assertLe(userBalFinal, userBal, "Expected userBalFinal <= userBal");
         assertGt(userBalFinal, userBal * 99 / 100, "Expected userBalFinal > userBal * 99 / 100");
     }
@@ -139,7 +106,7 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
     function test_setDepositToWant() external {
         console.log("Want as deposit token reverts");
         vm.expectRevert();
-        strategy.setDepositToWant([want, a0, a0, a0, a0, a0, a0, a0, a0], testParams, 1e18);
+        strategy.setDepositToWant([address(want), a0, a0, a0, a0, a0, a0, a0, a0], testParams, 1e18);
 
         console.log("Deposit token approved on curve router");
         address token = native;

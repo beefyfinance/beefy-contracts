@@ -2,81 +2,24 @@
 
 pragma solidity ^0.8.12;
 
-//import "forge-std/Test.sol";
-import "../../../node_modules/forge-std/src/Test.sol";
-
-// Users
-import "../users/VaultUser.sol";
-// Interfaces
-import "../interfaces/IERC20Like.sol";
-import "../interfaces/IVault.sol";
-import "../interfaces/IStrategy.sol";
-import "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
-import "../../../contracts/BIFI/interfaces/common/IERC20Extended.sol";
 import "../../../contracts/BIFI/strategies/Curve/StrategyConvexCRV.sol";
-import "../../../contracts/BIFI/strategies/Common/StratFeeManager.sol";
 import "./BaseStrategyTest.t.sol";
 
 contract StrategyCvxCRVTest is BaseStrategyTest {
 
-    IStrategy constant PROD_STRAT = IStrategy(0x2486c5fa59Ba480F604D5A99A6DAF3ef8A5b4D76);
-    address constant uniV3 = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     address constant native = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address constant crv = 0xD533a949740bb3306d119CC777fa900bA034cd52;
-    address constant cvxCrv = 0x62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7;
-    address constant ethCrvPool = 0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511;
-    address constant cvxCrvPool = 0x9D0464996170c6B9e75eED71c68B99dDEDf279e8;
-    address constant threePoolLp = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
-    address constant threePool = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
-    address constant usdt = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
-    address constant triCrypto = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
     address constant usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-
-    address[9] nativeToCvxCrvRoute = [native, ethCrvPool, crv, cvxCrvPool, cvxCrv];
-    uint[3][4] nativeToCvxCrvParams = [[0, 1, 3], [0, 1, 1]];
-    StrategyConvexCRV.CurveRoute nativeToCvxCrv = StrategyConvexCRV.CurveRoute(
-        nativeToCvxCrvRoute, nativeToCvxCrvParams, 0
-    );
-
-    address[9] threePoolToNativeRoute = [threePoolLp, threePool, usdt, triCrypto, native];
-    uint[3][4] threePoolToNativeParams = [[0, 2, 12], [0, 2, 3]];
-    uint threePoolMinAmount = 1e19;
-
     uint24[] fee3000 = [3000];
     address uniV3Reward = usdc;
     bytes uniV3RewardPath = routeToPath(route(uniV3Reward, native), fee3000);
 
-    IVault vault;
     StrategyConvexCRV strategy;
-    VaultUser user;
-    uint256 wantAmount = 500000 ether;
 
-    function setUp() public {
-        BeefyVaultV7 vaultV7 = new BeefyVaultV7();
-        vault = IVault(address(vaultV7));
-        strategy = new StrategyConvexCRV();
-        user = new VaultUser();
-
-        vaultV7.initialize(IStrategyV7(address(strategy)), "TestVault", "testVault", 0);
-
-        StratFeeManagerInitializable.CommonAddresses memory commons = StratFeeManagerInitializable.CommonAddresses({
-        vault : address(vault),
-        unirouter : uniV3,
-        keeper : PROD_STRAT.keeper(),
-        strategist : address(user),
-        beefyFeeRecipient : PROD_STRAT.beefyFeeRecipient(),
-        beefyFeeConfig : PROD_STRAT.beefyFeeConfig()
-        });
-
-        strategy.initialize(nativeToCvxCrv, commons);
-        console.log("Strategy initialized");
-
-        strategy.addReward(threePoolToNativeRoute, threePoolToNativeParams, threePoolMinAmount);
-        strategy.setCurveSwapMinAmount(1);
-        strategy.setRewardWeight(5000);
-
-        deal(vault.want(), address(user), wantAmount);
-        initBase(vault, IStrategy(address(strategy)));
+    function createStrategy(address _impl) internal override returns (address) {
+        if (_impl == a0) strategy = new StrategyConvexCRV();
+        else strategy = StrategyConvexCRV(payable(_impl));
+        return address(strategy);
     }
 
     function test_addRewards() external {
