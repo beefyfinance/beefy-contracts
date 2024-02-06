@@ -2,73 +2,34 @@
 
 pragma solidity ^0.8.12;
 
-import "../interfaces/IUniV3Quoter.sol";
 import "../../../contracts/BIFI/strategies/Curve/StrategyConic.sol";
 import "../../../contracts/BIFI/strategies/Curve/ConicZap.sol";
-import "../../../contracts/BIFI/utils/UniswapV3Utils.sol";
+import "../../../contracts/BIFI/interfaces/common/IWrappedNative.sol";
 import "./BaseStrategyTest.t.sol";
 
 contract StrategyConicTest is BaseStrategyTest {
 
-    IStrategy constant PROD_STRAT = IStrategy(0x2486c5fa59Ba480F604D5A99A6DAF3ef8A5b4D76);
-    address constant native = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    address constant crv = 0xD533a949740bb3306d119CC777fa900bA034cd52;
-    address constant cvx = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-    address constant usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address constant triCryptoUSDC = 0x7F86Bf177Dd4F3494b841a37e810A34dD56c829B;
-    address constant crvUSD_USDC = 0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E;
-    address constant crvUSD = 0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E;
-
-    address constant uniV3 = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
-    address constant uniV3Quoter = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
-    uint24[] fee500 = [500];
-    uint24[] fee3000 = [3000];
-    uint24[] fee10000 = [10000];
-    uint24[] fee10000_500 = [10000, 500];
-
-    bytes crvToNativePath = routeToPath(route(crv, native), fee3000);
-    bytes cvxToNativePath = routeToPath(route(cvx, native), fee10000);
-    address unirouter = uniV3;
-
-    // crvETH
-    bytes nativeToUnderlyingPath = "";
-    address[9] nativeToUnderlying = [native, native, ETH, native, native];
-    uint[3][4] nativeToUnderlyingParams = [[0,0,15],[0,0,15]];
-    StrategyConic.CurveRoute nativeToUnderlyingRoute = StrategyConic.CurveRoute(nativeToUnderlying, nativeToUnderlyingParams, 0);
-
-    // crvUSD
-//    address want = 0xB569bD86ba2429fd2D8D288b40f17EBe1d0f478f;
-//    bytes nativeToUnderlyingPath = "";
-//    address[9] nativeToUnderlying = [native, triCryptoUSDC, usdc, crvUSD_USDC, crvUSD];
-//    uint[3][4] nativeToUnderlyingParams = [[2,0,3],[0, 1, 1]];
-//    StrategyConic.CurveRoute nativeToUnderlyingRoute = StrategyConic.CurveRoute(nativeToUnderlying, nativeToUnderlyingParams, 0);
-
-    // USDC pool
-//    address want = 0x472fCC880F01B32C55F1fB55F58f7bD930dE1944;
-//    bytes nativeToUnderlyingPath = routeToPath(route(native, usdc), fee500);
-//    address[9] nativeToUnderlying = [native, triCryptoUSDC, usdc];
-//    uint[3][4] nativeToUnderlyingParams = [[2,0,3]];
-//    StrategyConic.CurveRoute nativeToUnderlyingRoute = StrategyConic.CurveRoute(nativeToUnderlying, nativeToUnderlyingParams, 0);
-
-    uint[3][4] nativeToFraxBp = [[2, 0, 3], [2, 1, 1], [1, 0, 7], [1, 0, 7]];
-
     StrategyConic strategy;
 
     function createStrategy(address _impl) internal override returns (address) {
+        // Conic calls Chainlink which will revert with "price too old" after we skip time
+        // here we cache via mock current prices of all possible tokens
+        cacheOraclePrices();
+
         if (_impl == a0) strategy = new StrategyConic();
-        else strategy = StrategyConic(payable(_impl));
+        else strategy = StrategyConic(_impl);
         return address(strategy);
     }
 
     function test_zapIn() external {
         ConicZap zap = new ConicZap();
         IBeefyVault beefyVault = IBeefyVault(address(vault));
+        address cvx = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
 
         vm.expectRevert('Beefy: Input token not present in pool');
         zap.estimateSwap(beefyVault, cvx, 1000);
 
-        address tokenIn = strategy.underlying();
+        address tokenIn = strategy.depositToken();
         uint amount = 10000000000000000;
         (uint swapAmountIn, uint swapAmountOut, address swapTokenOut) = zap.estimateSwap(beefyVault, tokenIn, amount);
         uint amountMin = swapAmountOut * 995 / 1000; // 0.5%
@@ -78,17 +39,17 @@ contract StrategyConicTest is BaseStrategyTest {
         assertEq(swapTokenOut, address(want), "swapTokenOut != want");
 
         deal(tokenIn, address(this), amount);
-        if (tokenIn == native) {
+        if (tokenIn == strategy.native()) {
             console.log('Zap in native beefInETH');
-            IWrappedNative(native).withdraw(amount);
+            IWrappedNative(strategy.native()).withdraw(amount);
             zap.beefInETH{value: amount}(beefyVault, amountMin);
         } else {
             IERC20(tokenIn).approve(address(zap), type(uint).max);
             zap.beefIn(beefyVault, amountMin, tokenIn, amount);
         }
 
-        assertEq(IERC20(strategy.cnc()).balanceOf(address(zap)), 0);
-        assertEq(IERC20(strategy.underlying()).balanceOf(address(zap)), 0);
+        assertEq(IERC20(zap.CNC()).balanceOf(address(zap)), 0);
+        assertEq(IERC20(strategy.depositToken()).balanceOf(address(zap)), 0);
         assertEq(want.balanceOf(address(zap)), 0);
         assertEq(address(zap).balance, 0);
 
@@ -101,6 +62,7 @@ contract StrategyConicTest is BaseStrategyTest {
     function test_zapOut() external {
         ConicZap zap = new ConicZap();
         IBeefyVault beefyVault = IBeefyVault(address(vault));
+        address cvx = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
 
         vm.expectRevert('Beefy: desired token not present in pool');
         zap.estimateSwapOut(beefyVault, cvx, 1000);
@@ -111,7 +73,7 @@ contract StrategyConicTest is BaseStrategyTest {
         vault.deposit(lpAmount);
         uint withdrawAmount = beefyVault.balanceOf(address(this));
 
-        address tokenOut = strategy.underlying();
+        address tokenOut = strategy.depositToken();
         (uint swapAmountIn, uint swapAmountOut, address swapTokenIn) = zap.estimateSwapOut(beefyVault, tokenOut, withdrawAmount);
         uint amountMin = swapAmountOut * 999 / 1000; // 0.1%
         console.log('Estimate swapOut', swapAmountIn, swapAmountOut, amountMin);
@@ -123,142 +85,63 @@ contract StrategyConicTest is BaseStrategyTest {
         beefyVault.approve(address(zap), type(uint).max);
         zap.beefOutAndSwap(beefyVault, withdrawAmount, tokenOut, amountMin);
 
-        assertEq(IERC20(strategy.cnc()).balanceOf(address(zap)), 0);
-        assertEq(IERC20(strategy.underlying()).balanceOf(address(zap)), 0);
+        assertEq(IERC20(zap.CNC()).balanceOf(address(zap)), 0);
+        assertEq(IERC20(strategy.depositToken()).balanceOf(address(zap)), 0);
         assertEq(want.balanceOf(address(zap)), 0);
 
-        uint tokenBal = (tokenOut == native)
+        uint tokenBal = (tokenOut == strategy.native())
             ? address(this).balance
             : IERC20(tokenOut).balanceOf(address(this));
         assertGe(tokenBal, amountMin, "Balance < amountMin");
-    }
-
-    function test_setNativeToUnderlyingPath() external {
-        console.log("Non-native path reverts");
-        vm.expectRevert();
-        strategy.setNativeToUnderlyingPath(routeToPath(route(usdc, native), fee3000));
-    }
-
-    function test_setNativeToUnderlying() external {
-        console.log("Want as deposit token reverts");
-        vm.expectRevert();
-        strategy.setNativeToUnderlyingRoute([address(want), a0, a0, a0, a0, a0, a0, a0, a0], nativeToFraxBp, 1e18);
-
-        console.log("Non-native as deposit token reverts");
-        vm.expectRevert();
-        strategy.setNativeToUnderlyingRoute([usdc, a0, a0, a0, a0, a0, a0, a0, a0], nativeToFraxBp, 1e18);
-
-        console.log("Deposit token approved on curve router");
-        address token = native;
-        vm.prank(strategy.owner());
-        strategy.setNativeToUnderlyingRoute([token, a0, a0, a0, a0, a0, a0, a0, a0], nativeToFraxBp, 1e18);
-        uint allowed = IERC20(token).allowance(address(strategy), strategy.curveRouter());
-        assertEq(allowed, type(uint).max);
-    }
-
-    function test_addRewards() external {
-        vm.prank(strategy.owner());
-        strategy.resetCurveRewards();
-        vm.prank(strategy.owner());
-        strategy.resetRewardsV3();
-
-        console.log("Add curveReward");
-        uint[3] memory p = [uint(1),uint(0), uint(0)];
-        uint[3][4] memory _params = [p,p,p,p];
-        vm.prank(strategy.owner());
-        strategy.addReward([crv,a0,a0,a0,a0,a0,a0,a0,a0], _params, 1);
-        vm.prank(strategy.owner());
-        strategy.addReward([cvx,a0,a0,a0,a0,a0,a0,a0,a0], _params, 1);
-        (address[9] memory r, uint256[3][4] memory params, uint minAmount) = strategy.curveReward(0);
-        address token0 = r[0];
-        assertEq(token0, crv, "!crv");
-        assertEq(params[0][0], _params[0][0], "!params");
-        assertEq(minAmount, 1, "!minAmount");
-        (r,,) = strategy.curveReward(1);
-        address token1 = r[0];
-        assertEq(token1, cvx, "!cvx");
-        vm.expectRevert();
-        strategy.curveRewards(2);
-
-        console.log("Add rewardV3");
-        uint24[] memory fees = new uint24[](1);
-        fees[0] = 3000;
-        bytes memory path = routeToPath(route(crv, strategy.native()), fees);
-        vm.prank(strategy.owner());
-        strategy.addRewardV3(path, 1);
-        (token0,,minAmount) = strategy.rewardsV3(0);
-        assertEq(token0, crv, "!crv");
-        assertEq(minAmount, 1, "!minAmount");
-        vm.expectRevert();
-        strategy.rewardsV3(1);
-
-
-        console.log("rewardV3Route");
-        print(strategy.rewardV3Route(0));
-        console.log("nativeToUnderlying");
-        path = strategy.nativeToUnderlyingPath();
-        if (path.length > 0) {
-            print(UniswapV3Utils.pathToRoute(path));
-        }
-        console.log("nativeToUnderlyingRoute");
-        (r, params, minAmount) = strategy.nativeToUnderlyingRoute();
-        for(uint i; i < r.length; i++) {
-            if (r[i] == address(0)) break;
-            console.log(r[i]);
-        }
-
-        vm.prank(strategy.owner());
-        strategy.resetCurveRewards();
-        vm.prank(strategy.owner());
-        strategy.resetRewardsV3();
-
-        vm.expectRevert();
-        strategy.rewardsV3(0);
-
-        vm.expectRevert();
-        strategy.curveRewards(0);
     }
 
     function test_rewards() external {
         _depositIntoVault(user, wantAmount);
         skip(1 days);
 
-        uint rewardsAvailable = strategy.rewardsAvailable();
-        assertGt(rewardsAvailable, 0, "Expected rewardsAvailable > 0");
-
-        address[] memory rewards = new address[](strategy.curveRewardsLength() + strategy.rewardsV3Length());
-        for(uint i; i < strategy.curveRewardsLength(); ++i) {
-            (address[9] memory route,,) = strategy.curveReward(i);
-            rewards[i] = route[0];
-        }
-        for(uint i; i < strategy.rewardsV3Length(); ++i) {
-            rewards[strategy.curveRewardsLength() + i] = strategy.rewardV3Route(i)[0];
-            (address token, bytes memory path,) = strategy.rewardsV3(i);
-            uint out = IUniV3Quoter(uniV3Quoter).quoteExactInput(path, 1e20);
-            console.log("Route 100", IERC20Extended(token).symbol(), "to ETH:", out);
-        }
-
-        console.log("Claim rewards");
         IRewardManager rewardManager = strategy.rewardManager();
         vm.prank(address(strategy));
         rewardManager.claimEarnings();
-        for (uint i; i < rewards.length; ++i) {
-            string memory s = IERC20Extended(rewards[i]).symbol();
-            console2.log(s, IERC20(rewards[i]).balanceOf(address(strategy)));
+
+        for (uint i; i < strategy.rewardsLength(); ++i) {
+            uint bal = IERC20(strategy.rewards(i)).balanceOf(address(strategy));
+            console.log(IERC20Extended(strategy.rewards(i)).symbol(), bal);
         }
-        console.log("WETH", IERC20(native).balanceOf(address(strategy)));
 
         console.log("Harvest");
         strategy.harvest();
-        for (uint i; i < rewards.length; ++i) {
-            string memory s = IERC20Extended(rewards[i]).symbol();
-            uint bal = IERC20(rewards[i]).balanceOf(address(strategy));
-            console2.log(s, bal);
+
+        for (uint i; i < strategy.rewardsLength(); ++i) {
+            uint bal = IERC20(strategy.rewards(i)).balanceOf(address(strategy));
+            console.log(IERC20Extended(strategy.rewards(i)).symbol(), bal);
             assertEq(bal, 0, "Extra reward not swapped");
         }
-        uint nativeBal = IERC20(native).balanceOf(address(strategy));
-        console.log("WETH", nativeBal);
-        assertEq(nativeBal, 0, "Native not swapped");
+    }
+
+    address[] private oracleTokens = [
+    0xdAC17F958D2ee523a2206206994597C13D831ec7,
+    0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E,
+    0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
+    0x853d955aCEf822Db058eb8505911ED77F175b99e,
+    0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,
+    0x6B175474E89094C44Da98b954EedeAC495271d0F,
+    0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84
+    ];
+
+    function cacheOraclePrices() internal {
+        address chainlink = 0xd918685c42A248Ff471ef87e005718C4AaFe04B7;
+        for (uint i; i < oracleTokens.length; i++) {
+            bytes memory callData = abi.encodeWithSignature("getUSDPrice(address)", oracleTokens[i]);
+            (, bytes memory res) = chainlink.staticcall(callData);
+            uint price = abi.decode(res, (uint));
+            vm.mockCall(chainlink, callData, abi.encode(price));
+        }
+
+        address frxEthOracle = 0x7EeA9d690162bc71Bb81B9BA83b53d4AD376F21C;
+        bytes memory _callData = abi.encodeWithSignature("getUSDPrice(address)", 0x5E8422345238F34275888049021821E8E08CAa1f);
+        (, bytes memory _res) = frxEthOracle.staticcall(_callData);
+        uint _price = abi.decode(_res, (uint));
+        vm.mockCall(frxEthOracle, _callData, abi.encode(_price));
     }
 
     receive() external payable {}
