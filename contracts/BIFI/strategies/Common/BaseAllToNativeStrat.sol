@@ -186,6 +186,17 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
         delete rewards;
     }
 
+    function updateUnirouter(address _unirouter) external onlyOwner {
+        for (uint i; i < rewards.length; ++i) {
+            address token = rewards[i];
+            _approve(token, unirouter, 0);
+            _approve(token, _unirouter, 0);
+            _approve(token, _unirouter, type(uint).max);
+        }
+        unirouter = _unirouter;
+        emit SetUnirouter(_unirouter);
+    }
+
     function setRewardMinAmount(address token, uint minAmount) external onlyManager {
         minAmounts[token] = minAmount;
     }

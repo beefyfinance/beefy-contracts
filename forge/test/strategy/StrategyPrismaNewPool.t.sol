@@ -18,8 +18,6 @@ import "./BaseStrategyTest.t.sol";
 
 contract StrategyPrismaNewPoolTest is Test {
 
-    IStrategy constant PROD_STRAT = IStrategy(0x2486c5fa59Ba480F604D5A99A6DAF3ef8A5b4D76);
-
     IVault vault;
     StrategyPrisma strategy;
     VaultUser user;

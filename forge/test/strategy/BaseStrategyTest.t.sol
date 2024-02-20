@@ -50,6 +50,7 @@ abstract contract BaseStrategyTest is Test {
                 strategy = IStrategy(createStrategy(address(0)));
                 vault = IVault(strategy.vault());
             }
+            console.log("Want", IERC20Extended(strategy.want()).symbol());
         }
 
         want = IERC20Like(vault.want());

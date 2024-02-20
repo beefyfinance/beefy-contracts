@@ -4,12 +4,14 @@ pragma solidity ^0.8.12;
 
 import "../../../contracts/BIFI/strategies/Curve/StrategyCurveConvexL2.sol";
 import "./BaseStrategyTest.t.sol";
+import "@openzeppelin-4/contracts/utils/Address.sol";
 
 contract StrategyCurveConvexL2Test is BaseStrategyTest {
 
     StrategyCurveConvexL2 strategy;
 
     function createStrategy(address _impl) internal override returns (address) {
+        cacheOraclePrices();
         if (_impl == a0) strategy = new StrategyCurveConvexL2();
         else strategy = StrategyCurveConvexL2(_impl);
         return address(strategy);
@@ -27,12 +29,12 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
 
         vaultV7.initialize(IStrategyV7(address(strategyNoPid)), "TestVault", "testVault", 0);
         StratFeeManagerInitializable.CommonAddresses memory commons = StratFeeManagerInitializable.CommonAddresses({
-            vault : address(vaultNoPid),
-            unirouter : strategy.unirouter(),
-            keeper : strategy.keeper(),
-            strategist : address(user),
-            beefyFeeRecipient : strategy.beefyFeeRecipient(),
-            beefyFeeConfig : address(strategy.beefyFeeConfig())
+            vault: address(vaultNoPid),
+            unirouter: strategy.unirouter(),
+            keeper: strategy.keeper(),
+            strategist: address(user),
+            beefyFeeRecipient: strategy.beefyFeeRecipient(),
+            beefyFeeConfig: address(strategy.beefyFeeConfig())
         });
         address[] memory rewards = new address[](strategy.rewardsLength());
         for (uint i; i < strategy.rewardsLength(); ++i) {
@@ -155,6 +157,19 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
         for (uint i; i < strategy.rewardsLength(); ++i) {
             uint bal = IERC20(strategy.rewards(i)).balanceOf(address(strategy));
             console.log(IERC20Extended(strategy.rewards(i)).symbol(), bal);
+        }
+    }
+
+    function cacheOraclePrices() internal {
+        address opSnxRate = 0x913bd76F7E1572CC8278CeF2D6b06e2140ca9Ce2;
+        if (Address.isContract(opSnxRate)) {
+            bytes memory _callData = abi.encodeWithSignature("rateWithSafetyChecks(bytes32)", 0x7345544800000000000000000000000000000000000000000000000000000000);
+            (, bytes memory _res) = opSnxRate.call(_callData);
+            (uint _price,,) = abi.decode(_res, (uint, bool, bool));
+            vm.mockCall(opSnxRate, _callData, abi.encode(_price, 0, 0));
+
+            _callData = abi.encodeWithSelector(bytes4(keccak256("anyRateIsInvalidAtRound(bytes32[],uint256[])")));
+            vm.mockCall(opSnxRate, _callData, abi.encode(0));
         }
     }
 }
