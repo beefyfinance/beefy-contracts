@@ -131,6 +131,7 @@ abstract contract BaseStrategyTest is Test {
     }
 
     function test_harvest() external {
+        uint wantBalBefore = want.balanceOf(address(user));
         _depositIntoVault(user, wantAmount);
         uint vaultBalance = vault.balance();
         assertGe(vaultBalance, wantAmount, "Vault balance < wantAmount");
@@ -157,7 +158,7 @@ abstract contract BaseStrategyTest is Test {
         uint wantBalAfterWithdrawal = want.balanceOf(address(user));
         console.log("User want balance", wantBalAfterWithdrawal);
         assertLe(wantBalAfterWithdrawal, vaultBalAfterHarvest, "wantBalAfterWithdrawal too big");
-        assertGt(wantBalAfterWithdrawal, vaultBalAfterHarvest * 99 / 100, "wantBalAfterWithdrawal too small");
+        assertGt(wantBalAfterWithdrawal, wantBalBefore * 99 / 100, "wantBalAfterWithdrawal too small");
 
         console.log("Deposit all");
         user.depositAll(vault);

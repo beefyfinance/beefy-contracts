@@ -193,6 +193,14 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
             _approve(token, _unirouter, 0);
             _approve(token, _unirouter, type(uint).max);
         }
+        if (depositToken != address(0) && depositToken != native) {
+            _approve(depositToken, unirouter, 0);
+            _approve(depositToken, _unirouter, 0);
+            _approve(depositToken, _unirouter, type(uint).max);
+        }
+        _approve(native, unirouter, 0);
+        _approve(native, _unirouter, 0);
+        _approve(native, _unirouter, type(uint).max);
         unirouter = _unirouter;
         emit SetUnirouter(_unirouter);
     }

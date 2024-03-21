@@ -43,14 +43,14 @@ contract StrategyPrismaNewPoolTest is Test {
     function test_setPrismaRewardPool() external {
         address oldRewardPool = strategy.rewardPool();
         uint rewardPoolBal = IPrismaRewardPool(oldRewardPool).balanceOf(address(strategy));
-        assertEq(vault.balance(), rewardPoolBal, "RewardPool balance != vault balance");
+        assertEq(strategy.balanceOfPool(), rewardPoolBal, "RewardPool balance != strategy balance");
 
         vm.prank(strategy.owner());
         strategy.setPrismaRewardPool(newRewardPool);
         rewardPoolBal = IPrismaRewardPool(oldRewardPool).balanceOf(address(strategy));
         assertEq(rewardPoolBal, 0, "Old rewardPool balance != 0");
         uint gaugeBal = IPrismaRewardPool(newRewardPool).balanceOf(address(strategy));
-        assertEq(vault.balance(), gaugeBal, "New rewardPool balance != vault balance");
+        assertEq(strategy.balanceOfPool(), gaugeBal, "New rewardPool balance != strategy balance");
 
         vm.prank(strategy.keeper());
         strategy.panic();
@@ -59,7 +59,8 @@ contract StrategyPrismaNewPoolTest is Test {
 
         vm.prank(strategy.keeper());
         strategy.unpause();
-        assertEq(vault.balance(), gaugeBal, "Vault balance is wrong after panic/unpause");
+        assertEq(strategy.balanceOfWant(), 0, "Strategy balanceOfWant != 0 after panic");
+        assertEq(strategy.balanceOfPool(), gaugeBal, "Strategy balance is wrong after panic/unpause");
     }
 
     function bytesToStr(bytes memory buffer) public pure returns (string memory) {
