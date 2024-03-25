@@ -69,7 +69,9 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
         assertEq(vault.balance(), rewardPoolBal, "RewardPool balance != vault balance");
 
         console.log("setConvexPid NO_PID switches to Curve");
-        strategy.setConvexPid(strategy.NO_PID());
+        uint noPid = strategy.NO_PID();
+        vm.prank(strategy.owner());
+        strategy.setConvexPid(noPid);
         rewardPoolBal = IConvexRewardPool(rewardPool).balanceOf(address(strategy));
         assertEq(rewardPoolBal, 0, "RewardPool balance != 0");
         uint gaugeBal = IRewardsGauge(strategy.gauge()).balanceOf(address(strategy));
@@ -85,6 +87,7 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
         strategy.setConvexPid(1);
 
         console.log("setConvexPid valid pid switches to Convex");
+        vm.prank(strategy.owner());
         strategy.setConvexPid(pid);
         rewardPoolBal = IConvexRewardPool(rewardPool).balanceOf(address(strategy));
         assertEq(vault.balance(), rewardPoolBal, "RewardPool balance != vault balance");
@@ -104,24 +107,32 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
         uint bal = vault.balance();
 
         console.log("setConvexPid NO_PID");
-        strategy.setConvexPid(strategy.NO_PID());
+        uint noPid = strategy.NO_PID();
+        vm.prank(strategy.owner());
+        strategy.setConvexPid(noPid);
 
         console.log("setCrvMintable false not expecting harvest");
         skip(1 days);
+        vm.prank(strategy.keeper());
         strategy.setCrvMintable(false);
         strategy.harvest();
         assertEq(vault.balance(), bal, "Harvested");
 
         console.log("setCrvMintable true expecting harvest CRV");
         skip(1 days);
+        vm.prank(strategy.keeper());
         strategy.setCrvMintable(true);
         strategy.harvest();
+        // in case of lockedProfit harvested balance is not available right away
+        skip(1 days);
         assertGt(vault.balance(), bal, "Not harvested");
     }
 
     function test_rewards() external {
         if (strategy.rewardPool() != address(0)) {
-            strategy.booster().earmarkRewards(strategy.pid());
+            if (IConvexRewardPool(strategy.rewardPool()).periodFinish() < block.timestamp) {
+                strategy.booster().earmarkRewards(strategy.pid());
+            }
         }
 
         _depositIntoVault(user, wantAmount);
@@ -130,7 +141,7 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
         // if convex
         if (strategy.rewardPool() != address(0)) {
             console.log("Claim rewards on Convex");
-            IConvexRewardPool(strategy.rewardPool()).getReward(address(strategy));
+            IConvexRewardPool(strategy.rewardPool()).getReward(address(strategy), true);
         } else {
             console.log("Claim rewards on Curve");
             if (strategy.isCurveRewardsClaimable()) {
@@ -178,6 +189,8 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
 
         console.log("Harvest");
         strategy.harvest();
+        // in case of lockedProfit harvested balance is not available right away
+        skip(1 days);
         assertGt(vault.balance(), bal, "Not Harvested");
         periodFinish = IConvexRewardPool(strategy.rewardPool()).periodFinish();
         assertGt(periodFinish, block.timestamp, "periodFinish not updated");
@@ -199,6 +212,7 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
         assertLt(periodFinish, block.timestamp, "periodFinish not ended");
 
         console.log("SkipEarmarkRewards");
+        vm.prank(strategy.keeper());
         strategy.setSkipEarmarkRewards(true);
         console.log("Harvest");
         strategy.harvest();
