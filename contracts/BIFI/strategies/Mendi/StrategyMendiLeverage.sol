@@ -149,7 +149,6 @@ contract StrategyMendiLeverage is StratFeeManagerInitializable {
     function _deleverage(uint256 _amount) internal {
         uint256 poolBal = balanceOfPool();
         uint256 share = _amount < poolBal ? _amount * 1e27 / poolBal : 1e27;
-        uint256 storedLtv = ltv() / 1e16;
 
         uint256 supplyReserves = supply * (1e27 - share) / 1e27;
         uint256 borrowReserves = borrow * (1e27 - share) / 1e27;
@@ -157,8 +156,9 @@ contract StrategyMendiLeverage is StratFeeManagerInitializable {
         uint256 borrowSliced = borrow - borrowReserves;
         uint256 ltvDuringUnwind = borrow * 100 / (supply - borrowSliced);
 
+        uint256 targetSupply = borrowSliced * 100 / borrowRateMax;
         uint256 unwindAmount = ltvDuringUnwind > borrowRateMax 
-            ? supplySliced * (storedLtv ** borrowDepth) / (100 ** borrowDepth)
+            ? supplySliced - targetSupply
             : borrowSliced;
 
         if (unwindAmount > 0) {
@@ -170,8 +170,9 @@ contract StrategyMendiLeverage is StratFeeManagerInitializable {
                 IVToken(iToken).repayBorrow(unwindAmount);
                 borrowSliced -= unwindAmount;
 
-                unwindAmount = unwindAmount * 100 / storedLtv < borrowSliced
-                    ? unwindAmount * 100 / storedLtv 
+                targetSupply = borrowSliced * 100 / borrowRateMax;
+                unwindAmount = supplySliced - targetSupply < borrowSliced
+                    ? supplySliced - targetSupply
                     : borrowSliced;
 
                 err = IVToken(iToken).redeemUnderlying(unwindAmount);
