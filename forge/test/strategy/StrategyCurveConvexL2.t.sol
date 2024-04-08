@@ -80,7 +80,7 @@ contract StrategyCurveConvexL2Test is BaseStrategyTest {
         console.log("setConvexPid bad pid reverts");
         vm.startPrank(strategy.owner());
         vm.expectRevert();
-        strategy.setConvexPid(1);
+        strategy.setConvexPid(pid + 1);
         vm.stopPrank();
 
         console.log("setConvexPid valid pid switches to Convex");

@@ -156,6 +156,12 @@ const config: DeploymentConfig = {
       accounts,
       gasPrice: 100000,
     },
+    fraxtal: {
+      url: process.env.FRAXTAL_RPC || "https://rpc.frax.com",
+      chainId: 252,
+      accounts,
+      gasPrice: 100000,
+    },
   },
   etherscan: {
     // Your API key for Etherscan

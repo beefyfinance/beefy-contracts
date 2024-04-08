@@ -50,6 +50,16 @@ abstract contract BaseStrategyTest is Test {
                 strategy = IStrategy(createStrategy(address(0)));
                 vault = IVault(strategy.vault());
             }
+
+            address callTarget = vm.envOr("CALL_TARGET", address(0));
+            bytes memory callData = vm.envOr("CALL_DATA", _default);
+            if (callData.length > 0) {
+                console.log("Call to", callTarget);
+                vm.prank(strategy.keeper());
+                (bool success,) = callTarget.call(callData);
+                assertTrue(success, "Call not success");
+            }
+
             console.log("Want", IERC20Extended(strategy.want()).symbol());
         }
 
