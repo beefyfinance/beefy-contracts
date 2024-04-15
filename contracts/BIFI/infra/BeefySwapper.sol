@@ -45,6 +45,7 @@ contract BeefySwapper is OwnableUpgradeable {
 
     /// @dev Stored data for a swap
     /// @param router Target address that will handle the swap
+    /// @param tokenPuller Address that will pull tokens from this address during the swap
     /// @param data Payload of a template swap between the two tokens
     /// @param amountIndex Location in the data byte string where the amount should be overwritten
     /// @param minIndex Location in the data byte string where the min amount to swap should be
@@ -53,6 +54,7 @@ contract BeefySwapper is OwnableUpgradeable {
     /// negative value will encode a negative min amount (required for Balancer)
     struct SwapInfo {
         address router;
+        address tokenPuller;
         bytes data;
         uint256 amountIndex;
         uint256 minIndex;
@@ -234,7 +236,7 @@ contract BeefySwapper is OwnableUpgradeable {
         
         data = _insertData(data, swapData.minIndex, minAmountData);
 
-        IERC20MetadataUpgradeable(_fromToken).forceApprove(router, type(uint256).max);
+        IERC20MetadataUpgradeable(_fromToken).forceApprove(swapData.tokenPuller, type(uint256).max);
         (bool success,) = router.call(data);
         if (!success) revert SwapFailed(router, data);
     }
