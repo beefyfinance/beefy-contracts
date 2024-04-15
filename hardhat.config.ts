@@ -154,7 +154,16 @@ const config: DeploymentConfig = {
       url: process.env.BASE_RPC || "https://mainnet.base.org",
       chainId: 8453,
       accounts,
-      gasPrice: 100000,
+    },
+    linea: {
+      url: process.env.LINEA_RPC || "https://rpc.linea.build",
+      chainId: 59144,
+      accounts,
+    },
+    mantle: {
+      url: process.env.MANTLE_RPC || "https://rpc.mantle.xyz",
+      chainId: 5000,
+      accounts,
     },
     fraxtal: {
       url: process.env.FRAXTAL_RPC || "https://rpc.frax.com",
@@ -173,6 +182,13 @@ const config: DeploymentConfig = {
       bsc: process.env.BSC_API_KEY!,
       optimisticEthereum: process.env.OPTIMISM_API_KEY!,
       base: process.env.BASE_API_KEY!,
+      arbitrumOne: process.env.ARB_API_KEY!,
+      opera: process.env.FANTOM_API_KEY!,
+      linea: process.env.LINEA_API_KEY!,
+      kava: "api key is not required by the Kava explorer, but can't be empty",
+      metis: "api key is not required by the Kava explorer, but can't be empty",
+      snowtrace: "api key is not required by the Kava explorer, but can't be empty",
+      mantle: "api key is not required by the Kava explorer, but can't be empty",
     },
     customChains: [
       {
@@ -205,6 +221,38 @@ const config: DeploymentConfig = {
         urls: {
           apiURL: "https://api.basescan.org/api",
           browserURL: "https://basescan.org/",
+        },
+      },
+      {
+        network: "kava",
+        chainId: 2222,
+        urls: {
+          apiURL: "https://kavascan.com/api",
+          browserURL: "https://kavascan.com/",
+        },
+      },
+      {
+        network: "avax",
+        chainId: 43114,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/43114/etherscan",
+          browserURL: "https://avalanche.routescan.io"
+        }
+      },
+      {
+        network: "linea",
+        chainId: 59144,
+        urls: {
+          apiURL: "https://api.lineascan.build/api",
+          browserURL: "https://lineascan.build/",
+        },
+      },
+      {
+        network: "mantle",
+        chainId: 5000,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/5000/etherscan",
+          browserURL: "https://explorer.mantle.xyz/",
         },
       },
     ],
