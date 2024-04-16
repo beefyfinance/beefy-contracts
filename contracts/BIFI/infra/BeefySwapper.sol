@@ -7,14 +7,13 @@ import { IERC20MetadataUpgradeable } from "@openzeppelin/contracts-upgradeable/t
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import { IBeefyOracle } from "../interfaces/oracle/IBeefyOracle.sol";
-import { BytesLib } from "../utils/BytesLib.sol";
+import { IBeefyZapRouter } from "../interfaces/beefy/IBeefyZapRouter.sol";
 
 /// @title Beefy Swapper
 /// @author Beefy, @kexley
 /// @notice Centralized swapper
 contract BeefySwapper is OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20MetadataUpgradeable;
-    using BytesLib for bytes;
 
     /// @dev Price update failed for a token
     /// @param token Address of token that failed the price update
@@ -25,44 +24,19 @@ contract BeefySwapper is OwnableUpgradeable {
     /// @param toToken Token to swap to
     error NoSwapData(address fromToken, address toToken);
 
-    /// @dev Swap call failed
-    /// @param router Target address of the failed swap call
-    /// @param data Payload of the failed call
-    error SwapFailed(address router, bytes data);
-
     /// @dev Not enough output was returned from the swap
     /// @param amountOut Amount returned by the swap
     /// @param minAmountOut Minimum amount required from the swap
     error SlippageExceeded(uint256 amountOut, uint256 minAmountOut);
 
-    /// @dev Swap info already exists
-    /// @param fromToken Token to swap from
-    /// @param toToken Token to swap to
-    error NotNewSwapInfo(address fromToken, address toToken);
-
     /// @dev Caller is not owner or manager
     error NotManager();
 
-    /// @dev Stored data for a swap
-    /// @param router Target address that will handle the swap
-    /// @param tokenPuller Address that will pull tokens from this address during the swap
-    /// @param data Payload of a template swap between the two tokens
-    /// @param amountIndex Location in the data byte string where the amount should be overwritten
-    /// @param minIndex Location in the data byte string where the min amount to swap should be
-    /// overwritten
-    /// @param minAmountSign Represents the sign of the min amount to be included in the swap, any
-    /// negative value will encode a negative min amount (required for Balancer)
-    struct SwapInfo {
-        address router;
-        address tokenPuller;
-        bytes data;
-        uint256 amountIndex;
-        uint256 minIndex;
-        int8 minAmountSign;
-    }
+    /// @notice Stored swap steps for a token
+    mapping(address => mapping(address => mapping(address => IBeefyZapRouter.Step[]))) public swapSteps;
 
-    /// @notice Stored swap info for a token
-    mapping(address => mapping(address => SwapInfo)) public swapInfo;
+    /// @notice Stored swap steps for a token for a single strategy
+    mapping(address => mapping(address => mapping(address => IBeefyZapRouter.Step[]))) public stratSwapSteps;
 
     /// @notice Oracle used to calculate the minimum output of a swap
     IBeefyOracle public oracle;
@@ -72,6 +46,12 @@ contract BeefySwapper is OwnableUpgradeable {
 
     /// @notice Manager of this contract
     address public keeper;
+
+    /// @notice Zap contract used to swap tokens
+    address public zap;
+
+    /// @notice Zap token manager that handles token approvals
+    address public zapTokenManager;
 
     /// @notice Swap between two tokens
     /// @param caller Address of the caller of the swap
@@ -87,11 +67,16 @@ contract BeefySwapper is OwnableUpgradeable {
         uint256 amountOut
     );
 
-    /// @notice Set new swap info for the route between two tokens
+    /// @notice Set new swap steps for the route between two tokens
     /// @param fromToken Address of the source token
     /// @param toToken Address of the destination token
-    /// @param swapInfo Struct of stored swap information for the pair of tokens
-    event SetSwapInfo(address indexed fromToken, address indexed toToken, SwapInfo swapInfo);
+    /// @param swapSteps Steps for swapping a pair of tokens
+    event SetSwapSteps(
+        address indexed caller,
+        address indexed fromToken,
+        address indexed toToken,
+        IBeefyZapRouter.Step[] swapSteps
+    );
 
     /// @notice Set a new oracle
     /// @param oracle New oracle address
@@ -105,21 +90,34 @@ contract BeefySwapper is OwnableUpgradeable {
     /// @param keeper New manager address
     event SetKeeper(address keeper);
 
+    /// @notice Set a new zap
+    /// @param zap New zap address
+    /// @param zapTokenManager New zap token manager address
+    event SetZap(address zap, address zapTokenManager);
+
     modifier onlyManager {
-        if (msg.sender != owner() && msg.sender != keeper) revert NotManager();
+        if (!_isCallerManager()) revert NotManager();
         _;
+    }
+
+    /// @dev Internal function to check if caller is manager
+    function _isCallerManager() internal view returns (bool isManager) {
+        if (msg.sender == owner() || msg.sender == keeper) isManager = true;
     }
 
     /// @notice Initialize the contract
     /// @dev Ownership is transferred to msg.sender
+    /// @param _zap Zap contract used to swap tokens
     /// @param _oracle Oracle to find prices for tokens
     /// @param _slippage Acceptable slippage for any swap
     /// @param _keeper Address of the manager
-    function initialize(address _oracle, uint256 _slippage, address _keeper) external initializer {
+    function initialize(address _zap, address _oracle, uint256 _slippage, address _keeper) external initializer {
         __Ownable_init();
+        zap = _zap;
         oracle = IBeefyOracle(_oracle);
         slippage = _slippage;
         keeper = _keeper;
+        zapTokenManager = IBeefyZapRouter(_zap).tokenManager();
     }
 
     /// @notice Swap between two tokens with slippage calculated using the oracle
@@ -166,7 +164,7 @@ contract BeefySwapper is OwnableUpgradeable {
         uint256 _amountIn
     ) external view returns (uint256 amountOut) {
         (uint256 fromPrice, uint256 toPrice) = 
-            (oracle.getPrice(_fromToken), oracle.getPrice(_toToken));
+            (oracle.getPrice(msg.sender, _fromToken), oracle.getPrice(msg.sender, _toToken));
         uint8 decimals0 = IERC20MetadataUpgradeable(_fromToken).decimals();
         uint8 decimals1 = IERC20MetadataUpgradeable(_toToken).decimals();
         amountOut = _calculateAmountOut(_amountIn, fromPrice, toPrice, decimals0, decimals1);
@@ -211,8 +209,7 @@ contract BeefySwapper is OwnableUpgradeable {
         emit Swap(msg.sender, _fromToken, _toToken, _amountIn, amountOut);
     }
 
-    /// @dev Fetch the stored swap info for the route between the two tokens, insert the encoded
-    /// balance and minimum output to the payload and call the stored router with the data
+    /// @dev Use the stored steps for the tokens and zap
     /// @param _fromToken Token to swap from
     /// @param _toToken Token to swap to
     /// @param _amountIn Amount of _fromToken to use in the swap
@@ -223,41 +220,29 @@ contract BeefySwapper is OwnableUpgradeable {
         uint256 _amountIn,
         uint256 _minAmountOut
     ) private {
-        SwapInfo memory swapData = swapInfo[_fromToken][_toToken];
-        address router = swapData.router;
-        if (router == address(0)) revert NoSwapData(_fromToken, _toToken);
-        bytes memory data = swapData.data;
+        IBeefyZapRouter.Step[] memory steps;
+        if (swapSteps[address(0)][_fromToken][_toToken].length != 0) {
+            steps = swapSteps[address(0)][_fromToken][_toToken];
+        } else if (stratSwapSteps[msg.sender][_fromToken][_toToken].length != 0) {
+                steps = stratSwapSteps[msg.sender][_fromToken][_toToken];
+            }
+        else revert NoSwapData(_fromToken, _toToken);
 
-        data = _insertData(data, swapData.amountIndex, abi.encode(_amountIn));
+        IBeefyZapRouter.Input[] memory inputs = new IBeefyZapRouter.Input[](1);
+        IBeefyZapRouter.Output[] memory outputs = new IBeefyZapRouter.Output[](1);
+        inputs[0] = IBeefyZapRouter.Input(_fromToken, _amountIn);
+        outputs[0] = IBeefyZapRouter.Output(_toToken, _minAmountOut);
 
-        bytes memory minAmountData = swapData.minAmountSign >= 0
-            ? abi.encode(_minAmountOut)
-            : abi.encode(-int256(_minAmountOut));
-        
-        data = _insertData(data, swapData.minIndex, minAmountData);
+        IBeefyZapRouter.Order memory order = IBeefyZapRouter.Order({
+            inputs: inputs,
+            outputs: outputs,
+            relay: IBeefyZapRouter.Relay(address(0), 0, ''),
+            user: address(this),
+            recipient: address(this)
+        });
 
-        IERC20MetadataUpgradeable(_fromToken).forceApprove(swapData.tokenPuller, type(uint256).max);
-        (bool success,) = router.call(data);
-        if (!success) revert SwapFailed(router, data);
-    }
-
-    /// @dev Helper function to insert data to an in-memory bytes string
-    /// @param _data Template swap payload with blank spaces to overwrite
-    /// @param _index Start location in the data byte string where the _newData should overwrite
-    /// @param _newData New data that is to be inserted
-    /// @return data The resulting string from the insertion
-    function _insertData(
-        bytes memory _data,
-        uint256 _index,
-        bytes memory _newData
-    ) private pure returns (bytes memory data) {
-        data = bytes.concat(
-            bytes.concat(
-                _data.slice(0, _index),
-                _newData
-            ),
-            _data.slice(_index + 32, _data.length - (_index + 32))
-        );
+        IERC20MetadataUpgradeable(_fromToken).forceApprove(zapTokenManager, type(uint256).max);
+        IBeefyZapRouter(zap).executeOrder(order, steps);
     }
 
     /// @dev Fetch fresh prices from the oracle
@@ -270,9 +255,9 @@ contract BeefySwapper is OwnableUpgradeable {
         address _toToken
     ) private returns (uint256 fromPrice, uint256 toPrice) {
         bool success;
-        (fromPrice, success) = oracle.getFreshPrice(_fromToken);
+        (fromPrice, success) = oracle.getFreshPrice(msg.sender, _fromToken);
         if (!success) revert PriceFailed(_fromToken);
-        (toPrice, success) = oracle.getFreshPrice(_toToken);
+        (toPrice, success) = oracle.getFreshPrice(msg.sender, _toToken);
         if (!success) revert PriceFailed(_toToken);
     }
 
@@ -292,75 +277,55 @@ contract BeefySwapper is OwnableUpgradeable {
         amountOut = _amountIn * (_price0 * 10 ** _decimals1) / (_price1 * 10 ** _decimals0);
     }
 
+    /// @notice Set the stored swap steps for the route between two tokens
+    /// @dev No validation checks
+    /// @param _fromToken Token to swap from
+    /// @param _toToken Token to swap to
+    /// @param _swapSteps Swap steps to store
+    function setSwapSteps(
+        address _fromToken,
+        address _toToken,
+        IBeefyZapRouter.Step[] calldata _swapSteps
+    ) external {
+        _setSwapSteps(_fromToken, _toToken, _swapSteps, _isCallerManager());
+    }
+
+    /// @notice Set multiple stored swap steps for the routes between two tokens
+    /// @dev No validation checks
+    /// @param _fromTokens Tokens to swap from
+    /// @param _toTokens Tokens to swap to
+    /// @param _swapSteps Swap steps to store
+    function setManySwapSteps(
+        address[] calldata _fromTokens,
+        address[] calldata _toTokens,
+        IBeefyZapRouter.Step[][] calldata _swapSteps
+    ) external {
+        bool isManager = _isCallerManager();
+        for (uint i; i < _fromTokens.length; ++i) {
+            _setSwapSteps(_fromTokens[i], _toTokens[i], _swapSteps[i], isManager);
+        }
+    }
+
+    /// @dev Set or change the stored swap steps for the route between two tokens
+    /// @param _fromToken Token to swap from
+    /// @param _toToken Token to swap to
+    /// @param _swapSteps Swap steps to store
+    /// @param _isManager Caller is a manager or not
+    function _setSwapSteps(
+        address _fromToken,
+        address _toToken,
+        IBeefyZapRouter.Step[] calldata _swapSteps,
+        bool _isManager
+    ) internal {
+        address caller = _isManager ? address(0) : msg.sender;
+        delete swapSteps[caller][_fromToken][_toToken];
+        for (uint i; i < _swapSteps.length; ++i) {
+            swapSteps[caller][_fromToken][_toToken].push(_swapSteps[i]);
+        }
+        emit SetSwapSteps(caller, _fromToken, _toToken, _swapSteps);
+    }
+
     /* ----------------------------------- OWNER FUNCTIONS ----------------------------------- */
-
-    /// @notice Owner function to set or change the stored swap info for the route between two tokens
-    /// @dev No validation checks
-    /// @param _fromToken Token to swap from
-    /// @param _toToken Token to swap to
-    /// @param _swapInfo Swap info to store
-    function setSwapInfo(
-        address _fromToken,
-        address _toToken,
-        SwapInfo calldata _swapInfo
-    ) external onlyOwner {
-        swapInfo[_fromToken][_toToken] = _swapInfo;
-        emit SetSwapInfo(_fromToken, _toToken, _swapInfo);
-    }
-
-    /// @notice Manager function to set the stored swap info for the route between two new tokens
-    /// @dev No validation checks
-    /// @param _fromToken Token to swap from
-    /// @param _toToken Token to swap to
-    /// @param _swapInfo Swap info to store
-    function setNewSwapInfo(
-        address _fromToken,
-        address _toToken,
-        SwapInfo calldata _swapInfo
-    ) external onlyManager {
-        if (swapInfo[_fromToken][_toToken].router != address(0)) revert NotNewSwapInfo(_fromToken, _toToken);
-        swapInfo[_fromToken][_toToken] = _swapInfo;
-        emit SetSwapInfo(_fromToken, _toToken, _swapInfo);
-    }
-
-    /// @notice Owner function to set multiple stored swap info for the routes between two tokens
-    /// @dev No validation checks
-    /// @param _fromTokens Tokens to swap from
-    /// @param _toTokens Tokens to swap to
-    /// @param _swapInfos Swap infos to store
-    function setSwapInfos(
-        address[] calldata _fromTokens,
-        address[] calldata _toTokens,
-        SwapInfo[] calldata _swapInfos
-    ) external onlyOwner {
-        uint256 tokenLength = _fromTokens.length;
-        for (uint i; i < tokenLength;) {
-            (address from, address to) = (_fromTokens[i], _toTokens[i]);
-            swapInfo[from][to] = _swapInfos[i];
-            emit SetSwapInfo(from, to, _swapInfos[i]);
-            unchecked { ++i; }
-        }
-    }
-
-    /// @notice Manager function to set multiple stored swap info for the routes between two new tokens
-    /// @dev No validation checks
-    /// @param _fromTokens Tokens to swap from
-    /// @param _toTokens Tokens to swap to
-    /// @param _swapInfos Swap infos to store
-    function setNewSwapInfos(
-        address[] calldata _fromTokens,
-        address[] calldata _toTokens,
-        SwapInfo[] calldata _swapInfos
-    ) external onlyManager {
-        uint256 tokenLength = _fromTokens.length;
-        for (uint i; i < tokenLength;) {
-            (address from, address to) = (_fromTokens[i], _toTokens[i]);
-            if (swapInfo[from][to].router != address(0)) revert NotNewSwapInfo(from, to);
-            swapInfo[from][to] = _swapInfos[i];
-            emit SetSwapInfo(from, to, _swapInfos[i]);
-            unchecked { ++i; }
-        }
-    }
 
     /// @notice Owner function to set the oracle used to calculate the minimum outputs
     /// @dev No validation checks
@@ -383,5 +348,13 @@ contract BeefySwapper is OwnableUpgradeable {
     function setKeeper(address _keeper) external onlyManager {
         keeper = _keeper;
         emit SetKeeper(_keeper);
+    }
+
+    /// @notice Owner function to set the zap
+    /// @param _zap New manager address
+    function setZap(address _zap) external onlyOwner {
+        zap = _zap;
+        zapTokenManager = IBeefyZapRouter(_zap).tokenManager();
+        emit SetZap(_zap, zapTokenManager);
     }
 }

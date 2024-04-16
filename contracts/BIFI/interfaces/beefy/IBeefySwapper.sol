@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.19;
 
+import { IBeefyZapRouter } from "./IBeefyZapRouter.sol";
+
 interface IBeefySwapper {
     function swap(
         address fromToken,
@@ -22,11 +24,17 @@ interface IBeefySwapper {
         uint256 _amountIn
     ) external view returns (uint256 amountOut);
 
-    struct SwapInfo {
-        address router;
-        bytes data;
-        uint256 amountIndex;
-        uint256 minIndex;
-        int8 minAmountSign;
-    }
+    function setSwapSteps(
+        address _fromToken,
+        address _toToken,
+        IBeefyZapRouter.Step[] calldata _swapSteps
+    ) external;
+
+    function setManySwapSteps(
+        address[] calldata _fromTokens,
+        address[] calldata _toTokens,
+        IBeefyZapRouter.Step[][] calldata _swapSteps
+    ) external;
+
+    function oracle() external view returns (address);
 }
