@@ -9,8 +9,14 @@ import { IBeefySwapper } from "../../interfaces/beefy/IBeefySwapper.sol";
 import { IBeefyOracle } from "../../interfaces/oracle/IBeefyOracle.sol";
 import { IBeefyZapRouter } from "../../interfaces/beefy/IBeefyZapRouter.sol";
 
+/// @title Swapper functions inherited by strategies
+/// @author Beefy, @kexley
+/// @notice Swapper logic
 contract StrategySwapper is OwnableUpgradeable {
+    /// @notice Swapper used to swap tokens
     IBeefySwapper public beefySwapper;
+
+    /// @notice Oracle used to price tokens
     IBeefyOracle public beefyOracle;
 
     /// @notice New Beefy Swapper is set
@@ -19,6 +25,7 @@ contract StrategySwapper is OwnableUpgradeable {
     event SetBeefySwapper(address beefySwapper, address beefyOracle);
 
     /// @dev Initialization function to set the swapper and oracle addresses
+    /// @param _beefySwapper Swapper used to swap tokens
     function __StrategySwapper_init(address _beefySwapper) internal onlyInitializing {
         beefySwapper = IBeefySwapper(_beefySwapper);
         beefyOracle = IBeefyOracle(beefySwapper.oracle());
