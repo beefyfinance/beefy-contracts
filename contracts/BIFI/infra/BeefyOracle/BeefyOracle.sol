@@ -71,6 +71,7 @@ contract BeefyOracle is OwnableUpgradeable {
 
     /// @notice Initialize the contract
     /// @dev Ownership is transferred to msg.sender
+    /// @param _keeper Manager of this contract
     function initialize(address _keeper) external initializer {
         __Ownable_init();
         keeper = _keeper;

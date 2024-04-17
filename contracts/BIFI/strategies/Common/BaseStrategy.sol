@@ -209,7 +209,7 @@ abstract contract BaseStrategy is StrategySwapper, StratFeeManagerInitializable 
     function _swapRewardsToNative() internal virtual {
         for (uint256 i; i < rewards.length; ++i) {
             address token = rewards[i];
-            if (token == address(0)) {
+            if (token == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
                 IWrappedNative(native).deposit{value: address(this).balance}();
             } else {
                 uint256 amount = IERC20Upgradeable(token).balanceOf(address(this));

@@ -43,7 +43,7 @@ contract StrategyVelodrome is BaseStrategy {
     function initialize(
         BaseStrategyAddresses calldata _baseStrategyAddresses,
         CommonAddresses calldata _commonAddresses
-    ) external initializer  {
+    ) external initializer {
         __BaseStrategy_init(_baseStrategyAddresses, _commonAddresses);
         factory = ISolidlyPair(want).factory();
         address voter = IPoolFactory(factory).voter();
