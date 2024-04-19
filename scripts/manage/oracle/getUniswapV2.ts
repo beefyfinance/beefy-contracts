@@ -1,12 +1,8 @@
-import hardhat, { ethers } from "hardhat";
-import { OracleParams, OracleReturnParams } from "./getOracle";
-import { addressBook } from "blockchain-addressbook";
+import { ethers } from "hardhat";
+import { OracleParams, OracleData } from "./oracle";
 import UniswapV2FactoryAbi from "../../../data/abi/UniswapV2Factory.json";
 
-const uniswapV2OracleLib: string = 
-  addressBook[hardhat.network.name as keyof typeof addressBook].platforms.beefyfinance.strategyOwner;
-
-const getUniswapV2 = async (params: OracleParams): Promise<OracleReturnParams> => {
+const getUniswapV2 = async (params: OracleParams): Promise<OracleData> => {
   const factory = await ethers.getContractAt(UniswapV2FactoryAbi, params.factory as string);
   const path = params.path as string[];
   const tokens = [];
@@ -26,7 +22,7 @@ const getUniswapV2 = async (params: OracleParams): Promise<OracleReturnParams> =
     [tokens, pairs, params.twapPeriods]
   );
   
-  return { library: uniswapV2OracleLib, data: data };
+  return { library: ''/*uniswapV2OracleLib*/, data: data };
 };
 
 export default getUniswapV2;

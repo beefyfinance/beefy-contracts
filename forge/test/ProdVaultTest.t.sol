@@ -16,7 +16,7 @@ import {VaultUser} from "./users/VaultUser.sol";
 contract ProdVaultTest is BaseTestHarness {
 
     // Input your vault to test here.
-    IVault constant vault = IVault(0x17dEc2AF8018f2F940D34787399eA123Ff292963);
+    IVault constant vault = IVault(0x2DAC8BEf7FFF2747525Ff8ee43102e16F50E98dF);
     IStrategy strategy;
 
     // Users

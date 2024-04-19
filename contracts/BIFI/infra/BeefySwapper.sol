@@ -35,9 +35,6 @@ contract BeefySwapper is OwnableUpgradeable {
     /// @notice Stored swap steps for a token
     mapping(address => mapping(address => mapping(address => IBeefyZapRouter.Step[]))) public swapSteps;
 
-    /// @notice Stored swap steps for a token for a single strategy
-    mapping(address => mapping(address => mapping(address => IBeefyZapRouter.Step[]))) public stratSwapSteps;
-
     /// @notice Oracle used to calculate the minimum output of a swap
     IBeefyOracle public oracle;
 
@@ -170,6 +167,22 @@ contract BeefySwapper is OwnableUpgradeable {
         amountOut = _calculateAmountOut(_amountIn, fromPrice, toPrice, decimals0, decimals1);
     }
 
+    /// @notice Get the swap steps between two tokens, if a default is not set then use strategy 
+    /// specific routing
+    /// @param _caller The address that wants to swap tokens
+    /// @param _fromToken Token to swap from
+    /// @param _toToken Token to swap to
+    /// @return steps Swap steps between the two tokens
+    function getSwapSteps(
+        address _caller,
+        address _fromToken,
+        address _toToken
+    ) public view returns (IBeefyZapRouter.Step[] memory steps) {
+        steps = swapSteps[address(0)][_fromToken][_toToken].length != 0 
+            ? swapSteps[address(0)][_fromToken][_toToken]
+            : swapSteps[_caller][_fromToken][_toToken];
+    }
+
     /// @dev Use the oracle to get prices for both _fromToken and _toToken and calculate the
     /// estimated output reduced by the slippage
     /// @param _fromToken Token to swap from
@@ -220,13 +233,8 @@ contract BeefySwapper is OwnableUpgradeable {
         uint256 _amountIn,
         uint256 _minAmountOut
     ) private {
-        IBeefyZapRouter.Step[] memory steps;
-        if (swapSteps[address(0)][_fromToken][_toToken].length != 0) {
-            steps = swapSteps[address(0)][_fromToken][_toToken];
-        } else if (stratSwapSteps[msg.sender][_fromToken][_toToken].length != 0) {
-                steps = stratSwapSteps[msg.sender][_fromToken][_toToken];
-            }
-        else revert NoSwapData(_fromToken, _toToken);
+        IBeefyZapRouter.Step[] memory steps = getSwapSteps(msg.sender, _fromToken, _toToken);
+        if (steps.length == 0) revert NoSwapData(_fromToken, _toToken);
 
         IBeefyZapRouter.Input[] memory inputs = new IBeefyZapRouter.Input[](1);
         IBeefyZapRouter.Output[] memory outputs = new IBeefyZapRouter.Output[](1);
@@ -277,25 +285,12 @@ contract BeefySwapper is OwnableUpgradeable {
         amountOut = _amountIn * (_price0 * 10 ** _decimals1) / (_price1 * 10 ** _decimals0);
     }
 
-    /// @notice Set the stored swap steps for the route between two tokens
-    /// @dev No validation checks
-    /// @param _fromToken Token to swap from
-    /// @param _toToken Token to swap to
-    /// @param _swapSteps Swap steps to store
-    function setSwapSteps(
-        address _fromToken,
-        address _toToken,
-        IBeefyZapRouter.Step[] calldata _swapSteps
-    ) external {
-        _setSwapSteps(_fromToken, _toToken, _swapSteps, _isCallerManager());
-    }
-
     /// @notice Set multiple stored swap steps for the routes between two tokens
     /// @dev No validation checks
     /// @param _fromTokens Tokens to swap from
     /// @param _toTokens Tokens to swap to
     /// @param _swapSteps Swap steps to store
-    function setManySwapSteps(
+    function setSwapSteps(
         address[] calldata _fromTokens,
         address[] calldata _toTokens,
         IBeefyZapRouter.Step[][] calldata _swapSteps

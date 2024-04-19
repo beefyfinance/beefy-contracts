@@ -1,7 +1,5 @@
 const hardhat = require("hardhat");
 
-const registerSubsidy = require("../utils/registerSubsidy");
-
 const ethers = hardhat.ethers;
 
 const config = {
@@ -18,20 +16,11 @@ async function main() {
 
   const [deployer] = await ethers.getSigners();
 
-  const Strategy = await ethers.getContractFactory("StrategyRewardPoolBsc");
-  const strategy = await Strategy.deploy(
-    config.want,
-    config.output,
-    config.targetRewardPool,
-    config.vault,
-    config.keeper,
-    config.strategist
-  );
+  const Strategy = await ethers.getContractFactory("StrategyVelodrome");
+  const strategy = await Strategy.deploy();
   await strategy.deployed();
 
   console.log("Candidate deployed to:", strategy.address);
-
-  await registerSubsidy(strategy.address, deployer);
 }
 
 main()

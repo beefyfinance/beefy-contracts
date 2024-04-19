@@ -1,10 +1,10 @@
 import { ethers } from "hardhat";
-import { StepParams, StepReturnParams, uint256Max } from "./getSwapper";
+import { StepParams, StepData, uint256Max } from "./swapper";
 import VelodromeRouterAbi from "../../../data/abi/VelodromeRouter.json";
 
 const nullAddress: string = "0x0000000000000000000000000000000000000000";
 
-const getSolidly = async (swapper: string, params: StepParams): Promise<StepReturnParams> => {
+const getSolidly = async (swapper: string, params: StepParams): Promise<StepData> => {
   const router = await ethers.getContractAt(VelodromeRouterAbi, params.router);
   const path: string[][] = (params.stable as string[]).map((s, i) => {
     return [params.path[i], params.path[i + 1], s, nullAddress]
@@ -16,7 +16,7 @@ const getSolidly = async (swapper: string, params: StepParams): Promise<StepRetu
     target: params.router,
     value: "0",
     data: txData.data as string,
-    tokens: [params.path[0], "4"]
+    tokens: [[params.path[0], "4"]]
   }
 };
 

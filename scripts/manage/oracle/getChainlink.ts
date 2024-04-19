@@ -1,17 +1,13 @@
-import hardhat, { ethers } from "hardhat";
-import { OracleParams, OracleReturnParams } from "./getOracle";
-import { addressBook } from "blockchain-addressbook";
+import { ethers } from "hardhat";
+import { OracleParams, OracleData } from "./oracle";
 
-const chainlinkOracleLib: string = 
-  addressBook[hardhat.network.name as keyof typeof addressBook].platforms.beefyfinance.strategyOwner;
-
-const getChainlink = async (params: OracleParams): Promise<OracleReturnParams> => {
+const getChainlink = async (params: OracleParams): Promise<OracleData> => {
   const data = ethers.utils.defaultAbiCoder.encode(
     ["address"],
     [params.feed]
   );
 
-  return { library: chainlinkOracleLib, data: data };
+  return { library: '0xf35D758fd1a21168F09e674a67DFEA8c9860545B', data: data };
 };
 
 export default getChainlink;

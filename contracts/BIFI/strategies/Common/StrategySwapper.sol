@@ -69,28 +69,28 @@ contract StrategySwapper is OwnableUpgradeable {
         return beefySwapper.getAmountOut(_fromToken, _toToken, _amountIn);
     }
 
-    /// @notice Set the stored swap steps for the route between two tokens
-    /// @param _fromToken Token to swap from
-    /// @param _toToken Token to swap to
+    /// @notice Set the stored swap steps for the route between many tokens
+    /// @param _fromTokens Tokens to swap from
+    /// @param _toTokens Tokens to swap to
     /// @param _swapSteps Swap steps to store
     function setSwapSteps(
-        address _fromToken,
-        address _toToken,
-        IBeefyZapRouter.Step[] calldata _swapSteps
+        address[] calldata _fromTokens,
+        address[] calldata _toTokens,
+        IBeefyZapRouter.Step[][] calldata _swapSteps
     ) external onlyOwner {
-        beefySwapper.setSwapSteps(_fromToken, _toToken, _swapSteps);
+        beefySwapper.setSwapSteps(_fromTokens, _toTokens, _swapSteps);
     }
 
-    /// @notice Set a sub oracle and data for a token
-    /// @param _token Address of the token being fetched
-    /// @param _oracle Address of the library used to calculate the price
-    /// @param _data Payload specific to the token that will be used by the library
-    function setOracleData(
-        address _token,
-        address _oracle,
-        bytes calldata _data
+    /// @notice Set a sub oracle and data for multiple tokens
+    /// @param _tokens Address of the tokens being fetched
+    /// @param _oracles Address of the libraries used to calculate the price
+    /// @param _datas Payload specific to the tokens that will be used by the library
+    function setOracles(
+        address[] calldata _tokens,
+        address[] calldata _oracles,
+        bytes[] calldata _datas
     ) external onlyOwner {
-        beefyOracle.setOracle(_token, _oracle, _data);
+        beefyOracle.setOracles(_tokens, _oracles, _datas);
     }
 
     /// @notice Set a new Beefy Swapper
@@ -100,4 +100,6 @@ contract StrategySwapper is OwnableUpgradeable {
         beefyOracle = IBeefyOracle(beefySwapper.oracle());
         emit SetBeefySwapper(_beefySwapper, address(beefyOracle));
     }
+
+    uint256[49] private __gap;
 }

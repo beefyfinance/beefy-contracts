@@ -25,12 +25,6 @@ interface IBeefySwapper {
     ) external view returns (uint256 amountOut);
 
     function setSwapSteps(
-        address _fromToken,
-        address _toToken,
-        IBeefyZapRouter.Step[] calldata _swapSteps
-    ) external;
-
-    function setManySwapSteps(
         address[] calldata _fromTokens,
         address[] calldata _toTokens,
         IBeefyZapRouter.Step[][] calldata _swapSteps

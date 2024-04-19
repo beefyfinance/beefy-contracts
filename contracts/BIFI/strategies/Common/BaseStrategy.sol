@@ -340,4 +340,6 @@ abstract contract BaseStrategy is StrategySwapper, StratFeeManagerInitializable 
 
     /// @dev Allow unwrapped native to be sent to this address
     receive () payable external {}
+
+    uint256[49] private __gap;
 }

@@ -133,4 +133,6 @@ contract StratFeeManagerInitializable is OwnableUpgradeable, PausableUpgradeable
     }
 
     function beforeDeposit() external virtual {}
+
+    uint256[49] private __gap;
 }

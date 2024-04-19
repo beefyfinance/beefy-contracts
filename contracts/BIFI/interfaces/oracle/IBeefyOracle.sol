@@ -4,15 +4,16 @@ pragma solidity ^0.8.0;
 
 interface IBeefyOracle {
     function getPrice(address token) external view returns (uint256 price);
+    
     function getFreshPrice(address token) external returns (uint256 price, bool success);
 
     function getPrice(address caller, address token) external view returns (uint256 price);
+
     function getFreshPrice(
         address caller,
         address token
     ) external returns (uint256 price, bool success);
-    
-    function setOracle(address _token, address _oracle, bytes calldata _data) external;
+
     function setOracles(
         address[] calldata _tokens,
         address[] calldata _oracles,

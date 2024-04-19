@@ -1,12 +1,8 @@
-import hardhat, { ethers } from "hardhat";
-import { OracleParams, OracleReturnParams } from "./getOracle";
-import { addressBook } from "blockchain-addressbook";
+import { ethers } from "hardhat";
+import { OracleParams, OracleData } from "./oracle";
 import VelodromeFactoryAbi from "../../../data/abi/VelodromeFactory.json";
 
-const solidlyOracleLib: string = 
-  addressBook[hardhat.network.name as keyof typeof addressBook].platforms.beefyfinance.strategyOwner;
-
-const getSolidly = async (params: OracleParams): Promise<OracleReturnParams> => {
+const getSolidly = async (params: OracleParams): Promise<OracleData> => {
   const factory = await ethers.getContractAt(VelodromeFactoryAbi, params.factory as string);
   const path = params.path as string[];
   const tokens = [];
@@ -27,7 +23,7 @@ const getSolidly = async (params: OracleParams): Promise<OracleReturnParams> => 
     [tokens, pairs, params.twapPeriods]
   );
   
-  return { library: solidlyOracleLib, data: data };
+  return { library: ''/*solidlyOracleLib*/, data: data };
 };
 
 export default getSolidly;

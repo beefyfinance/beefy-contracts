@@ -109,8 +109,8 @@ contract BeefyOracle is OwnableUpgradeable {
     /// @return price Updated price of the token
     /// @return success Price update was success or not
     function getFreshPrice(address _caller, address _token) external returns (uint256 price, bool success) {
-        (price, success) = _getFreshPrice(address(0), _token);
-        if (!success) (price, success) = _getFreshPrice(_caller, _token);
+        if (subOracle(_caller, _token).oracle != address(0)) _caller = address(0);
+        (price, success) = _getFreshPrice(_caller, _token);
     }
 
     /// @dev If the price is stale then calculate a new price by delegating to the sub oracle
@@ -133,15 +133,6 @@ contract BeefyOracle is OwnableUpgradeable {
     }
 
     /* ----------------------------------- OWNER FUNCTIONS ----------------------------------- */
-
-    /// @notice Set a sub oracle and data for a token
-    /// @dev The payload will be validated against the library
-    /// @param _token Address of the token being fetched
-    /// @param _oracle Address of the library used to calculate the price
-    /// @param _data Payload specific to the token that will be used by the library
-    function setOracle(address _token, address _oracle, bytes calldata _data) external {
-        _setOracle(_token, _oracle, _data, _isCallerManager());
-    }
 
     /// @notice Owner function to set a sub oracle and data for an array of tokens
     /// @dev The payloads will be validated against the libraries
