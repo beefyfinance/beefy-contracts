@@ -32,6 +32,9 @@ contract BeefySwapper is OwnableUpgradeable {
     /// @dev Caller is not owner or manager
     error NotManager();
 
+    /// @dev Amount inputted to a swap is not enough
+    error BelowMinimum(address token, uint256 minimum, uint256 amountIn);
+
     /// @notice Stored swap steps for a token
     mapping(address => mapping(address => mapping(address => IBeefyZapRouter.Step[]))) public swapSteps;
 
@@ -49,6 +52,9 @@ contract BeefySwapper is OwnableUpgradeable {
 
     /// @notice Zap token manager that handles token approvals
     address public zapTokenManager;
+
+    /// @notice Minimum amount of a token that can be swapped
+    mapping(address => uint256) public minimumAmount;
 
     /// @notice Swap between two tokens
     /// @param caller Address of the caller of the swap
@@ -91,6 +97,11 @@ contract BeefySwapper is OwnableUpgradeable {
     /// @param zap New zap address
     /// @param zapTokenManager New zap token manager address
     event SetZap(address zap, address zapTokenManager);
+
+    /// @notice Set a new minimum for a token
+    /// @param token Token to set a minimum for
+    /// @param amount New minimum
+    event SetMinimumAmount(address token, uint256 amount);
 
     modifier onlyManager {
         if (!_isCallerManager()) revert NotManager();
@@ -214,6 +225,8 @@ contract BeefySwapper is OwnableUpgradeable {
         uint256 _amountIn,
         uint256 _minAmountOut
     ) private returns (uint256 amountOut) {
+        if (_amountIn < minimumAmount[_fromToken]) 
+            revert BelowMinimum(_fromToken, minimumAmount[_fromToken], _amountIn);
         IERC20MetadataUpgradeable(_fromToken).safeTransferFrom(msg.sender, address(this), _amountIn);
         _executeSwap(_fromToken, _toToken, _amountIn, _minAmountOut);
         amountOut = IERC20MetadataUpgradeable(_toToken).balanceOf(address(this));
@@ -351,5 +364,13 @@ contract BeefySwapper is OwnableUpgradeable {
         zap = _zap;
         zapTokenManager = IBeefyZapRouter(_zap).tokenManager();
         emit SetZap(_zap, zapTokenManager);
+    }
+
+    /// @notice Manager can set a minimum for a token
+    /// @param _token Token to set a minimum for
+    /// @param _amount New minimum amount
+    function setMinimumAmount(address _token, uint256 _amount) external onlyManager {
+        minimumAmount[_token] = _amount;
+        emit SetMinimumAmount(_token, _amount);
     }
 }

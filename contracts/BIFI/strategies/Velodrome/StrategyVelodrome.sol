@@ -26,7 +26,7 @@ contract StrategyVelodrome is BaseStrategy {
     address public gauge;
 
     /// @notice Factory that deployed the want pair
-    address public factory;
+    address public veloFactory;
 
     /// @notice Want pair is stable or not
     bool public stable;
@@ -37,16 +37,19 @@ contract StrategyVelodrome is BaseStrategy {
     /// @notice Second token in the want pair
     address public lpToken1;
 
+    /// @notice Router to add liquidity
+    address public solidlyRouter;
+
     /// @notice Initialize the strategy
     /// @param _baseStrategyAddresses Required addresses for the Base Strategy
-    /// @param _commonAddresses Required addresses for the Strategy Manager
     function initialize(
-        BaseStrategyAddresses calldata _baseStrategyAddresses,
-        CommonAddresses calldata _commonAddresses
+        address _solidlyRouter,
+        BaseStrategyAddresses calldata _baseStrategyAddresses
     ) external initializer {
-        __BaseStrategy_init(_baseStrategyAddresses, _commonAddresses);
-        factory = ISolidlyPair(want).factory();
-        address voter = IPoolFactory(factory).voter();
+        solidlyRouter = _solidlyRouter;
+        __BaseStrategy_init(_baseStrategyAddresses);
+        veloFactory = ISolidlyPair(want).factory();
+        address voter = IPoolFactory(veloFactory).voter();
         gauge = IVoter(voter).gauges(want);
         stable = ISolidlyPair(want).stable();
 
@@ -68,11 +71,11 @@ contract StrategyVelodrome is BaseStrategy {
 
     /// @notice Call rewards in native token that the harvest caller could claim
     function callReward() public view override returns (uint256) {
-        IFeeConfig.FeeCategory memory fees = getFees();
+        IFeeConfig.FeeCategory memory fees = beefyFeeConfig().getFees(address(this));
         uint256 rewardBal = rewardsAvailable();
         uint256 nativeOut;
         if (rewardBal > 0) {
-            nativeOut = _getAmountOut(rewards[0], native, rewardBal);
+            nativeOut = swapper().getAmountOut(rewards[0], native, rewardBal);
         }
 
         return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
@@ -111,10 +114,10 @@ contract StrategyVelodrome is BaseStrategy {
         if (stable) {
             uint256 lp0Decimals = 10**IERC20Extended(lpToken0).decimals();
             uint256 lp1Decimals = 10**IERC20Extended(lpToken1).decimals();
-            uint256 out0 = lpToken0 != native ? _getAmountOut(native, lpToken0, lp0Amt) * 1e18 / lp0Decimals : lp0Amt;
-            uint256 out1 = lpToken1 != native ? _getAmountOut(native, lpToken1, lp1Amt) * 1e18 / lp1Decimals  : lp1Amt;
-            (uint256 amountA, uint256 amountB,) = ISolidlyRouter(unirouter).quoteAddLiquidity(
-                lpToken0, lpToken1, stable, factory, out0, out1
+            uint256 out0 = lpToken0 != native ? swapper().getAmountOut(native, lpToken0, lp0Amt) * 1e18 / lp0Decimals : lp0Amt;
+            uint256 out1 = lpToken1 != native ? swapper().getAmountOut(native, lpToken1, lp1Amt) * 1e18 / lp1Decimals  : lp1Amt;
+            (uint256 amountA, uint256 amountB,) = ISolidlyRouter(solidlyRouter).quoteAddLiquidity(
+                lpToken0, lpToken1, stable, veloFactory, out0, out1
             );
             amountA = amountA * 1e18 / lp0Decimals;
             amountB = amountB * 1e18 / lp1Decimals;
@@ -130,9 +133,9 @@ contract StrategyVelodrome is BaseStrategy {
     function _addLiquidity() internal override {
         uint256 lp0Bal = IERC20Upgradeable(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20Upgradeable(lpToken1).balanceOf(address(this));
-        IERC20Upgradeable(lpToken0).forceApprove(unirouter, lp0Bal);
-        IERC20Upgradeable(lpToken1).forceApprove(unirouter, lp1Bal);
-        ISolidlyRouter(unirouter).addLiquidity(
+        IERC20Upgradeable(lpToken0).forceApprove(solidlyRouter, lp0Bal);
+        IERC20Upgradeable(lpToken1).forceApprove(solidlyRouter, lp1Bal);
+        ISolidlyRouter(solidlyRouter).addLiquidity(
             lpToken0,
             lpToken1,
             stable,

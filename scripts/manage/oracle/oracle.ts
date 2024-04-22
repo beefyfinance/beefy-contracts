@@ -8,7 +8,7 @@ import getUniswapV3 from "./getUniswapV3";
 import getUniswapV2 from "./getUniswapV2";
 import getSolidly from "./getSolidly";
 
-const oracle = "0xA6aCCE42d739f4bf802499f2005a6ca4A10Fd611";
+const oracle = "0x1BfA205114678c7d17b97DB7A71819D3E6718eb4";
 
 const functionMap: { [key: string]: (params: OracleParams) => Promise<any> } = {
   "chainlink": getChainlink,

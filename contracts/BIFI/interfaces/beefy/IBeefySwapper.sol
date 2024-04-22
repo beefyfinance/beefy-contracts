@@ -3,6 +3,7 @@
 pragma solidity 0.8.19;
 
 import { IBeefyZapRouter } from "./IBeefyZapRouter.sol";
+import { IBeefyOracle } from "./IBeefyOracle.sol";
 
 interface IBeefySwapper {
     function swap(
@@ -30,5 +31,6 @@ interface IBeefySwapper {
         IBeefyZapRouter.Step[][] calldata _swapSteps
     ) external;
 
-    function oracle() external view returns (address);
+    function oracle() external view returns (IBeefyOracle);
+    function minimumAmount(address token) external view returns (uint256);
 }

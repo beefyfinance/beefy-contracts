@@ -26,12 +26,9 @@ const strategyParams = {
   want: want,
   native: WETH,
   rewards: [AERO],
-  swapper: '0x64b5C2b1E8a898dAa220a225cCB1788840c2e416', //beefyfinance.swapper,
+  core: '', //beefyfinance.core,
   unirouter: "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43",
   strategist: process.env.STRATEGIST_ADDRESS, // some address
-  keeper: beefyfinance.keeper,
-  beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
-  feeConfig: beefyfinance.beefyFeeConfig,
   beefyVaultProxy: beefyfinance.vaultFactory,
   strategyImplementation: "0x7Fc8743Dd54c3dd7344cbF06e3AaDE63DADaE1d3",
 };
@@ -129,19 +126,13 @@ async function main() {
   : console.log(`Vault Initilization failed with tx: ${vaultInitTx.transactionHash}`);
 
   const strategyConstructorArguments = [
+    strategyParams.unirouter,
     [
       strategyParams.want,
-      strategyParams.native,
-      strategyParams.rewards,
-      strategyParams.swapper
-    ],
-    [
       vault,
-      strategyParams.unirouter,
-      strategyParams.keeper,
+      strategyParams.core,
       strategyParams.strategist,
-      strategyParams.beefyFeeRecipient,
-      strategyParams.feeConfig
+      strategyParams.rewards,
     ]
   ];
 

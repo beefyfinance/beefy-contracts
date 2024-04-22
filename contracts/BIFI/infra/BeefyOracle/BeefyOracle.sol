@@ -109,7 +109,7 @@ contract BeefyOracle is OwnableUpgradeable {
     /// @return price Updated price of the token
     /// @return success Price update was success or not
     function getFreshPrice(address _caller, address _token) external returns (uint256 price, bool success) {
-        if (subOracle(_caller, _token).oracle != address(0)) _caller = address(0);
+        if (subOracle[address(0)][_token].oracle != address(0)) _caller = address(0);
         (price, success) = _getFreshPrice(_caller, _token);
     }
 

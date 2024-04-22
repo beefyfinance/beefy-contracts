@@ -3,38 +3,55 @@
 pragma solidity ^0.8.0;
 
 import { SafeERC20Upgradeable, IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import { IWrappedNative } from  "../../interfaces/common/IWrappedNative.sol";
-import { StrategySwapper } from "./StrategySwapper.sol";
-import { StratFeeManagerInitializable, IFeeConfig } from "./StratFeeManagerInitializable.sol";
+import { AbstractFunctions } from "./AbstractFunctions.sol";
+import { IFeeConfig } from "../../interfaces/common/IFeeConfig.sol";
+import { IBeefyCore } from "../../interfaces/beefy/IBeefyCore.sol";
+import { IBeefySwapper } from "../../interfaces/beefy/IBeefySwapper.sol";
+import { IBeefyOracle } from "../../interfaces/beefy/IBeefyOracle.sol";
+import { IBeefyZapRouter } from "../../interfaces/beefy/IBeefyZapRouter.sol";
 
 /// @title Base strategy
 /// @author Beefy, @kexley
 /// @notice Base strategy logic
-abstract contract BaseStrategy is StrategySwapper, StratFeeManagerInitializable {
+abstract contract BaseStrategy is AbstractFunctions, OwnableUpgradeable, PausableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    /// @dev Struct of required addresses
     struct BaseStrategyAddresses {
         address want;
-        address native;
+        address vault;
+        address core;
+        address strategist;
         address[] rewards;
-        address beefySwapper;
     }
 
     /// @notice Want token deposited to the vault
     address public want;
+    
+    /// @notice Vault address
+    address public vault;
 
-    /// @notice Native token used to pay fees
-    address public native;
+    /// @notice Core address for the strategy
+    IBeefyCore public core;
+
+    /// @notice Strategy deployer's fee recipient
+    address public strategist;
+
+    /// @notice Reward tokens to compound
+    address[] public rewards;
 
     /// @notice Tokens to deposit during _addLiquidity()
     address[] public depositTokens;
 
+    /// @notice Native token used to pay fees
+    address public native;
+
     /// @notice Timestamp of the last harvest
     uint256 public lastHarvest;
 
-    /// @notice Total harvested amount not yet vested 
+    /// @notice Total harvested amount not yet vested
     uint256 public totalLocked;
 
     /// @notice Linear vesting duration for harvested amounts
@@ -43,11 +60,7 @@ abstract contract BaseStrategy is StrategySwapper, StratFeeManagerInitializable 
     /// @notice Toggle harvests on deposits
     bool public harvestOnDeposit;
 
-    /// @notice Reward tokens to compound
-    address[] public rewards;
-
-    /// @notice Minimum amounts of tokens to swap
-    mapping(address => uint256) public minAmounts;
+    uint256 constant DIVISOR = 1 ether;
 
     /// @notice Strategy has been harvested
     /// @param harvester Harvest caller
@@ -69,71 +82,63 @@ abstract contract BaseStrategy is StrategySwapper, StratFeeManagerInitializable 
     /// @param strategistFees Fees going to the strategy deployer
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
-    /// @dev Initialize the Base Strategy
-    /// @param _baseStrategyAddresses Struct of required addresses for the Base Strategy
-    /// @param _commonAddresses Struct of required addresses for the Strategy Manager
-    function __BaseStrategy_init(
-        BaseStrategyAddresses calldata _baseStrategyAddresses,
-        CommonAddresses calldata _commonAddresses
-    ) internal onlyInitializing {
-        __StratFeeManager_init(_commonAddresses);
-        __StrategySwapper_init(_baseStrategyAddresses.beefySwapper);
-        want = _baseStrategyAddresses.want;
-        native = _baseStrategyAddresses.native;
+    /// @notice New vault set
+    /// @param vault New vault address
+    event SetVault(address vault);
 
-        for (uint256 i; i < _baseStrategyAddresses.rewards.length; i++) {
-            addReward(_baseStrategyAddresses.rewards[i]);
-        }
+    /// @notice New core set
+    /// @param core New core address
+    event SetCore(address core);
 
-        lockDuration = 6 hours;
-        withdrawalFee = 0;
+    /// @notice New strategist set
+    /// @param strategist New strategist address
+    event SetStrategist(address strategist);
+
+    /// @notice The strategy is paused
+    error StrategyPaused();
+
+    /// @notice Caller is not a manager
+    error NotManager();
+
+    /// @notice Check if strategy is paused
+    modifier ifNotPaused() {
+        if (paused() || core.globalPause()) revert StrategyPaused();
+        _;
     }
 
-    /// @notice Balance of want tokens in the underlying platform
-    /// @dev Should be overridden in child
-    function balanceOfPool() public view virtual returns (uint256);
+    /// @dev Check if caller is manager
+    modifier onlyManager() {
+        _checkManager();
+        _;
+    }
 
-    /// @notice Rewards available to be claimed by the strategy
-    /// @dev Should be overridden in child
-    function rewardsAvailable() external view virtual returns (uint256);
+    /// @dev Check if caller is manager
+    function _checkManager() internal view {
+        if (msg.sender != owner() && msg.sender != keeper()) revert NotManager();
+    }
 
-    /// @notice Call rewards in native token that the harvest caller could claim
-    /// @dev Should be overridden in child
-    function callReward() external view virtual returns (uint256);
+    /// @dev Initialize the Base Strategy
+    function __BaseStrategy_init(
+        BaseStrategyAddresses calldata _baseStrategyAddresses
+    ) internal onlyInitializing {
+        __Ownable_init();
+        __Pausable_init();
+        want = _baseStrategyAddresses.want;
+        vault = _baseStrategyAddresses.vault;
+        core = IBeefyCore(_baseStrategyAddresses.core);
+        strategist = _baseStrategyAddresses.strategist;
+        native = core.native();
+        lockDuration = 6 hours;
 
-    /// @dev Deposit want tokens to the underlying platform
-    /// Should be overridden in child
-    /// @param _amount Amount to deposit to the underlying platform
-    function _deposit(uint256 _amount) internal virtual;
+        for (uint256 i; i < _baseStrategyAddresses.rewards.length; ++i) {
+            addReward(_baseStrategyAddresses.rewards[i]);
+        }
+    }
 
-    /// @dev Withdraw want tokens from the underlying platform
-    /// Should be overridden in child
-    /// @param _amount Amount to withdraw from the underlying platform
-    function _withdraw(uint256 _amount) internal virtual;
-
-    /// @dev Withdraw all want tokens from the underlying platform
-    /// Should be overridden in child
-    function _emergencyWithdraw() internal virtual;
-
-    /// @dev Claim reward tokens from the underlying platform
-    /// Should be overridden in child
-    function _claim() internal virtual;
-
-    /// @dev Get the amounts of native that should be swapped to the corresponding depositTokens
-    /// Should be overridden in child
-    /// @return depositAmounts Amounts in native to swap
-    function _getDepositAmounts() internal view virtual returns (uint256[] memory depositAmounts);
-
-    /// @dev Add liquidity to the underlying platform using depositTokens to create the want token
-    /// Should be overridden in child
-    function _addLiquidity() internal virtual;
-
-    /// @dev Revert if the reward token is one of the critical tokens used by the strategy
-    /// Should be overridden in child
-    function _verifyRewardToken(address _token) internal view virtual;
+    /* -------------------------------- BASIC WRITE FUNCTIONS -------------------------------- */
 
     /// @notice Deposit all want on this contract to the underlying platform
-    function deposit() public whenNotPaused {
+    function deposit() public ifNotPaused {
         uint256 wantBal = balanceOfWant();
         if (wantBal > 0) {
             _deposit(wantBal);
@@ -163,7 +168,7 @@ abstract contract BaseStrategy is StrategySwapper, StratFeeManagerInitializable 
     }
 
     /// @notice Harvest before a new external deposit if toggled on
-    function beforeDeposit() external override {
+    function beforeDeposit() external virtual {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
             _harvest(tx.origin, true);
@@ -184,12 +189,12 @@ abstract contract BaseStrategy is StrategySwapper, StratFeeManagerInitializable 
     /// @dev Claim all rewards, swap them to native, charge fees and then swap to want
     /// @param _callFeeRecipient Recipient for the harvest caller fees
     /// @param _onDeposit Toggle for not depositing twice in a harvest on deposit
-    function _harvest(address _callFeeRecipient, bool _onDeposit) internal whenNotPaused {
+    function _harvest(address _callFeeRecipient, bool _onDeposit) internal ifNotPaused {
         uint256 wantBalanceBefore = balanceOfWant();
         _claim();
         _swapRewardsToNative();
         uint256 nativeBal = IERC20Upgradeable(native).balanceOf(address(this));
-        if (nativeBal > minAmounts[native]) {
+        if (nativeBal > swapper().minimumAmount(native)) {
             _chargeFees(_callFeeRecipient);
             _swapNativeToWant();
             uint256 wantHarvested = balanceOfWant() - wantBalanceBefore;
@@ -213,9 +218,9 @@ abstract contract BaseStrategy is StrategySwapper, StratFeeManagerInitializable 
                 IWrappedNative(native).deposit{value: address(this).balance}();
             } else {
                 uint256 amount = IERC20Upgradeable(token).balanceOf(address(this));
-                if (amount > minAmounts[token]) {
-                    IERC20Upgradeable(token).forceApprove(address(beefySwapper), amount);
-                    _swap(token, native, amount);
+                if (amount > swapper().minimumAmount(token)) {
+                    IERC20Upgradeable(token).forceApprove(address(swapper()), amount);
+                    swapper().swap(token, native, amount);
                 }
             }
         }
@@ -224,7 +229,7 @@ abstract contract BaseStrategy is StrategySwapper, StratFeeManagerInitializable 
     /// @dev Charge fees and send to recipients
     /// @param _callFeeRecipient Recipient for the harvest caller fees
     function _chargeFees(address _callFeeRecipient) internal {
-        IFeeConfig.FeeCategory memory fees = getFees();
+        IFeeConfig.FeeCategory memory fees = beefyFeeConfig().getFees(address(this));
         uint256 nativeBal = IERC20Upgradeable(native).balanceOf(address(this)) * fees.total / DIVISOR;
 
         uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
@@ -234,7 +239,7 @@ abstract contract BaseStrategy is StrategySwapper, StratFeeManagerInitializable 
         IERC20Upgradeable(native).safeTransfer(strategist, strategistFeeAmount);
 
         uint256 beefyFeeAmount = nativeBal - callFeeAmount - strategistFeeAmount;
-        IERC20Upgradeable(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
+        IERC20Upgradeable(native).safeTransfer(beefyFeeRecipient(), beefyFeeAmount);
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
@@ -245,16 +250,90 @@ abstract contract BaseStrategy is StrategySwapper, StratFeeManagerInitializable 
         uint256[] memory amounts = _getDepositAmounts();
         for (uint256 i; i < depositTokens.length; ++i) {
             if (depositTokens[i] != native && amounts[i] > 0) {
-                IERC20Upgradeable(native).forceApprove(address(beefySwapper), amounts[i]);
-                _swap(native, depositTokens[i], amounts[i]);
+                IERC20Upgradeable(native).forceApprove(address(swapper()), amounts[i]);
+                swapper().swap(native, depositTokens[i], amounts[i]);
             }
         }
         _addLiquidity();
     }
 
+    /* ------------------------------------ VIEW FUNCTIONS ------------------------------------ */
+
     /// @notice Number of rewards that this strategy receives
     function rewardsLength() external view returns (uint256) {
         return rewards.length;
+    }
+
+    /// @notice Remaining amount locked from a harvest, decaying linearly
+    function lockedProfit() public view returns (uint256) {
+        if (lockDuration == 0) return 0;
+        uint256 elapsed = block.timestamp - lastHarvest;
+        uint256 remaining = elapsed < lockDuration ? lockDuration - elapsed : 0;
+        return totalLocked * remaining / lockDuration;
+    }
+
+    /// @notice Total amount of want controlled by this strategy, less the locked harvested amount
+    function balanceOf() public view returns (uint256) {
+        return balanceOfWant() + balanceOfPool() - lockedProfit();
+    }
+
+    /// @notice Amount of want held directly on this address
+    function balanceOfWant() public view returns (uint256) {
+        return IERC20Upgradeable(want).balanceOf(address(this));
+    }
+
+    function depositFee() public virtual view returns (uint256) {
+        return 0;
+    }
+
+    function withdrawFee() public virtual view returns (uint256) {
+        return 0;
+    }
+
+    /* -------------------------------- CORE VIEW FUNCTIONS -------------------------------- */
+
+    /// @notice Keeper for managing less critical admin functions
+    function keeper() public view returns (address) {
+        return core.keeper();
+    }
+
+    /// @notice Swapper used to swap tokens
+    function swapper() public view returns (IBeefySwapper) {
+        return core.swapper();
+    }
+
+    /// @notice Oracle used to price tokens
+    function oracle() public view returns (IBeefyOracle) {
+        return core.oracle();
+    }
+
+    /// @notice Fee recipient for Beefy
+    function beefyFeeRecipient() public view returns (address) {
+        return core.beefyFeeRecipient();
+    }
+
+    /// @notice Fee configurator
+    function beefyFeeConfig() public view returns (IFeeConfig) {
+        return core.beefyFeeConfig();
+    }
+
+    /* ---------------------------------- MANAGER FUNCTIONS ---------------------------------- */
+
+    /// @notice Pause the strategy and pull all funds out of the underlying platform
+    function panic() public onlyManager {
+        pause();
+        _emergencyWithdraw();
+    }
+
+    /// @notice Pause the strategy
+    function pause() public onlyManager {
+        _pause();
+    }
+
+    /// @notice Unpause the strategy and deposit funds back into the underlying platform
+    function unpause() external onlyManager {
+        _unpause();
+        deposit();
     }
 
     /// @notice Add a reward to be swapped
@@ -277,31 +356,6 @@ abstract contract BaseStrategy is StrategySwapper, StratFeeManagerInitializable 
         delete rewards;
     }
 
-    /// @notice Set minimum amounts to be swapped for a token
-    /// @param _token Token to have the minimum set for
-    /// @param _minAmount Minimum amount that the token can be considered for swapping
-    function setMinAmount(address _token, uint256 _minAmount) external onlyManager {
-        minAmounts[_token] = _minAmount;
-    }
-
-    /// @notice Remaining amount locked from a harvest, decaying linearly
-    function lockedProfit() public view returns (uint256) {
-        if (lockDuration == 0) return 0;
-        uint256 elapsed = block.timestamp - lastHarvest;
-        uint256 remaining = elapsed < lockDuration ? lockDuration - elapsed : 0;
-        return totalLocked * remaining / lockDuration;
-    }
-
-    /// @notice Total amount of want controlled by this strategy, less the locked harvested amount
-    function balanceOf() public view returns (uint256) {
-        return balanceOfWant() + balanceOfPool() - lockedProfit();
-    }
-
-    /// @notice Amount of want held directly on this address
-    function balanceOfWant() public view returns (uint256) {
-        return IERC20Upgradeable(want).balanceOf(address(this));
-    }
-
     /// @notice Toggle harvesting before external deposits
     /// @param _harvestOnDeposit Toggle harvests on deposits
     function setHarvestOnDeposit(bool _harvestOnDeposit) public onlyManager {
@@ -314,29 +368,63 @@ abstract contract BaseStrategy is StrategySwapper, StratFeeManagerInitializable 
         lockDuration = _duration;
     }
 
-    /// @notice Vault can only call this when retiring a strategy. Sends all funds back to vault
+    /// @notice Set a new strategy deployer fee recipient
+    /// @param _strategist New strategy deployer fee recipient
+    function setStrategist(address _strategist) external {
+        if (msg.sender != strategist && msg.sender != owner() && msg.sender != keeper()) 
+            revert NotManager();
+        strategist = _strategist;
+        emit SetStrategist(_strategist);
+    }
+
+    /// @notice Set the stored swap steps for the route between many tokens
+    /// @param _fromTokens Tokens to swap from
+    /// @param _toTokens Tokens to swap to
+    /// @param _swapSteps Swap steps to store
+    function setSwapSteps(
+        address[] calldata _fromTokens,
+        address[] calldata _toTokens,
+        IBeefyZapRouter.Step[][] calldata _swapSteps
+    ) external onlyManager {
+        swapper().setSwapSteps(_fromTokens, _toTokens, _swapSteps);
+    }
+
+    /// @notice Set a sub oracle and data for multiple tokens
+    /// @param _tokens Address of the tokens being fetched
+    /// @param _oracles Address of the libraries used to calculate the price
+    /// @param _datas Payload specific to the tokens that will be used by the library
+    function setOracles(
+        address[] calldata _tokens,
+        address[] calldata _oracles,
+        bytes[] calldata _datas
+    ) external onlyManager {
+        oracle().setOracles(_tokens, _oracles, _datas);
+    }
+
+    /* ---------------------------------- OWNER FUNCTIONS ---------------------------------- */
+
+    /// @notice Set the vault address
+    /// @param _vault New vault address
+    function setVault(address _vault) external onlyOwner {
+        vault = _vault;
+        emit SetVault(_vault);
+    }
+
+    /// @notice Set the core address
+    /// @param _core New core address
+    function setCore(address _core) external onlyOwner {
+        core = IBeefyCore(_core);
+        emit SetCore(_core);
+    }
+
+    /// @notice Retire strategy and send all funds back to vault
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
         _emergencyWithdraw();
         IERC20Upgradeable(want).transfer(vault, balanceOfWant());
     }
 
-    /// @notice Pause the strategy and pull all funds out of the underlying platform
-    function panic() public onlyManager {
-        pause();
-        _emergencyWithdraw();
-    }
-
-    /// @notice Pause the strategy
-    function pause() public onlyManager {
-        _pause();
-    }
-
-    /// @notice Unpause the strategy and deposit funds back into the underlying platform
-    function unpause() external onlyManager {
-        _unpause();
-        deposit();
-    }
+    /* ---------------------------------------- EXTRAS ---------------------------------------- */
 
     /// @dev Allow unwrapped native to be sent to this address
     receive () payable external {}
