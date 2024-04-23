@@ -9,6 +9,7 @@ import "../../interfaces/gmx/IGMXRouter.sol";
 import "../../interfaces/gmx/IGMXTracker.sol";
 import "../../interfaces/gmx/IBeefyVault.sol";
 import "../../interfaces/gmx/IGMXStrategy.sol";
+import "../../interfaces/gmx/IGMXGovToken.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 
 contract StrategyGMX is StratFeeManagerInitializable {
@@ -218,5 +219,13 @@ contract StrategyGMX is StratFeeManagerInitializable {
         address prevStrat = IBeefyVault(vault).strategy();
         require(msg.sender == prevStrat, "!prevStrat");
         IGMXRouter(chef).acceptTransfer(prevStrat);
+    }
+
+    function setChef(address _chef) external onlyOwner {
+        chef = _chef;
+    }
+
+    function delegate(address _token, address _delegatee) external onlyManager {
+        IGMXGovToken(_token).delegate(_delegatee);
     }
 }

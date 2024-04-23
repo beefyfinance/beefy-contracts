@@ -12,7 +12,7 @@ import "../../interfaces/gmx/IBeefyVault.sol";
 import "../../interfaces/gmx/IGMXStrategy.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 
-contract StrategyGLP is StratFeeManagerInitializable {
+contract StrategyGLPCooldown is StratFeeManagerInitializable {
     using SafeERC20 for IERC20;
 
     // Tokens used

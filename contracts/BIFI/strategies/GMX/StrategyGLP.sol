@@ -10,6 +10,7 @@ import "../../interfaces/gmx/IGLPManager.sol";
 import "../../interfaces/gmx/IGMXVault.sol";
 import "../../interfaces/gmx/IBeefyVault.sol";
 import "../../interfaces/gmx/IGMXStrategy.sol";
+import "../../interfaces/gmx/IGMXGovToken.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 
 contract StrategyGLP is StratFeeManagerInitializable {
@@ -224,5 +225,13 @@ contract StrategyGLP is StratFeeManagerInitializable {
 
         // send back 1 wei to complete upgrade
         IERC20(want).safeTransfer(prevStrat, 1);
+    }
+
+    function setChef(address _chef) external onlyOwner {
+        chef = _chef;
+    }
+
+    function delegate(address _token, address _delegatee) external onlyManager {
+        IGMXGovToken(_token).delegate(_delegatee);
     }
 }
