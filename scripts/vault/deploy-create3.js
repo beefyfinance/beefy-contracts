@@ -1,7 +1,7 @@
 import hardhat, { ethers, web3 } from "hardhat";
 import contractDeployerAbi from "../../data/abi/ContractDeployer.json";
 
-import contractToDeploy from "../../artifacts/contracts/BIFI/infra/BeefyOracle/BeefyOracle.sol/BeefyOracle.json";
+import contractToDeploy from "../../artifacts/contracts/BIFI/infra/BeefyOracle/BeefyOracleUniswapV2.sol/BeefyOracleUniswapV2.json";
 
 const deployerAddress = "0xcc536552A6214d6667fBC3EC38965F7f556A6391";
 const salt = "0x0000000000000000000000000000000000000000000000000000000000000000";

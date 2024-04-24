@@ -11,26 +11,26 @@ const {
   tokens: {
     WETH: {address: WETH},
     AERO: {address: AERO},
+    USDbC: {address: USDbC},
   },
 } = addressBook.base;
 
-const want = web3.utils.toChecksumAddress("0x7f670f78B17dEC44d5Ef68a48740b6f8849cc2e6");
+const want = web3.utils.toChecksumAddress("0x2223F9FE624F69Da4D8256A7bCc9104FBA7F8f75");
 
 const vaultParams = {
-  mooName: "Moo Aero WETH-AERO",
-  mooSymbol: "mooAeroWETH-AERO",
+  mooName: "Moo Aero AERO-USDbC",
+  mooSymbol: "mooAeroAERO-USDbC",
   delay: 21600,
 };
 
 const strategyParams = {
   want: want,
-  native: WETH,
   rewards: [AERO],
-  core: '', //beefyfinance.core,
+  core: '0x83a2cc3A648b775a50ef0a34624f57d6f60a5E48', //beefyfinance.core,
   unirouter: "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43",
   strategist: process.env.STRATEGIST_ADDRESS, // some address
   beefyVaultProxy: beefyfinance.vaultFactory,
-  strategyImplementation: "0x7Fc8743Dd54c3dd7344cbF06e3AaDE63DADaE1d3",
+  strategyImplementation: "0x4A5ffC98F4c857e6E97a00118C746e8aCd1056f4",
 };
 
 const oracleParams = [
@@ -43,7 +43,15 @@ const oracleParams = [
     token: WETH,
     oracleType: 'chainlink',
     feed: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70',
-  }
+  },
+  {
+    token: USDbC,
+    oracleType: 'solidly',
+    factory: "0x420DD381b31aEf6683db6B902084cB0FFECe40Da",
+    path: [WETH, USDbC],
+    stable: [false],
+    twapPeriods: [2], // 60 minutes
+  },
 ];
 
 const swapperParams = [
@@ -56,8 +64,6 @@ const swapperParams = [
         router: strategyParams.unirouter,
         path: [AERO, WETH],
         stable: [false],
-        fees: [],
-        poolId: [],
       }
     ]
   },
@@ -70,8 +76,18 @@ const swapperParams = [
         router: strategyParams.unirouter,
         path: [WETH, AERO],
         stable: [false],
-        fees: [],
-        poolId: [],
+      }
+    ]
+  },
+  {
+    from: WETH,
+    to: USDbC,
+    steps: [
+      {
+        stepType: 'solidly',
+        router: strategyParams.unirouter,
+        path: [WETH, USDbC],
+        stable: [false],
       }
     ]
   },

@@ -2,13 +2,13 @@ import { ethers } from "hardhat";
 import { StepParams, StepData, uint256Max } from "./swapper";
 import UniswapV2RouterAbi from "../../../data/abi/UniswapRouterETH.json";
 
-const getUniswapV2 = async (swapper: string, params: StepParams): Promise<StepData> => {
+const getUniswapV2 = async (zap: string, params: StepParams): Promise<StepData> => {
   const router = await ethers.getContractAt(UniswapV2RouterAbi, params.router);
   const txData = await router.populateTransaction.swapExactTokensForTokens(
     0,
     0,
     params.path,
-    swapper,
+    zap,
     uint256Max
   );
   const amountIndex = "4";

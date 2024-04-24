@@ -125,7 +125,8 @@ contract StrategyVelodrome is BaseStrategy {
             lp0Amt = nativeBal * 1e18 / (ratio + 1e18);
             lp1Amt = nativeBal - lp0Amt;
         }
-
+        
+        depositAmounts = new uint256[](2);
         (depositAmounts[0], depositAmounts[1]) = (lp0Amt, lp1Amt);
     }
 

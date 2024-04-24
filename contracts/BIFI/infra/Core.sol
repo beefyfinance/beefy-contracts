@@ -4,9 +4,9 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import { IBeefySwapper } from "../../interfaces/beefy/IBeefySwapper.sol";
-import { IBeefyOracle } from "../../interfaces/beefy/IBeefyOracle.sol";
-import { IFeeConfig } from "../../interfaces/common/IFeeConfig.sol";
+import { IBeefySwapper } from "../interfaces/beefy/IBeefySwapper.sol";
+import { IBeefyOracle } from "../interfaces/beefy/IBeefyOracle.sol";
+import { IFeeConfig } from "../interfaces/common/IFeeConfig.sol";
 
 /// @title Core addresses
 /// @author kexley, Beefy

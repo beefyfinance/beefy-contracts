@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import strategyAbi from "../../../artifacts/contracts/BIFI/strategies/Common/StrategySwapper.sol/StrategySwapper.json";
+import strategyAbi from "../../../artifacts/contracts/BIFI/strategies/Common/BaseStrategy.sol/BaseStrategy.json";
 import oracleAbi from "../../../artifacts/contracts/BIFI/infra/BeefyOracle/BeefyOracle.sol/BeefyOracle.json";
 
 import getChainlink from "./getChainlink";
@@ -65,6 +65,7 @@ export interface OracleParams {
   factory?: string;
   path?: string[];
   fees?: number[];
+  stable?: string[];
   twapPeriods?: string[];
   priceId?: string;
 }

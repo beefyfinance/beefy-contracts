@@ -2,25 +2,24 @@ const hardhat = require("hardhat");
 
 const ethers = hardhat.ethers;
 
-const config = {
-  want: "0xC9849E6fdB743d08fAeE3E34dd2D1bc69EA11a51",
-  output: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
-  targetRewardPool: "0xCADc8CB26c8C7cB46500E61171b5F27e9bd7889D",
-  vault: "0x9e16e999ab8e1f1f4ae04ae39aa3a75064db73a6",
-  keeper: "0x9295E05d5cd1cfA617875Ba1cF984D65830d1a4c",
-  strategist: "0xB60d9512CC129f539313b7Bdbd13bBa1Fd2fE3C3",
-};
+const swapper = "0x4e8ddA5727c62666Bc9Ac46a6113C7244AE9dbdf";
+const swapBasedRouter = "0xaaa3b1F1bd7BCc97fD1917c18ADE665C5D31F066";
 
 async function main() {
   await hardhat.run("compile");
 
-  const [deployer] = await ethers.getSigners();
+  /*const [deployer] = await ethers.getSigners();
 
-  const Strategy = await ethers.getContractFactory("StrategyVelodrome");
-  const strategy = await Strategy.deploy();
+  const Strategy = await ethers.getContractFactory("SwapBasedUnirouter");
+  const strategy = await Strategy.deploy(swapper, swapBasedRouter);
   await strategy.deployed();
 
-  console.log("Candidate deployed to:", strategy.address);
+  console.log("Candidate deployed to:", strategy.address);*/
+
+  await hardhat.run("verify:verify", {
+    address: "0x5DaE84c25E7E5a1259873730f7d2a528694A2095",
+    constructorArguments: [swapper, swapBasedRouter],
+  });
 }
 
 main()

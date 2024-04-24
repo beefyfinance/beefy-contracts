@@ -2,11 +2,11 @@ import { ethers } from "hardhat";
 import { StepParams, StepData, uint256Max, int256Max } from "./swapper";
 import BalancerVaultAbi from "../../../data/abi/BalancerVault.json";
 
-const getBalancer = async (swapper: string, params: StepParams): Promise<StepData> => {
+const getBalancer = async (zap: string, params: StepParams): Promise<StepData> => {
   const router = await ethers.getContractAt(BalancerVaultAbi, params.router);
   const poolIds: string[] = params.poolId as string[];
   const swapSteps: string[][] = [];
-  const funds = [swapper, false, swapper, false];
+  const funds = [zap, false, zap, false];
   const limits = [int256Max];
 
   poolIds.forEach((poolId, i) => {

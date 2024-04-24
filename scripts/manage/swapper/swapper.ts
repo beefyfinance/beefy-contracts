@@ -1,7 +1,7 @@
 import hardhat, { ethers } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
 import swapperAbi from "../../../artifacts/contracts/BIFI/infra/BeefySwapper.sol/BeefySwapper.json";
-import strategyAbi from "../../../artifacts/contracts/BIFI/strategies/Common/StrategySwapper.sol/StrategySwapper.json";
+import strategyAbi from "../../../artifacts/contracts/BIFI/strategies/Common/BaseStrategy.sol/BaseStrategy.json";
 import { checkOracle } from "../oracle/oracle";
 
 import getUniswapV3 from "./getUniswapV3";
@@ -9,9 +9,10 @@ import getUniswapV2 from "./getUniswapV2";
 import getSolidly from "./getSolidly";
 import getBalancer from "./getBalancer";
 
-const swapper = "0x64b5C2b1E8a898dAa220a225cCB1788840c2e416";
+const swapper = "0x4e8ddA5727c62666Bc9Ac46a6113C7244AE9dbdf";
+const zap = "0x6F19Da51d488926C007B9eBaa5968291a2eC6a63";
 
-const functionMap: { [key: string]: (swapper: string, params: StepParams) => Promise<StepData> } = {
+const functionMap: { [key: string]: (zap: string, params: StepParams) => Promise<StepData> } = {
   "uniswapV3": getUniswapV3,
   "uniswapV2": getUniswapV2,
   "solidly": getSolidly,
@@ -65,7 +66,7 @@ export const setSwapper = async (strategy: string, params: SwapperParams[]) => {
 const getSwapper = async (params: SwapperParams): Promise<StepData[]> => {
   const swapperData: StepData[] = [];
   await Promise.all(params.steps.map(async (step) => {
-    swapperData.push(await functionMap[step.stepType](swapper, step))
+    swapperData.push(await functionMap[step.stepType](zap, step))
   }));
 
   return swapperData;

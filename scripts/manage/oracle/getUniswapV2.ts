@@ -8,7 +8,7 @@ const getUniswapV2 = async (params: OracleParams): Promise<OracleData> => {
   const tokens = [];
   const pairs = [];
   for (let i = 0; i < path.length - 1; i++) {
-    tokens.push(path[i][0]);
+    tokens.push(path[i]);
     const pair = await factory.getPair(
       path[i],
       path[i + 1]
@@ -22,7 +22,7 @@ const getUniswapV2 = async (params: OracleParams): Promise<OracleData> => {
     [tokens, pairs, params.twapPeriods]
   );
   
-  return { library: ''/*uniswapV2OracleLib*/, data: data };
+  return { library: '0xf20935db6A9640481C9ca97A726C467255d9a8bc', data: data };
 };
 
 export default getUniswapV2;
