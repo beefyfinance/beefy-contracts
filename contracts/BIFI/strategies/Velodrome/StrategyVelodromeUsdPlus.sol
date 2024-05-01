@@ -338,4 +338,15 @@ contract StrategyVelodromeUsdPlus is StratFeeManagerInitializable {
         ISolidlyRouter.Route[] memory _route = usdPlusToLp1Route;
         return _solidlyToRoute(_route);
     }
+
+    function setOutputToUsdcRoute(ISolidlyRouter.Route[] calldata _outputToUsdcRoute) external onlyManager {
+        require(_outputToUsdcRoute[0].from == output, "!output");
+        delete outputToUsdcRoute;
+        for (uint i; i < _outputToUsdcRoute.length; ++i) {
+            outputToUsdcRoute.push(_outputToUsdcRoute[i]);
+        }
+        usdc = outputToUsdcRoute[outputToUsdcRoute.length - 1].to;
+        IERC20(usdc).safeApprove(usdExchange, 0);
+        IERC20(usdc).safeApprove(usdExchange, type(uint).max);
+    }
 }
