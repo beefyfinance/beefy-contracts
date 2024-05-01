@@ -17,7 +17,7 @@ remappings = [
 evm_version = 'shanghai'
 # gas_reports = ['*']
 ## Sets the concrete solc version to use, this overrides the `auto_detect_solc` value
-solc_version = '0.8.19'
+solc_version = '0.8.23'
 # auto_detect_solc = true
 # offline = false
 optimizer = true
