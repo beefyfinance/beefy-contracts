@@ -187,8 +187,9 @@ const config: DeploymentConfig = {
       linea: process.env.LINEA_API_KEY!,
       kava: "api key is not required by the Kava explorer, but can't be empty",
       metis: "api key is not required by the Kava explorer, but can't be empty",
-      snowtrace: "api key is not required by the Kava explorer, but can't be empty",
+      //snowtrace: "api key is not required by the Kava explorer, but can't be empty",
       mantle: "api key is not required by the Kava explorer, but can't be empty",
+      fraxtal: process.env.FRAXTAL_API_KEY!
     },
     customChains: [
       {
@@ -253,6 +254,14 @@ const config: DeploymentConfig = {
         urls: {
           apiURL: "https://api.routescan.io/v2/network/mainnet/evm/5000/etherscan",
           browserURL: "https://explorer.mantle.xyz/",
+        },
+      },
+      {
+        network: "fraxtal",
+        chainId: 252,
+        urls: {
+          apiURL: "https://api.fraxscan.com/api",
+          browserURL: "https://fraxscan.com/",
         },
       },
     ],

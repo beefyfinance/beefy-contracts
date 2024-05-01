@@ -67,7 +67,7 @@ contract StrategyCommonSolidlyGaugeLP is StratFeeManager, GasFeeThrottler {
         native = outputToNativeRoute[outputToNativeRoute.length -1].to;
         lpToken0 = outputToLp0Route[outputToLp0Route.length - 1].to;
         lpToken1 = outputToLp1Route[outputToLp1Route.length - 1].to;
-
+        
         rewards.push(output);
         _giveAllowances();
         
@@ -152,11 +152,11 @@ contract StrategyCommonSolidlyGaugeLP is StratFeeManager, GasFeeThrottler {
         uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal * fees.beefy / DIVISOR;
-        IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
-
         uint256 strategistFeeAmount = nativeBal * fees.strategist / DIVISOR;
         IERC20(native).safeTransfer(strategist, strategistFeeAmount);
+
+        uint256 beefyFeeAmount = nativeBal - callFeeAmount - strategistFeeAmount;
+        IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
