@@ -12,6 +12,7 @@ import "../interfaces/IERC20Like.sol";
 import "../interfaces/IVault.sol";
 import "../interfaces/IStrategy.sol";
 import "../../../contracts/BIFI/interfaces/common/IERC20Extended.sol";
+import "../../../contracts/BIFI/interfaces/beefy/IStrategyFactory.sol";
 import "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
 import "../../../contracts/BIFI/strategies/Common/StratFeeManagerInitializable.sol";
 
@@ -38,7 +39,16 @@ abstract contract BaseStrategyTest is Test {
             if (initData.length > 0) {
                 BeefyVaultV7 vaultV7 = new BeefyVaultV7();
                 vault = IVault(address(vaultV7));
-                strategy = IStrategy(createStrategy(address(0)));
+
+                address factoryAddress = vm.envOr("FACTORY", address(0));
+                if (factoryAddress != address(0)) {
+                    console.log("Create strategy via proxy factory");
+                    string memory stratName = vm.envString("NAME");
+                    address newStrat = IStrategyFactory(factoryAddress).createStrategy(stratName);
+                    strategy = IStrategy(createStrategy(newStrat));
+                } else {
+                    strategy = IStrategy(createStrategy(address(0)));
+                }
                 vaultV7.initialize(IStrategyV7(address(strategy)), "TestVault", "testVault", 0);
 
                 (bool success,) = address(strategy).call(initData);

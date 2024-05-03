@@ -327,6 +327,10 @@ abstract contract BaseAllToNativeFactoryStrat is OwnableUpgradeable, PausableUpg
         return factory.beefyFeeRecipient();
     }
 
+    function getAllFees() external view returns (IFeeConfig.AllFees memory) {
+        return IFeeConfig.AllFees(beefyFeeConfig().getFees(address(this)), depositFee(), withdrawFee());
+    }
+
     function setVault(address _vault) external onlyOwner {
         vault = _vault;
         emit SetVault(_vault);

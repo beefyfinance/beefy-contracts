@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 interface IStrategyFactory {
+    function createStrategy(string calldata _strategyName) external returns (address);
     function native() external view returns (address);
     function keeper() external view returns (address);
     function beefyFeeRecipient() external view returns (address);
