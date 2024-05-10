@@ -95,7 +95,7 @@ contract BeefyOracleUniswapV2 {
                 priceAverage1 = uint256(reserve0) * 1 ether / reserve1;
             }
 
-            prices[_pair] = Price(priceAverage0, priceAverage1, Observation(price0, price1, lastUpdate));
+            prices[_pair] = Price(priceAverage0, priceAverage1, Observation(price0, price1, block.timestamp));
             emit PairUpdated(_pair, priceAverage0, priceAverage1);
         }
     }
