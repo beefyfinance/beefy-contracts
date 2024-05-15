@@ -11,7 +11,7 @@ contract StrategyEquilibriaTest is BaseStrategyTest {
 
     function createStrategy(address _impl) internal override returns (address) {
         if (_impl == a0) strategy = new StrategyEquilibria();
-        else strategy = StrategyEquilibria(_impl);
+        else strategy = StrategyEquilibria(payable(_impl));
         return address(strategy);
     }
 

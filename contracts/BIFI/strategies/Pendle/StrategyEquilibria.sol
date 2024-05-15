@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import "../Common/BaseAllToNativeStrat.sol";
-import "../../interfaces/curve/IRewardsGauge.sol";
+import "../Common/BaseAllToNativeFactoryStrat.sol";
 import "../../interfaces/common/IRewardPool.sol";
 import "./IEqb.sol";
 
-contract StrategyEquilibria is BaseAllToNativeStrat {
+contract StrategyEquilibria is BaseAllToNativeFactoryStrat {
+    using SafeERC20 for IERC20;
 
     IEqbBooster public booster;
     IRewardPool public rewardPool;
@@ -18,14 +18,12 @@ contract StrategyEquilibria is BaseAllToNativeStrat {
     bool public redeemEqb;
 
     function initialize(
-        address _native,
         IEqbBooster _booster,
         uint _pid,
-        address _depositToken,
         address[] calldata _rewards,
-        CommonAddresses calldata _commonAddresses
+        Addresses calldata _addresses
     ) public initializer  {
-        (address _want,,address _rewardPool) = _booster.poolInfo(_pid);
+        (,,address _rewardPool) = _booster.poolInfo(_pid);
         rewardPool = IRewardPool(_rewardPool);
         xEqb = IXEqb(_booster.xEqb());
         booster = _booster;
@@ -33,9 +31,12 @@ contract StrategyEquilibria is BaseAllToNativeStrat {
         redeemEqb = true;
         redeemDelay = 1 days;
 
-        __BaseStrategy_init(_want, _native, _rewards, _commonAddresses);
-        setDepositToken(_depositToken);
+        __BaseStrategy_init(_addresses, _rewards);
         setHarvestOnDeposit(true);
+    }
+
+    function stratName() public pure override returns (string memory) {
+        return "Equilibria_v1";
     }
 
     function balanceOfPool() public view override returns (uint) {
@@ -43,6 +44,7 @@ contract StrategyEquilibria is BaseAllToNativeStrat {
     }
 
     function _deposit(uint amount) internal override {
+        IERC20(want).forceApprove(address(booster), amount);
         booster.deposit(pid, amount, true);
     }
 
@@ -79,16 +81,6 @@ contract StrategyEquilibria is BaseAllToNativeStrat {
 
     function _verifyRewardToken(address token) internal view override {
         require(token != rewardPool.stakingToken(), "!stakingToken");
-    }
-
-    function _giveAllowances() internal override {
-        _approve(want, address(booster), type(uint).max);
-        _approve(native, address(unirouter), type(uint).max);
-    }
-
-    function _removeAllowances() internal override {
-        _approve(want, address(booster), 0);
-        _approve(native, address(unirouter), 0);
     }
 
     function setRedeemEqb(bool doRedeem, uint delay) external onlyManager {

@@ -2578,10 +2578,10 @@ blakejs@^1.1.0:
   resolved "https://registry.yarnpkg.com/blakejs/-/blakejs-1.1.1.tgz#bf313053978b2cd4c444a48795710be05c785702"
   integrity sha512-bLG6PHOCZJKNshTjGRBvET0vTciwQE6zFKOKKXPDJfwFBd4Ac0yBfPZqcGvGJap50l7ktvlpFqc2jGVaUgbJgg==
 
-blockchain-addressbook@^0.46.95:
-  version "0.46.95"
-  resolved "https://registry.yarnpkg.com/blockchain-addressbook/-/blockchain-addressbook-0.46.95.tgz#4affa3a9688273af73adc109c37cd7dbcd77e4ae"
-  integrity sha512-Y6RGQD3u7lHUXtOAp7h8BS4HBUioqplY2sJE+pV718xh8XxXbNBsHmNGQ7ZyR0BI+d89rQ/E7gcHPYN1Gvav4w==
+blockchain-addressbook@^0.46.108:
+  version "0.46.108"
+  resolved "https://registry.yarnpkg.com/blockchain-addressbook/-/blockchain-addressbook-0.46.108.tgz#da04e34472c5355746f252c1a06f16b75ed07fce"
+  integrity sha512-pZ00WDkkuVrlMjxK541sXgJbJvLwbD0++x7qowlqdUB6AUa2QylKq3vzscxDCKJLJn3NELOMisABwgMOfHICeA==
   dependencies:
     "@types/node" "^20.9.0"
 

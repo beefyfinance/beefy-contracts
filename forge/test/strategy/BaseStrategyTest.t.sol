@@ -41,9 +41,10 @@ abstract contract BaseStrategyTest is Test {
                 vault = IVault(address(vaultV7));
 
                 address factoryAddress = vm.envOr("FACTORY", address(0));
-                if (factoryAddress != address(0)) {
+                string memory stratName = '';
+                stratName = vm.envOr("NAME", stratName);
+                if (factoryAddress != address(0) && bytes(stratName).length > 0) {
                     console.log("Create strategy via proxy factory");
-                    string memory stratName = vm.envString("NAME");
                     address newStrat = IStrategyFactory(factoryAddress).createStrategy(stratName);
                     strategy = IStrategy(createStrategy(newStrat));
                 } else {

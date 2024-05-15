@@ -1,0 +1,2801 @@
+[
+  {
+    "inputs": [],
+    "name": "ApproxFail",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "guessMin",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "guessMax",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "eps",
+        "type": "uint256"
+      }
+    ],
+    "name": "ApproxParamsInvalid",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "int256",
+        "name": "exchangeRate",
+        "type": "int256"
+      }
+    ],
+    "name": "MarketExchangeRateBelowOne",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MarketExpired",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MarketProportionMustNotEqualOne",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "int256",
+        "name": "proportion",
+        "type": "int256"
+      },
+      {
+        "internalType": "int256",
+        "name": "maxProportion",
+        "type": "int256"
+      }
+    ],
+    "name": "MarketProportionTooHigh",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "int256",
+        "name": "rateScalar",
+        "type": "int256"
+      }
+    ],
+    "name": "MarketRateScalarBelowZero",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MarketZeroAmountsInput",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MarketZeroAmountsOutput",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "int256",
+        "name": "totalPt",
+        "type": "int256"
+      },
+      {
+        "internalType": "int256",
+        "name": "totalAsset",
+        "type": "int256"
+      }
+    ],
+    "name": "MarketZeroTotalPtOrTotalAsset",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "actualLpOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "requiredLpOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "RouterInsufficientLpOut",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "actualPtOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "requiredPtOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "RouterInsufficientPtOut",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "actualSyOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "requiredSyOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "RouterInsufficientSyOut",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "actualTokenOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "requiredTokenOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "RouterInsufficientTokenOut",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "actualYtOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "requiredYtOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "RouterInsufficientYtOut",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "netSyDesired",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyUsed",
+        "type": "uint256"
+      }
+    ],
+    "name": "RouterNotAllSyUsed",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netSyUsed",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netPtUsed",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netLpOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "AddLiquidityDualSyAndPt",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "tokenIn",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netTokenUsed",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netPtUsed",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netLpOut",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netSyInterm",
+        "type": "uint256"
+      }
+    ],
+    "name": "AddLiquidityDualTokenAndPt",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netPtIn",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netLpOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "AddLiquiditySinglePt",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netSyIn",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netLpOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "AddLiquiditySingleSy",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netSyIn",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netSyMintPy",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netLpOut",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netYtOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "AddLiquiditySingleSyKeepYt",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netTokenIn",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netLpOut",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netSyInterm",
+        "type": "uint256"
+      }
+    ],
+    "name": "AddLiquiditySingleToken",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netTokenIn",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netLpOut",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netYtOut",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netSyMintPy",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netSyInterm",
+        "type": "uint256"
+      }
+    ],
+    "name": "AddLiquiditySingleTokenKeepYt",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netLpToRemove",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netPtOut",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netSyOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "RemoveLiquidityDualSyAndPt",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "tokenOut",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netLpToRemove",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netPtOut",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netTokenOut",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netSyInterm",
+        "type": "uint256"
+      }
+    ],
+    "name": "RemoveLiquidityDualTokenAndPt",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netLpToRemove",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netPtOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "RemoveLiquiditySinglePt",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netLpToRemove",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netSyOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "RemoveLiquiditySingleSy",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netLpToRemove",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netTokenOut",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "netSyInterm",
+        "type": "uint256"
+      }
+    ],
+    "name": "RemoveLiquiditySingleToken",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyDesired",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netPtDesired",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minLpOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "addLiquidityDualSyAndPt",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "netLpOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyUsed",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netPtUsed",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "netTokenIn",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenMintSy",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "pendleSwap",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "internalType": "enum SwapType",
+                "name": "swapType",
+                "type": "uint8"
+              },
+              {
+                "internalType": "address",
+                "name": "extRouter",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes",
+                "name": "extCalldata",
+                "type": "bytes"
+              },
+              {
+                "internalType": "bool",
+                "name": "needScale",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct SwapData",
+            "name": "swapData",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct TokenInput",
+        "name": "input",
+        "type": "tuple"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netPtDesired",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minLpOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "addLiquidityDualTokenAndPt",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "netLpOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netPtUsed",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyInterm",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netPtIn",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minLpOut",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "guessMin",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "guessMax",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "guessOffchain",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxIteration",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "eps",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ApproxParams",
+        "name": "guessPtSwapToSy",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "limitRouter",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "epsSkipMarket",
+            "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "salt",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "expiry",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "nonce",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "enum IPLimitOrderType.OrderType",
+                    "name": "orderType",
+                    "type": "uint8"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "token",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "YT",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "maker",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "receiver",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "makingAmount",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "lnImpliedRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "failSafeRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "permit",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct Order",
+                "name": "order",
+                "type": "tuple"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "makingAmount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct FillOrderParams[]",
+            "name": "normalFills",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "salt",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "expiry",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "nonce",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "enum IPLimitOrderType.OrderType",
+                    "name": "orderType",
+                    "type": "uint8"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "token",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "YT",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "maker",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "receiver",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "makingAmount",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "lnImpliedRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "failSafeRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "permit",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct Order",
+                "name": "order",
+                "type": "tuple"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "makingAmount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct FillOrderParams[]",
+            "name": "flashFills",
+            "type": "tuple[]"
+          },
+          {
+            "internalType": "bytes",
+            "name": "optData",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct LimitOrderData",
+        "name": "limit",
+        "type": "tuple"
+      }
+    ],
+    "name": "addLiquiditySinglePt",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "netLpOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyFee",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyIn",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minLpOut",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "guessMin",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "guessMax",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "guessOffchain",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxIteration",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "eps",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ApproxParams",
+        "name": "guessPtReceivedFromSy",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "limitRouter",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "epsSkipMarket",
+            "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "salt",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "expiry",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "nonce",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "enum IPLimitOrderType.OrderType",
+                    "name": "orderType",
+                    "type": "uint8"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "token",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "YT",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "maker",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "receiver",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "makingAmount",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "lnImpliedRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "failSafeRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "permit",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct Order",
+                "name": "order",
+                "type": "tuple"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "makingAmount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct FillOrderParams[]",
+            "name": "normalFills",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "salt",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "expiry",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "nonce",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "enum IPLimitOrderType.OrderType",
+                    "name": "orderType",
+                    "type": "uint8"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "token",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "YT",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "maker",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "receiver",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "makingAmount",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "lnImpliedRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "failSafeRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "permit",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct Order",
+                "name": "order",
+                "type": "tuple"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "makingAmount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct FillOrderParams[]",
+            "name": "flashFills",
+            "type": "tuple[]"
+          },
+          {
+            "internalType": "bytes",
+            "name": "optData",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct LimitOrderData",
+        "name": "limit",
+        "type": "tuple"
+      }
+    ],
+    "name": "addLiquiditySingleSy",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "netLpOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyFee",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyIn",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minLpOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minYtOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "addLiquiditySingleSyKeepYt",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "netLpOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netYtOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyMintPy",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minLpOut",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "guessMin",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "guessMax",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "guessOffchain",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxIteration",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "eps",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ApproxParams",
+        "name": "guessPtReceivedFromSy",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "netTokenIn",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenMintSy",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "pendleSwap",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "internalType": "enum SwapType",
+                "name": "swapType",
+                "type": "uint8"
+              },
+              {
+                "internalType": "address",
+                "name": "extRouter",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes",
+                "name": "extCalldata",
+                "type": "bytes"
+              },
+              {
+                "internalType": "bool",
+                "name": "needScale",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct SwapData",
+            "name": "swapData",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct TokenInput",
+        "name": "input",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "limitRouter",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "epsSkipMarket",
+            "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "salt",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "expiry",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "nonce",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "enum IPLimitOrderType.OrderType",
+                    "name": "orderType",
+                    "type": "uint8"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "token",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "YT",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "maker",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "receiver",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "makingAmount",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "lnImpliedRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "failSafeRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "permit",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct Order",
+                "name": "order",
+                "type": "tuple"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "makingAmount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct FillOrderParams[]",
+            "name": "normalFills",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "salt",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "expiry",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "nonce",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "enum IPLimitOrderType.OrderType",
+                    "name": "orderType",
+                    "type": "uint8"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "token",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "YT",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "maker",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "receiver",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "makingAmount",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "lnImpliedRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "failSafeRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "permit",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct Order",
+                "name": "order",
+                "type": "tuple"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "makingAmount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct FillOrderParams[]",
+            "name": "flashFills",
+            "type": "tuple[]"
+          },
+          {
+            "internalType": "bytes",
+            "name": "optData",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct LimitOrderData",
+        "name": "limit",
+        "type": "tuple"
+      }
+    ],
+    "name": "addLiquiditySingleToken",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "netLpOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyFee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyInterm",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minLpOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minYtOut",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "netTokenIn",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenMintSy",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "pendleSwap",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "internalType": "enum SwapType",
+                "name": "swapType",
+                "type": "uint8"
+              },
+              {
+                "internalType": "address",
+                "name": "extRouter",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes",
+                "name": "extCalldata",
+                "type": "bytes"
+              },
+              {
+                "internalType": "bool",
+                "name": "needScale",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct SwapData",
+            "name": "swapData",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct TokenInput",
+        "name": "input",
+        "type": "tuple"
+      }
+    ],
+    "name": "addLiquiditySingleTokenKeepYt",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "netLpOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netYtOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyMintPy",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyInterm",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netLpToRemove",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minSyOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minPtOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "removeLiquidityDualSyAndPt",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "netSyOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netPtOut",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netLpToRemove",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "tokenOut",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "minTokenOut",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenRedeemSy",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "pendleSwap",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "internalType": "enum SwapType",
+                "name": "swapType",
+                "type": "uint8"
+              },
+              {
+                "internalType": "address",
+                "name": "extRouter",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes",
+                "name": "extCalldata",
+                "type": "bytes"
+              },
+              {
+                "internalType": "bool",
+                "name": "needScale",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct SwapData",
+            "name": "swapData",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct TokenOutput",
+        "name": "output",
+        "type": "tuple"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minPtOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "removeLiquidityDualTokenAndPt",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "netTokenOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netPtOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyInterm",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netLpToRemove",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minPtOut",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "guessMin",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "guessMax",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "guessOffchain",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxIteration",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "eps",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ApproxParams",
+        "name": "guessPtReceivedFromSy",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "limitRouter",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "epsSkipMarket",
+            "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "salt",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "expiry",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "nonce",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "enum IPLimitOrderType.OrderType",
+                    "name": "orderType",
+                    "type": "uint8"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "token",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "YT",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "maker",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "receiver",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "makingAmount",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "lnImpliedRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "failSafeRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "permit",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct Order",
+                "name": "order",
+                "type": "tuple"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "makingAmount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct FillOrderParams[]",
+            "name": "normalFills",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "salt",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "expiry",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "nonce",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "enum IPLimitOrderType.OrderType",
+                    "name": "orderType",
+                    "type": "uint8"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "token",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "YT",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "maker",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "receiver",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "makingAmount",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "lnImpliedRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "failSafeRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "permit",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct Order",
+                "name": "order",
+                "type": "tuple"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "makingAmount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct FillOrderParams[]",
+            "name": "flashFills",
+            "type": "tuple[]"
+          },
+          {
+            "internalType": "bytes",
+            "name": "optData",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct LimitOrderData",
+        "name": "limit",
+        "type": "tuple"
+      }
+    ],
+    "name": "removeLiquiditySinglePt",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "netPtOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyFee",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netLpToRemove",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minSyOut",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "limitRouter",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "epsSkipMarket",
+            "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "salt",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "expiry",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "nonce",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "enum IPLimitOrderType.OrderType",
+                    "name": "orderType",
+                    "type": "uint8"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "token",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "YT",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "maker",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "receiver",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "makingAmount",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "lnImpliedRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "failSafeRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "permit",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct Order",
+                "name": "order",
+                "type": "tuple"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "makingAmount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct FillOrderParams[]",
+            "name": "normalFills",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "salt",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "expiry",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "nonce",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "enum IPLimitOrderType.OrderType",
+                    "name": "orderType",
+                    "type": "uint8"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "token",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "YT",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "maker",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "receiver",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "makingAmount",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "lnImpliedRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "failSafeRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "permit",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct Order",
+                "name": "order",
+                "type": "tuple"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "makingAmount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct FillOrderParams[]",
+            "name": "flashFills",
+            "type": "tuple[]"
+          },
+          {
+            "internalType": "bytes",
+            "name": "optData",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct LimitOrderData",
+        "name": "limit",
+        "type": "tuple"
+      }
+    ],
+    "name": "removeLiquiditySingleSy",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "netSyOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyFee",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "market",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netLpToRemove",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "tokenOut",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "minTokenOut",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenRedeemSy",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "pendleSwap",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "internalType": "enum SwapType",
+                "name": "swapType",
+                "type": "uint8"
+              },
+              {
+                "internalType": "address",
+                "name": "extRouter",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes",
+                "name": "extCalldata",
+                "type": "bytes"
+              },
+              {
+                "internalType": "bool",
+                "name": "needScale",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct SwapData",
+            "name": "swapData",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct TokenOutput",
+        "name": "output",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "limitRouter",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "epsSkipMarket",
+            "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "salt",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "expiry",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "nonce",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "enum IPLimitOrderType.OrderType",
+                    "name": "orderType",
+                    "type": "uint8"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "token",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "YT",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "maker",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "receiver",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "makingAmount",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "lnImpliedRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "failSafeRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "permit",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct Order",
+                "name": "order",
+                "type": "tuple"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "makingAmount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct FillOrderParams[]",
+            "name": "normalFills",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "salt",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "expiry",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "nonce",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "enum IPLimitOrderType.OrderType",
+                    "name": "orderType",
+                    "type": "uint8"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "token",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "YT",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "maker",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "receiver",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "makingAmount",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "lnImpliedRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "failSafeRate",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "permit",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct Order",
+                "name": "order",
+                "type": "tuple"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "makingAmount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct FillOrderParams[]",
+            "name": "flashFills",
+            "type": "tuple[]"
+          },
+          {
+            "internalType": "bytes",
+            "name": "optData",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct LimitOrderData",
+        "name": "limit",
+        "type": "tuple"
+      }
+    ],
+    "name": "removeLiquiditySingleToken",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "netTokenOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyFee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "netSyInterm",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
