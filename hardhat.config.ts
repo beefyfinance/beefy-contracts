@@ -171,6 +171,11 @@ const config: DeploymentConfig = {
       accounts,
       gasPrice: 100000,
     },
+    mode: {
+      url: process.env.MODE_RPC || "https://mainnet.mode.network",
+      chainId: 34443,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
@@ -189,7 +194,8 @@ const config: DeploymentConfig = {
       metis: "api key is not required by the Kava explorer, but can't be empty",
       //snowtrace: "api key is not required by the Kava explorer, but can't be empty",
       mantle: "api key is not required by the Kava explorer, but can't be empty",
-      fraxtal: process.env.FRAXTAL_API_KEY!
+      fraxtal: process.env.FRAXTAL_API_KEY!,
+      mode: "api key is not required by the Kava explorer, but can't be empty",
     },
     customChains: [
       {
@@ -262,6 +268,14 @@ const config: DeploymentConfig = {
         urls: {
           apiURL: "https://api.fraxscan.com/api",
           browserURL: "https://fraxscan.com/",
+        },
+      },
+      {
+        network: "mode",
+        chainId: 34443,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/34443/etherscan",
+          browserURL: "https://modescan.io/",
         },
       },
     ],
