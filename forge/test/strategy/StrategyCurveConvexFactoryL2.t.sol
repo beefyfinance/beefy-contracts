@@ -2,17 +2,17 @@
 
 pragma solidity ^0.8.12;
 
-import "../../../contracts/BIFI/strategies/Curve/StrategyCurveConvexFactoryL2.sol";
+import "../../../contracts/BIFI/strategies/Curve/StrategyCurveConvexL2Factory.sol";
 import "./BaseStrategyTest.t.sol";
 
-contract StrategyCurveConvexFactoryL2Test is BaseStrategyTest {
+contract StrategyCurveConvexL2FactoryTest is BaseStrategyTest {
 
-    StrategyCurveConvexFactoryL2 strategy;
+    StrategyCurveConvexL2Factory strategy;
 
     function createStrategy(address _impl) internal override returns (address) {
         cacheOraclePrices();
-        if (_impl == a0) strategy = new StrategyCurveConvexFactoryL2();
-        else strategy = StrategyCurveConvexFactoryL2(payable(_impl));
+        if (_impl == a0) strategy = new StrategyCurveConvexL2Factory();
+        else strategy = StrategyCurveConvexL2Factory(payable(_impl));
         return address(strategy);
     }
 
@@ -22,7 +22,7 @@ contract StrategyCurveConvexFactoryL2Test is BaseStrategyTest {
 
         BeefyVaultV7 vaultV7 = new BeefyVaultV7();
         IVault vaultNoPid = IVault(address(vaultV7));
-        StrategyCurveConvexFactoryL2 strategyNoPid = new StrategyCurveConvexFactoryL2();
+        StrategyCurveConvexL2Factory strategyNoPid = new StrategyCurveConvexL2Factory();
 
         deal(address(want), address(user), wantAmount);
 

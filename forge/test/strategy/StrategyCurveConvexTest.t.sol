@@ -21,6 +21,8 @@ contract StrategyCurveConvexTest is BaseStrategyTest {
     function createStrategy(address _impl) internal override returns (address) {
         if (_impl == a0) strategy = new StrategyCurveConvex();
         else strategy = StrategyCurveConvex(payable(_impl));
+//        vm.prank(strategy.keeper());
+//        strategy.setCrvMintable(true);
         return address(strategy);
     }
 

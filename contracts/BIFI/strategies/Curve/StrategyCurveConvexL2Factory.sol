@@ -9,7 +9,7 @@ import "../../interfaces/curve/IRewardsGauge.sol";
 import "../Common/BaseAllToNativeFactoryStrat.sol";
 
 // Curve L2 strategy switchable between Curve and Convex
-contract StrategyCurveConvexFactoryL2 is BaseAllToNativeFactoryStrat {
+contract StrategyCurveConvexL2Factory is BaseAllToNativeFactoryStrat {
     using SafeERC20 for IERC20;
 
     // this `pid` means we using Curve gauge and not Convex rewardPool
@@ -60,8 +60,10 @@ contract StrategyCurveConvexFactoryL2 is BaseAllToNativeFactoryStrat {
 
     function _deposit(uint amount) internal override {
         if (rewardPool != address(0)) {
+            IERC20(want).forceApprove(address(booster), amount);
             booster.deposit(pid, amount);
         } else {
+            IERC20(want).forceApprove(gauge, amount);
             IRewardsGauge(gauge).deposit(amount);
         }
     }
