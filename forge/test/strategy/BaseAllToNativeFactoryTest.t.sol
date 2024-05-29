@@ -3,14 +3,14 @@
 pragma solidity ^0.8.12;
 
 import "./BaseStrategyTest.t.sol";
-import "../../../contracts/BIFI/strategies/Common/BaseAllToNativeStrat.sol";
+import "../../../contracts/BIFI/strategies/Common/BaseAllToNativeFactoryStrat.sol";
 
-abstract contract BaseAllToNativeTest is BaseStrategyTest {
+abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
 
     function claimRewardsToStrat() internal virtual {}
 
     function test_rewards() external {
-        BaseAllToNativeStrat strategy = BaseAllToNativeStrat(vault.strategy());
+        BaseAllToNativeFactoryStrat strategy = BaseAllToNativeFactoryStrat(payable(vault.strategy()));
 
         _depositIntoVault(user, wantAmount);
         skip(delay);

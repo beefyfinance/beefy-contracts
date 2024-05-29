@@ -23,6 +23,7 @@ abstract contract BaseStrategyTest is Test {
     IERC20Like internal want;
     VaultUser internal user;
     uint internal wantAmount = 50000 ether;
+    uint internal delay = 1 days;
     address internal a0 = address(0);
 
     function setUp() public {
@@ -132,13 +133,13 @@ abstract contract BaseStrategyTest is Test {
         console.log("setHarvestOnDeposit true");
         vm.prank(strategy.keeper());
         strategy.setHarvestOnDeposit(true);
-        skip(1 days);
+        skip(delay);
         deal(vault.want(), address(user), wantAmount);
 
         // trigger harvestOnDeposit
         _depositIntoVault(user, wantAmount);
         // in case of lockedProfit harvested balance is not available right away
-        skip(1 days);
+        skip(delay);
         assertGt(vault.getPricePerFullShare(), pps, "Not harvested");
         uint vaultBal = vault.balance();
 
@@ -160,12 +161,12 @@ abstract contract BaseStrategyTest is Test {
         uint pps = vault.getPricePerFullShare();
         uint lastHarvest = strategy.lastHarvest();
 
-        skip(1 days);
+        skip(delay);
         console.log("Harvesting vault");
         strategy.harvest();
 
         // in case of lockedProfit harvested balance is not available right away
-        skip(1 days);
+        skip(delay);
 
         uint256 vaultBalAfterHarvest = vault.balance();
         uint256 ppsAfterHarvest = vault.getPricePerFullShare();

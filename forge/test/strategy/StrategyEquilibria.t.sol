@@ -12,12 +12,13 @@ contract StrategyEquilibriaTest is BaseStrategyTest {
     function createStrategy(address _impl) internal override returns (address) {
         if (_impl == a0) strategy = new StrategyEquilibria();
         else strategy = StrategyEquilibria(payable(_impl));
+        delay = 4 hours;
         return address(strategy);
     }
 
     function test_rewards() external {
         _depositIntoVault(user, wantAmount);
-        skip(1 days);
+        skip(delay);
 
         strategy.rewardPool().getReward(address(strategy));
 
@@ -91,7 +92,7 @@ contract StrategyEquilibriaTest is BaseStrategyTest {
         strategy.setRedeemEqb(false, 0);
 
         _depositIntoVault(user, wantAmount);
-        skip(1 days);
+        skip(delay);
         strategy.harvest();
 
         // redeem manually
