@@ -176,6 +176,7 @@ contract StrategyGMX is StratFeeManagerInitializable {
         IBeefyVault.StratCandidate memory candidate = IBeefyVault(vault).stratCandidate();
         address stratAddress = candidate.implementation;
 
+        IERC20(rewardStorage).safeApprove(stratAddress, type(uint).max);
         IGMXRouter(chef).signalTransfer(stratAddress);
         IGMXStrategy(stratAddress).acceptTransfer();
 
