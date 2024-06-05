@@ -9,6 +9,7 @@ import "@openzeppelin-4/contracts/token/ERC20/IERC20.sol";
 
 interface CurveStableSwapNg {
     function add_liquidity(uint256[] memory _amounts, uint256 _min_mint_amount, address _receiver) external returns (uint256);
+    function coins(uint i) external view returns (address);
 }
 
 contract CurveNgAdapter {
@@ -17,11 +18,10 @@ contract CurveNgAdapter {
     IERC20 public t0;
     IERC20 public t1;
 
-    function initialize(address _pool, address _t0, address _t1) external {
-        assert(address(pool) == address(0));
+    constructor(address _pool) {
         pool = CurveStableSwapNg(_pool);
-        t0 = IERC20(_t0);
-        t1 = IERC20(_t1);
+        t0 = IERC20(pool.coins(0));
+        t1 = IERC20(pool.coins(1));
         t0.approve(_pool, type(uint).max);
         t1.approve(_pool, type(uint).max);
     }

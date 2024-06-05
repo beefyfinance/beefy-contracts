@@ -3,9 +3,9 @@
 pragma solidity ^0.8.12;
 
 import "../../../contracts/BIFI/strategies/Curve/StrategyCurveConvexL2Factory.sol";
-import "./BaseStrategyTest.t.sol";
+import "./BaseAllToNativeFactoryTest.t.sol";
 
-contract StrategyCurveConvexL2FactoryTest is BaseStrategyTest {
+contract StrategyCurveConvexL2FactoryTest is BaseAllToNativeFactoryTest {
 
     StrategyCurveConvexL2Factory strategy;
 
@@ -14,6 +14,24 @@ contract StrategyCurveConvexL2FactoryTest is BaseStrategyTest {
         if (_impl == a0) strategy = new StrategyCurveConvexL2Factory();
         else strategy = StrategyCurveConvexL2Factory(payable(_impl));
         return address(strategy);
+    }
+
+    function claimRewardsToStrat() internal override {
+        // if convex
+        if (strategy.rewardPool() != address(0)) {
+            console.log("Claim rewards on Convex");
+            IConvexRewardPool(strategy.rewardPool()).getReward(address(strategy));
+        } else {
+            console.log("Claim rewards on Curve");
+            if (strategy.isCurveRewardsClaimable()) {
+                IRewardsGauge(strategy.gauge()).claim_rewards(address(strategy));
+            }
+            if (strategy.isCrvMintable()) {
+                vm.startPrank(address(strategy));
+                strategy.minter().mint(strategy.gauge());
+                vm.stopPrank();
+            }
+        }
     }
 
     function test_initWithNoPid() external {
@@ -123,40 +141,6 @@ contract StrategyCurveConvexL2FactoryTest is BaseStrategyTest {
         strategy.setCrvMintable(true);
         vm.expectRevert("MINTER_CALLED");
         strategy.harvest();
-    }
-
-    function test_rewards() external {
-        _depositIntoVault(user, wantAmount);
-        skip(1 days);
-
-        // if convex
-        if (strategy.rewardPool() != address(0)) {
-            console.log("Claim rewards on Convex");
-            IConvexRewardPool(strategy.rewardPool()).getReward(address(strategy));
-        } else {
-            console.log("Claim rewards on Curve");
-            if (strategy.isCurveRewardsClaimable()) {
-                IRewardsGauge(strategy.gauge()).claim_rewards(address(strategy));
-            }
-            if (strategy.isCrvMintable()) {
-                vm.startPrank(address(strategy));
-                strategy.minter().mint(strategy.gauge());
-                vm.stopPrank();
-            }
-        }
-
-        for (uint i; i < strategy.rewardsLength(); ++i) {
-            uint bal = IERC20(strategy.rewards(i)).balanceOf(address(strategy));
-            console.log(IERC20Extended(strategy.rewards(i)).symbol(), bal);
-        }
-
-        console.log("Harvest");
-        strategy.harvest();
-
-        for (uint i; i < strategy.rewardsLength(); ++i) {
-            uint bal = IERC20(strategy.rewards(i)).balanceOf(address(strategy));
-            console.log(IERC20Extended(strategy.rewards(i)).symbol(), bal);
-        }
     }
 
     function cacheOraclePrices() internal {
