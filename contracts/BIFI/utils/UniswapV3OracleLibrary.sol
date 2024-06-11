@@ -51,7 +51,7 @@ library UniswapV3OracleLibrary {
         uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(tick);
 
         // Calculate quoteAmount with better precision if it doesn't overflow when multiplied by itself
-        if (sqrtRatioX96 <= type(uint128).max) {
+        if (sqrtRatioX96 * baseAmount <= type(uint128).max) {
             uint256 ratioX192 = uint256(sqrtRatioX96) * sqrtRatioX96;
             quoteAmount = ratioX192 * baseAmount / (1 << 192);
         } else {
