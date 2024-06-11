@@ -35,17 +35,8 @@ contract BeefySwapper is OwnableUpgradeable {
     /// @param minAmountOut Minimum amount required from the swap
     error SlippageExceeded(uint256 amountOut, uint256 minAmountOut);
 
-    /// @dev Swap info already exists
-    /// @param fromToken Token to swap from
-    /// @param toToken Token to swap to
-    error NotNewSwapInfo(address fromToken, address toToken);
-
-    /// @dev Caller is not owner or manager
-    error NotManager();
-
     /// @dev Stored data for a swap
     /// @param router Target address that will handle the swap
-    /// @param tokenPuller Address that will pull tokens from this address during the swap
     /// @param data Payload of a template swap between the two tokens
     /// @param amountIndex Location in the data byte string where the amount should be overwritten
     /// @param minIndex Location in the data byte string where the min amount to swap should be
@@ -54,7 +45,6 @@ contract BeefySwapper is OwnableUpgradeable {
     /// negative value will encode a negative min amount (required for Balancer)
     struct SwapInfo {
         address router;
-        address tokenPuller;
         bytes data;
         uint256 amountIndex;
         uint256 minIndex;
@@ -69,9 +59,6 @@ contract BeefySwapper is OwnableUpgradeable {
 
     /// @notice Minimum acceptable percentage slippage output in 18 decimals
     uint256 public slippage;
-
-    /// @notice Manager of this contract
-    address public keeper;
 
     /// @notice Swap between two tokens
     /// @param caller Address of the caller of the swap
@@ -101,25 +88,14 @@ contract BeefySwapper is OwnableUpgradeable {
     /// @param slippage New slippage amount
     event SetSlippage(uint256 slippage);
 
-    /// @notice Set a new manager
-    /// @param keeper New manager address
-    event SetKeeper(address keeper);
-
-    modifier onlyManager {
-        if (msg.sender != owner() && msg.sender != keeper) revert NotManager();
-        _;
-    }
-
     /// @notice Initialize the contract
     /// @dev Ownership is transferred to msg.sender
     /// @param _oracle Oracle to find prices for tokens
     /// @param _slippage Acceptable slippage for any swap
-    /// @param _keeper Address of the manager
-    function initialize(address _oracle, uint256 _slippage, address _keeper) external initializer {
+    function initialize(address _oracle, uint256 _slippage) external initializer {
         __Ownable_init();
         oracle = IBeefyOracle(_oracle);
         slippage = _slippage;
-        keeper = _keeper;
     }
 
     /// @notice Swap between two tokens with slippage calculated using the oracle
@@ -236,7 +212,7 @@ contract BeefySwapper is OwnableUpgradeable {
         
         data = _insertData(data, swapData.minIndex, minAmountData);
 
-        IERC20MetadataUpgradeable(_fromToken).forceApprove(swapData.tokenPuller, type(uint256).max);
+        IERC20MetadataUpgradeable(_fromToken).forceApprove(router, type(uint256).max);
         (bool success,) = router.call(data);
         if (!success) revert SwapFailed(router, data);
     }
@@ -294,7 +270,7 @@ contract BeefySwapper is OwnableUpgradeable {
 
     /* ----------------------------------- OWNER FUNCTIONS ----------------------------------- */
 
-    /// @notice Owner function to set or change the stored swap info for the route between two tokens
+    /// @notice Owner function to set the stored swap info for the route between two tokens
     /// @dev No validation checks
     /// @param _fromToken Token to swap from
     /// @param _toToken Token to swap to
@@ -304,21 +280,6 @@ contract BeefySwapper is OwnableUpgradeable {
         address _toToken,
         SwapInfo calldata _swapInfo
     ) external onlyOwner {
-        swapInfo[_fromToken][_toToken] = _swapInfo;
-        emit SetSwapInfo(_fromToken, _toToken, _swapInfo);
-    }
-
-    /// @notice Manager function to set the stored swap info for the route between two new tokens
-    /// @dev No validation checks
-    /// @param _fromToken Token to swap from
-    /// @param _toToken Token to swap to
-    /// @param _swapInfo Swap info to store
-    function setNewSwapInfo(
-        address _fromToken,
-        address _toToken,
-        SwapInfo calldata _swapInfo
-    ) external onlyManager {
-        if (swapInfo[_fromToken][_toToken].router != address(0)) revert NotNewSwapInfo(_fromToken, _toToken);
         swapInfo[_fromToken][_toToken] = _swapInfo;
         emit SetSwapInfo(_fromToken, _toToken, _swapInfo);
     }
@@ -335,29 +296,8 @@ contract BeefySwapper is OwnableUpgradeable {
     ) external onlyOwner {
         uint256 tokenLength = _fromTokens.length;
         for (uint i; i < tokenLength;) {
-            (address from, address to) = (_fromTokens[i], _toTokens[i]);
-            swapInfo[from][to] = _swapInfos[i];
-            emit SetSwapInfo(from, to, _swapInfos[i]);
-            unchecked { ++i; }
-        }
-    }
-
-    /// @notice Manager function to set multiple stored swap info for the routes between two new tokens
-    /// @dev No validation checks
-    /// @param _fromTokens Tokens to swap from
-    /// @param _toTokens Tokens to swap to
-    /// @param _swapInfos Swap infos to store
-    function setNewSwapInfos(
-        address[] calldata _fromTokens,
-        address[] calldata _toTokens,
-        SwapInfo[] calldata _swapInfos
-    ) external onlyManager {
-        uint256 tokenLength = _fromTokens.length;
-        for (uint i; i < tokenLength;) {
-            (address from, address to) = (_fromTokens[i], _toTokens[i]);
-            if (swapInfo[from][to].router != address(0)) revert NotNewSwapInfo(from, to);
-            swapInfo[from][to] = _swapInfos[i];
-            emit SetSwapInfo(from, to, _swapInfos[i]);
+            swapInfo[_fromTokens[i]][_toTokens[i]] = _swapInfos[i];
+            emit SetSwapInfo(_fromTokens[i], _toTokens[i], _swapInfos[i]);
             unchecked { ++i; }
         }
     }
@@ -376,12 +316,5 @@ contract BeefySwapper is OwnableUpgradeable {
         if (_slippage > 1 ether) _slippage = 1 ether;
         slippage = _slippage;
         emit SetSlippage(_slippage);
-    }
-
-    /// @notice Owner function to set the keeper
-    /// @param _keeper New manager address
-    function setKeeper(address _keeper) external onlyManager {
-        keeper = _keeper;
-        emit SetKeeper(_keeper);
     }
 }
