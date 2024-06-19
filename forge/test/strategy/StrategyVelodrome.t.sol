@@ -5,7 +5,7 @@ pragma solidity ^0.8.12;
 import "../../../contracts/BIFI/strategies/Velodrome/StrategyVelodromeGaugeV2.sol";
 import "./BaseStrategyTest.t.sol";
 
-contract StrategyVelodromeTest is BaseStrategyTest {
+contract StrategyVelodromeGaugeV2Test is BaseStrategyTest {
 
     StrategyVelodromeGaugeV2 strategy;
 

@@ -81,6 +81,8 @@ abstract contract BaseStrategyTest is Test {
 
     function createStrategy(address _impl) internal virtual returns (address);
 
+    function beforeHarvest() internal virtual {}
+
     function test_depositAndWithdraw() external {
         _depositIntoVault(user, wantAmount);
         assertEq(want.balanceOf(address(user)), 0, "User balance != 0 after deposit");
@@ -136,6 +138,7 @@ abstract contract BaseStrategyTest is Test {
         skip(delay);
         deal(vault.want(), address(user), wantAmount);
 
+        beforeHarvest();
         // trigger harvestOnDeposit
         _depositIntoVault(user, wantAmount);
         // in case of lockedProfit harvested balance is not available right away
@@ -162,6 +165,7 @@ abstract contract BaseStrategyTest is Test {
         uint lastHarvest = strategy.lastHarvest();
 
         skip(delay);
+        beforeHarvest();
         console.log("Harvesting vault");
         strategy.harvest();
 

@@ -35,4 +35,5 @@ abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
         assertEq(nativeBal, 0, "Native not swapped");
     }
 
+    receive() external payable {}
 }
