@@ -4,21 +4,23 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "../../interfaces/common/IStableRouter.sol";
 import "../../interfaces/common/IRewardPool.sol";
-import "../../interfaces/beefy/IBeefySwapper.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 
 contract StrategyHop is StratFeeManagerInitializable {
     using SafeERC20 for IERC20;
 
     // Tokens used
-    address public want;
     address public native;
-    address public reward;
+    address public output;
+    address public want;
     address public depositToken;
 
     // Third party contracts
     address public rewardPool;
+    address public stableRouter;
+    uint256 public depositIndex;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -28,20 +30,16 @@ contract StrategyHop is StratFeeManagerInitializable {
     event Withdraw(uint256 tvl);
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
-    function initialize(
-        address _depositToken,
+    function __StrategyHop_init(
+        address _want,
         address _rewardPool,
-        address _native,
+        address _stableRouter,
         CommonAddresses calldata _commonAddresses
-    ) external initializer {
+    ) internal onlyInitializing {
         __StratFeeManager_init(_commonAddresses);
-        want = IRewardPool(_rewardPool).stakingToken();
-        native = _native;
+        want = _want;
         rewardPool = _rewardPool;
-        reward = IRewardPool(_rewardPool).rewardsToken();
-        depositToken = _depositToken;
-
-        _giveAllowances();
+        stableRouter = _stableRouter;
     }
 
     // puts the funds to work
@@ -100,11 +98,10 @@ contract StrategyHop is StratFeeManagerInitializable {
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal {
         IRewardPool(rewardPool).getReward();
-        _swapToNative();
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
-        if (nativeBal > 0) {
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
+        if (outputBal > 0) {
             chargeFees(callFeeRecipient);
-            _addLiquidity();
+            addLiquidity();
             uint256 wantHarvested = balanceOfWant();
             deposit();
 
@@ -113,15 +110,12 @@ contract StrategyHop is StratFeeManagerInitializable {
         }
     }
 
-    function _swapToNative() internal {
-        uint256 rewardBal = IERC20(reward).balanceOf(address(this));
-        if (rewardBal > 0) IBeefySwapper(unirouter).swap(reward, native, rewardBal);
-    }
-
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
         IFeeConfig.FeeCategory memory fees = getFees();
-        uint256 nativeFeeBal = IERC20(native).balanceOf(address(this)) * fees.total / DIVISOR;
+        uint256 before = IERC20(native).balanceOf(address(this));
+        _swapToNative(fees.total);
+        uint256 nativeFeeBal = IERC20(native).balanceOf(address(this)) - before;
 
         uint256 callFeeAmount = nativeFeeBal * fees.call / DIVISOR;
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
@@ -135,13 +129,13 @@ contract StrategyHop is StratFeeManagerInitializable {
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
-    function _addLiquidity() internal {
-        if (depositToken != native) {
-            uint256 nativeBal = IERC20(native).balanceOf(address(this));
-            IBeefySwapper(unirouter).swap(native, depositToken, nativeBal);
-        }
-        uint256 depositTokenBal = IERC20(depositToken).balanceOf(address(this));
-        IBeefySwapper(unirouter).swap(depositToken, want, depositTokenBal);
+    // Adds liquidity to AMM and gets more LP tokens.
+    function addLiquidity() internal {
+        _swapToDeposit();
+
+        uint256[] memory inputs = new uint256[](2);
+        inputs[depositIndex] = IERC20(depositToken).balanceOf(address(this));
+        IStableRouter(stableRouter).addLiquidity(inputs, 1, block.timestamp);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -164,8 +158,10 @@ contract StrategyHop is StratFeeManagerInitializable {
     }
 
     function callReward() public view returns (uint256) {
-        uint256 rewardBal = rewardsAvailable();
-        uint256 nativeOut = IBeefySwapper(unirouter).getAmountOut(reward, native, rewardBal);
+        uint256 outputBal = rewardsAvailable();
+        uint256 nativeOut;
+
+        nativeOut = _getAmountOut(outputBal);
 
         IFeeConfig.FeeCategory memory fees = getFees();
         return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
@@ -213,34 +209,23 @@ contract StrategyHop is StratFeeManagerInitializable {
 
     function _giveAllowances() internal virtual {
         IERC20(want).safeApprove(rewardPool, type(uint).max);
-        IERC20(native).safeApprove(unirouter, type(uint).max);
-        IERC20(reward).safeApprove(unirouter, type(uint).max);
-        if (depositToken != native) IERC20(depositToken).safeApprove(unirouter, type(uint).max);
+        IERC20(output).safeApprove(unirouter, type(uint).max);
+        IERC20(depositToken).safeApprove(stableRouter, type(uint).max);
     }
 
     function _removeAllowances() internal virtual {
         IERC20(want).safeApprove(rewardPool, 0);
-        IERC20(native).safeApprove(unirouter, 0);
-        IERC20(reward).safeApprove(unirouter, 0);
-        if (depositToken != native) IERC20(depositToken).safeApprove(unirouter, 0);
+        IERC20(output).safeApprove(unirouter, 0);
+        IERC20(depositToken).safeApprove(stableRouter, 0);
     }
 
-    function setRewardPool(address _rewardPool) external onlyOwner {
-        require(want == IRewardPool(_rewardPool).stakingToken(), "!want");
-        address _reward = IRewardPool(_rewardPool).rewardsToken();
-        require(_reward != want, "want=reward");
-        require(_reward != native, "native=reward");
-        require(_reward != depositToken, "native=deposit");
+    function _swapToNative(uint256 totalFee) internal virtual {}
 
-        if (balanceOfPool() > 0) IRewardPool(rewardPool).withdraw(balanceOfPool());
-        IERC20(reward).safeApprove(unirouter, 0);
+    function _swapToDeposit() internal virtual {}
 
-        rewardPool = _rewardPool;
-        reward = _reward;
-        
-        if (!paused()) {
-            IERC20(_reward).safeApprove(unirouter, type(uint).max);
-            deposit();
-        }
-    }
+    function _getAmountOut(uint256 inputAmount) internal view virtual returns (uint256) {}
+
+    function outputToNative() external view virtual returns (address[] memory) {}
+
+    function outputToDeposit() external view virtual returns (address[] memory) {}
 }
