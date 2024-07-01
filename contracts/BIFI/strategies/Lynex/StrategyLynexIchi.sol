@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.19;
 
 import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../interfaces/ichi/IIchiDepositHelper.sol";
-import "../../interfaces/common/IRewardPool.sol";
+import "../../interfaces/beefy/IBeefySwapper.sol";
+import "../../interfaces/lynex/ILynexRewardPool.sol";
 import "../../interfaces/common/IERC20Extended.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 import "../../utils/GasFeeThrottler.sol";
-import "../../utils/AlgebraUtils.sol";
 
 interface IFlashPool {
     function swap(uint256 amount0, uint256 amount1, address to, bytes calldata data) external;
@@ -38,6 +38,7 @@ contract StrategyLynexIchi is StratFeeManagerInitializable {
 
     address public want;
     address public depositToken;
+    address[] public rewards;
 
     // Third party contracts
     address public rewardPool;
@@ -45,10 +46,6 @@ contract StrategyLynexIchi is StratFeeManagerInitializable {
     bool public harvestOnDeposit;
     bool private flashOn;
     uint256 public lastHarvest;
-
-    bytes public outputToPaymentPath;
-    bytes public paymentToNativePath;
-    bytes public nativeToDepositPath;
 
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
@@ -58,19 +55,14 @@ contract StrategyLynexIchi is StratFeeManagerInitializable {
     function initialize(
         address _want,
         address _rewardPool,
-        address[] calldata _outputToPaymentRoute,
-        address[] calldata _paymentToNativeRoute,
-        address[] calldata _nativeToDepositRoute,
+        address _depositToken,
         CommonAddresses calldata _commonAddresses
      ) public initializer  {
         __StratFeeManager_init(_commonAddresses);
         want = _want;
         rewardPool = _rewardPool;
-        depositToken = _nativeToDepositRoute[_nativeToDepositRoute.length - 1];
-
-        outputToPaymentPath = AlgebraUtils.routeToPath(_outputToPaymentRoute);
-        paymentToNativePath = AlgebraUtils.routeToPath(_paymentToNativeRoute);
-        nativeToDepositPath = AlgebraUtils.routeToPath(_nativeToDepositRoute);
+        depositToken = _depositToken;
+        rewards.push(otoken);
 
         _giveAllowances();
     }
@@ -80,7 +72,7 @@ contract StrategyLynexIchi is StratFeeManagerInitializable {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IRewardPool(rewardPool).deposit(wantBal);
+            ILynexRewardPool(rewardPool).deposit(wantBal);
             emit Deposit(balanceOf());
         }
     }
@@ -91,7 +83,7 @@ contract StrategyLynexIchi is StratFeeManagerInitializable {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IRewardPool(rewardPool).withdraw(_amount - wantBal);
+            ILynexRewardPool(rewardPool).withdraw(_amount - wantBal);
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -126,10 +118,9 @@ contract StrategyLynexIchi is StratFeeManagerInitializable {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        IRewardPool(rewardPool).getReward();
-        uint256 outputBal = IERC20(otoken).balanceOf(address(this));
-        if (outputBal > 0) {
-            flashExercise(outputBal);
+        ILynexRewardPool(rewardPool).getReward(address(this), rewards);
+        _swapRewards();
+        if (IERC20(native).balanceOf(address(this)) > 0) {
             chargeFees(callFeeRecipient);
             addLiquidity();
             uint256 wantHarvested = balanceOfWant();
@@ -137,6 +128,17 @@ contract StrategyLynexIchi is StratFeeManagerInitializable {
 
             lastHarvest = block.timestamp;
             emit StratHarvest(msg.sender, wantHarvested, balanceOf());
+        }
+    }
+
+    function _swapRewards() internal {
+        uint256 outputBal = IERC20(otoken).balanceOf(address(this));
+        if (outputBal > 0) flashExercise(outputBal);
+
+        for (uint i; i < rewards.length; ++i) {
+            address reward = rewards[i];
+            uint256 rewardBal = IERC20(reward).balanceOf(address(this));
+            if (rewardBal > 0) IBeefySwapper(unirouter).swap(reward, native, rewardBal);
         }
     }
 
@@ -149,13 +151,13 @@ contract StrategyLynexIchi is StratFeeManagerInitializable {
         IOptionsToken(otoken).exercise(oTokenBal, amount0, address(this), block.timestamp);
 
         uint256 outputTokenBal = IERC20(output).balanceOf(address(this));
-        AlgebraUtils.swap(unirouter, outputToPaymentPath, outputTokenBal);
+        IBeefySwapper(unirouter).swap(output, paymentToken, outputTokenBal);
 
         uint256 debt = amount0 + getTotalFlashFee(amount0);
         IERC20(paymentToken).safeTransfer(flashPool, debt);
 
         uint256 paymentTokenBal = IERC20(paymentToken).balanceOf(address(this));
-        AlgebraUtils.swap(unirouter, paymentToNativePath, paymentTokenBal);
+        IBeefySwapper(unirouter).swap(paymentToken, native, paymentTokenBal);
         flashOn = false;
     }
 
@@ -191,7 +193,7 @@ contract StrategyLynexIchi is StratFeeManagerInitializable {
     function addLiquidity() internal {
         if (depositToken != native) {
             uint256 nativeBal = IERC20(native).balanceOf(address(this));
-            AlgebraUtils.swap(unirouter, nativeToDepositPath, nativeBal);
+            IBeefySwapper(unirouter).swap(native, depositToken, nativeBal);
         }
 
         uint256 depositTokenBal = IERC20(depositToken).balanceOf(address(this));
@@ -212,7 +214,7 @@ contract StrategyLynexIchi is StratFeeManagerInitializable {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        return IRewardPool(rewardPool).balanceOf(address(this));
+        return ILynexRewardPool(rewardPool).balanceOf(address(this));
     }
 
     // returns rewards unharvested
@@ -240,8 +242,8 @@ contract StrategyLynexIchi is StratFeeManagerInitializable {
         require(msg.sender == vault, "!vault");
 
         if (balanceOfPool() > 0) {
-            if (IRewardPool(rewardPool).emergency()) IRewardPool(rewardPool).emergencyWithdraw();
-            else IRewardPool(rewardPool).withdraw(balanceOfPool());
+            if (ILynexRewardPool(rewardPool).emergency()) ILynexRewardPool(rewardPool).emergencyWithdraw();
+            else ILynexRewardPool(rewardPool).withdraw(balanceOfPool());
         }
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
@@ -251,8 +253,8 @@ contract StrategyLynexIchi is StratFeeManagerInitializable {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        if (IRewardPool(rewardPool).emergency()) IRewardPool(rewardPool).emergencyWithdraw();
-        else IRewardPool(rewardPool).withdraw(balanceOfPool());
+        if (ILynexRewardPool(rewardPool).emergency()) ILynexRewardPool(rewardPool).emergencyWithdraw();
+        else ILynexRewardPool(rewardPool).withdraw(balanceOfPool());
     }
 
     function pause() public onlyManager {
@@ -269,6 +271,22 @@ contract StrategyLynexIchi is StratFeeManagerInitializable {
         deposit();
     }
 
+    function addReward(address _reward) external onlyManager {
+        require(_reward != want, "reward=want");
+        rewards.push(_reward);
+
+        if (!paused()) IERC20(_reward).approve(unirouter, type(uint).max);
+    }
+
+    function resetReward() external onlyManager {
+        for (uint i; i < rewards.length; ++i) {
+            IERC20(rewards[i]).approve(unirouter, 0);
+        }
+
+        delete rewards;
+        rewards.push(otoken);
+    }
+
     function _giveAllowances() internal {
         IERC20(want).approve(rewardPool, type(uint).max);
         IERC20(output).approve(unirouter, type(uint).max);
@@ -276,6 +294,10 @@ contract StrategyLynexIchi is StratFeeManagerInitializable {
         IERC20(paymentToken).approve(unirouter, type(uint).max);
         IERC20(paymentToken).approve(otoken, type(uint).max);
         IERC20(depositToken).safeApprove(ichiDepositHelper, type(uint).max);
+
+        for (uint i; i < rewards.length; ++i) {
+            IERC20(rewards[i]).approve(unirouter, type(uint).max);
+        }
     }
 
     function _removeAllowances() internal {
@@ -285,17 +307,9 @@ contract StrategyLynexIchi is StratFeeManagerInitializable {
         IERC20(paymentToken).approve(unirouter, 0);
         IERC20(paymentToken).approve(otoken, 0);
         IERC20(depositToken).safeApprove(ichiDepositHelper, 0);
-    }
 
-    function outputToPayment() external view returns (address[] memory) {
-        return AlgebraUtils.pathToRoute(outputToPaymentPath);
-    }
-
-    function paymentToNative() external view returns (address[] memory) {
-        return AlgebraUtils.pathToRoute(paymentToNativePath);
-    }
-
-    function nativeToDeposit() external view returns (address[] memory) {
-        return AlgebraUtils.pathToRoute(nativeToDepositPath);
+        for (uint i; i < rewards.length; ++i) {
+            IERC20(rewards[i]).approve(unirouter, 0);
+        }
     }
 }
