@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.12;
 
-import "../interfaces/IUniV3Quoter.sol";
+import "../../../contracts/BIFI/interfaces/common/IUniV3Quoter.sol";
 import "../../../contracts/BIFI/strategies/Curve/StrategyPrisma.sol";
 import "../../../contracts/BIFI/utils/UniswapV3Utils.sol";
 import "./BaseStrategyTest.t.sol";

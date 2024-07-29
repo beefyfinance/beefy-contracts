@@ -176,6 +176,11 @@ const config: DeploymentConfig = {
       chainId: 34443,
       accounts,
     },
+    real: {
+      url: process.env.REAL_RPC || "https://real.drpc.org",
+      chainId: 111188,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
@@ -243,8 +248,8 @@ const config: DeploymentConfig = {
         chainId: 43114,
         urls: {
           apiURL: "https://api.routescan.io/v2/network/mainnet/evm/43114/etherscan",
-          browserURL: "https://avalanche.routescan.io"
-        }
+          browserURL: "https://avalanche.routescan.io",
+        },
       },
       {
         network: "linea",
@@ -287,7 +292,7 @@ const config: DeploymentConfig = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 200
+            runs: 200,
           },
         },
       },
@@ -299,7 +304,7 @@ const config: DeploymentConfig = {
             runs: 200,
           },
         },
-      }
+      },
     ],
   },
   paths: {
