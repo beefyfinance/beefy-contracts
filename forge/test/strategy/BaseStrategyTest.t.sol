@@ -60,7 +60,14 @@ abstract contract BaseStrategyTest is Test {
                 assertEq(strategy.vault(), address(vault), "Vault not set");
             } else {
                 strategy = IStrategy(createStrategy(address(0)));
-                vault = IVault(strategy.vault());
+                if (strategy.vault() == address(0)) {
+                    BeefyVaultV7 vaultV7 = new BeefyVaultV7();
+                    vault = IVault(address(vaultV7));
+                    vaultV7.initialize(IStrategyV7(address(strategy)), "TestVault", "testVault", 0);
+                    strategy.setVault(address(vault));
+                } else {
+                    vault = IVault(strategy.vault());
+                }
             }
 
             address callTarget = vm.envOr("CALL_TARGET", address(0));

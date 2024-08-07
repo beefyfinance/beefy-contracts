@@ -11,6 +11,8 @@ abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
 
     function test_rewards() external {
         BaseAllToNativeFactoryStrat strategy = BaseAllToNativeFactoryStrat(payable(vault.strategy()));
+        vm.prank(strategy.keeper());
+        strategy.setHarvestOnDeposit(false);
 
         _depositIntoVault(user, wantAmount);
         skip(delay);

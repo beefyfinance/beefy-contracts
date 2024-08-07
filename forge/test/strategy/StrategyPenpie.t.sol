@@ -12,6 +12,8 @@ contract StrategyPenpieTest is BaseAllToNativeFactoryTest {
     function createStrategy(address _impl) internal override returns (address) {
         if (_impl == a0) strategy = new StrategyPenpie();
         else strategy = StrategyPenpie(payable(_impl));
+//        deal(0x0c880f6761F1af8d9Aa9C466984b80DAb9a8c9e8, address(strategy), 1000e18);
+//        deal(0x912CE59144191C1204E64559FE8253a0e49E6548, address(strategy), 1000e18);
         return address(strategy);
     }
 
