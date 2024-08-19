@@ -14,7 +14,7 @@ remappings = [
 # libraries = []
 # cache = true
 # force = true
-evm_version = 'shanghai'
+evm_version = 'cancun'
 # gas_reports = ['*']
 ## Sets the concrete solc version to use, this overrides the `auto_detect_solc` value
 solc_version = '0.8.23'
