@@ -15,17 +15,19 @@ contract StrategyConvexStakingTest is BaseStrategyTest {
         return address(strategy);
     }
 
-    address prisma = 0xdA47862a83dac0c112BA89c6abC2159b95afd71C;
-    address[9] rewardToNative = [prisma, 0x322135Dd9cBAE8Afa84727d9aE1434b5B3EBA44B, strategy.native()];
-    uint[3][4] rewardParams = [[1, 0, 3]];
+    address native = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-    address[9] rewardToNative2 = [0x4591DBfF62656E7859Afe5e45f6f47D3669fBB28, 0xc89570207c5BA1B0E3cD372172cCaEFB173DB270, strategy.native()];
-    uint[3][4] rewardParams2 = [[1, 0, 3]];
+    function beforeHarvest() internal override {
+        addRewards();
+    }
 
     function addRewards() internal {
-        strategy.addReward(rewardToNative, rewardParams, 1e18);
-        strategy.addReward(rewardToNative2, rewardParams2, 1e18);
+//        vm.startPrank(strategy.owner());
+//        strategy.addRewardV3(abi.encodePacked(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B, uint24(1), native), 1e18); // cvx
+//        strategy.addRewardV3(abi.encodePacked(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0, uint24(1), native), 1e16); // wsteth
+//        strategy.addRewardV3(abi.encodePacked(0x365AccFCa291e7D3914637ABf1F7635dB165Bb09, uint24(1), native), 1e17); // fxn
 //        strategy.setCurveSwapMinAmount(0);
+//        vm.stopPrank();
     }
 
     function test_addRewards() external {
@@ -84,12 +86,16 @@ contract StrategyConvexStakingTest is BaseStrategyTest {
         _depositIntoVault(user, wantAmount);
         skip(1 days);
 
+        addRewards();
+
         address[] memory rewards = new address[](strategy.rewardsLength() + strategy.rewardsV3Length());
         for(uint i; i < strategy.rewardsLength(); ++i) {
             rewards[i] = strategy.rewardToNative(i)[0];
         }
         for(uint i; i < strategy.rewardsV3Length(); ++i) {
-            rewards[strategy.rewardsLength() + i] = strategy.rewardV3ToNative(i)[0];
+            (address token, bytes memory path, uint min) = strategy.rewardsV3(i) ;
+            rewards[strategy.rewardsLength() + i] = token;
+            console.log("RewardV3", token, bytesToStr(path), min);
         }
 
         console.log("Claim rewards on Convex");
@@ -160,24 +166,5 @@ contract StrategyConvexStakingTest is BaseStrategyTest {
         assertEq(strategy.nativeToWantRoute()[1], route[1], "!route 1");
         assertEq(strategy.nativeToWantParams()[0][0], params[0][0], "!params");
         assertEq(strategy.nativeToWant(), 0, "amount != 0");
-    }
-
-    function test_rewardsV3() external {
-        address dai = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-        bytes memory uniV3RewardPath = toPath(dai, strategy.native(), 3000);
-        uint amount = 200 * 1e6;
-
-        console.log("Add reward");
-        vm.prank(strategy.owner());
-        strategy.addRewardV3(uniV3RewardPath, 10);
-        deal(dai, address(strategy), amount);
-        console.log(IERC20Extended(dai).symbol(), IERC20(dai).balanceOf(address(strategy)));
-
-        skip(1 days);
-        console.log("Harvest");
-        strategy.harvest();
-        uint bal = IERC20(dai).balanceOf(address(strategy));
-        console.log(IERC20Extended(dai).symbol(), bal);
-        assertEq(bal, 0, "Extra reward not swapped");
     }
 }

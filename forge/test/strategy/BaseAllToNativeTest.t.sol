@@ -11,6 +11,8 @@ abstract contract BaseAllToNativeTest is BaseStrategyTest {
 
     function test_rewards() external {
         BaseAllToNativeStrat strategy = BaseAllToNativeStrat(vault.strategy());
+        vm.prank(strategy.keeper());
+        strategy.setHarvestOnDeposit(false);
 
         _depositIntoVault(user, wantAmount);
         skip(delay);

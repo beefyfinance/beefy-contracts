@@ -89,6 +89,10 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
         }
     }
 
+    function claim() external virtual {
+        _claim();
+    }
+
     function harvest() external virtual {
         _harvest(tx.origin, false);
     }
