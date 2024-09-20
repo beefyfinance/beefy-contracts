@@ -3,9 +3,10 @@
 pragma solidity ^0.8.12;
 
 import "./BaseAllToNativeFactoryTest.t.sol";
-import "../../../contracts/BIFI/strategies/Curve/StrategyConvexStakingFraxtal.sol";
+import {StrategyConvexStakingFraxtal} from "../../../contracts/BIFI/strategies/Curve/StrategyConvexStakingFraxtal.sol";
 import {StrategyMimSwap} from "../../../contracts/BIFI/strategies/degens/StrategyMimSwap.sol";
 import {StrategyConvexCVX} from "../../../contracts/BIFI/strategies/Curve/StrategyConvexCVX.sol";
+import {StrategyCommonSingleStakingFactory} from "../../../contracts/BIFI/strategies/Common/StrategyCommonSingleStakingFactory.sol";
 
 contract CommonBaseTest is BaseAllToNativeFactoryTest {
 

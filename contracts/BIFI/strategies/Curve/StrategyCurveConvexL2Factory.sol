@@ -103,10 +103,21 @@ contract StrategyCurveConvexL2Factory is BaseAllToNativeFactoryStrat {
         require(token != rewardPool, "!rewardPool");
     }
 
-    function setConvexPid(uint _pid) external onlyOwner {
+    function setConvexPid(uint _pid) external onlyManager {
+        setConvexPid(_pid, false);
+    }
+
+    function setConvexPid(uint _pid, bool claim) public onlyManager {
+        if (pid == _pid) return;
+
         _withdraw(balanceOfPool());
+        if (claim) _claim();
+
         if (_pid != NO_PID) {
-            (,,rewardPool,,) = booster.poolInfo(_pid);
+            (address _lp, address _gauge, address _rewardPool,,) = booster.poolInfo(_pid);
+            require(want == _lp, "!lp");
+            require(gauge == _gauge, "!gauge");
+            rewardPool = _rewardPool;
         } else {
             rewardPool = address(0);
         }
