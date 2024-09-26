@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.12;
 
-import "./BaseAllToNativeTest.t.sol";
 import "../../../contracts/BIFI/strategies/Curve/StrategyFxConvex.sol";
+import {BaseAllToNativeFactoryTest} from "./BaseAllToNativeFactoryTest.t.sol";
 
-contract StrategyFxConvexTest is BaseAllToNativeTest {
+contract StrategyFxConvexTest is BaseAllToNativeFactoryTest {
 
     StrategyFxConvex strategy;
 

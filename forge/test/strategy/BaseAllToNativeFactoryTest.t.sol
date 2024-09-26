@@ -7,7 +7,9 @@ import "../../../contracts/BIFI/strategies/Common/BaseAllToNativeFactoryStrat.so
 
 abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
 
-    function claimRewardsToStrat() internal virtual {}
+    function claimRewardsToStrat() internal virtual {
+        BaseAllToNativeFactoryStrat(payable(vault.strategy())).claim();
+    }
 
     function test_rewards() external {
         BaseAllToNativeFactoryStrat strategy = BaseAllToNativeFactoryStrat(payable(vault.strategy()));

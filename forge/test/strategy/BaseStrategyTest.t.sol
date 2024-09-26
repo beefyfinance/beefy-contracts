@@ -90,7 +90,7 @@ abstract contract BaseStrategyTest is Test {
 
     function beforeHarvest() internal virtual {}
 
-    function test_depositAndWithdraw() external {
+    function test_depositAndWithdraw() public virtual {
         _depositIntoVault(user, wantAmount);
         assertEq(want.balanceOf(address(user)), 0, "User balance != 0 after deposit");
         assertGe(vault.balance(), wantAmount, "Vault balance < wantAmount");

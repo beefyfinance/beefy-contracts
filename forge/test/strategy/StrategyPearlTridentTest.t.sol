@@ -13,7 +13,14 @@ contract StrategyPearlTridentTest is BaseAllToNativeFactoryTest {
     function createStrategy(address _impl) internal override returns (address) {
         if (_impl == a0) strategy = new StrategyPearlTrident();
         else strategy = StrategyPearlTrident(payable(_impl));
+        wantAmount = 1_000 ether;
         return address(strategy);
+    }
+
+    function claimRewardsToStrat() internal override {
+        IRewardPool gauge = strategy.gauge();
+        vm.prank(address(strategy));
+        gauge.collectReward();
     }
 
     function test_harvestRatio() external {

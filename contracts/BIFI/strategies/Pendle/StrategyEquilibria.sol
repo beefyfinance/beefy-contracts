@@ -5,9 +5,13 @@ pragma solidity ^0.8.0;
 import "../Common/BaseAllToNativeFactoryStrat.sol";
 import "../../interfaces/common/IRewardPool.sol";
 import "./IEqb.sol";
+import "./IPendle.sol";
 
 contract StrategyEquilibria is BaseAllToNativeFactoryStrat {
     using SafeERC20 for IERC20;
+
+    // this `pid` means we using Pendle directly and not Equilibria rewardPool
+    uint constant public NO_PID = 42069;
 
     IEqbBooster public booster;
     IRewardPool public rewardPool;
@@ -20,48 +24,69 @@ contract StrategyEquilibria is BaseAllToNativeFactoryStrat {
     function initialize(
         IEqbBooster _booster,
         uint _pid,
+        bool _harvestOnDeposit,
         address[] calldata _rewards,
         Addresses calldata _addresses
     ) public initializer  {
-        (,,address _rewardPool) = _booster.poolInfo(_pid);
-        rewardPool = IRewardPool(_rewardPool);
         xEqb = IXEqb(_booster.xEqb());
         booster = _booster;
         pid = _pid;
         redeemEqb = true;
         redeemDelay = 1 days;
 
+        if (_pid != NO_PID) {
+            (,,address _rewardPool) = _booster.poolInfo(_pid);
+            rewardPool = IRewardPool(_rewardPool);
+        } else {
+            IPendleMarket(_addresses.want).redeemRewards(address(this));
+        }
+
         __BaseStrategy_init(_addresses, _rewards);
-        setHarvestOnDeposit(true);
+        if (_harvestOnDeposit) setHarvestOnDeposit(true);
+    }
+
+    function _isEquilibria() internal view returns (bool) {
+        return address(rewardPool) != address(0);
     }
 
     function stratName() public pure override returns (string memory) {
-        return "Equilibria_v1";
+        return "EquilibriaPendle";
     }
 
     function balanceOfPool() public view override returns (uint) {
-        return rewardPool.balanceOf(address(this));
+        if (_isEquilibria()) {
+            return rewardPool.balanceOf(address(this));
+        }
+        return 0;
     }
 
     function _deposit(uint amount) internal override {
-        IERC20(want).forceApprove(address(booster), amount);
-        booster.deposit(pid, amount, true);
+        if (_isEquilibria()) {
+            IERC20(want).forceApprove(address(booster), amount);
+            booster.deposit(pid, amount, true);
+        }
     }
 
     function _withdraw(uint amount) internal override {
-        rewardPool.withdraw(amount);
-        booster.withdraw(pid, amount);
+        if (_isEquilibria() && amount > 0) {
+            rewardPool.withdraw(amount);
+            booster.withdraw(pid, amount);
+        }
     }
 
     function _emergencyWithdraw() internal override {
-        if (rewardPool.balanceOf(address(this)) > 0) {
+        if (_isEquilibria() && rewardPool.balanceOf(address(this)) > 0) {
             rewardPool.emergencyWithdraw();
             booster.withdrawAll(pid);
         }
     }
 
     function _claim() internal override {
-        rewardPool.getReward(address(this));
+        if (_isEquilibria()) {
+            rewardPool.getReward(address(this));
+        } else {
+            IPendleMarket(want).redeemRewards(address(this));
+        }
 
         if (redeemEqb) {
             uint len = xEqb.getUserRedeemsLength(address(this));
@@ -80,7 +105,26 @@ contract StrategyEquilibria is BaseAllToNativeFactoryStrat {
     }
 
     function _verifyRewardToken(address token) internal view override {
-        require(token != rewardPool.stakingToken(), "!stakingToken");
+        if (_isEquilibria()) {
+            require(token != rewardPool.stakingToken(), "!stakingToken");
+        }
+    }
+
+    function setEqbPid(uint _pid, bool claim) public onlyManager {
+        if (pid == _pid) return;
+
+        _withdraw(balanceOfPool());
+        if (claim) _claim();
+
+        if (_pid != NO_PID) {
+            (address _market,,address _rewardPool) = booster.poolInfo(_pid);
+            require(want == _market, "!market");
+            rewardPool = IRewardPool(_rewardPool);
+        } else {
+            rewardPool = IRewardPool(address(0));
+        }
+        pid = _pid;
+        deposit();
     }
 
     function setRedeemEqb(bool doRedeem, uint delay) external onlyManager {
