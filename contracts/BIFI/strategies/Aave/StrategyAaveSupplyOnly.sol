@@ -8,7 +8,7 @@ import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../interfaces/aave/IDataProvider.sol";
 import "../../interfaces/aave/IAaveV3Incentives.sol";
 import "../../interfaces/aave/ILendingPool.sol";
-import "../../interfaces/common/ISolidlyRouter.sol";
+import "../../interfaces/beefy/IBeefySwapper.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 
 contract StrategyAaveSupplyOnly is StratFeeManagerInitializable {
@@ -16,18 +16,14 @@ contract StrategyAaveSupplyOnly is StratFeeManagerInitializable {
 
     // Tokens used
     address public native;
-    address public output;
     address public want;
     address public aToken;
+    address[] public rewards;
 
     // Third party contracts
     address public dataProvider;
     address public lendingPool;
     address public incentivesController;
-
-    // Routes
-    ISolidlyRouter.Route[] public outputToNativeRoute;
-    ISolidlyRouter.Route[] public outputToWantRoute;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -36,28 +32,22 @@ contract StrategyAaveSupplyOnly is StratFeeManagerInitializable {
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
+    event SetReward(address reward);
 
     function initialize(
+        address _want,
+        address _reward,
+        address _native,
         address _dataProvider,
         address _lendingPool,
         address _incentivesController,
-        CommonAddresses calldata _commonAddresses,
-        ISolidlyRouter.Route[] calldata _outputToNativeRoute,
-        ISolidlyRouter.Route[] calldata _outputToWantRoute
+        CommonAddresses calldata _commonAddresses
     ) external initializer {
         __StratFeeManager_init(_commonAddresses);
 
-        for (uint i; i < _outputToNativeRoute.length; ++i) {
-            outputToNativeRoute.push(_outputToNativeRoute[i]);
-        }
-
-        for (uint i; i < _outputToWantRoute.length; ++i) {
-            outputToWantRoute.push(_outputToWantRoute[i]);
-        }
-
-        native = _outputToNativeRoute[_outputToNativeRoute.length - 1].to;
-        want = _outputToWantRoute[_outputToWantRoute.length - 1].to;
-        output = _outputToNativeRoute[0].from;
+        want = _want;
+        rewards.push(_reward);
+        native = _native;
 
         dataProvider = _dataProvider;
         lendingPool = _lendingPool;
@@ -123,12 +113,12 @@ contract StrategyAaveSupplyOnly is StratFeeManagerInitializable {
     function _harvest(address callFeeRecipient) internal whenNotPaused {
         address[] memory assets = new address[](1);
         assets[0] = aToken;
-        IAaveV3Incentives(incentivesController).claimRewards(assets, type(uint).max, address(this), output);
-
-        uint256 outputBal = IERC20(output).balanceOf(address(this));
-        if (outputBal > 0) {
+        IAaveV3Incentives(incentivesController).claimAllRewards(assets, address(this));
+        _swapRewards();
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        if (nativeBal > 0) {
             chargeFees(callFeeRecipient);
-            swapRewards();
+            _swapToWant();
             uint256 wantHarvested = balanceOfWant();
             deposit();
 
@@ -140,12 +130,7 @@ contract StrategyAaveSupplyOnly is StratFeeManagerInitializable {
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
         IFeeConfig.FeeCategory memory fees = getFees();
-        uint256 toNative = IERC20(output).balanceOf(address(this)) * fees.total / DIVISOR;
-        ISolidlyRouter(unirouter).swapExactTokensForTokens(
-            toNative, 0, outputToNativeRoute, address(this), block.timestamp
-        );
-
-        uint256 stratFees = IERC20(native).balanceOf(address(this));
+        uint256 stratFees = IERC20(native).balanceOf(address(this)) * fees.total / DIVISOR;
 
         uint256 callFeeAmount = stratFees * fees.call / DIVISOR;
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
@@ -159,12 +144,25 @@ contract StrategyAaveSupplyOnly is StratFeeManagerInitializable {
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
-    // swap rewards to {want}
-    function swapRewards() internal {
-        uint256 outputBal = IERC20(output).balanceOf(address(this));
-        ISolidlyRouter(unirouter).swapExactTokensForTokens(
-            outputBal, 0, outputToWantRoute, address(this), block.timestamp
-        );
+    // swap rewards to native
+    function _swapRewards() internal {
+        for (uint i; i < rewards.length; ++i) {
+            address reward = rewards[i];
+            if (reward != native) {
+                uint256 rewardBal = IERC20(reward).balanceOf(address(this));
+                if (rewardBal > 0) {
+                    IBeefySwapper(unirouter).swap(reward, native, rewardBal);
+                }
+            }
+        }
+    }
+
+    // swap native to {want}
+    function _swapToWant() internal {
+        if (native != want) {
+            uint256 nativeBal = IERC20(native).balanceOf(address(this));
+            IBeefySwapper(unirouter).swap(native, want, nativeBal);
+        }
     }
 
     // return supply and borrow balance
@@ -202,22 +200,13 @@ contract StrategyAaveSupplyOnly is StratFeeManagerInitializable {
     }
 
     // returns rewards unharvested
-    function rewardsAvailable() public view returns (uint256) {
-        address[] memory assets = new address[](1);
-        assets[0] = aToken;
-        return IAaveV3Incentives(incentivesController).getUserRewards(assets, address(this), output);
+    function rewardsAvailable() public pure returns (uint256) {
+        return 0;
     }
 
     // native reward amount for calling harvest
-    function callReward() public view returns (uint256) {
-        IFeeConfig.FeeCategory memory fees = getFees();
-        uint256 outputBal = rewardsAvailable();
-        uint256 nativeOut;
-        if (outputBal > 0) {
-            nativeOut = ISolidlyRouter(unirouter).getAmountsOut(outputBal, outputToNativeRoute)[outputToNativeRoute.length];
-        }
-
-        return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
+    function callReward() public pure returns (uint256) {
+        return 0;
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
@@ -227,6 +216,20 @@ contract StrategyAaveSupplyOnly is StratFeeManagerInitializable {
         } else {
             setWithdrawalFee(10);
         }
+    }
+
+    function setReward(address _reward) external onlyManager {
+        require(_reward != want, "reward != want");
+        require(_reward != aToken, "reward != aToken");
+        rewards.push(_reward);
+        IERC20(_reward).safeApprove(unirouter, type(uint256).max);
+    }
+
+    function resetReward() external onlyManager {
+        for (uint i; i < rewards.length; ++i) {
+            IERC20(rewards[i]).safeApprove(unirouter, 0);
+        }
+        delete rewards;
     }
 
     // called as part of strat migration. Sends all the available funds back to the vault.
@@ -261,11 +264,20 @@ contract StrategyAaveSupplyOnly is StratFeeManagerInitializable {
 
     function _giveAllowances() internal {
         IERC20(want).safeApprove(lendingPool, type(uint).max);
-        IERC20(output).safeApprove(unirouter, type(uint).max);
+        IERC20(native).safeApprove(unirouter, type(uint).max);
+
+        for (uint i; i < rewards.length; ++i) {
+            IERC20(rewards[i]).safeApprove(unirouter, 0);
+            IERC20(rewards[i]).safeApprove(unirouter, type(uint).max);
+        }
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(lendingPool, 0);
-        IERC20(output).safeApprove(unirouter, 0);
+        IERC20(native).safeApprove(unirouter, 0);
+
+        for (uint i; i < rewards.length; ++i) {
+            IERC20(rewards[i]).safeApprove(unirouter, 0);
+        }
     }
 }
