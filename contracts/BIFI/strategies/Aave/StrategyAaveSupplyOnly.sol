@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../../interfaces/aave/IDataProvider.sol";
 import "../../interfaces/aave/IAaveV3Incentives.sol";
 import "../../interfaces/aave/ILendingPool.sol";
 import "../../interfaces/beefy/IBeefySwapper.sol";
@@ -21,7 +20,6 @@ contract StrategyAaveSupplyOnly is StratFeeManagerInitializable {
     address[] public rewards;
 
     // Third party contracts
-    address public dataProvider;
     address public lendingPool;
     address public incentivesController;
 
@@ -38,7 +36,7 @@ contract StrategyAaveSupplyOnly is StratFeeManagerInitializable {
         address _want,
         address _reward,
         address _native,
-        address _dataProvider,
+        address _aToken,
         address _lendingPool,
         address _incentivesController,
         CommonAddresses calldata _commonAddresses
@@ -49,11 +47,10 @@ contract StrategyAaveSupplyOnly is StratFeeManagerInitializable {
         rewards.push(_reward);
         native = _native;
 
-        dataProvider = _dataProvider;
         lendingPool = _lendingPool;
         incentivesController = _incentivesController;
 
-        (aToken,,) = IDataProvider(dataProvider).getReserveTokensAddresses(want);
+        aToken = _aToken;
         
         _giveAllowances();
     }
@@ -165,24 +162,6 @@ contract StrategyAaveSupplyOnly is StratFeeManagerInitializable {
         }
     }
 
-    // return supply and borrow balance
-    function userReserves() public view returns (uint256, uint256) {
-        (uint256 supplyBal,,uint256 borrowBal,,,,,,) = IDataProvider(dataProvider).getUserReserveData(want, address(this));
-        return (supplyBal, borrowBal);
-    }
-
-    // returns the user account data across all the reserves
-    function userAccountData() public view returns (
-        uint256 totalCollateralETH,
-        uint256 totalDebtETH,
-        uint256 availableBorrowsETH,
-        uint256 currentLiquidationThreshold,
-        uint256 ltv,
-        uint256 healthFactor
-    ) {
-        return ILendingPool(lendingPool).getUserAccountData(address(this));
-    }
-
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
         return balanceOfWant() + balanceOfPool();
@@ -195,8 +174,7 @@ contract StrategyAaveSupplyOnly is StratFeeManagerInitializable {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 supplyBal, uint256 borrowBal) = userReserves();
-        return supplyBal - borrowBal;
+        return IERC20(aToken).balanceOf(address(this));
     }
 
     // returns rewards unharvested
