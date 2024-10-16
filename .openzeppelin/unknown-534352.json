@@ -1,0 +1,179 @@
+{
+  "manifestVersion": "3.2",
+  "admin": {
+    "address": "0x2840463Ea288c26B66E24f92E8C704e1aB6b095c",
+    "txHash": "0xb0a489fafa54d81267e43450099a413a7e8e93e86b676ad597748a2c56467358"
+  },
+  "proxies": [
+    {
+      "address": "0xAb35d11199216c7F7368080Cf41beD8f3AbBc4E4",
+      "txHash": "0xd4a271af0d96fa7ff0b4a0c6db9ac08c4cfa4a2643b1b4e1bbff9fd06051bf0b",
+      "kind": "transparent"
+    }
+  ],
+  "impls": {
+    "61b7360ae26e319ac366274428b0dc40fe4d404b949a69ecb45856c07ee50cd7": {
+      "address": "0x0D17eE2ed4e67b626B43C3695586E5aE6a039949",
+      "txHash": "0xeb6ed67dae9d691e36228c66405ffb40442160d1d1cb3466f4de00a0932d374c",
+      "layout": {
+        "solcVersion": "0.8.23",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:63",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:68"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:40"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "keeper",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_address",
+            "contract": "BeefyFeeConfigurator",
+            "src": "contracts/BIFI/infra/BeefyFeeConfigurator.sol:18"
+          },
+          {
+            "label": "totalLimit",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_uint256",
+            "contract": "BeefyFeeConfigurator",
+            "src": "contracts/BIFI/infra/BeefyFeeConfigurator.sol:19"
+          },
+          {
+            "label": "stratFeeId",
+            "offset": 0,
+            "slot": "103",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "BeefyFeeConfigurator",
+            "src": "contracts/BIFI/infra/BeefyFeeConfigurator.sol:22"
+          },
+          {
+            "label": "feeCategory",
+            "offset": 0,
+            "slot": "104",
+            "type": "t_mapping(t_uint256,t_struct(FeeCategory)700_storage)",
+            "contract": "BeefyFeeConfigurator",
+            "src": "contracts/BIFI/infra/BeefyFeeConfigurator.sol:23"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(FeeCategory)700_storage)": {
+            "label": "mapping(uint256 => struct BeefyFeeConfigurator.FeeCategory)",
+            "numberOfBytes": "32"
+          },
+          "t_string_storage": {
+            "label": "string",
+            "numberOfBytes": "32"
+          },
+          "t_struct(FeeCategory)700_storage": {
+            "label": "struct BeefyFeeConfigurator.FeeCategory",
+            "members": [
+              {
+                "label": "total",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "beefy",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "call",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "strategist",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "label",
+                "type": "t_string_storage",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "active",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "5"
+              }
+            ],
+            "numberOfBytes": "192"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {}
+      }
+    }
+  }
+}

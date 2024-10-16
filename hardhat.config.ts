@@ -181,6 +181,11 @@ const config: DeploymentConfig = {
       chainId: 111188,
       accounts,
     },
+    scroll: {
+      url: process.env.SCROLL_RPC || "https://scroll-mainnet.public.blastapi.io",
+      chainId: 534352,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
@@ -201,8 +206,17 @@ const config: DeploymentConfig = {
       mantle: "api key is not required by the Kava explorer, but can't be empty",
       fraxtal: process.env.FRAXTAL_API_KEY!,
       mode: "api key is not required by the Kava explorer, but can't be empty",
+      scroll: "BS5GSFGP2V8H5Y5BSXZN7KQ88MJA7RWBSN",
     },
     customChains: [
+      {
+        network: "scroll",
+        chainId: 534352,
+        urls: {
+          apiURL: "https://api.scrollscan.com/api",
+          browserURL: "https://scrollscan.com/",
+        },
+      },
       {
         network: "metis",
         chainId: 1088,

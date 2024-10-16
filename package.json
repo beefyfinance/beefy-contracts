@@ -62,6 +62,7 @@
     "forgeTest:aura": "forge test --force --fork-url https://rpc.ankr.com/eth --match-contract StrategyAuraGyroTest",
     "deploy:vaultFactory": "hardhat run scripts/deploy-vault-proxyFactory.js --network",
     "fork:bsc": "hardhat node --fork bsc",
+    "verify": "hardhat verify",
     "deploy:tutorial": "hardhat run tutorials/deploy-pancakeswap-vault.js --network localhost"
   },
   "devDependencies": {
