@@ -23,16 +23,18 @@ async function main() {
     return;
   }
 
+  const proposer = "0xc2cCdd61187b81cC56EcA985bbaf9da418e3d87f";
+  const timelockProposers = [proposer];
+  const timelockExecutors = [proposer, config.keeper];
+
   await hardhat.run("compile");
 
   await hardhat.run("verify:verify", {
-    address: "0xd93A86BbF40454A7BCD339614fB46C67bE31B908",
+    address: "0x09D19184F46A32213DF06b981122e06882B61309",
     constructorArguments: [
-      config.want,
-      "0xc8DfDD41B706A6897Ff17BF99e2e94Bb661da92c",
-      config.mooName,
-      config.mooSymbol,
-      config.delay,
+      21600,
+      timelockProposers,
+      timelockExecutors
     ],
   })
  

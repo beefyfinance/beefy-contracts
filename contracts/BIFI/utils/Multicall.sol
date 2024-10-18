@@ -1,26 +1,32 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0;
 pragma experimental ABIEncoderV2;
-/// This is https://github.com/makerdao/multicall/blob/master/src/Multicall.sol
-/// but deploying that is a bit complicated so duplicating in our repo for now
 
 /// @title Multicall - Aggregate results from multiple read-only function calls
 /// @author Michael Elliot <mike@makerdao.com>
 /// @author Joshua Levine <joshua@makerdao.com>
 /// @author Nick Johnson <arachnid@notdot.net>
+/// @author Bogdan Dumitru <bogdan@bowd.io>
 
 contract Multicall {
     struct Call {
         address target;
         bytes callData;
     }
-    function aggregate(Call[] calldata calls) public returns (uint256 blockNumber, bytes[] memory returnData) {
+    struct Return {
+      bool success;
+      bytes data;
+
+    }
+    function aggregate(Call[] memory calls, bool strict) public returns (uint256 blockNumber, Return[] memory returnData) {
         blockNumber = block.number;
-        returnData = new bytes[](calls.length);
+        returnData = new Return[](calls.length);
         for(uint256 i = 0; i < calls.length; i++) {
             (bool success, bytes memory ret) = calls[i].target.call(calls[i].callData);
-            require(success);
-            returnData[i] = ret;
+            if (strict) {
+              require(success);
+            }
+            returnData[i] = Return(success, ret);
         }
     }
     // Helper functions
@@ -37,7 +43,7 @@ contract Multicall {
         timestamp = block.timestamp;
     }
     function getCurrentBlockDifficulty() public view returns (uint256 difficulty) {
-        difficulty = block.prevrandao;
+        difficulty = block.difficulty;
     }
     function getCurrentBlockGasLimit() public view returns (uint256 gaslimit) {
         gaslimit = block.gaslimit;
