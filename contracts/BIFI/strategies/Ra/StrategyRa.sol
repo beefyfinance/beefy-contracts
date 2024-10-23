@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "../../interfaces/beefy/IBeefySwapper.sol";
 import "../../interfaces/common/ISolidlyRouter.sol";
 import "../../interfaces/common/ISolidlyPair.sol";
 import "../../interfaces/common/ISolidlyGauge.sol";
@@ -23,24 +24,13 @@ contract StrategyRa is StratFeeManagerInitializable {
 
     // Third party contracts
     address public gauge;
-    address public uniV3Router;
+    address public solidlyRouter;
 
     bool public stable;
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
     
-    ISolidlyRouter.Routes[] public outputToNativeRoute;
-    ISolidlyRouter.Routes[] public nativeToLp0Route;
-    ISolidlyRouter.Routes[] public nativeToLp1Route;
     address[] public rewards;
-
-    struct Reward {
-         ISolidlyRouter.Routes[] rewardToNativeRoute;
-         bytes routeToNative; // If swapping via UniV3;
-         bool useUniV3;
-    }
-
-    mapping (address => Reward) public extraRewards;
 
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
@@ -50,44 +40,22 @@ contract StrategyRa is StratFeeManagerInitializable {
     function initialize(
         address _want,
         address _gauge,
-        CommonAddresses calldata _commonAddresses,
-        ISolidlyRouter.Routes[] calldata _outputToNativeRoute,
-        ISolidlyRouter.Routes[] calldata _nativeToLp0Route,
-        ISolidlyRouter.Routes[] calldata _nativeToLp1Route
+        CommonAddresses calldata _commonAddresses
     )  public initializer  {
          __StratFeeManager_init(_commonAddresses);
         want = _want;
         gauge = _gauge;
-        uniV3Router = address(0xAAAE99091Fbb28D400029052821653C1C752483B);
 
         stable = ISolidlyPair(want).stable();
 
-        for (uint i; i < _outputToNativeRoute.length; ++i) {
-            outputToNativeRoute.push(_outputToNativeRoute[i]);
-        }
-
-        for (uint i; i < _nativeToLp0Route.length; ++i) {
-            nativeToLp0Route.push(_nativeToLp0Route[i]);
-        }
-
-        for (uint i; i < _nativeToLp1Route.length; ++i) {
-            nativeToLp1Route.push(_nativeToLp1Route[i]);
-        }
-
-        output = outputToNativeRoute[0].from;
-        native = outputToNativeRoute[outputToNativeRoute.length -1].to;
-        lpToken0 = nativeToLp0Route[nativeToLp0Route.length - 1].to;
-        lpToken1 = nativeToLp1Route[nativeToLp1Route.length - 1].to;
+        output = address(0xAAAE8378809bb8815c08D3C59Eb0c7D1529aD769);
+        native = address(0x5300000000000000000000000000000000000004);
+        lpToken0 = ISolidlyPair(want).token0();
+        lpToken1 = ISolidlyPair(want).token1();
+        solidlyRouter = address(0xAAA45c8F5ef92a000a121d102F4e89278a711Faa);
     
         rewards.push(output);
         _giveAllowances();
-
-        address delegationRegistry = 0xF5cA906f05cafa944c27c6881bed3DFd3a785b6A;
-        address initialDelegate = 0x944819832B287bFb85BB94a163480516a33E819d;
-
-        delegationRegistry.call(abi.encodeWithSignature("setDelegationForSelf(address)", initialDelegate));
-        delegationRegistry.call(abi.encodeWithSignature("disableSelfManagingDelegations()"));
-        
     }
 
     function _rewardExists(address _reward) private view returns (bool exists) {
@@ -183,17 +151,13 @@ contract StrategyRa is StratFeeManagerInitializable {
     
     function swapRewards() internal {
         uint256 toNative = IERC20(output).balanceOf(address(this));
-        if (toNative > 0) ISolidlyRouter(unirouter).swapExactTokensForTokens(toNative, 0, outputToNativeRoute, address(this), block.timestamp);
+        if (toNative > 0) IBeefySwapper(unirouter).swap(output, native, toNative);
 
         for (uint i; i < rewards.length; ++i) {
             if (rewards[i] != native) {
                 uint256 bal = IERC20(rewards[i]).balanceOf(address(this));
-                    if (bal > 0) {
-                        if (!extraRewards[rewards[i]].useUniV3) {
-                        ISolidlyRouter(unirouter).swapExactTokensForTokens(bal, 0, extraRewards[rewards[i]].rewardToNativeRoute, address(this), block.timestamp);
-                    } else {
-                        UniV3Actions.swapV3WithDeadline(uniV3Router, extraRewards[rewards[i]].routeToNative, bal);
-                    }
+                if (bal > 0) {
+                    IBeefySwapper(unirouter).swap(rewards[i], native, bal);
                 }
             }
         }
@@ -209,12 +173,12 @@ contract StrategyRa is StratFeeManagerInitializable {
             uint256 lp0Decimals = 10**IERC20Extended(lpToken0).decimals();
             uint256 lp1Decimals = 10**IERC20Extended(lpToken1).decimals();
             uint256 out0 = lpToken0 != native
-                ? ISolidlyRouter(unirouter).getAmountsOut(lp0Amt, nativeToLp0Route)[nativeToLp0Route.length] * 1e18 / lp0Decimals
+                ? IBeefySwapper(unirouter).getAmountOut(native, lpToken0, lp0Amt) * 1e18 / lp0Decimals
                 : lp0Amt;
             uint256 out1 = lpToken1 != native 
-                ? ISolidlyRouter(unirouter).getAmountsOut(lp1Amt, nativeToLp1Route)[nativeToLp1Route.length] * 1e18 / lp1Decimals
+                ? IBeefySwapper(unirouter).getAmountOut(native, lpToken1, lp1Amt) * 1e18 / lp1Decimals
                 : lp1Amt;
-            (uint256 amountA, uint256 amountB,) = ISolidlyRouter(unirouter).quoteAddLiquidity(lpToken0, lpToken1, stable, out0, out1);
+            (uint256 amountA, uint256 amountB,) = ISolidlyRouter(solidlyRouter).quoteAddLiquidity(lpToken0, lpToken1, stable, out0, out1);
             amountA = amountA * 1e18 / lp0Decimals;
             amountB = amountB * 1e18 / lp1Decimals;
             uint256 ratio = out0 * 1e18 / out1 * amountB / amountA;
@@ -223,16 +187,16 @@ contract StrategyRa is StratFeeManagerInitializable {
         }
 
         if (lpToken0 != native) {
-            ISolidlyRouter(unirouter).swapExactTokensForTokens(lp0Amt, 0, nativeToLp0Route, address(this), block.timestamp);
+            IBeefySwapper(unirouter).swap(native, lpToken0, lp0Amt);
         }
 
         if (lpToken1 != native) {
-            ISolidlyRouter(unirouter).swapExactTokensForTokens(lp1Amt, 0, nativeToLp1Route, address(this), block.timestamp);
+            IBeefySwapper(unirouter).swap(native, lpToken1, lp1Amt);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
         uint256 lp1Bal = IERC20(lpToken1).balanceOf(address(this));
-        ISolidlyRouter(unirouter).addLiquidity(lpToken0, lpToken1, stable, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp);
+        ISolidlyRouter(solidlyRouter).addLiquidity(lpToken0, lpToken1, stable, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp);
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -261,44 +225,26 @@ contract StrategyRa is StratFeeManagerInitializable {
         uint256 outputBal = rewardsAvailable();
         uint256 nativeOut;
         if (outputBal > 0) {
-            (nativeOut,) = ISolidlyRouter(unirouter).getAmountOut(outputBal, output, native);
+            nativeOut = IBeefySwapper(unirouter).getAmountOut(output, native, outputBal);
             }
 
         return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
     }
 
     function deleteRewards() external onlyManager {
-        for (uint i; i < rewards.length; ++i) {
-            if (rewards[i] != output) {
-                delete extraRewards[rewards[i]];
-            }
-        }
         delete rewards;
         rewards.push(output);
     }
 
-    function addRewardToken(address _token, ISolidlyRouter.Routes[] calldata _route,  bytes calldata _routeToNative) external onlyOwner {
+    function addRewardToken(address _token) external onlyOwner {
         require (!_rewardExists(_token), "Reward Exists");
         require (_token != address(want), "Reward Token");
         require (_token != address(output), "Output");
 
-        if (_route[0].from != address(0)) {
-            IERC20(_token).safeApprove(unirouter, 0);
-            IERC20(_token).safeApprove(unirouter, type(uint).max);
-        } else {
-            IERC20(_token).safeApprove(uniV3Router, 0);
-            IERC20(_token).safeApprove(uniV3Router, type(uint).max);
-        }
+        IERC20(_token).safeApprove(unirouter, 0);
+        IERC20(_token).safeApprove(unirouter, type(uint).max);
 
         rewards.push(_token);
-            
-
-        for (uint i; i < _route.length; ++i) {
-            extraRewards[_token].rewardToNativeRoute.push(_route[i]);
-        }
-
-        extraRewards[_token].routeToNative = _routeToNative;
-        extraRewards[_token].useUniV3 = _route[0].from == address(0) ? true : false;
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
@@ -344,60 +290,27 @@ contract StrategyRa is StratFeeManagerInitializable {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(gauge, type(uint).max);
         for (uint i; i < rewards.length; ++i) {
-            extraRewards[rewards[i]].useUniV3 
-                ? IERC20(rewards[i]).safeApprove(uniV3Router, type(uint).max)
-                : IERC20(rewards[i]).safeApprove(unirouter, type(uint).max);
+            IERC20(rewards[i]).safeApprove(unirouter, type(uint).max);
         }
 
         IERC20(native).safeApprove(unirouter, 0);
         IERC20(native).safeApprove(unirouter, type(uint).max);
 
-        IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
+        IERC20(lpToken0).safeApprove(solidlyRouter, 0);
+        IERC20(lpToken0).safeApprove(solidlyRouter, type(uint).max);
 
-        IERC20(lpToken1).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, type(uint).max);
+        IERC20(lpToken1).safeApprove(solidlyRouter, 0);
+        IERC20(lpToken1).safeApprove(solidlyRouter, type(uint).max);
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(gauge, 0);
          for (uint i; i < rewards.length; ++i) {
-            extraRewards[rewards[i]].useUniV3 
-                ? IERC20(rewards[i]).safeApprove(uniV3Router, 0)
-                : IERC20(rewards[i]).safeApprove(unirouter, 0);
+            IERC20(rewards[i]).safeApprove(unirouter, 0);
         }
 
         IERC20(native).safeApprove(unirouter, 0);
-        IERC20(lpToken0).safeApprove(unirouter, 0);
-        IERC20(lpToken1).safeApprove(unirouter, 0);
-    }
-
-    function _solidlyToRoute(ISolidlyRouter.Routes[] memory _route) internal pure returns (address[] memory) {
-        address[] memory route = new address[](_route.length + 1);
-        route[0] = _route[0].from;
-        for (uint i; i < _route.length; ++i) {
-            route[i + 1] = _route[i].to;
-        }
-        return route;
-    }
-
-    function outputToNative() external view returns (address[] memory) {
-        ISolidlyRouter.Routes[] memory _route = outputToNativeRoute;
-        return _solidlyToRoute(_route);
-    }
-
-    function nativeToLp0() external view returns (address[] memory) {
-        ISolidlyRouter.Routes[] memory _route = nativeToLp0Route;
-        return _solidlyToRoute(_route);
-    }
-
-    function nativeToLp1() external view returns (address[] memory) {
-        ISolidlyRouter.Routes[] memory _route = nativeToLp1Route;
-        return _solidlyToRoute(_route);
-    }
-
-    function rewardRoute(address _token) external view returns (address[] memory) {
-        ISolidlyRouter.Routes[] memory _route = extraRewards[_token].rewardToNativeRoute;
-        return _solidlyToRoute(_route);
+        IERC20(lpToken0).safeApprove(solidlyRouter, 0);
+        IERC20(lpToken1).safeApprove(solidlyRouter, 0);
     }
 }

@@ -305,16 +305,16 @@ abstract contract BaseAllToNativeFactoryStrat is OwnableUpgradeable, PausableUpg
     }
 
     // pauses deposits and withdraws all funds from third party systems.
-    function panic() public onlyManager {
+    function panic() public virtual onlyManager {
         pause();
         _emergencyWithdraw();
     }
 
-    function pause() public onlyManager {
+    function pause() public virtual onlyManager {
         _pause();
     }
 
-    function unpause() external onlyManager {
+    function unpause() external virtual onlyManager {
         _unpause();
         deposit();
     }

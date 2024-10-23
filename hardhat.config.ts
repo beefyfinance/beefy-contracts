@@ -182,7 +182,7 @@ const config: DeploymentConfig = {
       accounts,
     },
     scroll: {
-      url: process.env.SCROLL_RPC || "https://scroll-mainnet.public.blastapi.io",
+      url: process.env.SCROLL_RPC || "https://rpc.scroll.io",
       chainId: 534352,
       accounts,
     },
@@ -206,7 +206,7 @@ const config: DeploymentConfig = {
       mantle: "api key is not required by the Kava explorer, but can't be empty",
       fraxtal: process.env.FRAXTAL_API_KEY!,
       mode: "api key is not required by the Kava explorer, but can't be empty",
-      scroll: "BS5GSFGP2V8H5Y5BSXZN7KQ88MJA7RWBSN",
+      scroll: process.env.SCROLL_API_KEY!,
     },
     customChains: [
       {

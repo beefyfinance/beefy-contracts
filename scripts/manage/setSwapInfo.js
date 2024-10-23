@@ -8,42 +8,49 @@ import { addressBook } from "blockchain-addressbook";
 const {
   platforms: { beefyfinance },
   tokens: {
-    WMATIC: {address: WMATIC},
     USDC: { address: USDC},
     ETH: { address: ETH},
+    NURI: { address: NURI},
+    loreUSD: {address: loreUSD },
+    SCR: { address: SCR },
+    wstETH: { address: wstETH },
+    WBTC: { address: WBTC },
+    USDT: {address: USDT},
+    TKN: { address: TKN }
   },
-} = addressBook.polygon;
+} = addressBook.scroll;
 
 const ethers = hardhat.ethers;
 
 const nullAddress = "0x0000000000000000000000000000000000000000";
 const uint256Max = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 const int256Max = "57896044618658097711785492504343953926634992332820282019728792003956564819967";
-const beefyfinanceSwapper = "0x3Ca6e5cf70bCf11cB8C73BBa13C55DFb91334B11";
+const beefyfinanceSwapper =  beefyfinance.beefySwapper;
 
-const uniswapV3Router = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
+const uniswapV3Router = "0xAAAE99091Fbb28D400029052821653C1C752483B";
 const uniswapV2Router = "0x10ED43C718714eb63d5aA57B78B54704E256024E";
-const velodromeRouter = "0x0000000000000000000000000000000000000000";
+const velodromeRouter = "0xA663c287b2f374878C07B7ac55C1BC927669425a";
 const balancerVault = "0xBA12222222228d8Ba445958a75a0704d566BF2C8";
 
+
 const config = {
-  type: "uniswapV3",
+  type: "solidly",
   uniswapV3: {
-    path: [[USDC, ETH, 500]],
+    path: [[USDT, ETH, 3000]],
     router: uniswapV3Router,
   },
   uniswapV2: {
-    path: [USDC, WMATIC],
+  //  path: [USDC, WMATIC],
     router: uniswapV2Router,
   },
   balancer: {
     path: [
-      [USDC, WMATIC, "0x03cd191f589d12b0582a99808cf19851e468e6b500010000000000000000000a"]
+    //  [USDC, WMATIC, "0x03cd191f589d12b0582a99808cf19851e468e6b500010000000000000000000a"]
     ],
     router: balancerVault,
   },
   solidly: {
-    path: [[USDC, WMATIC, false, nullAddress]],
+    path: [[ETH, TKN, false]],
     router: velodromeRouter,
   },
 };
@@ -72,12 +79,14 @@ async function uniswapV3() {
     ["address"],
     [config.uniswapV3.path[0][0]]
   );
+
   for (let i = 0; i < config.uniswapV3.path.length; i++) {
       path = ethers.utils.solidityPack(
         ["bytes", "uint24", "address"],
         [path, config.uniswapV3.path[i][2], config.uniswapV3.path[i][1]]
       );
   }
+
   const exactInputParams = [
     path,
     beefyfinanceSwapper,
@@ -85,6 +94,7 @@ async function uniswapV3() {
     0,
     0
   ];
+
   const txData = await router.populateTransaction.exactInput(exactInputParams);
   const amountIndex = 132;
   const minIndex = 164;
@@ -194,15 +204,16 @@ async function solidly() {
 
   console.log(txData.data);
 
-  /*await setSwapInfo(
+  await setSwapInfo(
     config.solidly.path[0][0],
     config.solidly.path[config.solidly.path.length - 1][1],
     swapInfo
-  );*/
+  );
 };
 
 async function setSwapInfo(fromToken, toToken, swapInfo) {
-  const swapper = await ethers.getContractAt(swapperAbi.abi, beefyfinanceSwapper);
+  const [_, keeper, rewarder] = await ethers.getSigners();
+  const swapper = await ethers.getContractAt(swapperAbi.abi, beefyfinanceSwapper, keeper);
 
   let tx = await swapper.setSwapInfo(fromToken, toToken, swapInfo);
   tx = await tx.wait();

@@ -1,10 +1,17 @@
 const { getContractAddress } = require("@openzeppelin/hardhat-upgrades/dist/utils");
 const hardhat = require("hardhat");
 const { startingEtherPerAccount } = require("../../utils/configInit");
+import { addressBook } from "blockchain-addressbook";
+const {
+    platforms: { beefyfinance },
+    tokens: {
+      ETH: { address: ETH },
+    },
+  } = addressBook.scroll;
 
 const ethers = hardhat.ethers;
 
-const contractName = "StrategyAuraGyroMainnet";
+const contractName = "StrategySolidlyRewardPool";
 const factoryName = "BeefyVaultV7Factory";
 
 const config = {};
@@ -14,6 +21,7 @@ async function main() {
 
   const Contract = await ethers.getContractFactory(contractName);
   const Factory = await ethers.getContractFactory(factoryName);
+
 
   const params = [
     config.anycallRouter, 
@@ -25,6 +33,7 @@ async function main() {
   await contract.deployed();
   
   console.log(`${contractName} deployed to:`, contract.address);
+
 
  // const factory = await Factory.deploy(contract.address);
  // await factory.deployed();

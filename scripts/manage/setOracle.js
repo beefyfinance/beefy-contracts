@@ -6,45 +6,49 @@ import VelodromeFactoryAbi from "../../data/abi/VelodromeFactory.json";
 import { addressBook } from "blockchain-addressbook";
 
 const {
-  platforms: { beefyfinance },
+  platforms: { beefyfinance, nuri },
   tokens: {
-    WMATIC: {address: WMATIC},
     USDC: { address: USDC},
     ETH: { address: ETH},
+    NURI: { address: NURI },
+    loreUSD: { address: loreUSD },
+    SCR: { address: SCR },
+    wstETH: { address: wstETH },
+    TKN: {address: TKN}
   },
-} = addressBook.polygon;
+} = addressBook.scroll;
 
 const ethers = hardhat.ethers;
 
 const nullAddress = "0x0000000000000000000000000000000000000000";
-const uniswapV3Factory = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
+const uniswapV3Factory = "0xAAA32926fcE6bE95ea2c51cB4Fcb60836D320C42";
 const uniswapV2Factory = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f";
-const velodromeFactory = "0xF1046053aa5682b4F9a81b5481394DA16BE5FF5a";
+const velodromeFactory = "0x92aF10c685D2CF4CD845388C5f45aC5dc97C5024";
 
-const beefyfinanceOracle = "0x70655508b04cCB34781e557Ad4605D3fe0d98D79";
-const chainlinkOracle = "0xf89703fc237DFAaA28b3d1D4835c7540cd2D0885";
-const uniswapV3Oracle = "0x0000000000000000000000000000000000000000";
+const beefyfinanceOracle = beefyfinance.beefyOracle;
+const chainlinkOracle = "0x3DC71AAb800C5Acfe521d5bD86c06b2EfF477062";
+const uniswapV3Oracle = "0xc26314091EB7a9c75E5536f7f54A8F63e829547D";
 const uniswapV2Oracle = "0x0000000000000000000000000000000000000000";
-const solidlyOracle = "0x0000000000000000000000000000000000000000";
+const solidlyOracle = "0xE6e5732245b3e886DD8897a93D21D29bb652d683";
 
 const config = {
-  type: "chainlink",
+  type: "solidly",
   chainlink: {
-    token: ETH,
-    feed: "0xF9680D99D6C9589e2a93a78A04A279e509205945",
+    token: wstETH,
+    feed: "0xe428fbdbd61CC1be6C273dC0E27a1F43124a86F3",
   },
   uniswapV3: {
-    path: [[USDC, WMATIC, 500]],
-    twaps: [7200],
+    path: [[ETH, SCR, 3000]],
+    twaps: [300],
     factory: uniswapV3Factory,
   },
   uniswapV2: {
-    path: [USDC, WMATIC],
+  //  path: [USDC, WMATIC],
     twaps: [7200],
     factory: uniswapV2Factory,
   },
   solidly: {
-    path: [[USDC, WMATIC, false]],
+    path: [[ETH, TKN, false]],
     twaps: [4],
     factory: velodromeFactory,
   },
@@ -93,7 +97,7 @@ async function uniswapV3() {
 
   const data = ethers.utils.defaultAbiCoder.encode(
     ["address[]","address[]","uint256[]"],
-    [tokens, pairs, config.uniswapV3.twapPeriods]
+    [tokens, pairs, config.uniswapV3.twaps]
   );
 
   await setOracle(tokens[tokens.length - 1], uniswapV3Oracle, data);
@@ -138,14 +142,15 @@ async function solidly() {
 
   const data = ethers.utils.defaultAbiCoder.encode(
     ["address[]","address[]","uint256[]"],
-    [tokens, pairs, config.solidly.twapPeriods]
+    [tokens, pairs, config.solidly.twaps]
   );
 
   await setOracle(tokens[tokens.length - 1], solidlyOracle, data);
 };
 
 async function setOracle(token, oracle, data) {
-  const oracleContract = await ethers.getContractAt(BeefyOracleAbi, beefyfinanceOracle);
+  const [_, keeper, __] = await ethers.getSigners();
+  const oracleContract = await ethers.getContractAt(BeefyOracleAbi, beefyfinanceOracle, keeper);
 
   let tx = await oracleContract.setOracle(token, oracle, data);
   tx = await tx.wait();
