@@ -6,17 +6,13 @@ import VelodromeFactoryAbi from "../../data/abi/VelodromeFactory.json";
 import { addressBook } from "blockchain-addressbook";
 
 const {
-  platforms: { beefyfinance, nuri },
+  platforms: { beefyfinance },
   tokens: {
     USDC: { address: USDC},
-    ETH: { address: ETH},
-    NURI: { address: NURI },
-    loreUSD: { address: loreUSD },
-    SCR: { address: SCR },
-    wstETH: { address: wstETH },
-    TKN: {address: TKN}
+    WETH: { address: ETH},
+    TOKE: {address: TOKE}
   },
-} = addressBook.scroll;
+} = addressBook.ethereum;
 
 const ethers = hardhat.ethers;
 
@@ -28,27 +24,27 @@ const velodromeFactory = "0x92aF10c685D2CF4CD845388C5f45aC5dc97C5024";
 const beefyfinanceOracle = beefyfinance.beefyOracle;
 const chainlinkOracle = "0x3DC71AAb800C5Acfe521d5bD86c06b2EfF477062";
 const uniswapV3Oracle = "0xc26314091EB7a9c75E5536f7f54A8F63e829547D";
-const uniswapV2Oracle = "0x0000000000000000000000000000000000000000";
+const uniswapV2Oracle = beefyfinance.beefyOracleUniswapV2;
 const solidlyOracle = "0xE6e5732245b3e886DD8897a93D21D29bb652d683";
 
 const config = {
-  type: "solidly",
+  type: "uniswapV2",
   chainlink: {
-    token: wstETH,
+   // token: wstETH,
     feed: "0xe428fbdbd61CC1be6C273dC0E27a1F43124a86F3",
   },
   uniswapV3: {
-    path: [[ETH, SCR, 3000]],
+ //   path: [[ETH, SCR, 3000]],
     twaps: [300],
     factory: uniswapV3Factory,
   },
   uniswapV2: {
-  //  path: [USDC, WMATIC],
+    path: [ETH, TOKE],
     twaps: [7200],
     factory: uniswapV2Factory,
   },
   solidly: {
-    path: [[ETH, TKN, false]],
+  //  path: [[ETH, TKN, false]],
     twaps: [4],
     factory: velodromeFactory,
   },
@@ -108,7 +104,7 @@ async function uniswapV2() {
   const tokens = [];
   const pairs = [];
   for (let i = 0; i < config.uniswapV2.path.length - 1; i++) {
-    tokens.push(config.uniswapV2.path[i][0]);
+    tokens.push(config.uniswapV2.path[i]);
     const pair = await factory.getPair(
       config.uniswapV2.path[i],
       config.uniswapV2.path[i + 1]
@@ -117,9 +113,11 @@ async function uniswapV2() {
   }
   tokens.push(config.uniswapV2.path[config.uniswapV2.path.length - 1]);
 
+  console.log(tokens, pairs, config.uniswapV2.twaps)
+
   const data = ethers.utils.defaultAbiCoder.encode(
     ["address[]","address[]","uint256[]"],
-    [tokens, pairs, config.uniswapV2.twapPeriods]
+    [tokens, pairs, config.uniswapV2.twaps]
   );
 
   await setOracle(tokens[tokens.length - 1], uniswapV2Oracle, data);

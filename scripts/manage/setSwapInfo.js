@@ -1,5 +1,6 @@
 import hardhat, { ethers, web3 } from "hardhat";
 import swapperAbi from "../../artifacts/contracts/BIFI/infra/BeefySwapper.sol/BeefySwapper.json";
+import UniswapV2RouterAbi from '../../data/abi/UniswapV2Router.json';
 import UniswapV3RouterAbi from "../../data/abi/UniswapV3Router.json";
 import BalancerVaultAbi from "../../data/abi/BalancerVault.json";
 import VelodromeRouterAbi from "../../data/abi/VelodromeRouter.json";
@@ -10,15 +11,9 @@ const {
   tokens: {
     USDC: { address: USDC},
     ETH: { address: ETH},
-    NURI: { address: NURI},
-    loreUSD: {address: loreUSD },
-    SCR: { address: SCR },
-    wstETH: { address: wstETH },
-    WBTC: { address: WBTC },
-    USDT: {address: USDT},
-    TKN: { address: TKN }
+    TOKE: { address: TOKE}
   },
-} = addressBook.scroll;
+} = addressBook.ethereum;
 
 const ethers = hardhat.ethers;
 
@@ -28,19 +23,19 @@ const int256Max = "5789604461865809771178549250434395392663499233282028201972879
 const beefyfinanceSwapper =  beefyfinance.beefySwapper;
 
 const uniswapV3Router = "0xAAAE99091Fbb28D400029052821653C1C752483B";
-const uniswapV2Router = "0x10ED43C718714eb63d5aA57B78B54704E256024E";
+const uniswapV2Router = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
 const velodromeRouter = "0xA663c287b2f374878C07B7ac55C1BC927669425a";
 const balancerVault = "0xBA12222222228d8Ba445958a75a0704d566BF2C8";
 
 
 const config = {
-  type: "solidly",
+  type: "uniswapV2",
   uniswapV3: {
-    path: [[USDT, ETH, 3000]],
+  //  path: [[USDT, ETH, 3000]],
     router: uniswapV3Router,
   },
   uniswapV2: {
-  //  path: [USDC, WMATIC],
+    path: [TOKE, ETH],
     router: uniswapV2Router,
   },
   balancer: {
@@ -50,7 +45,7 @@ const config = {
     router: balancerVault,
   },
   solidly: {
-    path: [[ETH, TKN, false]],
+  //  path: [[ETH, TKN, false]],
     router: velodromeRouter,
   },
 };
@@ -130,18 +125,18 @@ async function uniswapV2() {
   const minAmountSign = 0;
 
   const swapInfo = [
-    config.router,
+    config.uniswapV2.router,
     txData.data,
     amountIndex,
     minIndex,
     minAmountSign
   ];
 
-  /*await setSwapInfo(
+  await setSwapInfo(
     config.uniswapV2.path[0],
     config.uniswapV2.path[config.uniswapV2.path.length - 1],
     swapInfo
-  );*/
+  );
 };
 
 async function balancer() {
