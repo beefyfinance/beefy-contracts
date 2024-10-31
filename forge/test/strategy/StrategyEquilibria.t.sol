@@ -12,7 +12,7 @@ contract StrategyEquilibriaTest is BaseAllToNativeFactoryTest {
     function createStrategy(address _impl) internal override returns (address) {
         if (_impl == a0) strategy = new StrategyEquilibria();
         else strategy = StrategyEquilibria(payable(_impl));
-        delay = 4 hours;
+//        delay = 4 hours;
         return address(strategy);
     }
 
@@ -79,7 +79,7 @@ contract StrategyEquilibriaTest is BaseAllToNativeFactoryTest {
         console.log("Bad pid reverts");
         vm.startPrank(strategy.owner());
         vm.expectRevert("!market");
-        strategy.setEqbPid(pid + 1, false);
+        strategy.setEqbPid(pid - 1, false);
         vm.stopPrank();
 
         console.log("Valid pid switches to Eqb");
@@ -150,6 +150,8 @@ contract StrategyEquilibriaTest is BaseAllToNativeFactoryTest {
             return;
         }
 
+        vm.prank(strategy.keeper());
+        strategy.setHarvestOnDeposit(false);
         _depositIntoVault(user, wantAmount);
         skip(1 days);
 

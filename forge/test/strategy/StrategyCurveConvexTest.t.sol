@@ -7,15 +7,6 @@ import "./BaseStrategyTest.t.sol";
 
 contract StrategyCurveConvexTest is BaseStrategyTest {
 
-    address constant native = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address constant crv = 0xD533a949740bb3306d119CC777fa900bA034cd52;
-    address constant cvx = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-    address constant usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address constant uniV3Quoter = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
-    ICrvMinter constant minter = ICrvMinter(0xd061D61a4d941c39E5453435B6345Dc261C2fcE0);
-    uint24[] fee = [3000];
-    uint[3][4] testParams = [[2, 0, 3], [2, 1, 1], [1, 0, 7], [1, 0, 7]];
-
     StrategyCurveConvex strategy;
 
     function createStrategy(address _impl) internal override returns (address) {

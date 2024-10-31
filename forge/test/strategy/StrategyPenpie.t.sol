@@ -12,22 +12,20 @@ contract StrategyPenpieTest is BaseAllToNativeFactoryTest {
     function createStrategy(address _impl) internal override returns (address) {
         if (_impl == a0) strategy = new StrategyPenpie();
         else strategy = StrategyPenpie(payable(_impl));
-//        deal(0x0c880f6761F1af8d9Aa9C466984b80DAb9a8c9e8, address(strategy), 1000e18);
-//        deal(0x912CE59144191C1204E64559FE8253a0e49E6548, address(strategy), 1000e18);
         return address(strategy);
     }
 
     function beforeHarvest() internal override {
-        vm.roll(block.number + 7200); // skip ~24h to accrue pendle rewards
+        vm.roll(block.number + 1); // pass lastRewardBlock check in PendleMarket
+        strategy.pendleStaking().harvestMarketReward(strategy.want(), address(this), 0);
+        strategy.pendleStaking().harvestMarketReward(strategy.want(), address(this), 0);
     }
 
     function claimRewardsToStrat() internal override {
-        vm.roll(block.number + 7200); // skip ~24h to accrue pendle rewards
-
+        vm.roll(block.number + 1); // pass lastRewardBlock check in PendleMarket
         strategy.pendleStaking().harvestMarketReward(strategy.want(), address(this), 0);
-        address[] memory lps = new address[](1);
-        address[][] memory tokens = new address[][](1);
-        lps[0] = strategy.want();
-        strategy.masterPenpie().multiclaimFor(lps, tokens, address(strategy));
+        strategy.pendleStaking().harvestMarketReward(strategy.want(), address(this), 0);
+
+        strategy.claim();
     }
 }

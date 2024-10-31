@@ -25,6 +25,7 @@ abstract contract BaseStrategyTest is Test {
     uint internal wantAmount = 50000 ether;
     uint internal delay = 1 days;
     address internal a0 = address(0);
+    bool internal dealWithAdjust = false;
 
     function setUp() public {
         user = new VaultUser();
@@ -73,7 +74,6 @@ abstract contract BaseStrategyTest is Test {
             address callTarget = vm.envOr("CALL_TARGET", address(0));
             bytes memory callData = vm.envOr("CALL_DATA", _default);
             if (callData.length > 0) {
-                console.log("Call to", callTarget);
                 vm.prank(strategy.keeper());
                 (bool success,) = callTarget.call(callData);
                 assertTrue(success, "Call not success");
@@ -83,7 +83,7 @@ abstract contract BaseStrategyTest is Test {
         }
 
         want = IERC20Like(vault.want());
-        deal(vault.want(), address(user), wantAmount);
+        deal(vault.want(), address(user), wantAmount, dealWithAdjust);
     }
 
     function createStrategy(address _impl) internal virtual returns (address);
@@ -143,7 +143,7 @@ abstract contract BaseStrategyTest is Test {
         vm.prank(strategy.keeper());
         strategy.setHarvestOnDeposit(true);
         skip(delay);
-        deal(vault.want(), address(user), wantAmount);
+        deal(vault.want(), address(user), wantAmount, dealWithAdjust);
 
         beforeHarvest();
         // trigger harvestOnDeposit

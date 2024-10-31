@@ -14,6 +14,7 @@ contract StrategyPearlTridentTest is BaseAllToNativeFactoryTest {
         if (_impl == a0) strategy = new StrategyPearlTrident();
         else strategy = StrategyPearlTrident(payable(_impl));
         wantAmount = 1_000 ether;
+        dealWithAdjust = true;
         return address(strategy);
     }
 
