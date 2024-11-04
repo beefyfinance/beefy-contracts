@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin-4/contracts/access/Ownable.sol";
+import { IERC20 } from  "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
+import { SafeERC20 } from "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 // Built as the treasury to accept fees from Beefy Zap and deliver Native to feeBatch.
-contract BeefySwapperTreasury is Ownable {
+contract BeefySwapperTreasury is OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
     // Addresses needed for the operation 
@@ -26,12 +26,12 @@ contract BeefySwapperTreasury is Ownable {
     event TokenSwapped(address indexed token, uint256 amount);
     event Harvest(uint256 amount);
 
-    constructor(
+    function initialize (
         address _treasury,
         address _stable,
         address _gelato,
         address _router
-    ) {
+    ) initializer public {
         stable = _stable;
         treasury = _treasury;
         gelato = _gelato;
@@ -88,10 +88,11 @@ contract BeefySwapperTreasury is Ownable {
         settings = _settings;
     }
 
-    function setAddresses(address _router, address _gelato, address _treasury) external onlyOwner {
-        router = _router;
-        gelato = _gelato;
-        treasury = _treasury;
+    function setAddresses(address _stable, address _router, address _gelato, address _treasury) external onlyOwner {
+        if (_stable != address(0)) stable = _stable;
+        if (_router != address(0)) router = _router;
+        if (_gelato != address(0)) gelato = _gelato;
+        if (_treasury != address(0)) treasury = _treasury;
     }
 
     function inCaseTokensGetStuck(address _token, bool _native) external onlyOwner {
