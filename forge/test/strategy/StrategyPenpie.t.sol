@@ -26,6 +26,10 @@ contract StrategyPenpieTest is BaseAllToNativeFactoryTest {
         strategy.pendleStaking().harvestMarketReward(strategy.want(), address(this), 0);
         strategy.pendleStaking().harvestMarketReward(strategy.want(), address(this), 0);
 
-        strategy.claim();
+        // could be just "strategy.claim()" but arb impl doesn't have it
+        address[] memory lps = new address[](1);
+        address[][] memory tokens = new address[][](1);
+        lps[0] = strategy.want();
+        strategy.masterPenpie().multiclaimFor(lps, tokens, address(strategy));
     }
 }

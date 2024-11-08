@@ -12,7 +12,7 @@ contract StrategyEquilibriaTest is BaseAllToNativeFactoryTest {
     function createStrategy(address _impl) internal override returns (address) {
         if (_impl == a0) strategy = new StrategyEquilibria();
         else strategy = StrategyEquilibria(payable(_impl));
-//        delay = 4 hours;
+        cacheOraclePrices();
         return address(strategy);
     }
 
@@ -233,6 +233,19 @@ contract StrategyEquilibriaTest is BaseAllToNativeFactoryTest {
         redeemLen = strategy.xEqb().getUserRedeemsLength(address(strategy));
         assertEq(redeemLen, 0, "Not finalized manually");
         assertGt(eqb.balanceOf(address(strategy)), eqbBal, "EQB not finalized");
+    }
+
+    function cacheOraclePrices() internal {
+        address dolomiteOracle = 0xBfca44aB734E57Dc823cA609a0714EeC9ED06cA0;
+        bytes memory _callData = abi.encodeWithSignature("getPrice(address)", 0xaf88d065e77c8cC2239327C5EDb3A432268e5831);
+        (, bytes memory _res) = dolomiteOracle.staticcall(_callData);
+        uint _price = abi.decode(_res, (uint));
+        vm.mockCall(dolomiteOracle, _callData, abi.encode(_price));
+
+        _callData = abi.encodeWithSignature("getPrice(address)", 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f);
+        (, _res) = dolomiteOracle.staticcall(_callData);
+        _price = abi.decode(_res, (uint));
+        vm.mockCall(dolomiteOracle, _callData, abi.encode(_price));
     }
 
 }
