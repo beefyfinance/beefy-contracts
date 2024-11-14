@@ -246,7 +246,7 @@ abstract contract BaseAllToNativeFactoryStrat is OwnableUpgradeable, PausableUpg
             depositToken = address(0);
             return;
         }
-        require(token != want, "!want");
+        
         _verifyRewardToken(token);
         depositToken = token;
     }

@@ -65,7 +65,7 @@ const config: DeploymentConfig = {
       accounts,
     },
     arbitrum: {
-      url: process.env.ARBITRUM_RPC || "https://arb1.arbitrum.io/rpc",
+      url: "https://arbitrum.rpc.subquery.network/public",
       chainId: 42161,
       accounts,
     },
@@ -186,6 +186,12 @@ const config: DeploymentConfig = {
       chainId: 534352,
       accounts,
     },
+    rootstock: {
+      url: "https://public-node.rsk.co",
+      chainId: 30,
+      accounts,
+      gasPrice: 72000000
+    },
   },
   etherscan: {
     // Your API key for Etherscan
@@ -197,7 +203,7 @@ const config: DeploymentConfig = {
       bsc: process.env.BSC_API_KEY!,
       optimisticEthereum: process.env.OPTIMISM_API_KEY!,
       base: process.env.BASE_API_KEY!,
-      arbitrumOne: process.env.ARB_API_KEY!,
+      arbitrumOne: "QN63XBCDVF7JP2AGQYZN49DUJWBJ9JEBKE", //process.env.ARB_API_KEY!,
       opera: process.env.FANTOM_API_KEY!,
       linea: process.env.LINEA_API_KEY!,
       kava: "api key is not required by the Kava explorer, but can't be empty",
@@ -207,6 +213,7 @@ const config: DeploymentConfig = {
       fraxtal: process.env.FRAXTAL_API_KEY!,
       mode: "api key is not required by the Kava explorer, but can't be empty",
       scroll: process.env.SCROLL_API_KEY!,
+      rootstock: 'abc'
     },
     customChains: [
       {
@@ -296,6 +303,14 @@ const config: DeploymentConfig = {
           apiURL: "https://api.routescan.io/v2/network/mainnet/evm/34443/etherscan",
           browserURL: "https://modescan.io/",
         },
+      },
+      {
+        network: "rootstock",
+        chainId: 30,
+        urls: {
+          apiURL: "https://rootstock.blockscout.com/api",
+          browserURL: "https://rootstock.blockscout.com/"
+        }
       },
     ],
   },
