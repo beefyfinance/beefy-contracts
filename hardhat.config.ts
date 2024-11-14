@@ -203,7 +203,7 @@ const config: DeploymentConfig = {
       bsc: process.env.BSC_API_KEY!,
       optimisticEthereum: process.env.OPTIMISM_API_KEY!,
       base: process.env.BASE_API_KEY!,
-      arbitrumOne: "QN63XBCDVF7JP2AGQYZN49DUJWBJ9JEBKE", //process.env.ARB_API_KEY!,
+      arbitrumOne: process.env.ARB_API_KEY!,
       opera: process.env.FANTOM_API_KEY!,
       linea: process.env.LINEA_API_KEY!,
       kava: "api key is not required by the Kava explorer, but can't be empty",

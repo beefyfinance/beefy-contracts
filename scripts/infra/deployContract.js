@@ -11,7 +11,7 @@ const {
 
 const ethers = hardhat.ethers;
 
-const contractName = "StrategySolidlyRewardPool";
+const contractName = "BeefyMultiHopSwapper";
 const factoryName = "BeefyVaultV7Factory";
 
 const config = {};
