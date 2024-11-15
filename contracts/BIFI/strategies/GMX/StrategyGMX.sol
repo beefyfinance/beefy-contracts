@@ -10,6 +10,7 @@ import "../../interfaces/gmx/IGMXTracker.sol";
 import "../../interfaces/gmx/IBeefyVault.sol";
 import "../../interfaces/gmx/IGMXStrategy.sol";
 import "../../interfaces/gmx/IGMXGovToken.sol";
+import "../../interfaces/beefy/IBeefySwapper.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 
 contract StrategyGMX is StratFeeManagerInitializable {
@@ -32,14 +33,20 @@ contract StrategyGMX is StratFeeManagerInitializable {
     event Withdraw(uint256 tvl);
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
-    function __StrategyGMX_init(
+    function initialize(
         address _chef,
+        address _native,
         CommonAddresses calldata _commonAddresses
-    ) internal onlyInitializing {
+    ) external initializer {
         __StratFeeManager_init(_commonAddresses);
         chef = _chef;
+        native = _native;
+
+        want = IGMXRouter(chef).gmx();
         rewardStorage = IGMXRouter(chef).feeGmxTracker();
         balanceTracker = IGMXRouter(chef).stakedGmxTracker();
+
+        _giveAllowances();
     }
 
     // puts the funds to work
@@ -97,18 +104,28 @@ contract StrategyGMX is StratFeeManagerInitializable {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        IGMXRouter(chef).compound();   // Claim and restake esGMX and multiplier points
-        IGMXTracker(rewardStorage).claim(address(this));
+        IGMXRouter(chef).handleRewards(true, false, true, true, true, true, false);
+        _swapRewardToNative();
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
         if (nativeBal > 0) {
             chargeFees(callFeeRecipient);
-            swapRewards();
+            _swapNativeToWant();
             uint256 wantHarvested = balanceOfWant();
             deposit();
 
             lastHarvest = block.timestamp;
             emit StratHarvest(msg.sender, wantHarvested, balanceOf());
         }
+    }
+
+    function _swapRewardToNative() internal {
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        if (wantBal > 0) IBeefySwapper(unirouter).swap(want, native, wantBal);
+    }
+
+    function _swapNativeToWant() internal {
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        if (nativeBal > 0) IBeefySwapper(unirouter).swap(native, want, nativeBal);
     }
 
     // performance fees
@@ -127,9 +144,6 @@ contract StrategyGMX is StratFeeManagerInitializable {
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
-
-    // Adds liquidity to AMM and gets more LP tokens.
-    function swapRewards() internal virtual {}
 
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
@@ -207,14 +221,14 @@ contract StrategyGMX is StratFeeManagerInitializable {
     function _giveAllowances() internal {
         IERC20(want).safeApprove(balanceTracker, type(uint).max);
         IERC20(native).safeApprove(unirouter, type(uint).max);
+        IERC20(want).safeApprove(unirouter, type(uint).max);
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(balanceTracker, 0);
         IERC20(native).safeApprove(unirouter, 0);
+        IERC20(want).safeApprove(unirouter, 0);
     }
-
-    function nativeToWant() external view virtual returns (address[] memory) {}
 
     function acceptTransfer() external {
         address prevStrat = IBeefyVault(vault).strategy();

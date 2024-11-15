@@ -7,10 +7,10 @@ import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../interfaces/gmx/IGMXRouter.sol";
 import "../../interfaces/gmx/IGMXTracker.sol";
 import "../../interfaces/gmx/IGLPManager.sol";
-import "../../interfaces/gmx/IGMXVault.sol";
 import "../../interfaces/gmx/IBeefyVault.sol";
 import "../../interfaces/gmx/IGMXStrategy.sol";
 import "../../interfaces/gmx/IGMXGovToken.sol";
+import "../../interfaces/beefy/IBeefySwapper.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 
 contract StrategyGLP is StratFeeManagerInitializable {
@@ -19,6 +19,7 @@ contract StrategyGLP is StratFeeManagerInitializable {
     // Tokens used
     address public want;
     address public native;
+    address public gmx;
 
     // Third party contracts
     address public minter;
@@ -26,7 +27,6 @@ contract StrategyGLP is StratFeeManagerInitializable {
     address public glpRewardStorage;
     address public gmxRewardStorage;
     address public glpManager;
-    address public gmxVault;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -49,10 +49,10 @@ contract StrategyGLP is StratFeeManagerInitializable {
         minter = _minter;
         chef = _chef;
 
+        gmx = IGMXRouter(chef).gmx();
         glpRewardStorage = IGMXRouter(chef).feeGlpTracker();
         gmxRewardStorage = IGMXRouter(chef).feeGmxTracker();
         glpManager = IGMXRouter(minter).glpManager();
-        gmxVault = IGLPManager(glpManager).vault();
 
         _giveAllowances();
     }
@@ -102,8 +102,8 @@ contract StrategyGLP is StratFeeManagerInitializable {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        IGMXRouter(chef).compound();   // Claim and restake esGMX and multiplier points
-        IGMXRouter(chef).claimFees();
+        IGMXRouter(chef).handleRewards(true, false, true, true, true, true, false);
+        _swapRewards();
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
         if (nativeBal > 0) {
             chargeFees(callFeeRecipient);
@@ -114,6 +114,11 @@ contract StrategyGLP is StratFeeManagerInitializable {
             lastHarvest = block.timestamp;
             emit StratHarvest(msg.sender, wantHarvested, balanceOf());
         }
+    }
+
+    function _swapRewards() internal {
+        uint256 gmxBal = IERC20(gmx).balanceOf(address(this));
+        if (gmxBal > 0) IBeefySwapper(unirouter).swap(gmx, native, gmxBal);
     }
 
     // performance fees
@@ -213,10 +218,12 @@ contract StrategyGLP is StratFeeManagerInitializable {
 
     function _giveAllowances() internal {
         IERC20(native).safeApprove(glpManager, type(uint).max);
+        IERC20(gmx).safeApprove(unirouter, type(uint).max);
     }
 
     function _removeAllowances() internal {
         IERC20(native).safeApprove(glpManager, 0);
+        IERC20(gmx).safeApprove(unirouter, 0);
     }
 
     function acceptTransfer() external {

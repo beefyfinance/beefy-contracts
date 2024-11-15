@@ -19,11 +19,21 @@ interface IGMXRouter {
         uint256 _minOut,
         address _receiver
     ) external returns (uint256);
+    function handleRewards(
+        bool _shouldClaimGmx,
+        bool _shouldStakeGmx,
+        bool _shouldClaimEsGmx,
+        bool _shouldStakeEsGmx,
+        bool _shouldStakeMultiplierPoints,
+        bool _shouldClaimWeth,
+        bool _shouldConvertWethToEth
+    ) external;
     function feeGlpTracker() external view returns (address);
     function feeGmxTracker() external view returns (address);
     function stakedGmxTracker() external view returns (address);
     function glpManager() external view returns (address);
     function glp() external view returns (address);
+    function gmx() external view returns (address);
     function signalTransfer(address _receiver) external;
     function acceptTransfer(address _sender) external;
 }
