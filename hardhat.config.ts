@@ -192,6 +192,16 @@ const config: DeploymentConfig = {
       accounts,
       gasPrice: 72000000
     },
+    manta: {
+      url: process.env.MANTA_RPC || "https://manta-pacific.drpc.org",
+      chainId: 169,
+      accounts,
+    },
+    sei: {
+      url: process.env.SEI_RPC || "https://evm-rpc.sei-apis.com",
+      chainId: 1329,
+      accounts,
+    }
   },
   etherscan: {
     // Your API key for Etherscan
@@ -209,11 +219,14 @@ const config: DeploymentConfig = {
       kava: "api key is not required by the Kava explorer, but can't be empty",
       metis: "api key is not required by the Kava explorer, but can't be empty",
       //snowtrace: "api key is not required by the Kava explorer, but can't be empty",
-      mantle: "api key is not required by the Kava explorer, but can't be empty",
+      mantle: process.env.MANTLE_API_KEY!,
       fraxtal: process.env.FRAXTAL_API_KEY!,
       mode: "api key is not required by the Kava explorer, but can't be empty",
       scroll: process.env.SCROLL_API_KEY!,
-      rootstock: 'abc'
+      rootstock: 'abc',
+      avax: process.env.AVAX_API_KEY!,
+      manta: 'someKey',
+      sei: 'sei',
     },
     customChains: [
       {
@@ -260,7 +273,7 @@ const config: DeploymentConfig = {
         network: "kava",
         chainId: 2222,
         urls: {
-          apiURL: "https://kavascan.com/api",
+          apiURL: "https://api.verify.mintscan.io/evm/api/0x8ae",
           browserURL: "https://kavascan.com/",
         },
       },
@@ -268,7 +281,7 @@ const config: DeploymentConfig = {
         network: "avax",
         chainId: 43114,
         urls: {
-          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/43114/etherscan",
+          apiURL: "https://api.snowscan.xyz/api",
           browserURL: "https://avalanche.routescan.io",
         },
       },
@@ -284,8 +297,8 @@ const config: DeploymentConfig = {
         network: "mantle",
         chainId: 5000,
         urls: {
-          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/5000/etherscan",
-          browserURL: "https://explorer.mantle.xyz/",
+          apiURL: "https://api.mantlescan.xyz/api",
+          browserURL: "https://mantlescan.xyz/",
         },
       },
       {
@@ -300,7 +313,7 @@ const config: DeploymentConfig = {
         network: "mode",
         chainId: 34443,
         urls: {
-          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/34443/etherscan",
+          apiURL: "https://explorer.mode.network/api",
           browserURL: "https://modescan.io/",
         },
       },
@@ -310,6 +323,22 @@ const config: DeploymentConfig = {
         urls: {
           apiURL: "https://rootstock.blockscout.com/api",
           browserURL: "https://rootstock.blockscout.com/"
+        },
+      },
+      {
+        network: "manta",
+        chainId: 169,
+        urls: {
+          apiURL: "https://pacific-explorer.manta.network/api",
+          browserURL: "https://pacific-explorer.manta.network/",
+        },
+      },
+      {
+        network: "sei",
+        chainId: 1329,
+        urls: {
+          apiURL: "https://seitrace.com/pacific-1/api",
+          browserURL: "https://seitrace.com"
         }
       },
     ],
