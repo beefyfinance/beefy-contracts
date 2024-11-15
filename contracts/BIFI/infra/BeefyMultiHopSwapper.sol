@@ -10,11 +10,13 @@ contract BeefyMultiHopSwapper is OwnableUpgradeable {
 
     IBeefySwapper public swapper;
 
+    error Slippage(uint amountOut, uint minAmountOut);
+
     function initialize(address _swapper) initializer external {
         swapper = IBeefySwapper(_swapper);
     }
 
-    function swap(address[] calldata _path, uint _amountIn) external {
+    function swap(address[] calldata _path, uint _amountIn, uint _minAmountout) external {
         IERC20 startToken = IERC20(_path[0]);
         startToken.transferFrom(msg.sender, address(this), _amountIn);
 
@@ -27,6 +29,8 @@ contract BeefyMultiHopSwapper is OwnableUpgradeable {
 
         IERC20 endToken = IERC20(_path[_path.length -1]);
         uint endBal = endToken.balanceOf(address(this));
+
+        if (endBal < _minAmountout) revert Slippage(endBal, _minAmountout);
         endToken.transfer(msg.sender, endBal);
     }
 
