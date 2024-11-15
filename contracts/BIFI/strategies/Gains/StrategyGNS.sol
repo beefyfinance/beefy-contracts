@@ -4,8 +4,9 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../../utils/UniswapV3Utils.sol";
+import "../../interfaces/beefy/IBeefySwapper.sol";
 import "../../interfaces/gns/IGnsStaking.sol";
+import "../../interfaces/common/IWrappedNative.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 
 contract StrategyGNS is StratFeeManagerInitializable {
@@ -13,8 +14,8 @@ contract StrategyGNS is StratFeeManagerInitializable {
 
     // Tokens used
     address public native;
-    address public output;
     address public want;
+    address[] public rewards;
 
     // Third party contracts
     address public chef;
@@ -22,32 +23,21 @@ contract StrategyGNS is StratFeeManagerInitializable {
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
 
-    // Routes
-    bytes public outputToNativePath;
-    bytes public outputToWantPath;
-
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
     event Withdraw(uint256 tvl);
     event ChargedFees(uint256 callFees, uint256 beefyFees, uint256 strategistFees);
 
     function initialize(
+        address _want,
+        address _native,
         address _chef,
-        address[] calldata _outputToNativeRoute,
-        address[] calldata _outputToWantRoute,
-        uint24[] calldata _outputToNativeFees,
-        uint24[] calldata _outputToWantFees,
         CommonAddresses calldata _commonAddresses
-    ) public initializer {
+    ) external initializer {
         __StratFeeManager_init(_commonAddresses);
+        want = _want;
+        native = _native;
         chef = _chef;
-
-        output = _outputToNativeRoute[0];
-        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
-        outputToNativePath = UniswapV3Utils.routeToPath(_outputToNativeRoute, _outputToNativeFees);
-
-        want = _outputToWantRoute[_outputToWantRoute.length - 1];
-        outputToWantPath = UniswapV3Utils.routeToPath(_outputToWantRoute, _outputToWantFees);
 
         _giveAllowances();
     }
@@ -57,7 +47,7 @@ contract StrategyGNS is StratFeeManagerInitializable {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal > 0) {
-            IGnsStaking(chef).stakeTokens(wantBal);
+            IGnsStaking(chef).stakeGns(uint128(wantBal));
             emit Deposit(balanceOf());
         }
     }
@@ -65,10 +55,10 @@ contract StrategyGNS is StratFeeManagerInitializable {
     function withdraw(uint256 _amount) external {
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         if (wantBal < _amount) {
-            IGnsStaking(chef).unstakeTokens(_amount - wantBal);
+            IGnsStaking(chef).unstakeGns(uint128(_amount - wantBal));
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -107,12 +97,11 @@ contract StrategyGNS is StratFeeManagerInitializable {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient) internal whenNotPaused {
-        IGnsStaking(chef).harvest();
-        uint256 outputBal = IERC20(output).balanceOf(address(this));
-        if (outputBal > 0) {
+        IGnsStaking(chef).harvestTokens();
+        _swapRewardsToWant();
+        if (IERC20(want).balanceOf(address(this)) > 0) {
             chargeFees(callFeeRecipient);
-            swapRewards();
-            uint256 wantHarvested = balanceOfWant();
+            uint256 wantHarvested = IERC20(want).balanceOf(address(this));
             deposit();
 
             lastHarvest = block.timestamp;
@@ -123,9 +112,8 @@ contract StrategyGNS is StratFeeManagerInitializable {
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
         IFeeConfig.FeeCategory memory fees = getFees();
-        uint256 toNative = IERC20(output).balanceOf(address(this)) * fees.total / DIVISOR;
-        UniswapV3Utils.swap(unirouter, outputToNativePath, toNative);
-
+        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        IBeefySwapper(unirouter).swap(want, native, wantBal * fees.total / DIVISOR);
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
         uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
@@ -140,9 +128,12 @@ contract StrategyGNS is StratFeeManagerInitializable {
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
-    function swapRewards() internal {
-        uint256 toWant = IERC20(output).balanceOf(address(this));
-        UniswapV3Utils.swap(unirouter, outputToWantPath, toWant);
+    function _swapRewardsToWant() internal {
+        for (uint i; i < rewards.length; ++i) {
+            address reward = rewards[i];
+            uint256 rewardBal = IERC20(reward).balanceOf(address(this));
+            IBeefySwapper(unirouter).swap(reward, want, rewardBal);
+        }
     }
 
     // calculate the total underlaying 'want' held by the strat.
@@ -151,20 +142,20 @@ contract StrategyGNS is StratFeeManagerInitializable {
     }
 
     // it calculates how much 'want' this contract holds.
+    // this contract should only hold user tokens when paused, everything else will be rewards
     function balanceOfWant() public view returns (uint256) {
-        return IERC20(want).balanceOf(address(this));
+        return paused() ? IERC20(want).balanceOf(address(this)) : 0;
     }
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount,,,,) = IGnsStaking(chef).users(address(this));
+        (uint256 _amount,) = IGnsStaking(chef).stakers(address(this));
         return _amount;
     }
 
     // returns rewards unharvested
-    function rewardsAvailable() public view returns (uint256) {
-        (,uint256 _pendingRewards,,,) = IGnsStaking(chef).users(address(this));
-        return _pendingRewards;
+    function rewardsAvailable() public pure returns (uint256) {
+        return 0;
     }
 
     // native reward amount for calling harvest
@@ -182,11 +173,27 @@ contract StrategyGNS is StratFeeManagerInitializable {
         }
     }
 
+    function setReward(address _reward) external onlyManager {
+        require(_reward != want, "reward==want");
+
+        rewards.push(_reward);
+        if (!paused()) IERC20(_reward).safeApprove(unirouter, type(uint256).max);
+    }
+
+    function resetRewards() external onlyManager {
+        for (uint i; i < rewards.length; ++i) {
+            address reward = rewards[i];
+            IERC20(reward).safeApprove(unirouter, 0);
+        }
+
+        delete rewards;
+    }
+
     // called as part of strat migration. Sends all the available funds back to the vault.
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
 
-        IGnsStaking(chef).unstakeTokens(balanceOfPool());
+        IGnsStaking(chef).unstakeGns(uint128(balanceOfPool()));
 
         uint256 wantBal = IERC20(want).balanceOf(address(this));
         IERC20(want).transfer(vault, wantBal);
@@ -195,7 +202,7 @@ contract StrategyGNS is StratFeeManagerInitializable {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() public onlyManager {
         pause();
-        IGnsStaking(chef).unstakeTokens(balanceOfPool());
+        IGnsStaking(chef).unstakeGns(uint128(balanceOfPool()));
     }
 
     function pause() public onlyManager {
@@ -214,19 +221,21 @@ contract StrategyGNS is StratFeeManagerInitializable {
 
     function _giveAllowances() internal {
         IERC20(want).safeApprove(chef, type(uint).max);
-        IERC20(output).safeApprove(unirouter, type(uint).max);
+        IERC20(want).safeApprove(unirouter, type(uint).max);
+        for (uint i; i < rewards.length; ++i) {
+            IERC20(rewards[i]).safeApprove(unirouter, type(uint).max);
+        }
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
-        IERC20(output).safeApprove(unirouter, 0);
+        IERC20(want).safeApprove(unirouter, 0);
+        for (uint i; i < rewards.length; ++i) {
+            IERC20(rewards[i]).safeApprove(unirouter, 0);
+        }
     }
 
-    function outputToNative() external view returns (address[] memory) {
-        return UniswapV3Utils.pathToRoute(outputToNativePath);
-    }
-
-    function outputToWant() external view returns (address[] memory) {
-        return UniswapV3Utils.pathToRoute(outputToWantPath);
+    receive() external payable {
+        IWrappedNative(native).deposit{value: msg.value}();
     }
 }
