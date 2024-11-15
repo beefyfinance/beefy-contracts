@@ -7,7 +7,7 @@ import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../interfaces/common/IComptroller.sol";
 import "../../interfaces/common/IVToken.sol";
-import "../../interfaces/common/IUniswapRouterETH.sol";
+import "../../interfaces/beefy/IBeefySwapper.sol";
 import "../../interfaces/common/IWrappedNative.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 
@@ -16,7 +16,6 @@ contract StrategyMendi is StratFeeManagerInitializable {
 
     // Tokens used
     address public native;
-    address public output;
     address public want;
     address public iToken;
     address[] public rewards;
@@ -24,11 +23,6 @@ contract StrategyMendi is StratFeeManagerInitializable {
     // Third party contracts
     address public comptroller;
     address[] public markets;
-
-    // Routes
-    address[] public outputToNativeRoute;
-    address[] public outputToWantRoute;
-    mapping(address => address[]) public rewardToOutputRoutes;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -41,8 +35,7 @@ contract StrategyMendi is StratFeeManagerInitializable {
 
     function initialize(
         address _market,
-        address[] calldata _outputToNativeRoute,
-        address[] calldata _outputToWantRoute,
+        address _reward,
         CommonAddresses calldata _commonAddresses
     ) external initializer {
         __StratFeeManager_init(_commonAddresses);
@@ -52,10 +45,7 @@ contract StrategyMendi is StratFeeManagerInitializable {
         comptroller = IVToken(_market).comptroller();
         want = IVToken(_market).underlying();
 
-        outputToNativeRoute = _outputToNativeRoute;
-        outputToWantRoute = _outputToWantRoute;
-
-        output = outputToNativeRoute[0];
+        rewards.push(_reward);
         native = 0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f;
 
         _giveAllowances();
@@ -122,11 +112,12 @@ contract StrategyMendi is StratFeeManagerInitializable {
     function _harvest(address callFeeRecipient) internal whenNotPaused {
         uint256 beforeBal = balanceOfWant();
         IComptroller(comptroller).claimComp(address(this), markets);
-        _swapExtraRewards();
-        uint256 outputBal = IERC20(output).balanceOf(address(this));
-        if (outputBal > 0) {
-            chargeFees(callFeeRecipient);
-            _swapRewards();
+        _swapToNative();
+        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        if (want == native) nativeBal -= beforeBal;
+        if (nativeBal > 0) {
+            chargeFees(callFeeRecipient, nativeBal);
+            _swapToWant();
             uint256 wantHarvested = balanceOfWant() - beforeBal;
             deposit();
 
@@ -136,44 +127,35 @@ contract StrategyMendi is StratFeeManagerInitializable {
     }
 
     // performance fees
-    function chargeFees(address callFeeRecipient) internal {
+    function chargeFees(address callFeeRecipient, uint256 rewardBal) internal {
         IFeeConfig.FeeCategory memory fees = getFees();
-        uint256 toNative = IERC20(output).balanceOf(address(this)) * fees.total / DIVISOR;
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(
-            toNative, 0, outputToNativeRoute, address(this), block.timestamp + 1
-        );
+        uint256 feeBal = rewardBal * fees.total / DIVISOR;
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
-
-        uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
+        uint256 callFeeAmount = feeBal * fees.call / DIVISOR;
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal * fees.beefy / DIVISOR;
+        uint256 beefyFeeAmount = feeBal * fees.beefy / DIVISOR;
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFeeAmount = nativeBal * fees.strategist / DIVISOR;
+        uint256 strategistFeeAmount = feeBal * fees.strategist / DIVISOR;
         IERC20(native).safeTransfer(strategist, strategistFeeAmount);
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
     }
 
-    function _swapExtraRewards() internal {
+    function _swapToNative() internal {
         for (uint i; i < rewards.length; ++i) {
             address reward = rewards[i];
             uint256 rewardBal = IERC20(reward).balanceOf(address(this));
-            if (rewardBal > 0) {
-                IUniswapRouterETH(unirouter).swapExactTokensForTokens(
-                    rewardBal, 0, rewardToOutputRoutes[reward], address(this), block.timestamp + 1
-                );
-            }
+            if (rewardBal > 0) IBeefySwapper(unirouter).swap(reward, native, rewardBal);
         }
     }
 
-    function _swapRewards() internal {
-        uint256 outputBal = IERC20(output).balanceOf(address(this));
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(
-            outputBal, 0, outputToWantRoute, address(this), block.timestamp + 1
-        );
+    function _swapToWant() internal {
+        if (want != native) {
+            uint256 nativeBal = IERC20(native).balanceOf(address(this));
+            IBeefySwapper(unirouter).swap(native, want, nativeBal);
+        }
     }
 
     function _updateBalance() internal {
@@ -193,7 +175,7 @@ contract StrategyMendi is StratFeeManagerInitializable {
     // returns rewards unharvested
     function rewardsAvailable() public returns (uint256) {
         IComptroller(comptroller).claimComp(address(this), markets);
-        return IERC20(output).balanceOf(address(this));
+        return IERC20(rewards[0]).balanceOf(address(this));
     }
 
     // native reward amount for calling harvest
@@ -202,10 +184,7 @@ contract StrategyMendi is StratFeeManagerInitializable {
         uint256 outputBal = rewardsAvailable();
         uint256 nativeOut;
         if (outputBal > 0) {
-            uint256[] memory amountsOut = IUniswapRouterETH(unirouter).getAmountsOut(
-                outputBal, outputToNativeRoute
-            );
-            nativeOut = amountsOut[amountsOut.length - 1];
+            nativeOut = IBeefySwapper(unirouter).getAmountOut(rewards[0], native, outputBal);
         }
 
         return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
@@ -258,33 +237,28 @@ contract StrategyMendi is StratFeeManagerInitializable {
 
     function _giveAllowances() internal {
         IERC20(want).safeApprove(iToken, type(uint256).max);
-        IERC20(output).safeApprove(unirouter, type(uint256).max);
+        IERC20(native).safeApprove(unirouter, type(uint256).max);
 
         for (uint i; i < rewards.length; ++i) {
+            IERC20(rewards[i]).safeApprove(unirouter, 0);
             IERC20(rewards[i]).safeApprove(unirouter, type(uint256).max);
         }
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(iToken, 0);
-        IERC20(output).safeApprove(unirouter, 0);
+        IERC20(native).safeApprove(unirouter, 0);
 
         for (uint i; i < rewards.length; ++i) {
             IERC20(rewards[i]).safeApprove(unirouter, 0);
         }
     }
 
-    function setRewards(address[] calldata _rewardToOutputRoute) external onlyOwner {
-        address _reward = _rewardToOutputRoute[0];
-        address _output = _rewardToOutputRoute[_rewardToOutputRoute.length - 1];
-
+    function setReward(address _reward) external onlyOwner {
         require(_reward != want, "reward==want");
         require(_reward != iToken, "reward==iToken");
-        require(_output != output, "reward==output");
 
         rewards.push(_reward);
-        rewardToOutputRoutes[_reward] = _rewardToOutputRoute;
-
         IERC20(_reward).safeApprove(unirouter, type(uint256).max);
     }
 
@@ -292,22 +266,9 @@ contract StrategyMendi is StratFeeManagerInitializable {
         for (uint i; i < rewards.length; ++i) {
             address reward = rewards[i];
             IERC20(reward).safeApprove(unirouter, 0);
-            delete rewardToOutputRoutes[reward];
         }
 
         delete rewards;
-    }
-
-    function outputToNative() external view returns (address[] memory) {
-        return outputToNativeRoute;
-    }
-
-    function outputToWant() external view returns (address[] memory) {
-        return outputToWantRoute;
-    }
-
-    function rewardToOutput(uint _id) external view returns (address[] memory) {
-        return rewardToOutputRoutes[rewards[_id]];
     }
 
     receive() external payable {
