@@ -33,8 +33,7 @@ contract StrategyMendiLeverageTest is Test {
     uint256 borrowRateMax = 77;
     uint256 borrowDepth = 4;
     uint256 minLeverage = 10000;
-    address[] outputToNativeRoute = [0x43E8809ea748EFf3204ee01F08872F063e44065f,0x176211869cA2b568f2A7D4EE941E073a821EE1ff,0x0000000000000000000000000000000000000000];
-    address[] outputToWantRoute = [0x43E8809ea748EFf3204ee01F08872F063e44065f,0x176211869cA2b568f2A7D4EE941E073a821EE1ff];
+    address reward = 0x43E8809ea748EFf3204ee01F08872F063e44065f;
 
     function setUp() public {
         user = new VaultUser();
@@ -53,13 +52,12 @@ contract StrategyMendiLeverageTest is Test {
             beefyFeeConfig: PROD_STRAT.beefyFeeConfig()
         });
         strategy.initialize(
-            address(market), 
+            address(market),
+            reward,
             borrowRate, 
             borrowRateMax, 
             borrowDepth, 
             minLeverage,
-            outputToNativeRoute,
-            outputToWantRoute,
             commons
         );
         console.log("Strategy initialized", IERC20Extended(strategy.want()).symbol());
