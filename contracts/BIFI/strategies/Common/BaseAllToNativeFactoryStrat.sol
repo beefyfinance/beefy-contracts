@@ -65,7 +65,7 @@ abstract contract BaseAllToNativeFactoryStrat is OwnableUpgradeable, PausableUpg
         if (msg.sender != owner() && msg.sender != keeper()) revert NotManager();
     }
 
-    function __BaseStrategy_init(Addresses calldata _addresses, address[] calldata _rewards) internal onlyInitializing {
+    function __BaseStrategy_init(Addresses memory _addresses, address[] memory _rewards) internal onlyInitializing {
         __Ownable_init();
         __Pausable_init();
         want = _addresses.want;
@@ -213,8 +213,10 @@ abstract contract BaseAllToNativeFactoryStrat is OwnableUpgradeable, PausableUpg
     }
 
     function _swap(address tokenFrom, address tokenTo, uint amount) internal {
-        IERC20(tokenFrom).forceApprove(swapper, amount);
-        IBeefySwapper(swapper).swap(tokenFrom, tokenTo, amount);
+        if (tokenFrom != tokenTo) {
+            IERC20(tokenFrom).forceApprove(swapper, amount);
+            IBeefySwapper(swapper).swap(tokenFrom, tokenTo, amount);
+        }
     }
 
     function rewardsLength() external view returns (uint) {
