@@ -41,3 +41,7 @@ interface IBeefySwapper {
         int8 minAmountSign;
     }
 }
+
+interface ISimplifiedSwapInfo {
+    function swapInfo(address _fromToken, address _toToken) external view returns (address router, bytes calldata data);
+}
