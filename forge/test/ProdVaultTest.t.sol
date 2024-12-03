@@ -112,7 +112,7 @@ contract ProdVaultTest is BaseTestHarness {
         assertGt(balanceOfPool, balanceOfWant);
         
         console.log("Calling panic()");
-        FORGE_VM.prank(keeper);
+        vm.prank(keeper);
         strategy.panic();
 
         uint256 vaultBalanceAfterPanic = vault.balance();
@@ -129,7 +129,7 @@ contract ProdVaultTest is BaseTestHarness {
         
         // Users can't deposit.
         console.log("Trying to deposit while panicked.");
-        FORGE_VM.expectRevert("Pausable: paused");
+        vm.expectRevert("Pausable: paused");
         user.depositAll(vault);
         
         // User can still withdraw
@@ -196,7 +196,7 @@ contract ProdVaultTest is BaseTestHarness {
     function _unpauseIfPaused() internal {
         if (strategy.paused()) {
             console.log("Unpausing vault.");
-            FORGE_VM.prank(keeper);
+            vm.prank(keeper);
             strategy.unpause();
         }
     }
