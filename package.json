@@ -49,6 +49,7 @@
     "deploy:registry": "hardhat run scripts/infra/deployRegistry.ts --network",
     "deploy:autoHarvester": "hardhat run scripts/infra/deployAutoHarvester.ts --network",
     "deploy:contract": "hardhat run scripts/infra/deployContract.js --network",
+    "deploy:appMulticallv2": "hardhat run scripts/infra/deployAppMulticall.js --network",
     "zap": "hardhat run ./scripts/infra/zapViaAggregator.js --network",
     "setOracle": "hardhat run ./scripts/manage/setOracle.js --network",
     "setSwapInfo": "hardhat run ./scripts/manage/setSwapInfo.js --network",
