@@ -105,7 +105,7 @@
     "eth-multicall": "^1.4.0",
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.5.2",
-    "forge-std": "https://github.com/foundry-rs/forge-std.git#155d547c449afa8715f538d69454b83944117811",
+    "forge-std": "https://github.com/foundry-rs/forge-std.git#1eea5bae12ae557d589f9f0f0edae2faa47cb262",
     "hardhat": "^2.12.2",
     "hardhat-contract-sizer": "^2.8.0",
     "hardhat-gas-reporter": "^1.0.9",
