@@ -190,7 +190,7 @@ const config: DeploymentConfig = {
       url: "https://public-node.rsk.co",
       chainId: 30,
       accounts,
-      gasPrice: 72000000
+      gasPrice: 72000000,
     },
     manta: {
       url: process.env.MANTA_RPC || "https://manta-pacific.drpc.org",
@@ -201,7 +201,12 @@ const config: DeploymentConfig = {
       url: process.env.SEI_RPC || "https://evm-rpc.sei-apis.com",
       chainId: 1329,
       accounts,
-    }
+    },
+    sonic: {
+      url: process.env.SONIC_RPC || "https://rpc.soniclabs.com",
+      chainId: 146,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
@@ -223,10 +228,11 @@ const config: DeploymentConfig = {
       fraxtal: process.env.FRAXTAL_API_KEY!,
       mode: "api key is not required by the Kava explorer, but can't be empty",
       scroll: process.env.SCROLL_API_KEY!,
-      rootstock: 'abc',
+      rootstock: "abc",
       avax: process.env.AVAX_API_KEY!,
-      manta: 'someKey',
-      sei: 'sei',
+      manta: "someKey",
+      sei: "sei",
+      sonic: process.env.SONIC_API_KEY!,
     },
     customChains: [
       {
@@ -322,7 +328,7 @@ const config: DeploymentConfig = {
         chainId: 30,
         urls: {
           apiURL: "https://rootstock.blockscout.com/api",
-          browserURL: "https://rootstock.blockscout.com/"
+          browserURL: "https://rootstock.blockscout.com/",
         },
       },
       {
@@ -338,8 +344,8 @@ const config: DeploymentConfig = {
         chainId: 1329,
         urls: {
           apiURL: "https://seitrace.com/pacific-1/api",
-          browserURL: "https://seitrace.com"
-        }
+          browserURL: "https://seitrace.com",
+        },
       },
     ],
   },
