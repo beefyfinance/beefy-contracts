@@ -168,6 +168,7 @@ abstract contract BaseStrategyTest is Test {
         uint vaultBalance = vault.balance();
         assertGe(vaultBalance, wantAmount, "Vault balance < wantAmount");
 
+        bool stratHoldsWant = strategy.balanceOfPool() == 0;
         uint pps = vault.getPricePerFullShare();
         uint lastHarvest = strategy.lastHarvest();
 
@@ -201,8 +202,15 @@ abstract contract BaseStrategyTest is Test {
         uint balOfWantFinal = strategy.balanceOfWant();
         assertEq(wantBalFinal, 0, "wantBalFinal != 0");
         assertGt(vaultBalFinal, vaultBalAfterHarvest * 99 / 100, "vaultBalFinal != vaultBalAfterHarvest");
-        assertEq(balOfPoolFinal, vaultBalFinal, "balOfPoolFinal != vaultBalFinal");
-        assertEq(balOfWantFinal, 0, "balOfWantFinal != 0");
+
+        // strategy holds want without depositing into farming pool
+        if (stratHoldsWant) {
+            assertEq(balOfPoolFinal, 0, "balOfPoolFinal != 0");
+            assertEq(balOfWantFinal, vaultBalFinal, "balOfWantFinal != vaultBalFinal");
+        } else {
+            assertEq(balOfPoolFinal, vaultBalFinal, "balOfPoolFinal != vaultBalFinal");
+            assertEq(balOfWantFinal, 0, "balOfWantFinal != 0");
+        }
     }
 
     /*         */

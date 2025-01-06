@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.12;
 
-import {DSTest, console, Vm} from "forge-std/Test.sol";
+import {Test, console, Vm} from "forge-std/Test.sol";
 
 import {IERC20Like} from "../interfaces/IERC20Like.sol";
 
-contract BaseTestHarness is DSTest {
+contract BaseTestHarness is Test {
     // Api to modify test vm state.
     Vm internal constant FORGE_VM = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 

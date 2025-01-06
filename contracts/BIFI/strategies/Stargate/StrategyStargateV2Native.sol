@@ -105,6 +105,10 @@ contract StrategyStargateV2Native is StratFeeManagerInitializable {
         }
     }
 
+    function claim() external {
+        IStargateV2Chef(chef).claim(lpTokens);
+    }
+
     function harvest() external virtual {
         _harvest(tx.origin);
     }
