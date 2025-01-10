@@ -16,13 +16,13 @@ library Utils {
         return string(abi.encodePacked("0x", converted));
     }
 
-    function print(address[] memory a) public view {
+    function print(address[] memory a) public pure {
         for (uint i; i < a.length; ++i) {
             console.log(i, a[i]);
         }
     }
 
-    function print(address[11] memory a) public view {
+    function print(address[11] memory a) public pure {
         for (uint i; i < a.length; ++i) {
             console.log(i, a[i]);
         }

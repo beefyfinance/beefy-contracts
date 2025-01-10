@@ -20,6 +20,7 @@ abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
         skip(delay);
 
         claimRewardsToStrat();
+        beforeHarvest();
 
         for (uint i; i < strategy.rewardsLength(); ++i) {
             uint bal = IERC20(strategy.rewards(i)).balanceOf(address(strategy));

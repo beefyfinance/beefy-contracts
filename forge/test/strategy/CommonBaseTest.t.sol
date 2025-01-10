@@ -9,8 +9,6 @@ contract CommonBaseTest is BaseAllToNativeFactoryTest {
     address private strategy;
 
     function createStrategy(address _impl) internal override returns (address) {
-        wantAmount = vm.envOr("AMOUNT", wantAmount);
-
         if (_impl != address(0)) {
             strategy = _impl;
             return strategy;

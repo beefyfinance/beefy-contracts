@@ -180,13 +180,13 @@ contract ChainVaultsTest is Test {
         assertGt(user1WantBalanceFinal, wantStartingAmount * 99 / 100, "Expected user1WantBalanceFinal > wantStartingAmount * 99 / 100");
     }
 
-    function test_correctOwnerAndKeeper() external {
+    function test_correctOwnerAndKeeper() external view {
         assertEq(vault.owner(), addressBookBeefy.vaultOwner, "Wrong vault owner.");
         assertEq(strategy.owner(), addressBookBeefy.strategyOwner, "Wrong strategy owner.");
         assertEq(strategy.keeper(), addressBookBeefy.keeper, "Wrong keeper.");
     }
 
-    function test_harvestOnDeposit() external {
+    function test_harvestOnDeposit() external view {
         bool harvestOnDeposit = strategy.harvestOnDeposit();
         if (harvestOnDeposit) {
             console.log("Vault is harvestOnDeposit.");

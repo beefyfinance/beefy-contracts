@@ -205,13 +205,13 @@ contract WrapperTest is BaseTestHarness {
         assertGt(user1WantBalanceFinal, wantStartingAmount * 99 / 100, "Expected user1WantBalanceFinal > wantStartingAmount * 99 / 100");
     }
 
-    function test_correctOwnerAndKeeper() external {
+    function test_correctOwnerAndKeeper() external view {
         assertEq(vault.owner(), vaultOwner, "Wrong vault owner.");
         assertEq(strategy.owner(), strategyOwner, "Wrong strategy owner.");
         assertEq(strategy.keeper(), keeper, "Wrong keeper.");
     }
 
-    function test_harvestOnDeposit() external {
+    function test_harvestOnDeposit() external view {
         bool harvestOnDeposit = strategy.harvestOnDeposit();
         if (harvestOnDeposit) {
             console.log("Vault is harvestOnDeposit.");

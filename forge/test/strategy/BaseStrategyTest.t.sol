@@ -29,6 +29,7 @@ abstract contract BaseStrategyTest is Test {
 
     function setUp() public {
         user = new VaultUser();
+        wantAmount = vm.envOr("AMOUNT", wantAmount);
         address vaultAddress = vm.envOr("VAULT", address(0));
         if (vaultAddress != address(0)) {
             vault = IVault(vaultAddress);
@@ -133,7 +134,7 @@ abstract contract BaseStrategyTest is Test {
         assertGt(wantBalanceFinal, wantAmount * 99 / 100, "Expected wantBalanceFinal > wantAmount * 99 / 100");
     }
 
-    function test_depositWithHod() external {
+    function test_depositWithHod() external virtual {
         _depositIntoVault(user, wantAmount);
         uint pps = vault.getPricePerFullShare();
         assertGe(pps, 1e18, "Initial pps < 1");
@@ -162,7 +163,7 @@ abstract contract BaseStrategyTest is Test {
         assertEq(vault.balance(), vaultBal - wantBalanceFinal, "vaultBal != vaultBal - wantBalanceFinal");
     }
 
-    function test_harvest() external {
+    function test_harvest() external virtual {
         uint wantBalBefore = want.balanceOf(address(user));
         _depositIntoVault(user, wantAmount);
         uint vaultBalance = vault.balance();
@@ -289,7 +290,7 @@ abstract contract BaseStrategyTest is Test {
         t = string.concat(t, "]");
     }
 
-    function print(address[] memory a) internal view {
+    function print(address[] memory a) internal pure {
         for (uint i; i < a.length; ++i) {
             console.log(i, a[i]);
         }
