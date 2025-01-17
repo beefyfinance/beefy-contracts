@@ -6,7 +6,7 @@ This tutorial will take you through the process of:
 2. deploying a PancakeSwap vault to your development environment
 3. deploying a PancakeSwap vault to BSC
 
-These instructions are meant to aid new Strategy Dev's in deploying their first contract and seeks to complement the [readme.md][readme.md] file. This tutorial assumes the reader has a basic understanding of DeFi, Beefy Finance, Javascript, Solidity and Hardhat. We also assume the user has the following software installed:
+These instructions are meant to aid new Strategy Devs in deploying their first contract and seeks to complement the [readme.md][readme.md] file. This tutorial assumes the reader has a basic understanding of DeFi, Beefy Finance, Javascript, Solidity and Hardhat. We also assume the user has the following software installed:
 
 - [node.js][node.js]
 - [yarn][yarn]
@@ -47,7 +47,7 @@ UPGRADER_PK=59c699...
 6. Replace the variables under the `strategyParams` object as follows:
 
    - `poolId` is the same Id found in step 2.
-   - `strategist` is an address owned by the deployer, its recommended to use a separate address on a hardware wallet.
+   - `strategist` is an address owned by the deployer, it's recommended to use a separate address on a hardware wallet.
    - `outputToNativeRoute` is an array where the first element is the reward token (e.g. CAKE, JOE, etc.) and the second element is the native token (e.g. WBNB, WAVAX, etc.)
    - `outputToLp0Route` is the path from the reward token to the first token in the LP.
    - `outputToLp1Route` is the path from the reward token to the second token in the LP.

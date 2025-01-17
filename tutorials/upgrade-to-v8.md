@@ -14,7 +14,7 @@ There are a few version-breaking changes that need to be taken into account when
 1. SafeMath is implemented in `uint256` automatically so all references have to be removed 
 2. overflows always throw errors so all `uint256(-1)` will have to changed to `type(uint256).max`
 3. `pragma experimental ABIEncoderV2` is enabled for every file by default
-4. the reference to the current timestamp `now` has been depreciated in favour of `block.timestamp`
+4. the reference to the current timestamp `now` has been deprecated in favour of `block.timestamp`
 5. imports such as OpenZeppelin have to updated to the version that uses 0.8
 
 In addition to version changes all strategies will now use the BeefyFeeConfigurator contract to fetch a fee struct. This will replace the hardcoded 4.5% fees and centralise the control of the fee splits.
@@ -25,7 +25,7 @@ In addition to version changes all strategies will now use the BeefyFeeConfigura
 ```
 pragma solidity ^0.8.0
 ```
-2. Replace exisiting OpenZeppelin imports with the 0.8 versions, removing SafeMath entirely
+2. Replace existing OpenZeppelin imports with the 0.8 versions, removing SafeMath entirely
 ```
 import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
