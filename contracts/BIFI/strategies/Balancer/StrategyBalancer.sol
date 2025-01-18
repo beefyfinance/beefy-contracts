@@ -80,8 +80,7 @@ contract StrategyBalancer is BaseAllToNativeFactoryStrat {
     function _claim() internal override {
         if (useAura) IAuraRewardPool(rewardPool).getReward();
         else {
-            try minter.mint(address(this)) { /* yay there is rewards */}
-            catch { /* If we are here there is no bal */ }
+            if (address(minter) != address(0)) minter.mint(address(this));
             gauge.claim_rewards(address(this));
         }
     }

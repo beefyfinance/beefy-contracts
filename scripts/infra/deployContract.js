@@ -5,13 +5,16 @@ import { addressBook } from "blockchain-addressbook";
 const {
     platforms: { beefyfinance },
     tokens: {
-      ETH: { address: ETH },
+  //    ETH: { address: native },
     },
-  } = addressBook.scroll;
+  } = addressBook.sonic;
+
+  const native = "0x039e2fB66102314Ce7b64Ce5Ce3E5183bc94aD38";
+  const beefyFeeConfig = "0x2b0C9702A4724f2BFe7922DB92c4082098533c62";
 
 const ethers = hardhat.ethers;
 
-const contractName = "BeefyMultiHopSwapper";
+const contractName = "StrategySiloV2";
 const factoryName = "BeefyVaultV7Factory";
 
 const config = {};
@@ -33,6 +36,7 @@ async function main() {
   await contract.deployed();
   
   console.log(`${contractName} deployed to:`, contract.address);
+  //console.log(native, beefyfinance.keeper, beefyfinance.beefyFeeRecipient, beefyFeeConfig)
 
 
  // const factory = await Factory.deploy(contract.address);

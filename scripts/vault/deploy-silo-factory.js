@@ -3,30 +3,29 @@ import { addressBook } from "blockchain-addressbook";
 import vaultV7 from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7.sol/BeefyVaultV7.json";
 import vaultV7Factory from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
 import strategyFactory from "../../artifacts/contracts/BIFI/infra/StrategyFactory.sol/StrategyFactory.json"
-import stratAbi from "../../artifacts/contracts/BIFI/strategies/Velodrome/StrategyVelodromeFactory.sol/StrategyVelodromeFactory.json";
-import { symbolName } from "typescript";
+import stratAbi from "../../artifacts/contracts/BIFI/strategies/Silo/StrategySiloV2.sol/StrategySiloV2.json";
 
 const {
-  platforms: { beefyfinance, equalizer },
+  platforms: { beefyfinance, balancer },
   tokens: {
-    //ETH: { address: ETH },
-   // USDCe: { address: USDCe },
-    EQUAL: { address: EQUAL },
+   /* USDC: { address: USDC },
+    BAL: { address: BAL },
+    AURA: { address: AURA }*/
+    S: { address: S },
+    USDCe: { address: USDCe }
   },
 } = addressBook.sonic;
 
-const BRUSH = "0xE51EE9868C1f0d6cd968A8B8C8376Dc2991BFE44";
-const stS = "0xE5DA20F15420aD15DE0fa650600aFc998bbE3955";
-const scUSD = "0xd3DCe716f3eF535C5Ff8d041c1A41C3bd89b97aE";
 
-const want = web3.utils.toChecksumAddress("0xB78CdF29F7E563ea447feBB5b48DDe9bC3278Ba4");
-const rewardPool = web3.utils.toChecksumAddress("0x8c030811a8C5E1890dAd1F5E581D28ac8740c532");
+const want = USDCe;
+const gauge = web3.utils.toChecksumAddress(ethers.constants.AddressZero);
+const silo = web3.utils.toChecksumAddress("0x4E216C15697C1392fE59e1014B009505E05810Df");
 
-const platform = "Equalizer";
-const tokens = ["scUSD", "USDC.e"]
-const tokensCombined = tokens[0] + "-" + tokens[1];
+const platform = "SiloV2";
+const tokens = ["USDC.e"]
+const tokensCombined = "USDC.e (wS Market)";
 const chain = "Sonic";
-const id = "equalizer-sonic-usdc.e-scusd";
+const id = "silov2-sonic-usdce-ws";
 
 const vaultParams = {
   mooName: "Moo " + platform + " " + chain + " " + tokensCombined,
@@ -36,18 +35,19 @@ const vaultParams = {
 
 const strategyParams = {
   want: want,
-  rewardPool: rewardPool,
+  gauge: gauge,
+  silo: silo,
   swapper: beefyfinance.beefySwapper,
-  solidlyRouter: "0xED9d262985E18710DDDAC0dfC10a3f900679063B", //equalizer.router,
+  depositToken: want,
   strategist: "0xdad00eCa971D7B22e0dE1B874fbae30471B75354", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   feeConfig: beefyfinance.beefyFeeConfig,
   verifyStrat: false,
-  rewards: [EQUAL],
+  rewards: [],
   beefyVaultProxy: beefyfinance.vaultFactory,
   stratFactory: beefyfinance.strategyFactory,
-  strategyImplementationName: "Equalizer",
+  strategyImplementationName: "StrategySiloV2",
   useVaultProxy: true,
  // ensId
 };
@@ -64,6 +64,8 @@ async function main() {
   await hardhat.run("compile");
 
   console.log("Deploying:", vaultParams.mooName);
+
+  console.log(vaultParams, strategyParams)
 
   const factory = await ethers.getContractAt(vaultV7Factory.abi, strategyParams.beefyVaultProxy);
   const stratFactory = await ethers.getContractAt(strategyFactory.abi, strategyParams.stratFactory);
@@ -102,18 +104,19 @@ async function main() {
   : console.log(`Vault Intilization failed with tx: ${vaultInitTx.transactionHash}`);
 
   const strategyConstructorArguments = [
-    strategyParams.rewardPool,
-    strategyParams.solidlyRouter,
+    strategyParams.silo,
+    strategyParams.gauge,
     strategyParams.rewards,
     [
       strategyParams.want,
-      ethers.constants.AddressZero,
+      strategyParams.depositToken,
       strategyParams.stratFactory,
       vault,
       strategyParams.swapper,
       strategyParams.strategist,
     ]
   ];
+  console.log(strategyConstructorArguments)
 
   let abi = stratAbi.abi;
   const stratContract = await ethers.getContractAt(abi, strat);
@@ -128,9 +131,9 @@ async function main() {
   console.log(`
 {
     "id": "${id}",
-    "name": "${tokensCombined} vLP",
+    "name": "${tokensCombined}",
     "type": "standard",
-    "token": "${tokensCombined} vLP",
+    "token": "${tokensCombined}",
     "tokenAddress": "${want}",
     "tokenDecimals": 18,
     "tokenProviderId": "${platform.toLowerCase()}",
@@ -142,17 +145,19 @@ async function main() {
     "createdAt": ${(Date.now() / 1000).toFixed(0)},
     "status": "active",
     "platformId": "${platform.toLowerCase()}",
-    "assets": ["${tokens[0]}", "${tokens[1]}"],
-    "risks": ["COMPLEXITY_LOW", "BATTLE_TESTED", "IL_HIGH", "MCAP_LARGE", "CONTRACTS_VERIFIED"],
-    "strategyTypeId": "lp",
-    "addLiquidityUrl": "https://sonic.equalizer.exchange/liquidity/${want}",
+    "assets": ["${tokens[0]}"],
+    "risks": ["COMPLEXITY_LOW", "BATTLE_TESTED", "MCAP_LARGE", "CONTRACTS_VERIFIED"],
+    "strategyTypeId": "lendingNoBorrow",
     "network": "${chain.toLowerCase()}",
-    "zaps": [
+     "zaps": [
       {
-        "strategyId": "solidly",
-        "ammId": "sonic-equalizer"
+        "strategyId": "single"
       }
-    ]
+    ],
+    "lendingOracle": {
+      "provider": "chainlink",
+      "address": "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
+    }
   },
     `)
 }

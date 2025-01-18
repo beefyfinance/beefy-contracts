@@ -4,8 +4,8 @@ const ethers = hardhat.ethers;
 
 const config = {
   minDelay: 86400,
-  proposers: ["0x3Eb7fB70C03eC4AEEC97C6C6C1B59B014600b7F7"],
-  executors: ["0x3Eb7fB70C03eC4AEEC97C6C6C1B59B014600b7F7", "0x10aee6B5594942433e7Fc2783598c979B030eF3D"],
+  proposers: ["0x04db327e5d9A0c680622E2025B5Be7357fC757f0"],
+  executors: ["0x04db327e5d9A0c680622E2025B5Be7357fC757f0", "0x4fED5491693007f0CD49f4614FFC38Ab6A04B619"],
 };
 
 async function main() {

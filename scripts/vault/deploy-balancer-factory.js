@@ -8,22 +8,23 @@ import stratAbi from "../../artifacts/contracts/BIFI/strategies/Balancer/Strateg
 const {
   platforms: { beefyfinance, balancer },
   tokens: {
-    USDC: { address: USDC },
+   /* USDC: { address: USDC },
     BAL: { address: BAL },
-    AURA: { address: AURA }
+    AURA: { address: AURA }*/
   },
-} = addressBook.arbitrum;
+} = addressBook.sonic;
 
+const BEETS = "0x2D0E0814E62D80056181F5cd932274405966e4f0";
 
-const want = web3.utils.toChecksumAddress("0x4284c68f567903537E2d9Ff726fdF8591E431DDC");
-const gauge = web3.utils.toChecksumAddress(ethers.constants.AddressZero);
-const booster = web3.utils.toChecksumAddress("0x98Ef32edd24e2c92525E59afc4475C1242a30184");
+const want = web3.utils.toChecksumAddress("0x21FeD4063BF8ebf4F51f4ADF4ECFC9717aa4cA9D");
+const gauge = web3.utils.toChecksumAddress("0xf6a0071f5607f589DF253E0991Ba6aBdDE7a6d32");
+const booster = web3.utils.toChecksumAddress(ethers.constants.AddressZero);
 
-const platform = "Balancer";
-const tokens = ["MORE", "GYD"]
-const tokensCombined = "MORE/GYD";
-const chain = "Base";
-const id = "aura-arb-more-gyd";
+const platform = "BeethovenX";
+const tokens = ["BEETS", "stS", "LUDWIG"]
+const tokensCombined = "BEETS/stS/LUDWIG";
+const chain = "Sonic";
+const id = "beets-sonic-high-speed-perfect-beets";
 
 const vaultParams = {
   mooName: "Moo " + platform + " " + chain + " " + tokensCombined,
@@ -35,19 +36,19 @@ const strategyParams = {
   want: want,
   gauge: gauge,
   booster: booster,
-  pid: 90, // If using balancer instead of Aura set PID to 1234567
+  pid: 1234567, // If using balancer instead of Aura set PID to 1234567
   swapper: beefyfinance.beefySwapper,
-  balancerVault: balancer.router,
+  balancerVault: "0xBA12222222228d8Ba445958a75a0704d566BF2C8", //balancer.router,
   depositToken: want,
-  strategist: "0x79c6d6834511703569845711a60C60c21A2dbB9b", // some address
+  strategist: "0xdad00eCa971D7B22e0dE1B874fbae30471B75354", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   feeConfig: beefyfinance.beefyFeeConfig,
   verifyStrat: false,
-  rewards: [BAL, AURA, USDC],
+  rewards: [BEETS],
   beefyVaultProxy: beefyfinance.vaultFactory,
   stratFactory: beefyfinance.strategyFactory,
-  strategyImplementationName: "StrategyBalancerGyro",
+  strategyImplementationName: "BalancerV2",
   useVaultProxy: true,
  // ensId
 };

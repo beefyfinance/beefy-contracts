@@ -37,6 +37,7 @@ const config: DeploymentConfig = {
     bsc: {
       url: process.env.BSC_RPC || "https://rpc.ankr.com/bsc",
       chainId: 56,
+      gasPrice: 1000000000,
       accounts,
     },
     heco: {
@@ -52,6 +53,7 @@ const config: DeploymentConfig = {
     polygon: {
       url: process.env.POLYGON_RPC || "https://rpc.ankr.com/polygon",
       chainId: 137,
+      gasPrice: 100000000000,
       accounts,
     },
     fantom: {
@@ -81,7 +83,7 @@ const config: DeploymentConfig = {
     },
     cronos: {
       // url: "https://evm-cronos.crypto.org",
-      url: process.env.CRONOS_RPC || "https://rpc.vvs.finance/",
+      url: process.env.CRONOS_RPC || "https://rpc.vvs.finance",
       chainId: 25,
       accounts,
     },
@@ -136,7 +138,7 @@ const config: DeploymentConfig = {
       accounts,
     },
     kava: {
-      url: process.env.KAVA_RPC || "https://evm.kava.io",
+      url: process.env.KAVA_RPC || "https://evm.kava.chainstacklabs.com",
       chainId: 2222,
       accounts,
     },
@@ -201,7 +203,17 @@ const config: DeploymentConfig = {
       url: process.env.SEI_RPC || "https://evm-rpc.sei-apis.com",
       chainId: 1329,
       accounts,
-    }
+    },
+    lisk: {
+      url: "https://rpc.api.lisk.com",
+      chainId: 1135,
+      accounts,
+    },
+    sonic: {
+      url: "https://rpc.ankr.com/sonic_mainnet",
+      chainId: 146,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
@@ -227,6 +239,8 @@ const config: DeploymentConfig = {
       avax: process.env.AVAX_API_KEY!,
       manta: 'someKey',
       sei: 'sei',
+      lisk: 'abc',
+      sonic: 'abc'
     },
     customChains: [
       {
@@ -235,6 +249,14 @@ const config: DeploymentConfig = {
         urls: {
           apiURL: "https://api.scrollscan.com/api",
           browserURL: "https://scrollscan.com/",
+        },
+      },
+      {
+        network: "sonic",
+        chainId: 146,
+        urls: {
+          apiURL: "https://api.sonicscan.org/api",
+          browserURL: "https://sonicscan.org/",
         },
       },
       {
@@ -339,6 +361,14 @@ const config: DeploymentConfig = {
         urls: {
           apiURL: "https://seitrace.com/pacific-1/api",
           browserURL: "https://seitrace.com"
+        }
+      },
+      {
+        network: "lisk",
+        chainId: 1135,
+        urls: {
+          apiURL: "https://blockscout.lisk.com/api",
+          browserURL: "https://blockscout.lisk.com/"
         }
       },
     ],

@@ -80,5 +80,12 @@ interface IBalancerVault {
         uint256[] memory amounts,
         bytes memory userData
     ) external;
+
+    function queryBatchSwap(
+        SwapKind kind,
+        BatchSwapStep[] memory swaps,
+        address[] memory assets,
+        FundManagement memory funds
+    ) external returns (int256[] memory);
     
 }
