@@ -192,7 +192,7 @@ const config: DeploymentConfig = {
       url: "https://public-node.rsk.co",
       chainId: 30,
       accounts,
-      gasPrice: 72000000
+      gasPrice: 72000000,
     },
     manta: {
       url: process.env.MANTA_RPC || "https://manta-pacific.drpc.org",
@@ -235,12 +235,12 @@ const config: DeploymentConfig = {
       fraxtal: process.env.FRAXTAL_API_KEY!,
       mode: "api key is not required by the Kava explorer, but can't be empty",
       scroll: process.env.SCROLL_API_KEY!,
-      rootstock: 'abc',
+      rootstock: "abc",
       avax: process.env.AVAX_API_KEY!,
-      manta: 'someKey',
-      sei: 'sei',
-      lisk: 'abc',
-      sonic: 'abc'
+      manta: "someKey",
+      sei: "sei",
+      lisk: "abc",
+      sonic: "abc",
     },
     customChains: [
       {
@@ -344,7 +344,7 @@ const config: DeploymentConfig = {
         chainId: 30,
         urls: {
           apiURL: "https://rootstock.blockscout.com/api",
-          browserURL: "https://rootstock.blockscout.com/"
+          browserURL: "https://rootstock.blockscout.com/",
         },
       },
       {
@@ -360,16 +360,16 @@ const config: DeploymentConfig = {
         chainId: 1329,
         urls: {
           apiURL: "https://seitrace.com/pacific-1/api",
-          browserURL: "https://seitrace.com"
-        }
+          browserURL: "https://seitrace.com",
+        },
       },
       {
         network: "lisk",
         chainId: 1135,
         urls: {
           apiURL: "https://blockscout.lisk.com/api",
-          browserURL: "https://blockscout.lisk.com/"
-        }
+          browserURL: "https://blockscout.lisk.com/",
+        },
       },
     ],
   },

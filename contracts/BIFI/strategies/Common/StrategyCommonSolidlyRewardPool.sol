@@ -91,20 +91,15 @@ contract StrategyCommonSolidlyRewardPool is BaseAllToNativeFactoryStrat {
         uint lp1Amt = outputBal - lp0Amt;
 
         if (stable) {
-            uint lp0Decimals = 10 ** IERC20Extended(lpToken0).decimals();
-            uint lp1Decimals = 10 ** IERC20Extended(lpToken1).decimals();
-
             uint out0 = lp0Amt;
             if (lpToken0 != output) {
-                out0 = ISolidlyRouter(unirouter).getAmountsOut(lp0Amt, outputToLp0Route)[outputToLp0Route.length] * 1e18 / lp0Decimals;
+                out0 = ISolidlyRouter(unirouter).getAmountsOut(lp0Amt, outputToLp0Route)[outputToLp0Route.length];
             }
             uint out1 = lp1Amt;
             if (lpToken1 != output) {
-                out1 = ISolidlyRouter(unirouter).getAmountsOut(lp1Amt, outputToLp1Route)[outputToLp1Route.length] * 1e18 / lp1Decimals;
+                out1 = ISolidlyRouter(unirouter).getAmountsOut(lp1Amt, outputToLp1Route)[outputToLp1Route.length];
             }
             (uint amountA, uint amountB,) = ISolidlyRouter(unirouter).quoteAddLiquidity(lpToken0, lpToken1, stable, out0, out1);
-            amountA = amountA * 1e18 / lp0Decimals;
-            amountB = amountB * 1e18 / lp1Decimals;
             uint ratio = out0 * 1e18 / out1 * amountB / amountA;
             lp0Amt = outputBal * 1e18 / (ratio + 1e18);
             lp1Amt = outputBal - lp0Amt;
