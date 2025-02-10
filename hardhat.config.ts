@@ -210,7 +210,7 @@ const config: DeploymentConfig = {
       accounts,
     },
     sonic: {
-      url: "https://rpc.ankr.com/sonic_mainnet",
+      url: process.env.SONIC_RPC || "https://rpc.ankr.com/sonic",
       chainId: 146,
       accounts,
     },
