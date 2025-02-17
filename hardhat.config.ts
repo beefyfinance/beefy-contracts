@@ -246,6 +246,7 @@ const config: DeploymentConfig = {
       sei: "sei",
       lisk: "abc",
       sonic: "abc",
+      unichain: process.env.UNICHAIN_API_KEY!,
     },
     customChains: [
       {
