@@ -2,19 +2,19 @@ const hardhat = require("hardhat");
 const { upgrades } = require("hardhat");
 const { addressBook } = require("blockchain-addressbook");
 
+const { getVerifyCommand } = require("../utils");
+
 /**
  * Script used to deploy the basic infrastructure needed to run Beefy.
  */
 
 const ethers = hardhat.ethers;
 
+const chainName = "unichain";
 const {
-  platforms: { 
-    beefyfinance: {
-      keeper,
-      voter, 
-      beefyFeeRecipient,
-    } },
+  platforms: {
+    beefyfinance: { keeper, voter, beefyFeeRecipient },
+  },
 } = addressBook.arbitrum;
 
 const TIMELOCK_ADMIN_ROLE = "0x5f58e3a2316349923ce3780f8d587db2d72378aed66a8261c916544fa6846ca5";
@@ -27,7 +27,7 @@ const config = {
   treasuryMultisig: "0x2E52C94502f728A634a7b8eFf5941FB066d3eE76",
   totalLimit: "95000000000000000",
   callFee: "500000000000000",
-  strategist: "5000000000000000"
+  strategist: "5000000000000000",
 };
 
 const proposer = config.devMultisig || TRUSTED_EOA;
@@ -47,19 +47,21 @@ async function main() {
   await vaultOwner.deployed();
   await vaultOwner.renounceRole(TIMELOCK_ADMIN_ROLE, deployer.address);
   console.log(`Vault owner deployed to ${vaultOwner.address}`);
-
+  console.log(getVerifyCommand(chainName, "TimelockController", vaultOwner.address, deployParams));
 
   console.log("Deploying strategy owner.");
   const stratOwner = await TimelockController.deploy(STRAT_OWNER_DELAY, timelockProposers, timelockExecutors);
   await stratOwner.deployed();
   await stratOwner.renounceRole(TIMELOCK_ADMIN_ROLE, deployer.address);
   console.log(`Strategy owner deployed to ${stratOwner.address}`);
+  console.log(getVerifyCommand(chainName, "TimelockController", stratOwner.address, deployParams));
 
   console.log("Deploying multicall");
   const Multicall = await ethers.getContractFactory("Multicall");
   const multicall = await Multicall.deploy();
   await multicall.deployed();
   console.log(`Multicall deployed to ${multicall.address}`);
+  console.log(getVerifyCommand(chainName, "Multicall", multicall.address));
 
   const BeefyFeeConfiguratorFactory = await ethers.getContractFactory("BeefyFeeConfigurator");
   console.log("Deploying BeefyFeeConfigurator");
@@ -67,8 +69,20 @@ async function main() {
   const constructorArguments = [keeper, config.totalLimit];
   const transparentUpgradableProxy = await upgrades.deployProxy(BeefyFeeConfiguratorFactory, constructorArguments);
   await transparentUpgradableProxy.deployed();
+  console.log(`BeefyFeeConfigurator deployed to ${transparentUpgradableProxy.address}`);
+  console.log(
+    getVerifyCommand(chainName, "BeefyFeeConfigurator", transparentUpgradableProxy.address, constructorArguments)
+  );
 
-  await transparentUpgradableProxy.setFeeCategory(0, BigInt(config.totalLimit), BigInt(config.callFee), BigInt(config.strategist), "default", true, true);
+  await transparentUpgradableProxy.setFeeCategory(
+    0,
+    BigInt(config.totalLimit),
+    BigInt(config.callFee),
+    BigInt(config.strategist),
+    "default",
+    true,
+    true
+  );
   await transparentUpgradableProxy.transferOwnership(config.devMultisig);
 
   const implementationAddress = await upgrades.erc1967.getImplementationAddress(transparentUpgradableProxy.address);
@@ -83,19 +97,20 @@ async function main() {
   const vault7 = await VaultV7.deploy();
   await vault7.deployed();
   console.log(`Vault V7 deployed to ${vault7.address}`);
+  console.log(getVerifyCommand(chainName, "BeefyVaultV7", vault7.address));
 
   const vaultFactory = await VaultFactory.deploy(vault7.address);
   await vaultFactory.deployed();
   console.log(`Vault Factory deployed to ${vaultFactory.address}`);
+  console.log(getVerifyCommand(chainName, "BeefyVaultV7Factory", vaultFactory.address));
 
   console.log("Deploying Beefy Swapper");
   const BeefySwapper = await ethers.getContractFactory("BeefySwapper");
   const beefySwapper = await BeefySwapper.deploy();
   await beefySwapper.deployed();
-
   console.log(`Beefy Swapper deployed to ${beefySwapper.address}`);
-
-  console.log('Deploying Beefy Oracle');
+  console.log(getVerifyCommand(chainName, "BeefySwapper", beefySwapper.address));
+  console.log("Deploying Beefy Oracle");
   const BeefyOracle = await ethers.getContractFactory("BeefyOracle");
   const beefyOracle = await BeefyOracle.deploy();
   await beefyOracle.deployed();
@@ -106,6 +121,7 @@ async function main() {
   beefyOracle.initialize();
   beefyOracle.transferOwnership(keeper);
   console.log(`Beefy Oracle deployed to ${beefyOracle.address}`);
+  console.log(getVerifyCommand(chainName, "BeefyOracle", beefyOracle.address));
 
   console.log(`
     const devMultisig = '${config.devMultisig}';
@@ -145,7 +161,7 @@ async function main() {
       beefyOracleUniswapV2: '${ethers.constants.AddressZero}',
       beefyOracleUniswapV3: '${ethers.constants.AddressZero}',
     } as const;
-  `)
+  `);
 }
 
 main()
@@ -154,4 +170,3 @@ main()
     console.error(error);
     process.exit(1);
   });
-  
