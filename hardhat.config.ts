@@ -214,6 +214,11 @@ const config: DeploymentConfig = {
       chainId: 146,
       accounts,
     },
+    unichain: {
+      url: process.env.UNICHAIN_RPC || "https://mainnet.unichain.org",
+      chainId: 130,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
@@ -369,6 +374,14 @@ const config: DeploymentConfig = {
         urls: {
           apiURL: "https://blockscout.lisk.com/api",
           browserURL: "https://blockscout.lisk.com/",
+        },
+      },
+      {
+        network: "unichain",
+        chainId: 130,
+        urls: {
+          apiURL: "https://api.uniscan.xyz/api",
+          browserURL: "https://uniscan.xyz/",
         },
       },
     ],
