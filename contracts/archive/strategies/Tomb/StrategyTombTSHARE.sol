@@ -35,8 +35,8 @@ contract StrategyTombTSHARE is StratManager, FeeManager {
     bool public initiateTimelock;
     uint256 public depositTime;
     uint256 public withdrawTime;
-    uint256 public withdrawPeriod = 7200; // 2 Hours to withdraw before next lock
-    uint256 public withdrawEpochs = 6; // Each Epoch is 6 hours
+    uint256 public constant withdrawPeriod = 7200; // 2 Hours to withdraw before next lock
+    uint256 public constant withdrawEpochs = 6; // Each Epoch is 6 hours
 
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
