@@ -7,6 +7,8 @@ interface ISolidlyGauge {
     function withdraw(uint256 amount) external;
     function getReward(address user, address[] memory rewards) external;
     function earned(address token, address user) external view returns (uint256);
+    function earned(address user, uint tokenId) external view returns(uint);
+    function lastUpdateTime(uint) external view returns(uint);
     function balanceOf(address user) external view returns (uint256);
     function rewardsListLength() external view returns (uint256);
     function rewards(uint256) external view returns (address);

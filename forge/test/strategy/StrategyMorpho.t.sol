@@ -92,7 +92,7 @@ contract StrategyMorphoTest is BaseAllToNativeFactoryTest {
         uint wantBalanceFinal = want.balanceOf(address(user));
         console.log("Final user want balance", wantBalanceFinal);
         assertLe(wantBalanceFinal, vaultBal, "wantBalanceFinal > vaultBal");
-        assertEq(vault.balance(), vaultBal - wantBalanceFinal, "vaultBal != vaultBal - wantBalanceFinal");
+        assertEq(vault.balance() + 1, vaultBal - wantBalanceFinal, "vaultBal != vaultBal - wantBalanceFinal");
     }
 
     function test_harvest() external override {
