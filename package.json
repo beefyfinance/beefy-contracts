@@ -59,7 +59,7 @@
     "abi-to-sol": "abi-to-sol",
     "installForge": ". scripts/forge/installForge.sh",
     "forgeTest:vault": "forge test --force --fork-url http://localhost:8545 --match-contract ProdVaultTest",
-    "forgeTest:wrapper": "forge test --force --fork-url https://arb1.arbitrum.io/rpc --match-contract WrapperTest",
+    "forgeTest:wrapper": "forge test --force --fork-url https://sonic-rpc.publicnode.com --match-contract WrapperTest",
     "forgeTest:oracle": "forge test --force --fork-url https://polygon-rpc.com --match-contract Oracle",
     "forgeTest:swapper": "forge test --force --fork-url https://polygon-rpc.com --match-contract Swapper",
     "forgeTest:aura": "forge test --force --fork-url https://rpc.ankr.com/eth --match-contract StrategyAuraGyroTest",
