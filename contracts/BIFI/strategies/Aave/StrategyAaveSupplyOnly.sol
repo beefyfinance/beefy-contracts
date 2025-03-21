@@ -6,6 +6,7 @@ import "../../interfaces/aave/IAaveV3Incentives.sol";
 import "../../interfaces/aave/ILendingPool.sol";
 import "../../interfaces/aave/IAaveToken.sol";
 import "../Common/BaseAllToNativeFactoryStrat.sol";
+import {IMerklClaimer} from "../../interfaces/merkl/IMerklClaimer.sol";
 
 contract StrategyAaveSupplyOnly is BaseAllToNativeFactoryStrat {
     using SafeERC20 for IERC20;
@@ -61,5 +62,15 @@ contract StrategyAaveSupplyOnly is BaseAllToNativeFactoryStrat {
 
     function _verifyRewardToken(address token) internal view override {
         require(token != aToken, "!aToken");
+    }
+
+    function merklClaim(
+        address claimer,
+        address[] calldata users,
+        address[] calldata tokens,
+        uint256[] calldata amounts,
+        bytes32[][] calldata proofs
+    ) external {
+        IMerklClaimer(claimer).claim(users, tokens, amounts, proofs);
     }
 }
