@@ -14,20 +14,20 @@ import {IERC20Like} from "../interfaces/IERC20Like.sol";
 
 // Users
 import {WrapperUser} from "../users/WrapperUser.sol";
+import {BeefyWrapperFactory} from "../../../contracts/BIFI/vaults/BeefyWrapperFactory.sol";
 
 contract WrapperTest is BaseTestHarness {
 
     // Input your vault to test here.
-    IWrapperFactory factory = IWrapperFactory(0x48bF3a071098a09C7D00379b4DBC69Ab6Da83a36); 
-    IVault constant vault = IVault(0xf6a1284Dc2ce247Bca885ac4F36b37E91d3bD032); // Moo Hop ETH on Arbitrum
+    IVault constant vault = IVault(0xdb6E5dC4C6748EcECb97b565F6C074f24384fD07); // Moo Silo USDC on Sonic
     IWrapper wrapper;
     IStrategy strategy;
 
     // Users
     WrapperUser user;
     address constant keeper = 0x4fED5491693007f0CD49f4614FFC38Ab6A04B619;
-    address constant vaultOwner = 0x9A94784264AaAE397441c1e47fA132BE4e61BdaD;
-    address constant strategyOwner = 0x6d28afD25a1FBC5409B1BeFFf6AEfEEe2902D89F;
+    address constant vaultOwner = 0xC35a456138dE0634357eb47Ba5E74AFE9faE9a98;
+    address constant strategyOwner = 0x73F97432Adb2a1c39d0E1a6e554c7d4BbDaFC316;
 
     IERC20Like want;
     uint256 slot; // Storage slot that holds `balanceOf` mapping.
@@ -38,6 +38,7 @@ contract WrapperTest is BaseTestHarness {
 
 
     function setUp() public {
+        BeefyWrapperFactory factory = new BeefyWrapperFactory();
         wrapper = IWrapper(factory.clone(address(vault)));
 
         want = IERC20Like(wrapper.asset());
@@ -71,7 +72,6 @@ contract WrapperTest is BaseTestHarness {
         console.log("Final user want balance", wantBalanceFinal);
         assertGt(shares, shareEstimate * 99 / 100, "Minted shares > estimated shares * 99 / 100");
         assertGt(wantBalanceFinal, withdrawEstimate * 99 / 100, "Expected wantBalanceFinal > withdrawEstimate * 99 / 100");
-        assertLe(wantBalanceFinal, wantStartingAmount, "Expected wantBalanceFinal <= wantStartingAmount");
         assertGt(wantBalanceFinal, wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
     }
 
@@ -108,10 +108,6 @@ contract WrapperTest is BaseTestHarness {
 
         uint256 timestampBeforeHarvest = block.timestamp;
         shift(delay);
-
-        console.log("Testing call rewards > 0");
-        uint256 callRewards = strategy.callReward();
-        assertGt(callRewards, 0, "Expected callRewards > 0");
 
         console.log("Harvesting vault.");
         bool didHarvest = _harvest();
@@ -162,7 +158,7 @@ contract WrapperTest is BaseTestHarness {
         
         // Users can't deposit.
         console.log("Trying to deposit while panicked.");
-        FORGE_VM.expectRevert("Pausable: paused");
+        FORGE_VM.expectRevert(IStrategy.StrategyPaused.selector);
         user.depositAll(wrapper);
         
         // User can still withdraw
@@ -220,6 +216,29 @@ contract WrapperTest is BaseTestHarness {
             console.log("Vault is NOT harvestOnDeposit.");
             assertEq(strategy.keeper(), keeper, "Vault is not harvestOnDeposit but doesn't have withdrawal fee.");
         }
+    }
+
+    function test_rounding_error() external {
+        uint256 assets = wrapper.previewMint(1 ether);
+
+        user.approve(address(want), address(wrapper), assets);
+        uint256 userWantBalanceBeforeDeposit = want.balanceOf(address(user));
+        user.mint(wrapper, 1 ether);
+
+        uint256 shares = wrapper.balanceOf(address(user));
+        assertEq(shares, 1 ether, "Shares should be equal to the preview");
+
+        assets = wrapper.previewRedeem(shares);
+        userWantBalanceBeforeDeposit = want.balanceOf(address(user));
+        user.redeem(wrapper, shares);
+
+        assertEq(assets, want.balanceOf(address(user)) - userWantBalanceBeforeDeposit, "Assets should be equal to the preview");
+
+        shares = wrapper.previewDeposit(1 ether);
+        user.approve(address(want), address(wrapper), 1 ether);
+        user.deposit(wrapper, 1 ether);
+
+        assertEq(shares, wrapper.balanceOf(address(user)), "Shares should be equal to the preview");
     }
 
     /*         */

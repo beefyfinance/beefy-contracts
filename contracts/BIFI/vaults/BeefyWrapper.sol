@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
+import {ERC4626Upgradeable, ERC20Upgradeable, MathUpgradeable, IERC20MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
+import {SafeERC20Upgradeable, IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 /**
  * @dev Interface of a Beefy Vault
@@ -23,11 +24,24 @@ interface IVault {
  * @notice Implementation for an ERC-4626 wrapper of a Beefy Vault
  * @dev Wrapped Beefy Vault tokens can be minted by deposit of the underlying asset or by 
  * wrapping Beefy Vault tokens in a 1:1 ratio. Wrapped Beefy Vault tokens can either be unwrapped
- * for an equal number of Beefy Vault tokens or redeemed for the underlying asset
+ * for an equal number of Beefy Vault tokens or redeemed for the underlying asset.
+ * ERC4626 rules are strictly enforced, preview functions should return the correct values.
+ * Only vaults which do not update their asset balance on deposit can be wrapped, i.e. vaults which
+ * have profit locked or not harvesting on deposit, and the underlying balance is not updated on interactions.
  */
 contract BeefyWrapper is ERC4626Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using MathUpgradeable for uint256;
+
+    /**
+     * @notice Error for when the shares are not minted correctly
+     */
+    error MissingShares();
+
+    /**
+     * @notice Error for when the assets are not transferred correctly
+     */
+    error LeftOverAssets();
 
     /**
      * @notice Address of the vault being wrapped
@@ -45,7 +59,7 @@ contract BeefyWrapper is ERC4626Upgradeable {
         address _vault,
         string memory _name,
         string memory _symbol
-    ) public initializer {
+    ) external initializer {
         vault = _vault;
         __ERC20_init(_name, _symbol);
         __ERC4626_init(IVault(vault).want());
@@ -90,7 +104,7 @@ contract BeefyWrapper is ERC4626Upgradeable {
      * @dev Returns the total assets held by the vault, not only the wrapper
      * @return totalAssets the total balance of assets held by the vault
      */
-    function totalAssets() public view virtual override returns (uint256) {
+    function totalAssets() public view override returns (uint256) {
         return IVault(vault).balance();
     }
 
@@ -100,7 +114,7 @@ contract BeefyWrapper is ERC4626Upgradeable {
      * @return totalSupply the total supply of vault shares
      */
     function totalSupply()
-        public view virtual override(ERC20Upgradeable, IERC20Upgradeable) 
+        public view override(ERC20Upgradeable, IERC20Upgradeable) 
     returns (uint256) {
         return IERC20Upgradeable(vault).totalSupply();
     }
@@ -119,14 +133,15 @@ contract BeefyWrapper is ERC4626Upgradeable {
         address receiver,
         uint256 assets,
         uint256 shares
-    ) internal virtual override {
-        IERC20Upgradeable(asset()).safeTransferFrom(caller, address(this), assets);
-        uint balance = IERC20Upgradeable(vault).balanceOf(address(this));
-        IVault(vault).deposit(assets);
-        shares = IERC20Upgradeable(vault).balanceOf(address(this)) - balance;
-        _mint(receiver, shares);
+    ) internal override {
+        super._deposit(caller, receiver, assets, shares);
 
-        emit Deposit(caller, receiver, assets, shares);
+        uint256 balance = IERC20Upgradeable(vault).balanceOf(address(this));
+
+        IVault(vault).deposit(assets);
+
+        /// Prevent harvest on deposit vaults from under-minting to the wrapper
+        if (shares != IERC20Upgradeable(vault).balanceOf(address(this)) - balance) revert MissingShares();
     }
 
     /**
@@ -145,20 +160,34 @@ contract BeefyWrapper is ERC4626Upgradeable {
         address owner,
         uint256 assets,
         uint256 shares
-    ) internal virtual override {
-        if (caller != owner) {
-            _spendAllowance(owner, caller, shares);
-        }
-        _burn(owner, shares);
+    ) internal override {
+        uint256 balance = IERC20Upgradeable(asset()).balanceOf(address(this));
 
         IVault(vault).withdraw(shares);
-        uint balance = IERC20Upgradeable(asset()).balanceOf(address(this));
-        if (assets > balance) {
-            assets = balance;
-        }
 
-        IERC20Upgradeable(asset()).safeTransfer(receiver, assets);
+        super._withdraw(caller, receiver, owner, assets, shares);
 
-        emit Withdraw(caller, receiver, owner, assets, shares);
+        /// Prevent assets from being left over in the wrapper
+        if (IERC20Upgradeable(asset()).balanceOf(address(this)) != balance) revert LeftOverAssets();
+    }
+
+    /**
+     * @dev Internal conversion function (from assets to shares) with support for rounding direction, reverting back to pre-v4.9.0 behavior.
+     * @param assets the amount of assets to be converted to shares
+     * @param rounding the rounding direction
+     * @return shares the amount of shares that corresponds to the assets
+     */
+    function _convertToShares(uint256 assets, MathUpgradeable.Rounding rounding) internal view override returns (uint256) {
+        return assets.mulDiv(totalSupply(), totalAssets(), rounding);
+    }
+
+    /**
+     * @dev Internal conversion function (from shares to assets) with support for rounding direction, reverting back to pre-v4.9.0 behavior.
+     * @param shares the amount of shares to be converted to assets
+     * @param rounding the rounding direction
+     * @return assets the amount of assets that corresponds to the shares
+     */
+    function _convertToAssets(uint256 shares, MathUpgradeable.Rounding rounding) internal view override returns (uint256) {
+        return shares.mulDiv(totalAssets(), totalSupply(), rounding);
     }
 }
