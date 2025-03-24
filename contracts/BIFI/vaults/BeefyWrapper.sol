@@ -59,7 +59,7 @@ contract BeefyWrapper is ERC4626Upgradeable {
         address _vault,
         string memory _name,
         string memory _symbol
-    ) public initializer {
+    ) external initializer {
         vault = _vault;
         __ERC20_init(_name, _symbol);
         __ERC4626_init(IVault(vault).want());
@@ -104,7 +104,7 @@ contract BeefyWrapper is ERC4626Upgradeable {
      * @dev Returns the total assets held by the vault, not only the wrapper
      * @return totalAssets the total balance of assets held by the vault
      */
-    function totalAssets() public view virtual override returns (uint256) {
+    function totalAssets() public view override returns (uint256) {
         return IVault(vault).balance();
     }
 
@@ -114,7 +114,7 @@ contract BeefyWrapper is ERC4626Upgradeable {
      * @return totalSupply the total supply of vault shares
      */
     function totalSupply()
-        public view virtual override(ERC20Upgradeable, IERC20Upgradeable) 
+        public view override(ERC20Upgradeable, IERC20Upgradeable) 
     returns (uint256) {
         return IERC20Upgradeable(vault).totalSupply();
     }
@@ -133,18 +133,15 @@ contract BeefyWrapper is ERC4626Upgradeable {
         address receiver,
         uint256 assets,
         uint256 shares
-    ) internal virtual override {
-        IERC20Upgradeable(asset()).safeTransferFrom(caller, address(this), assets);
+    ) internal override {
+        super._deposit(caller, receiver, assets, shares);
+
         uint256 balance = IERC20Upgradeable(vault).balanceOf(address(this));
 
         IVault(vault).deposit(assets);
 
         /// Prevent harvest on deposit vaults from under-minting to the wrapper
         if (shares != IERC20Upgradeable(vault).balanceOf(address(this)) - balance) revert MissingShares();
-
-        _mint(receiver, shares);
-
-        emit Deposit(caller, receiver, assets, shares);
     }
 
     /**
@@ -163,35 +160,34 @@ contract BeefyWrapper is ERC4626Upgradeable {
         address owner,
         uint256 assets,
         uint256 shares
-    ) internal virtual override {
-        if (caller != owner) {
-            _spendAllowance(owner, caller, shares);
-        }
-        _burn(owner, shares);
-
+    ) internal override {
         uint256 balance = IERC20Upgradeable(asset()).balanceOf(address(this));
 
         IVault(vault).withdraw(shares);
 
-        IERC20Upgradeable(asset()).safeTransfer(receiver, assets);
+        super._withdraw(caller, receiver, owner, assets, shares);
 
         /// Prevent assets from being left over in the wrapper
-        if (IERC20Upgradeable(asset()).balanceOf(address(this)) > balance) revert LeftOverAssets();
-
-        emit Withdraw(caller, receiver, owner, assets, shares);
+        if (IERC20Upgradeable(asset()).balanceOf(address(this)) != balance) revert LeftOverAssets();
     }
 
     /**
-     * @dev Internal conversion function (from assets to shares) with support for rounding direction.
+     * @dev Internal conversion function (from assets to shares) with support for rounding direction, reverting back to pre-v4.9.0 behavior.
+     * @param assets the amount of assets to be converted to shares
+     * @param rounding the rounding direction
+     * @return shares the amount of shares that corresponds to the assets
      */
-    function _convertToShares(uint256 assets, MathUpgradeable.Rounding rounding) internal view virtual override returns (uint256) {
+    function _convertToShares(uint256 assets, MathUpgradeable.Rounding rounding) internal view override returns (uint256) {
         return assets.mulDiv(totalSupply(), totalAssets(), rounding);
     }
 
     /**
-     * @dev Internal conversion function (from shares to assets) with support for rounding direction.
+     * @dev Internal conversion function (from shares to assets) with support for rounding direction, reverting back to pre-v4.9.0 behavior.
+     * @param shares the amount of shares to be converted to assets
+     * @param rounding the rounding direction
+     * @return assets the amount of assets that corresponds to the shares
      */
-    function _convertToAssets(uint256 shares, MathUpgradeable.Rounding rounding) internal view virtual override returns (uint256) {
+    function _convertToAssets(uint256 shares, MathUpgradeable.Rounding rounding) internal view override returns (uint256) {
         return shares.mulDiv(totalAssets(), totalSupply(), rounding);
     }
 }
