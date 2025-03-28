@@ -9,6 +9,8 @@ contract CommonBaseTest is BaseAllToNativeFactoryTest {
     address private strategy;
 
     function createStrategy(address _impl) internal override returns (address) {
+        cacheOraclePrices();
+
         if (_impl != address(0)) {
             strategy = _impl;
             return strategy;
@@ -29,5 +31,15 @@ contract CommonBaseTest is BaseAllToNativeFactoryTest {
 
     function claimRewardsToStrat() internal override {
         BaseAllToNativeFactoryStrat(payable(strategy)).claim();
+    }
+
+    function cacheOraclePrices() internal {
+        address redStoneBeraWETH = 0x3587a73AA02519335A8a6053a97657BECe0bC2Cc;
+        if (redStoneBeraWETH.code.length > 0) {
+            bytes memory _callData = abi.encodeWithSignature("latestAnswer()");
+            (, bytes memory _res) = redStoneBeraWETH.staticcall(_callData);
+            uint _price = abi.decode(_res, (uint));
+            vm.mockCall(redStoneBeraWETH, _callData, abi.encode(_price));
+        }
     }
 }

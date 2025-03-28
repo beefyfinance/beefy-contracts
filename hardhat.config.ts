@@ -214,6 +214,11 @@ const config: DeploymentConfig = {
       chainId: 146,
       accounts,
     },
+    berachain: {
+      url: process.env.BERA_RPC || "https://rpc.berachain.com",
+      chainId: 80094,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
