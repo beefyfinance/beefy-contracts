@@ -35,21 +35,25 @@ abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
             console.log(IERC20Extended(strategy.rewards(i)).symbol(), bal);
             assertEq(bal, 0, "Extra reward not swapped");
         }
-        uint nativeBal = IERC20(strategy.native()).balanceOf(address(strategy));
+        address native = strategy.native();
+        uint nativeBal = IERC20(native).balanceOf(address(strategy));
         console.log("WETH %18e", nativeBal);
-        assertEq(nativeBal, 0, "Native not swapped");
 
-        (bool success, bytes memory data) = address(strategy).call(abi.encodeWithSignature("lpToken0()"));
-        if (success) {
-            address lpToken = abi.decode(data, (address));
-            uint bal = IERC20(lpToken).balanceOf(address(strategy));
+        (, bytes memory data0) = address(strategy).call(abi.encodeWithSignature("lpToken1()"));
+        (, bytes memory data1) = address(strategy).call(abi.encodeWithSignature("lpToken0()"));
+        address lp0; address lp1;
+        if (data0.length > 0) {
+            lp0 = abi.decode(data0, (address));
+            uint bal = IERC20(lp0).balanceOf(address(strategy));
             console.log("lpToken0 %18e", bal);
         }
-        (success, data) = address(strategy).call(abi.encodeWithSignature("lpToken1()"));
-        if (success) {
-            address lpToken = abi.decode(data, (address));
-            uint bal = IERC20(lpToken).balanceOf(address(strategy));
+        if (data1.length > 0) {
+            lp1 = abi.decode(data1, (address));
+            uint bal = IERC20(lp1).balanceOf(address(strategy));
             console.log("lpToken1 %18e", bal);
+        }
+        if (lp0 != native && lp1 != native) {
+            assertEq(nativeBal, 0, "Native not swapped");
         }
     }
 
