@@ -10,4 +10,5 @@ interface IRewardsGauge {
     function withdraw(uint256 _value) external;
     function reward_contract() external view returns (address);
     function bal_pseudo_minter() external view returns (address);
+    function factory() external view returns (address);
 }
