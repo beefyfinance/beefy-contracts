@@ -39,8 +39,8 @@ abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
         uint nativeBal = IERC20(native).balanceOf(address(strategy));
         console.log("WETH %18e", nativeBal);
 
-        (, bytes memory data0) = address(strategy).call(abi.encodeWithSignature("lpToken1()"));
-        (, bytes memory data1) = address(strategy).call(abi.encodeWithSignature("lpToken0()"));
+        (, bytes memory data0) = address(strategy).call(abi.encodeWithSignature("lpToken0()"));
+        (, bytes memory data1) = address(strategy).call(abi.encodeWithSignature("lpToken1()"));
         address lp0; address lp1;
         if (data0.length > 0) {
             lp0 = abi.decode(data0, (address));

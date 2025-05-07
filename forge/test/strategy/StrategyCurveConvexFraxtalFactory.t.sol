@@ -3,51 +3,17 @@
 pragma solidity ^0.8.12;
 
 import "../../../contracts/BIFI/strategies/Curve/StrategyCurveConvexFraxtalFactory.sol";
-import "./BaseStrategyTest.t.sol";
+import "./BaseAllToNativeFactoryTest.t.sol";
 
-contract StrategyCurveConvexFraxtalFactoryTest is BaseStrategyTest {
+contract StrategyCurveConvexFraxtalFactoryTest is BaseAllToNativeFactoryTest {
 
     StrategyCurveConvexFraxtalFactory strategy;
 
     function createStrategy(address _impl) internal override returns (address) {
+        cacheOraclePrices();
         if (_impl == a0) strategy = new StrategyCurveConvexFraxtalFactory();
         else strategy = StrategyCurveConvexFraxtalFactory(payable(_impl));
         return address(strategy);
-    }
-
-    function test_initWithNoPid() external {
-        // only if convex
-        if (strategy.rewardPool() == address(0)) return;
-
-        BeefyVaultV7 vaultV7 = new BeefyVaultV7();
-        IVault vaultNoPid = IVault(address(vaultV7));
-        StrategyCurveConvexFraxtalFactory strategyNoPid = new StrategyCurveConvexFraxtalFactory();
-
-        deal(address(want), address(user), wantAmount);
-
-        vaultV7.initialize(IStrategyV7(address(strategyNoPid)), "TestVault", "testVault", 0);
-        BaseAllToNativeFactoryStrat.Addresses memory commons = BaseAllToNativeFactoryStrat.Addresses({
-            want: address(want),
-            depositToken: strategy.depositToken(),
-            factory: address(strategy.factory()),
-            vault: address(vaultNoPid),
-            swapper: strategy.swapper(),
-            strategist: address(user)
-        });
-        address[] memory rewards = new address[](strategy.rewardsLength());
-        for (uint i; i < strategy.rewardsLength(); ++i) {
-            rewards[i] = strategy.rewards(i);
-        }
-        console.log("Init Strategy NO_PID");
-        strategyNoPid.initialize(strategy.gauge(), strategy.NO_PID(), rewards, address(0), address(0), commons);
-
-        user.approve(address(want), address(vaultNoPid), wantAmount);
-        user.depositAll(vaultNoPid);
-        user.withdrawAll(vaultNoPid);
-        uint wantBalanceFinal = want.balanceOf(address(user));
-        console.log("Final user want balance", wantBalanceFinal);
-        assertLe(wantBalanceFinal, wantAmount, "Expected wantBalanceFinal <= wantAmount");
-        assertGt(wantBalanceFinal, wantAmount * 99 / 100, "Expected wantBalanceFinal > wantAmount * 99 / 100");
     }
 
     function test_setConvexPid() external {
@@ -124,38 +90,17 @@ contract StrategyCurveConvexFraxtalFactoryTest is BaseStrategyTest {
         strategy.harvest();
     }
 
-    function test_rewards() external {
-        _depositIntoVault(user, wantAmount);
-        skip(1 days);
+    function cacheOraclePrices() internal {
+        address sfrxUSDMinter = 0xBFc4D34Db83553725eC6c768da71D2D9c1456B55;
+        address owner = OwnableUpgradeable(sfrxUSDMinter).owner();
+        bytes memory data = abi.encodeWithSignature("setOracleTimeTolerance(uint256)", 100_000_000);
+        vm.prank(owner);
+        (bool success,) = sfrxUSDMinter.call(data);
+        assertTrue(success, "sfrxUSDMinter call failed");
 
-        // if convex
-        if (strategy.rewardPool() != address(0)) {
-            console.log("Claim rewards on Convex");
-            IConvexRewardPool(strategy.rewardPool()).getReward(address(strategy));
-        } else {
-            console.log("Claim rewards on Curve");
-            if (strategy.isCurveRewardsClaimable()) {
-                IRewardsGauge(strategy.gauge()).claim_rewards(address(strategy));
-            }
-            if (strategy.isCrvMintable()) {
-                vm.startPrank(address(strategy));
-                strategy.minter().mint(strategy.gauge());
-                vm.stopPrank();
-            }
-        }
-
-        for (uint i; i < strategy.rewardsLength(); ++i) {
-            uint bal = IERC20(strategy.rewards(i)).balanceOf(address(strategy));
-            console.log(IERC20Extended(strategy.rewards(i)).symbol(), bal);
-        }
-
-        console.log("Harvest");
-        strategy.harvest();
-
-        for (uint i; i < strategy.rewardsLength(); ++i) {
-            uint bal = IERC20(strategy.rewards(i)).balanceOf(address(strategy));
-            console.log(IERC20Extended(strategy.rewards(i)).symbol(), bal);
-        }
+        address sfrxUSDOracle = 0x1B680F4385f24420D264D78cab7C58365ED3F1FF;
+        bytes memory callData = abi.encodeWithSignature("latestRoundData()");
+        (, bytes memory resData) = sfrxUSDOracle.staticcall(callData);
+        vm.mockCall(sfrxUSDOracle, callData, resData);
     }
-
 }
