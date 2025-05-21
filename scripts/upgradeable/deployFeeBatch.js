@@ -8,7 +8,7 @@ const chain = "cronos";
 
 const config = {
   bifi: addressBook[chain].tokens.BIFI.address,
-  wNative: addressBook[chain].tokens.WNATIVE.address,
+  fees: addressBook[chain].tokens.FEES.address,
   treasury: addressBook[chain].platforms.beefyfinance.treasury,
   rewardPool: addressBook[chain].platforms.beefyfinance.rewardPool,
   unirouter: ethers.constants.AddressZero,
@@ -23,7 +23,7 @@ async function main() {
   const BeefyFeeBatch = await ethers.getContractFactory("BeefyFeeBatchV2");
   const batcher = await upgrades.deployProxy(BeefyFeeBatch, [
     config.bifi,
-    config.wNative,
+    config.fees,
     config.treasury,
     config.rewardPool,
     config.unirouter,
