@@ -46,7 +46,7 @@ contract StrategyCurveConvexL2Factory is BaseAllToNativeFactoryStrat {
     }
 
     function stratName() public pure override returns (string memory) {
-        return "CurveConvexL2_v1";
+        return "CurveConvexL2";
     }
 
     function balanceOfPool() public view override returns (uint) {

@@ -66,7 +66,7 @@ contract StrategyBeraPaw is BaseAllToNativeFactoryStrat {
     }
 
     function balanceOfPool() public view override returns (uint) {
-        return gauge.balanceOf(address(this));
+        return gauge.balanceOf(address(this)) - gauge.getTotalDelegateStaked(address(this));
     }
 
     function _deposit(uint amount) internal override {

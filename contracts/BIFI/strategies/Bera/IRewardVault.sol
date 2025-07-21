@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 interface IRewardVault {
     function balanceOf(address) external view returns (uint256);
+    function getTotalDelegateStaked(address) external view returns (uint256);
     function earned(address) external view returns (uint256);
     function stake(uint256 amount) external;
     function withdraw(uint256 amount) external;
