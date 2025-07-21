@@ -45,12 +45,12 @@ abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
         if (data0.length > 0) {
             lp0 = abi.decode(data0, (address));
             uint bal = IERC20(lp0).balanceOf(address(strategy));
-            console.log("lpToken0 %18e", bal);
+            console.log("lpToken0 %18e", bal * 1e18 / 10 ** IERC20Extended(lp0).decimals());
         }
         if (data1.length > 0) {
             lp1 = abi.decode(data1, (address));
             uint bal = IERC20(lp1).balanceOf(address(strategy));
-            console.log("lpToken1 %18e", bal);
+            console.log("lpToken1 %18e", bal * 1e18 / 10 ** IERC20Extended(lp1).decimals());
         }
         if (lp0 != native && lp1 != native) {
             assertEq(nativeBal, 0, "Native not swapped");

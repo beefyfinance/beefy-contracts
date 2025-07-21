@@ -44,6 +44,11 @@ contract FactoryUpgrade is Test {
         factory.upgradeTo(stratName, newImpl);
         assertEq(newImpl, factory.getImplementation(stratName), "!upgraded");
 
+        if (strategy.paused()) {
+            vm.prank(strategy.keeper());
+            strategy.unpause();
+        }
+
         skip(1 days);
         console.log("Harvest");
         strategy.harvest();
