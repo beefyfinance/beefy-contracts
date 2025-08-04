@@ -241,7 +241,7 @@ const config: DeploymentConfig = {
       mode: "api key is not required by the Kava explorer, but can't be empty",
       scroll: process.env.SCROLL_API_KEY!,
       rootstock: "abc",
-      avax: process.env.AVAX_API_KEY!,
+      avax: "snowtrace",
       manta: "someKey",
       sei: "sei",
       lisk: "abc",
@@ -308,7 +308,7 @@ const config: DeploymentConfig = {
         network: "avax",
         chainId: 43114,
         urls: {
-          apiURL: "https://api.snowscan.xyz/api",
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/43114/etherscan",
           browserURL: "https://avalanche.routescan.io",
         },
       },
