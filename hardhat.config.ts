@@ -219,6 +219,11 @@ const config: DeploymentConfig = {
       chainId: 80094,
       accounts,
     },
+    hyperevm: {
+      url: process.env.HYPER_RPC || "https://rpc.hyperliquid.xyz/evm",
+      chainId: 999,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
