@@ -30,7 +30,7 @@ contract StrategyCompoundV3 is BaseAllToNativeFactoryStrat {
     }
 
     function stratName() public pure override returns (string memory) {
-        return "CompoundV3";
+        return "CompoundV3-WETH";
     }
 
     function balanceOfPool() public view override returns (uint256) {
