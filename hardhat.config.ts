@@ -219,6 +219,11 @@ const config: DeploymentConfig = {
       chainId: 80094,
       accounts,
     },
+    gnosis: {
+      url: process.env.GNOSIS_RPC || "https://rpc.gnosischain.com",
+      chainId: 100,
+      accounts,
+    },
     hyperevm: {
       url: process.env.HYPER_RPC || "https://rpc.hyperliquid.xyz/evm",
       chainId: 999,
