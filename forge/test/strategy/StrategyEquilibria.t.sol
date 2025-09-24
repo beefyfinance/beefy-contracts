@@ -188,6 +188,16 @@ contract StrategyEquilibriaTest is BaseAllToNativeFactoryTest {
             _price = abi.decode(_res, (uint));
             vm.mockCall(dolomiteOracle, _callData, abi.encode(_price));
         }
+        address capsOracle = 0xcD7f45566bc0E7303fB92A93969BB4D3f6e662bb;
+        if (capsOracle.code.length > 0) {
+            bytes memory callData = abi.encodeWithSignature("getPrice(address)", 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+            (, bytes memory resData) = capsOracle.staticcall(callData);
+            vm.mockCall(capsOracle, callData, resData);
+
+            callData = abi.encodeWithSignature("getPrice(address)", 0xcCcc62962d17b8914c62D74FfB843d73B2a3cccC);
+            (,resData) = capsOracle.staticcall(callData);
+            vm.mockCall(capsOracle, callData, resData);
+        }
     }
 
 }
