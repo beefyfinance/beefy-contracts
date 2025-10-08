@@ -6,6 +6,7 @@ import "../../interfaces/common/IWrappedNative.sol";
 import "../../interfaces/convex/IConvex.sol";
 import "../../interfaces/curve/ICrvMinter.sol";
 import "../../interfaces/curve/IRewardsGauge.sol";
+import "../../interfaces/merkl/IMerklClaimer.sol";
 import "../Common/BaseAllToNativeFactoryStrat.sol";
 
 // Curve L2 strategy switchable between Curve and Convex
@@ -136,4 +137,13 @@ contract StrategyCurveConvexL2Factory is BaseAllToNativeFactoryStrat {
         isCurveRewardsClaimable = _isCurveRewardsClaimable;
     }
 
+    function merklClaim(
+        address claimer,
+        address[] calldata users,
+        address[] calldata tokens,
+        uint256[] calldata amounts,
+        bytes32[][] calldata proofs
+    ) external {
+        IMerklClaimer(claimer).claim(users, tokens, amounts, proofs);
+    }
 }
