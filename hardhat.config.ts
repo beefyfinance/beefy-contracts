@@ -229,6 +229,11 @@ const config: DeploymentConfig = {
       chainId: 999,
       accounts,
     },
+    plasma: {
+      url: process.env.PLASMA_RPC || "https://rpc.plasma.to",
+      chainId: 9745,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
@@ -256,6 +261,7 @@ const config: DeploymentConfig = {
       sei: "sei",
       lisk: "abc",
       sonic: "abc",
+      plasma: "plasma",
     },
     customChains: [
       {
@@ -386,6 +392,14 @@ const config: DeploymentConfig = {
           browserURL: "https://blockscout.lisk.com/",
         },
       },
+      {
+        network: "plasma",
+        chainId: 9745,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/9745/etherscan",
+          browserURL: "https://plasmaexplorer.io"
+        }
+      }
     ],
   },
   solidity: {
