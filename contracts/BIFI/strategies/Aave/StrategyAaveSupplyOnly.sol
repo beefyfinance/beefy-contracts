@@ -8,12 +8,18 @@ import "../../interfaces/aave/IAaveToken.sol";
 import "../Common/BaseAllToNativeFactoryStrat.sol";
 import {IMerklClaimer} from "../../interfaces/merkl/IMerklClaimer.sol";
 
+/// @title StrategyAaveSupplyOnly
+/// @notice This strategy is used to supply liquidity to Aave and earn rewards. Fees are charged on both rewards and interest.
+/// @dev If using as a new implementation for an existing strategy, the old strategy MUST be panicked first.
+/// Otherwise the stored balance will not be updated correctly.
 contract StrategyAaveSupplyOnly is BaseAllToNativeFactoryStrat {
     using SafeERC20 for IERC20;
 
     address public aToken;
     address public lendingPool;
     address public incentivesController;
+
+    uint256 storedBalance;
 
     function initialize(
         address _aToken,
@@ -33,23 +39,25 @@ contract StrategyAaveSupplyOnly is BaseAllToNativeFactoryStrat {
     }
 
     function balanceOfPool() public view override returns (uint) {
-        return IERC20(aToken).balanceOf(address(this));
+        return storedBalance;
     }
 
     function _deposit(uint amount) internal override {
+        storedBalance += amount;
         IERC20(want).forceApprove(lendingPool, amount);
         ILendingPool(lendingPool).deposit(want, amount, address(this), 0);
     }
 
     function _withdraw(uint amount) internal override {
         if (amount > 0) {
+            storedBalance -= amount;
             ILendingPool(lendingPool).withdraw(want, amount, address(this));
         }
     }
 
     function _emergencyWithdraw() internal override {
-        uint amount = balanceOfPool();
-        if (amount > 0) {
+        storedBalance = 0;
+        if (IERC20(aToken).balanceOf(address(this)) > 0) {
             ILendingPool(lendingPool).withdraw(want, type(uint).max, address(this));
         }
     }
@@ -58,6 +66,16 @@ contract StrategyAaveSupplyOnly is BaseAllToNativeFactoryStrat {
         address[] memory assets = new address[](1);
         assets[0] = aToken;
         IAaveV3Incentives(incentivesController).claimAllRewards(assets, address(this));
+    }
+
+    function _swapRewardsToNative() internal override {
+        uint256 aTokenBal = IERC20(aToken).balanceOf(address(this));
+        if (aTokenBal > storedBalance) {
+            uint256 amount = aTokenBal - storedBalance;
+            ILendingPool(lendingPool).withdraw(want, amount, address(this));
+            _swap(want, native, amount);
+        }
+        super._swapRewardsToNative();
     }
 
     function _verifyRewardToken(address token) internal view override {
