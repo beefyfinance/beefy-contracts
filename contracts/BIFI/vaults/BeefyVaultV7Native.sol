@@ -26,9 +26,9 @@ contract BeefyVaultV7Native is ERC20Upgradeable, OwnableUpgradeable, ReentrancyG
     // The last proposed strategy to switch to.
     StratCandidate public stratCandidate;
     // The strategy currently in use by the vault.
-    IStrategyV7 public immutable strategy;
+    IStrategyV7 public strategy;
     // The minimum time it has to pass before a strat candidate can be approved.
-    uint256 public immutable approvalDelay;
+    uint256 public approvalDelay;
 
     event NewStratCandidate(address implementation);
     event UpgradeStrat(address implementation);
