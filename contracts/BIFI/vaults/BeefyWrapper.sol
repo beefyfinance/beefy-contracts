@@ -46,7 +46,7 @@ contract BeefyWrapper is ERC4626Upgradeable {
     /**
      * @notice Address of the vault being wrapped
      */
-    address public vault;
+    address public immutable vault;
 
     /**
      * @notice Initializes an ERC-4626 wrapper for a Beefy Vault token
