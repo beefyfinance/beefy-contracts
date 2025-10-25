@@ -16,8 +16,14 @@ import "../interfaces/common/IWrappedNative.sol";
  * The yield optimizing strategy itself is implemented in a separate 'Strategy.sol' contract.
  */
 contract BeefyVaultV7Native is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20Upgradeable for IERC20Upgradeable;   
 
+    error ProposalNotValid(); 
+    error DifferentWant(); 
+    error NoCandidate(); 
+    error DelayNotPassed();
+    error NotTheToken(); 
+    
     struct StratCandidate {
         address implementation;
         uint proposedTime;
@@ -106,7 +112,7 @@ contract BeefyVaultV7Native is ERC20Upgradeable, OwnableUpgradeable, ReentrancyG
         earn();
         uint256 _after = balance();
         _amount = _after - _pool; // Additional check for deflationary tokens
-        uint256 shares = 0;
+        uint256 shares;
         if (totalSupply() == 0) {
             shares = _amount;
         } else {
@@ -128,7 +134,7 @@ contract BeefyVaultV7Native is ERC20Upgradeable, OwnableUpgradeable, ReentrancyG
         earn();
         uint256 _after = balance();
         _amount = _after - _pool; // Additional check for deflationary tokens
-        uint256 shares = 0;
+        uint256 shares;
         if (totalSupply() == 0) {
             shares = _amount;
         } else {
@@ -172,7 +178,10 @@ contract BeefyVaultV7Native is ERC20Upgradeable, OwnableUpgradeable, ReentrancyG
 
         uint b = want().balanceOf(address(this));
         if (b < r) {
-            uint _withdraw = r - b;
+            uint _withdraw; 
+            unchecked {
+                _withdraw = r - b;
+            }
             strategy.withdraw(_withdraw);
             uint _after = want().balanceOf(address(this));
             uint _diff = _after - b;
@@ -194,7 +203,10 @@ contract BeefyVaultV7Native is ERC20Upgradeable, OwnableUpgradeable, ReentrancyG
 
         uint b = want().balanceOf(address(this));
         if (b < r) {
-            uint _withdraw = r - b;
+            uint _withdraw; 
+            unchecked {
+                _withdraw = r - b;
+            }
             strategy.withdraw(_withdraw);
             uint _after = want().balanceOf(address(this));
             uint _diff = _after - b;
@@ -212,8 +224,12 @@ contract BeefyVaultV7Native is ERC20Upgradeable, OwnableUpgradeable, ReentrancyG
      * @param _implementation The address of the candidate strategy.  
      */
     function proposeStrat(address _implementation) public onlyOwner {
-        require(address(this) == IStrategyV7(_implementation).vault(), "Proposal not valid for this Vault");
-        require(want() == IStrategyV7(_implementation).want(), "Different want");
+        if(address(this) != IStrategyV7(_implementation).vault()) {
+            revert ProposalNotValid();
+        }
+        if(want() != IStrategyV7(_implementation).want()) {
+            revert DifferentWant(); 
+        }
         stratCandidate = StratCandidate({
             implementation: _implementation,
             proposedTime: block.timestamp
@@ -229,8 +245,12 @@ contract BeefyVaultV7Native is ERC20Upgradeable, OwnableUpgradeable, ReentrancyG
      */
 
     function upgradeStrat() public onlyOwner {
-        require(stratCandidate.implementation != address(0), "There is no candidate");
-        require(stratCandidate.proposedTime + approvalDelay < block.timestamp, "Delay has not passed");
+        if(stratCandidate.implementation == address(0)) {
+            revert NoCandidate(); 
+        }
+        if(stratCandidate.proposedTime + approvalDelay >= block.timestamp) {
+            revert DelayNotPassed();
+        }
 
         emit UpgradeStrat(stratCandidate.implementation);
 
@@ -247,7 +267,9 @@ contract BeefyVaultV7Native is ERC20Upgradeable, OwnableUpgradeable, ReentrancyG
      * @param _token address of the token to rescue.
      */
     function inCaseTokensGetStuck(address _token) external onlyOwner {
-        require(_token != address(want()), "!token");
+        if(_token == address(want())) {
+            revert NotTheToken();
+        }
 
         uint256 amount = IERC20Upgradeable(_token).balanceOf(address(this));
         IERC20Upgradeable(_token).safeTransfer(msg.sender, amount);

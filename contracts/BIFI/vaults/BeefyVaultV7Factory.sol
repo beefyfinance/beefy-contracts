@@ -11,7 +11,7 @@ contract BeefyVaultV7Factory {
   using ClonesUpgradeable for address;
 
   // Contract template for deploying proxied Beefy vaults
-  BeefyVaultV7 public instance;
+  BeefyVaultV7 public immutable instance;
 
   event ProxyCreated(address proxy);
 
