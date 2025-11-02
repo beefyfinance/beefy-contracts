@@ -156,7 +156,7 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
             uint _after = want().balanceOf(address(this));
             uint _diff = _after - b;
             if (_diff < _withdraw) {
-                r = b + _diff;
+                r = _after;
             }
         }
 
@@ -171,6 +171,7 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
         if(address(this) != IStrategyV7(_implementation).vault()) {
             revert ProposalNotValid();
         }
+
         if(want() != IStrategyV7(_implementation).want()) {
             revert DifferentWant(); 
         }
@@ -187,11 +188,11 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
      * candidate implementation is set to the 0x00 address, and proposedTime to a time 
      * happening in +100 years for safety. 
      */
-
     function upgradeStrat() public onlyOwner {
         if(stratCandidate.implementation == address(0)) {
             revert NoCandidate(); 
         }
+
         if(stratCandidate.proposedTime + approvalDelay >= block.timestamp) {
             revert DelayNotPassed();
         }

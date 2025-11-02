@@ -186,7 +186,7 @@ contract BeefyVaultV7Native is ERC20Upgradeable, OwnableUpgradeable, ReentrancyG
             uint _after = want().balanceOf(address(this));
             uint _diff = _after - b;
             if (_diff < _withdraw) {
-                r = b + _diff;
+                r = _after;
             }
         }
 
@@ -211,7 +211,7 @@ contract BeefyVaultV7Native is ERC20Upgradeable, OwnableUpgradeable, ReentrancyG
             uint _after = want().balanceOf(address(this));
             uint _diff = _after - b;
             if (_diff < _withdraw) {
-                r = b + _diff;
+                r = _after;
             }
         }
 
@@ -227,6 +227,7 @@ contract BeefyVaultV7Native is ERC20Upgradeable, OwnableUpgradeable, ReentrancyG
         if(address(this) != IStrategyV7(_implementation).vault()) {
             revert ProposalNotValid();
         }
+        
         if(want() != IStrategyV7(_implementation).want()) {
             revert DifferentWant(); 
         }
@@ -248,6 +249,7 @@ contract BeefyVaultV7Native is ERC20Upgradeable, OwnableUpgradeable, ReentrancyG
         if(stratCandidate.implementation == address(0)) {
             revert NoCandidate(); 
         }
+
         if(stratCandidate.proposedTime + approvalDelay >= block.timestamp) {
             revert DelayNotPassed();
         }
