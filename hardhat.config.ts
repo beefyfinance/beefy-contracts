@@ -1,23 +1,20 @@
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
-import "@nomiclabs/hardhat-etherscan";
+import "@nomicfoundation/hardhat-verify";
 import "@openzeppelin/hardhat-upgrades";
 import "hardhat-gas-reporter";
 import "hardhat-contract-sizer";
 // import "@typechain/hardhat";
 import "./tasks";
 
-import { HardhatUserConfig } from "hardhat/src/types/config";
-import { HardhatUserConfig as WithEtherscanConfig } from "hardhat/config";
+import { HardhatUserConfig } from "hardhat/config";
 import { buildHardhatNetworkAccounts, getPKs } from "./utils/configInit";
-
-type DeploymentConfig = HardhatUserConfig & WithEtherscanConfig;
 
 const accounts = getPKs();
 const hardhatNetworkAccounts = buildHardhatNetworkAccounts(accounts);
 
-const config: DeploymentConfig = {
+const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
@@ -234,34 +231,39 @@ const config: DeploymentConfig = {
       chainId: 9745,
       accounts,
     },
+    monadMainnet: {
+      url: process.env.MONAD_RPC || "https://rpc3.monad.xyz",
+      chainId: 143,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
     apiKey: {
       mainnet: process.env.MAINNET_API_KEY!,
-      polygon: process.env.POLYGON_API_KEY!,
+      polygon: process.env.MAINNET_API_KEY!,
       zkevm: process.env.ZKEVM_API_KEY!,
-      bsc: process.env.BSC_API_KEY!,
-      optimisticEthereum: process.env.OPTIMISM_API_KEY!,
-      base: process.env.BASE_API_KEY!,
-      arbitrumOne: process.env.ARB_API_KEY!,
-      opera: process.env.FANTOM_API_KEY!,
-      linea: process.env.LINEA_API_KEY!,
+      bsc: process.env.MAINNET_API_KEY!,
+      optimisticEthereum: process.env.MAINNET_API_KEY!,
+      base: process.env.MAINNET_API_KEY!,
+      arbitrumOne: process.env.MAINNET_API_KEY!,
+      opera: process.env.MAINNET_API_KEY!,
+      linea: process.env.MAINNET_API_KEY!,
       kava: "api key is not required by the Kava explorer, but can't be empty",
       metis: "api key is not required by the Kava explorer, but can't be empty",
       //snowtrace: "api key is not required by the Kava explorer, but can't be empty",
-      mantle: process.env.MANTLE_API_KEY!,
-      fraxtal: process.env.FRAXTAL_API_KEY!,
+      mantle: process.env.MAINNET_API_KEY!,
+      fraxtal: process.env.MAINNET_API_KEY!,
       mode: "api key is not required by the Kava explorer, but can't be empty",
-      scroll: process.env.SCROLL_API_KEY!,
+      scroll: process.env.MAINNET_API_KEY!,
       rootstock: "abc",
       avax: "snowtrace",
       manta: "someKey",
       sei: "sei",
       lisk: "abc",
-      sonic: "abc",
-      plasma: "plasma",
+      sonic: process.env.MAINNET_API_KEY!,
+      plasma: process.env.MAINNET_API_KEY!,
     },
     customChains: [
       {
@@ -276,7 +278,7 @@ const config: DeploymentConfig = {
         network: "sonic",
         chainId: 146,
         urls: {
-          apiURL: "https://api.sonicscan.org/api",
+          apiURL: "https://api.etherscan.io/v2/api?chainid=146",
           browserURL: "https://sonicscan.org/",
         },
       },
@@ -308,7 +310,7 @@ const config: DeploymentConfig = {
         network: "base",
         chainId: 8453,
         urls: {
-          apiURL: "https://api.basescan.org/api",
+          apiURL: "https://api.etherscan.io/v2/api?chainid=8453",
           browserURL: "https://basescan.org/",
         },
       },
@@ -332,7 +334,7 @@ const config: DeploymentConfig = {
         network: "linea",
         chainId: 59144,
         urls: {
-          apiURL: "https://api.lineascan.build/api",
+          apiURL: "https://api.etherscan.io/v2/api?chainid=59144",
           browserURL: "https://lineascan.build/",
         },
       },
@@ -340,7 +342,7 @@ const config: DeploymentConfig = {
         network: "mantle",
         chainId: 5000,
         urls: {
-          apiURL: "https://api.mantlescan.xyz/api",
+          apiURL: "https://api.etherscan.io/v2/api?chainid=5000",
           browserURL: "https://mantlescan.xyz/",
         },
       },
@@ -399,7 +401,31 @@ const config: DeploymentConfig = {
           apiURL: "https://api.routescan.io/v2/network/mainnet/evm/9745/etherscan",
           browserURL: "https://plasmaexplorer.io"
         }
-      }
+      },
+      {
+        network: "monadMainnet",
+        chainId: 143,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=143",
+          browserURL: "https://monadscan.com",
+        },
+      },
+      {
+        network: "hyperevm",
+        chainId: 999,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=999",
+          browserURL: "https://hyperevmscan.io/",
+        },
+      },
+      {
+        network: "polygon",
+        chainId: 137,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=137",
+          browserURL: "https://polygonscan.com/",
+        },
+      },
     ],
   },
   solidity: {
