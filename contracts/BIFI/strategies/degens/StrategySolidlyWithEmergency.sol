@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "../../interfaces/common/ISolidlyRouter.sol";
 import "../../interfaces/common/ISolidlyPair.sol";
 import "../../interfaces/common/IRewardPool.sol";
+import "../../interfaces/merkl/IMerklClaimer.sol";
 import "../Common/BaseAllToNativeFactoryStrat.sol";
 
 // Strategy for Gauges with emergency mode
@@ -91,5 +92,15 @@ contract StrategySolidlyWithEmergency is BaseAllToNativeFactoryStrat {
         IERC20(lpToken0).forceApprove(address(solidlyRouter), lp0Bal);
         IERC20(lpToken1).forceApprove(address(solidlyRouter), lp1Bal);
         solidlyRouter.addLiquidity(lpToken0, lpToken1, stable, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp);
+    }
+
+    function merklClaim(
+        address claimer,
+        address[] calldata users,
+        address[] calldata tokens,
+        uint256[] calldata amounts,
+        bytes32[][] calldata proofs
+    ) external {
+        IMerklClaimer(claimer).claim(users, tokens, amounts, proofs);
     }
 }

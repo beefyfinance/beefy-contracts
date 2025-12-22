@@ -63,6 +63,11 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
+"@beefyfinance/blockchain-addressbook@^0.54.125":
+  version "0.54.125"
+  resolved "https://registry.yarnpkg.com/@beefyfinance/blockchain-addressbook/-/blockchain-addressbook-0.54.125.tgz#4a75913107c32af1c36bb16c45d54e13db685622"
+  integrity sha512-xTwrgVlVsjZuqSI1OxBsfZayDM6fyuZaJAveM6jCpWvVwdSYU5Jrbg1JAfk90pO4uyWuAyYkP/yC4HxPcUZutg==
+
 "@chainlink/contracts@^0.2.1":
   version "0.2.3"
   resolved "https://registry.yarnpkg.com/@chainlink/contracts/-/contracts-0.2.3.tgz#f4ef1750caef1682c537a99559b5b95629436303"
@@ -2834,11 +2839,6 @@ blakejs@^1.1.0:
   version "1.2.1"
   resolved "https://registry.yarnpkg.com/blakejs/-/blakejs-1.2.1.tgz#5057e4206eadb4a97f7c0b6e197a505042fc3814"
   integrity sha512-QXUSXI3QVc/gJME0dBpXrag1kbzOqCjCX8/b54ntNyW6sjtoqxqRk3LTmXzaJoh71zMsDCjM+47jS7XiwN/+fQ==
-
-blockchain-addressbook@^0.54.78:
-  version "0.54.78"
-  resolved "https://registry.yarnpkg.com/blockchain-addressbook/-/blockchain-addressbook-0.54.78.tgz#36b35a8c8f3a146468fcc44db7a893e1220f9bcd"
-  integrity sha512-G4UbhWqX74mwlALR5o29FOSKStYgGmUTWI40+AUZFJwk2mzlelTHS4HTCGwysdOlw6X6dmcAg9Wu+yuiIc2UXA==
 
 bluebird@^3.5.0, bluebird@^3.5.2:
   version "3.7.2"

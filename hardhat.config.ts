@@ -231,8 +231,8 @@ const config: HardhatUserConfig = {
       chainId: 9745,
       accounts,
     },
-    monadMainnet: {
-      url: process.env.MONAD_RPC || "https://rpc3.monad.xyz",
+    monad: {
+      url: process.env.MONAD_RPC || "https://rpc.monad.xyz",
       chainId: 143,
       accounts,
     },
@@ -399,11 +399,11 @@ const config: HardhatUserConfig = {
         chainId: 9745,
         urls: {
           apiURL: "https://api.routescan.io/v2/network/mainnet/evm/9745/etherscan",
-          browserURL: "https://plasmaexplorer.io"
+          browserURL: "https://plasmascan.to"
         }
       },
       {
-        network: "monadMainnet",
+        network: "monad",
         chainId: 143,
         urls: {
           apiURL: "https://api.etherscan.io/v2/api?chainid=143",
