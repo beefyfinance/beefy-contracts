@@ -5,6 +5,8 @@ import UniswapV3RouterAbi from "../../data/abi/UniswapV3Router.json";
 import UniswapV3Router2Abi from "../../data/abi/UniswapV3Router2.json";
 import BalancerVaultAbi from "../../data/abi/BalancerVault.json";
 import VelodromeRouterAbi from "../../data/abi/VelodromeRouter.json";
+import AerodromeRouterAbi from "../../data/abi/AerodromeRouter.json";
+import AerodromeCLRouterAbi from "../../data/abi/AerodromeCLRouter.json";
 import TraderJoeRouterAbi from "../../data/abi/TraderJoeRouter.json";
 import AlgebraRouterAbi from "../../data/abi/AlgebraRouterAbi.json";
 import StableRouterAbi from "../../data/abi/StableRouter.json";
@@ -33,6 +35,8 @@ const beefyfinanceSwapper = beefyfinance.beefySwapper;
 const uniswapV3Router = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
 const uniswapV2Router = "0x8c1A3cF8f83074169FE5D7aD50B978e1cD6b37c7";
 const velodromeRouter = "0xAAA45c8F5ef92a000a121d102F4e89278a711Faa";
+const aerodromeRouter = "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43";
+const aerodromeCLRouter = "0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5";
 const balancerVault = "0xBA12222222228d8Ba445958a75a0704d566BF2C8";
 const traderJoeRouter = "0xb4315e873dBcf96Ffd0acd8EA43f689D8c20fB30";
 const algebraRouter = "0xAc48FcF1049668B285f3dC72483DF5Ae2162f7e8";
@@ -62,6 +66,10 @@ const config = {
   solidly: {
     path: [[USDC, token, true]],
     router: velodromeRouter,
+  },
+  aerodromeCl: {
+    path: [[WETH, token, 100]],
+    router: aerodromeCLRouter,
   },
   traderJoe: {
     path: [[20], [2], [WETH, USDC]],
@@ -102,6 +110,9 @@ async function main() {
       break;
     case 'solidly':
       await solidly();
+      break;
+    case 'aerodromeCl':
+      await aerodromeCl();
       break;
     case 'traderJoe':
       await traderJoe();
@@ -280,6 +291,50 @@ async function solidly() {
     swapInfo
   );
 };
+
+async function aerodromeCl() {
+    let path = ethers.utils.solidityPack(
+    ["address"],
+    [config.aerodromeCl.path[0][0]]
+  );
+
+  for (let i = 0; i < config.aerodromeCl.path.length; i++) {
+    path = ethers.utils.solidityPack(
+      ["bytes", "int24", "address"],
+      [path, config.aerodromeCl.path[i][2], config.aerodromeCl.path[i][1]]
+    );
+  }
+
+  const exactInputParams = [
+    path,
+    beefyfinanceSwapper,
+    uint256Max,
+    0,
+    0
+  ];
+
+  const router = await ethers.getContractAt(AerodromeCLRouterAbi, config.aerodromeCl.router);
+  const txData = await router.populateTransaction.exactInput(exactInputParams);
+  const amountIndex = 132;
+  const minIndex = 164;
+  const minAmountSign = 0;
+
+  const swapInfo = [
+    config.aerodromeCl.router,
+    txData.data,
+    amountIndex,
+    minIndex,
+    minAmountSign
+  ];
+
+  console.log(config.aerodromeCl.path[0][0], config.aerodromeCl.path[config.aerodromeCl.path.length - 1][1], swapInfo);
+
+  await setSwapInfo(
+    config.aerodromeCl.path[0][0],
+    config.aerodromeCl.path[config.aerodromeCl.path.length - 1][1],
+    swapInfo
+  );
+}
 
 async function traderJoe() {
   const router = await ethers.getContractAt(TraderJoeRouterAbi, config.traderJoe.router);
