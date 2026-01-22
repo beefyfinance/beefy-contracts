@@ -54,7 +54,7 @@ const config = {
     factory: velodromeFactory,
   },
   aerodromeCl: {
-    path: [[ETH, oUSDT, 100]], // Insert CL Pool Tick Spacing
+    path: [[ETH, oUSDT, 100]], // Insert token for pricing second and CL Pool Tick Spacing third
     twaps: [300],
     factory: aerodromeFactory2, // Check pool deployment tx events for correct factory contract address
   }
@@ -160,24 +160,24 @@ async function solidly() {
 };
 
 async function aerodromeCl() {
-  const factory = await ethers.getContractAt(AerodromeFactory2Abi, config.solidly.factory);
+  const factory = await ethers.getContractAt(AerodromeFactory2Abi, config.aerodromeCl.factory);
   const tokens = [];
   const pairs = [];
-  for (let i = 0; i < config.solidly.path.length; i++) {
-    tokens.push(config.solidly.path[i][0]);
+  for (let i = 0; i < config.aerodromeCl.path.length; i++) {
+    tokens.push(config.aerodromeCl.path[i][0]);
     const pair = await factory["getPool(address,address,int24)"]( // Note: Aero uses getPool, not getPair
-      config.solidly.path[i][0],
-      config.solidly.path[i][1],
-      config.solidly.path[i][2]
+      config.aerodromeCl.path[i][0],
+      config.aerodromeCl.path[i][1],
+      config.aerodromeCl.path[i][2]
     );
     pairs.push(pair);
   }
 
-  tokens.push(config.solidly.path[config.solidly.path.length - 1][1]);
+  tokens.push(config.aerodromeCl.path[config.aerodromeCl.path.length - 1][1]);
 
   const data = ethers.utils.defaultAbiCoder.encode(
     ["address[]","address[]","uint256[]"],
-    [tokens, pairs, config.solidly.twaps]
+    [tokens, pairs, config.aerodromeCl.twaps]
   );
 
   // console.log(tokens[tokens.length - 1], uniswapV3Oracle, data); // For use by those without keeper access. Submit logs to those with keeper access.
