@@ -42,7 +42,7 @@ const traderJoeRouter = "0xb4315e873dBcf96Ffd0acd8EA43f689D8c20fB30";
 const algebraRouter = "0xAc48FcF1049668B285f3dC72483DF5Ae2162f7e8";
 const curveRouter = "0xF0d4c12A5768D806021F80a262B4d39d26C58b8D";
 const syncRouter = "0xC2a1947d2336b2AF74d5813dC9cA6E0c3b3E8a1E";
-const multihopRouter = "0x1DEF2c354bcFa4d1A8F40c4c33Ef7d27DB4109cA";
+const multihopRouter = "0x799259edB5e13BA3a9ce74908F154DFcb4fd93Df"; // beefyfinance.beefyMultiHopSwapper // Check exists on relevant chain at this address (or get from ab). Note router and swapper are used interchangeably for multihop.
 
 
 const config = {
