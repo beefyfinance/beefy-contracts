@@ -86,7 +86,13 @@ const config = {
   multihop: {
     path: [WETH, USDC, token],
     router: multihopRouter,
-  }
+  },
+  balancerV3: {
+    router: "0x47980Dd0d6AF8638416416C19c1Da31cAA5e8eBe",
+    pool: "0x10f9e54aeea2fefa124238087dcfd919ba32f14d",
+    path: [WBTC, token],
+    atokens: ["0x52dc1feefa4f9a99221f93d79da46ae89b8c0967", ethers.constants.AddressZero]
+   }
 };
 
 async function main() {
@@ -120,6 +126,9 @@ async function main() {
       break;
     case 'multihop':
       await multihop();
+      break;
+    case 'balancerV3':
+      await balancerV3();
       break;
   }
 };
@@ -450,6 +459,36 @@ async function multihop() {
     config.uniswapV3.path[config.uniswapV3.path.length - 1][1],
     swapInfo
   );*/
+};
+
+async function balancerV3() {
+
+  const router = await ethers.getContractAt(BalancerV3SwapperAbi, config.balancerV3.router);
+
+  const txData = await router.populateTransaction.swap(config.balancerV3.pool, config.balancerV3.path, config.balancerV3.atokens, 0, 0);
+  const amountIndex = 100;
+  const minIndex = 132;
+
+  const minAmountSign = 0;
+
+  const swapInfo = [
+    config.balancerV3.router,
+    txData.data,
+    amountIndex,
+    minIndex,
+    minAmountSign
+  ];
+
+  console.log(config.balancerV3.path[0],
+    config.balancerV3.path[config.balancerV3.path.length - 1],
+    swapInfo);
+/*
+  await setSwapInfo(
+    config.balancerV3.path[0],
+    config.balancerV3.path[config.balancerV3.path.length - 1],
+    swapInfo
+  );
+*/
 };
 
 async function setSwapInfo(fromToken, toToken, swapInfo) {
