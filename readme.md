@@ -4,7 +4,7 @@ Official repo for strategies and vaults from Beefy. Community strategists can co
 ## Vault Deployment Process
 ### 1. Select a farm
 The first step to have a vault deployed on Beefy is to select a farm to deploy a vault around. At the moment the rewards for a strategist are:
- - 0.5% of all rewards earned by a vault they deployed.
+ - 0.5% of all rewards earned by a vault they deployed
 
 This means that you want to select a farm with:
 1. High APR
