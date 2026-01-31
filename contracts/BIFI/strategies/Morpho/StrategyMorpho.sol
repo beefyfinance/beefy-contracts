@@ -67,8 +67,10 @@ contract StrategyMorpho is BaseAllToNativeFactoryStrat {
         uint256[] calldata _amounts,
         bytes32[][] calldata _proofs
     ) external {
-        address[] memory users = new address[](1);
-        users[0] = address(this);
+		address[] memory users = new address[](_tokens.length);
+		for (uint256 i; i < _tokens.length; ++i) {
+			users[i] = address(this);
+		}
 
         claimer.claim(users, _tokens, _amounts, _proofs);
     }
