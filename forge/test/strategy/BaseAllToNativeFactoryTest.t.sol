@@ -11,6 +11,43 @@ abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
         BaseAllToNativeFactoryStrat(payable(vault.strategy())).claim();
     }
 
+    function test_lockedProfit() external {
+        BaseAllToNativeFactoryStrat strategy = BaseAllToNativeFactoryStrat(payable(vault.strategy()));
+        _depositIntoVault(user, wantAmount);
+        skip(delay);
+
+        vm.prank(strategy.keeper());
+        strategy.setHarvestOnDeposit(false);
+        uint stratBalBefore = strategy.balanceOf();
+        beforeHarvest();
+        strategy.harvest();
+
+        uint stratBal = strategy.balanceOf();
+        uint lockedProfit = strategy.lockedProfit();
+        assertGt(lockedProfit, 0, "lockedProfit == 0 (Not harvested");
+        assertEq(stratBal, stratBalBefore, "Only profit should be locked");
+        assertEq(strategy.lockedProfit(), strategy.totalLocked(), "lockedProfit != totalLocked");
+        assertEq(stratBal, strategy.balanceOfWant() + strategy.balanceOfPool() - lockedProfit, "Strat.balanceOf != want + pool - lockedProfit");
+
+        console.log("User2");
+        VaultUser user2 = new VaultUser();
+        deal(vault.want(), address(user2), wantAmount, dealWithAdjust);
+        _depositIntoVault(user2, wantAmount);
+        uint stratBalAfterUser2 = strategy.balanceOf();
+        assertEq(stratBalAfterUser2, wantAmount * 2, "Strat balance should double");
+
+        skip(strategy.lockDuration());
+        assertEq(strategy.lockedProfit(), 0, "lockedProfit != 0 after lockDuration");
+        assertEq(strategy.balanceOf(), stratBalAfterUser2 + lockedProfit, "Strat balance should grow by lockedProfit");
+
+        user.withdrawAll(vault);
+        user2.withdrawAll(vault);
+        uint user1Bal = want.balanceOf(address(user));
+        uint user2Bal = want.balanceOf(address(user2));
+        assertApproxEqAbs(lockedProfit / 2, user1Bal - wantAmount, 1, "User1 should earn lockedProfit/2");
+        assertApproxEqAbs(lockedProfit / 2, user2Bal - wantAmount, 1, "User2 should earn lockedProfit/2");
+    }
+
     function test_rewards() external {
         BaseAllToNativeFactoryStrat strategy = BaseAllToNativeFactoryStrat(payable(vault.strategy()));
         vm.prank(strategy.keeper());
