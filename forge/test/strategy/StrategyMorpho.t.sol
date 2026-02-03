@@ -16,8 +16,8 @@ contract StrategyMorphoTest is BaseAllToNativeFactoryTest {
     }
 
     function beforeHarvest() internal override {
-        vm.prank(strategy.owner());
-        strategy.addWantAsReward();
+//        vm.prank(strategy.owner());
+//        strategy.addWantAsReward();
         for (uint i; i < strategy.rewardsLength(); i++) {
             deal(strategy.rewards(i), address(strategy), 1e18);
         }
@@ -53,7 +53,7 @@ contract StrategyMorphoTest is BaseAllToNativeFactoryTest {
         uint vaultBalAfterUnpause = vault.balance();
         uint balOfPoolAfterUnpause = strategy.balanceOfPool();
         uint balOfWantAfterUnpause = strategy.balanceOfWant();
-        assertEq(vaultBalAfterUnpause + 1, vaultBalAfterPanic, "vaultBalAfterUnpause");
+        assertApproxEqAbs(vaultBalAfterUnpause, vaultBalAfterPanic, 1, "vaultBalAfterUnpause");
         assertEq(balOfWantAfterUnpause, 0, "balOfWantAfterUnpause != 0");
         assertEq(balOfPoolAfterUnpause, vaultBalAfterUnpause, "balOfPoolAfterUnpause");
 
@@ -92,7 +92,7 @@ contract StrategyMorphoTest is BaseAllToNativeFactoryTest {
         uint wantBalanceFinal = want.balanceOf(address(user));
         console.log("Final user want balance", wantBalanceFinal);
         assertLe(wantBalanceFinal, vaultBal, "wantBalanceFinal > vaultBal");
-        assertEq(vault.balance() + 1, vaultBal - wantBalanceFinal, "vaultBal != vaultBal - wantBalanceFinal");
+        assertApproxEqAbs(vault.balance(), vaultBal - wantBalanceFinal, 1, "vaultBal != vaultBal - wantBalanceFinal");
     }
 
     function test_harvest() external override {

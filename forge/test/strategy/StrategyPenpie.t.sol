@@ -70,5 +70,12 @@ contract StrategyPenpieTest is BaseAllToNativeFactoryTest {
             (,resData) = capsOracle.staticcall(callData);
             vm.mockCall(capsOracle, callData, resData);
         }
+        address splUSDDataFeed = 0xDA56C2dafAf034B7Bb490FAb19162E2dD2e62404;
+        if (splUSDDataFeed.code.length > 0) {
+            bytes memory data = abi.encodeWithSignature("setHealthyDiff(uint256)", 100_000_000);
+            vm.prank(0xd4195CF4df289a4748C1A7B6dDBE770e27bA1227);
+            (bool success,) = splUSDDataFeed.call(data);
+            assertTrue(success, "splUSDDataFeed setHealthyDiff failed");
+        }
     }
 }
