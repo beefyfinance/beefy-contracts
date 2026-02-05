@@ -3,16 +3,18 @@ import BeefyOracleAbi from "../../data/abi/BeefyOracle.json";
 import UniswapV3FactoryAbi from "../../data/abi/UniswapV3Factory.json";
 import UniswapV2FactoryAbi from "../../data/abi/UniswapV2Factory.json";
 import VelodromeFactoryAbi from "../../data/abi/VelodromeFactory.json";
+import AerodromeFactory1Abi from "../../data/abi/AerodromeFactory1.json"
+import AerodromeFactory2Abi from "../../data/abi/AerodromeFactory2.json"
+import AerodromeFactory3Abi from "../../data/abi/AerodromeFactory2.json"
 import { addressBook } from "blockchain-addressbook";
 
 const {
   platforms: { beefyfinance },
   tokens: {
     USDC: { address: USDC},
-    WETH: { address: ETH},
-    TOKE: {address: TOKE}
+    WETH: { address: ETH}
   },
-} = addressBook.ethereum;
+} = addressBook.base;
 
 const ethers = hardhat.ethers;
 
@@ -20,12 +22,15 @@ const nullAddress = "0x0000000000000000000000000000000000000000";
 const uniswapV3Factory = "0xAAA32926fcE6bE95ea2c51cB4Fcb60836D320C42";
 const uniswapV2Factory = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f";
 const velodromeFactory = "0x92aF10c685D2CF4CD845388C5f45aC5dc97C5024";
+const aerodromeFactory1 = "0x420DD381b31aEf6683db6B902084cB0FFECe40Da";
+const aerodromeFactory2 = "0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A";
+const aerodromeFactory3 = "0xade65c38cd4849adba595a4323a8c7ddfe89716a";
 
 const beefyfinanceOracle = beefyfinance.beefyOracle;
-const chainlinkOracle = "0x3DC71AAb800C5Acfe521d5bD86c06b2EfF477062";
-const uniswapV3Oracle = "0xc26314091EB7a9c75E5536f7f54A8F63e829547D";
+const chainlinkOracle = beefyfinance.beefyOracleChainlink;
+const uniswapV3Oracle = beefyfinance.beefyOracleUniswapV3;
 const uniswapV2Oracle = beefyfinance.beefyOracleUniswapV2;
-const solidlyOracle = "0xE6e5732245b3e886DD8897a93D21D29bb652d683";
+const solidlyOracle = beefyfinance.beefyOracleSolidly
 
 const config = {
   type: "uniswapV2",
@@ -39,7 +44,7 @@ const config = {
     factory: uniswapV3Factory,
   },
   uniswapV2: {
-    path: [ETH, TOKE],
+    // path: [ETH, TOKE],
     twaps: [7200],
     factory: uniswapV2Factory,
   },
@@ -48,6 +53,11 @@ const config = {
     twaps: [4],
     factory: velodromeFactory,
   },
+  aerodromeCl: {
+    path: [[ETH, oUSDT, 100]], // Insert token for pricing second and CL Pool Tick Spacing third
+    twaps: [300],
+    factory: aerodromeFactory2, // Check pool deployment tx events for correct factory contract address
+  }
 };
 
 async function main() {
@@ -63,6 +73,9 @@ async function main() {
       break;
     case 'solidly':
       await solidly();
+      break;
+    case 'aerodromeCl':
+      await aerodromeCl();
       break;
   }
 };
@@ -145,6 +158,32 @@ async function solidly() {
 
   await setOracle(tokens[tokens.length - 1], solidlyOracle, data);
 };
+
+async function aerodromeCl() {
+  const factory = await ethers.getContractAt(AerodromeFactory2Abi, config.aerodromeCl.factory);
+  const tokens = [];
+  const pairs = [];
+  for (let i = 0; i < config.aerodromeCl.path.length; i++) {
+    tokens.push(config.aerodromeCl.path[i][0]);
+    const pair = await factory["getPool(address,address,int24)"]( // Note: Aero uses getPool, not getPair
+      config.aerodromeCl.path[i][0],
+      config.aerodromeCl.path[i][1],
+      config.aerodromeCl.path[i][2]
+    );
+    pairs.push(pair);
+  }
+
+  tokens.push(config.aerodromeCl.path[config.aerodromeCl.path.length - 1][1]);
+
+  const data = ethers.utils.defaultAbiCoder.encode(
+    ["address[]","address[]","uint256[]"],
+    [tokens, pairs, config.aerodromeCl.twaps]
+  );
+
+  // console.log(tokens[tokens.length - 1], uniswapV3Oracle, data); // For use by those without keeper access. Submit logs to those with keeper access.
+
+  await setOracle(tokens[tokens.length - 1], uniswapV3Oracle, data); // For use by those with keeper access.
+}
 
 async function setOracle(token, oracle, data) {
   const [_, keeper, __] = await ethers.getSigners();
