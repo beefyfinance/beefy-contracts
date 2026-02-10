@@ -13,11 +13,13 @@ abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
 
     function test_lockedProfit() external {
         BaseAllToNativeFactoryStrat strategy = BaseAllToNativeFactoryStrat(payable(vault.strategy()));
-        _depositIntoVault(user, wantAmount);
-        skip(delay);
+        uint initStratBal = strategy.balanceOf();
 
         vm.prank(strategy.keeper());
         strategy.setHarvestOnDeposit(false);
+        _depositIntoVault(user, wantAmount);
+        skip(delay);
+
         uint stratBalBefore = strategy.balanceOf();
         beforeHarvest();
         strategy.harvest();
@@ -26,7 +28,7 @@ abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
         uint lockedProfit = strategy.lockedProfit();
         assertGt(lockedProfit, 0, "lockedProfit == 0 (Not harvested");
         assertEq(stratBal, stratBalBefore, "Only profit should be locked");
-        assertEq(strategy.lockedProfit(), strategy.totalLocked(), "lockedProfit != totalLocked");
+        assertEq(lockedProfit, strategy.totalLocked(), "lockedProfit != totalLocked");
         assertEq(stratBal, strategy.balanceOfWant() + strategy.balanceOfPool() - lockedProfit, "Strat.balanceOf != want + pool - lockedProfit");
 
         console.log("User2");
@@ -34,7 +36,7 @@ abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
         deal(vault.want(), address(user2), wantAmount, dealWithAdjust);
         _depositIntoVault(user2, wantAmount);
         uint stratBalAfterUser2 = strategy.balanceOf();
-        assertEq(stratBalAfterUser2, wantAmount * 2, "Strat balance should double");
+        assertEq(stratBalAfterUser2, initStratBal + wantAmount * 2, "Strat balance should double");
 
         skip(strategy.lockDuration());
         assertEq(strategy.lockedProfit(), 0, "lockedProfit != 0 after lockDuration");
@@ -44,8 +46,10 @@ abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
         user2.withdrawAll(vault);
         uint user1Bal = want.balanceOf(address(user));
         uint user2Bal = want.balanceOf(address(user2));
-        assertApproxEqAbs(lockedProfit / 2, user1Bal - wantAmount, 1, "User1 should earn lockedProfit/2");
-        assertApproxEqAbs(lockedProfit / 2, user2Bal - wantAmount, 1, "User2 should earn lockedProfit/2");
+        uint profitToInitialShares = lockedProfit * initStratBal / (initStratBal + wantAmount * 2);
+        uint usersProfit = lockedProfit - profitToInitialShares;
+        assertApproxEqAbs(usersProfit / 2, user1Bal - wantAmount, 1, "User1 should earn lockedProfit/2");
+        assertApproxEqAbs(usersProfit / 2, user2Bal - wantAmount, 1, "User2 should earn lockedProfit/2");
     }
 
     function test_rewards() external {

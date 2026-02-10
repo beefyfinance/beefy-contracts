@@ -214,7 +214,7 @@ abstract contract BaseAllToNativeFactoryStrat is OwnableUpgradeable, PausableUpg
     }
 
     function _swap(address tokenFrom, address tokenTo, uint amount) internal {
-        if (tokenFrom != tokenTo) {
+        if (amount > 0 && tokenFrom != tokenTo) {
             IERC20(tokenFrom).forceApprove(swapper, amount);
             IBeefySwapper(swapper).swap(tokenFrom, tokenTo, amount);
         }

@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./IMellow.sol";
 import "../../interfaces/common/ISolidlyGauge.sol";
+import "./IMellow.sol";
 
 contract MellowVeloHelper {
+
+    ISolidlyGauge public reward = ISolidlyGauge(0x940181a94A35A4569E4529A3CDfB74e38FD98631);
 
     function rewardRate(address[] calldata lps) public view returns (uint[] memory) {
         uint[] memory rates = new uint[](lps.length);
@@ -26,14 +28,21 @@ contract MellowVeloHelper {
         return rates;
     }
 
-//    function rewardRate(IMellowLpWrapper lp) public returns (uint rate) {
-//        // trigger new rewards
-//        lp.collectRewards();
-//
-//        uint lastTime = block.timestamp;
-//        uint lastIndex = lp.timestampToRewardRatesIndex(lastTime);
-//        (, uint lastRate) = lp.rewardRates(lastIndex);
-//        (uint prevTime, uint prevRate) = lp.rewardRates(lastIndex - 1);
-//        rate = (lastRate - prevRate) * lp.totalSupply() / (2 ** 96) / (lastTime - prevTime);
-//    }
+    function rewardRateNew(address[] calldata lps) public returns (uint[] memory rates, uint[] memory periods) {
+        rates = new uint[](lps.length);
+        periods = new uint[](lps.length);
+        for (uint j = 0; j < lps.length; j++) {
+            IMellowLpWrapper lp = IMellowLpWrapper(lps[j]);
+
+            uint before = reward.balanceOf(address(lp));
+            lp.collectRewards();
+            uint earned = reward.balanceOf(address(lp)) - before;
+
+            uint lastIndex = lp.timestampToRewardRatesIndex(block.timestamp);
+            (uint prevTime,) = lp.rewardRates(lastIndex - 1);
+            periods[j] = block.timestamp - prevTime;
+
+            rates[j] = earned / (block.timestamp - prevTime);
+        }
+    }
 }
