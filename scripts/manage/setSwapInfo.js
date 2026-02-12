@@ -3,6 +3,7 @@ import swapperAbi from "../../artifacts/contracts/BIFI/infra/BeefySwapper.sol/Be
 import UniswapV2RouterAbi from "../../data/abi/UniswapV2Router.json";
 import UniswapV3RouterAbi from "../../data/abi/UniswapV3Router.json";
 import UniswapV3Router2Abi from "../../data/abi/UniswapV3Router2.json";
+import UniV4SwapperAbi from "../../artifacts/contracts/BIFI/utils/UniV4Swapper.sol/UniV4Swapper.json";
 import BalancerVaultAbi from "../../data/abi/BalancerVault.json";
 import VelodromeRouterAbi from "../../data/abi/VelodromeRouter.json";
 import TraderJoeRouterAbi from "../../data/abi/TraderJoeRouter.json";
@@ -11,17 +12,16 @@ import StableRouterAbi from "../../data/abi/StableRouter.json";
 import CurveRouterAbi from "../../data/abi/CurveRouter.json";
 import SyncRouterAbi from "../../data/abi/SyncRouter.json";
 import MultihopRouterAbi from "../../data/abi/MultihopRouter.json";
-import { addressBook } from "blockchain-addressbook";
+import { addressBook } from "@beefyfinance/blockchain-addressbook";
 
 const {
   platforms: { beefyfinance },
   tokens: {
-    USDT: { address: USDT},
     USDC: {address: USDC},
     WETH: {address: WETH},
   },
-} = addressBook.scroll;
-const token = "0x77fbf86399ed764A084F77B9acCb049F3DbC32d2";
+} = addressBook.base;
+const token = "0x50D2280441372486BeecdD328c1854743EBaCb07";
 
 const ethers = hardhat.ethers;
 
@@ -30,7 +30,8 @@ const uint256Max = "115792089237316195423570985008687907853269984665640564039457
 const int256Max = "57896044618658097711785492504343953926634992332820282019728792003956564819967";
 const beefyfinanceSwapper = beefyfinance.beefySwapper;
 
-const uniswapV3Router = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
+const uniswapV3Router = "0x2626664c2603336E57B271c5C0b26F421741e481";
+const uniswapV4Router = beefyfinance.beefyUniV4Swapper;
 const uniswapV2Router = "0x8c1A3cF8f83074169FE5D7aD50B978e1cD6b37c7";
 const velodromeRouter = "0xAAA45c8F5ef92a000a121d102F4e89278a711Faa";
 const balancerVault = "0xBA12222222228d8Ba445958a75a0704d566BF2C8";
@@ -38,25 +39,31 @@ const traderJoeRouter = "0xb4315e873dBcf96Ffd0acd8EA43f689D8c20fB30";
 const algebraRouter = "0xAc48FcF1049668B285f3dC72483DF5Ae2162f7e8";
 const curveRouter = "0xF0d4c12A5768D806021F80a262B4d39d26C58b8D";
 const syncRouter = "0xC2a1947d2336b2AF74d5813dC9cA6E0c3b3E8a1E";
-const multihopRouter = "0x1DEF2c354bcFa4d1A8F40c4c33Ef7d27DB4109cA";
+const multihopRouter = beefyfinance.beefyMultiHopSwapper;
 
 
 const config = {
-  type: "uniswapV3",
+  type: "uniswapV4",
   uniswapV3: {
-    path: [[WETH, USDC, 3000]],
+    path: [[token, WETH, 10000]],
     router: uniswapV3Router,
-    router2: false
+    router2: true
+  },
+  uniswapV4: {
+    router: uniswapV4Router,
+    tokenIn: token,
+    tokenOut: nullAddress,
+    path: [[USDC, 10000, 200, "0xb429d62f8f3bFFb98CdB9569533eA23bF0Ba28CC", "0x"],[nullAddress, 3000, 60, nullAddress, "0x"]]
   },
   uniswapV2: {
     path: [WETH, token],
     router: uniswapV2Router,
   },
   balancer: {
-    path: [
+    /*path: [
       [USDT, USDC, "0x3ff3a210e57cfe679d9ad1e9ba6453a716c56a2e0002000000000000000005d5"],
       [USDC, WETH, "0x96646936b91d6b9d7d0c47c496afbf3d6ec7b6f8000200000000000000000019"]
-    ],
+    ],*/
     router: balancerVault,
   },
   solidly: {
@@ -84,13 +91,13 @@ const config = {
     steps: [["0x63EF8Ab47507f771C799Ab8ee3210857AE0bD1dA",,nullAddress,"0x",true]]
   },
   multihop: {
-    path: [WETH, USDC, token],
+    //path: [WETH, USDC, UP],
     router: multihopRouter,
   },
   balancerV3: {
     router: "0x47980Dd0d6AF8638416416C19c1Da31cAA5e8eBe",
     pool: "0x10f9e54aeea2fefa124238087dcfd919ba32f14d",
-    path: [WBTC, token],
+    //path: [WBTC, token],
     atokens: ["0x52dc1feefa4f9a99221f93d79da46ae89b8c0967", ethers.constants.AddressZero]
    }
 };
@@ -99,6 +106,9 @@ async function main() {
   switch(config.type) {
     case 'uniswapV3':
       await uniswapV3();
+      break;
+    case 'uniswapV4':
+      await uniswapV4();
       break;
     case 'uniswapV2':
       await uniswapV2();
@@ -192,6 +202,24 @@ async function uniswapV3() {
     swapInfo
   );*/
 };
+
+async function uniswapV4() {
+  const router = await ethers.getContractAt(UniV4SwapperAbi.abi, config.uniswapV4.router);
+  const txData = await router.populateTransaction.swap(config.uniswapV4.tokenIn, config.uniswapV4.tokenOut, uint256Max, 0, config.uniswapV4.path);
+  const amountIndex = 68;
+  const minIndex = 100;
+  const minAmountSign = 0;
+
+  const swapInfo = [
+    config.uniswapV4.router,
+    txData.data,
+    amountIndex,
+    minIndex,
+    minAmountSign
+  ];
+
+  console.log(config.uniswapV4.tokenIn, config.uniswapV4.tokenOut, swapInfo);
+}
 
 async function uniswapV2() {
   const router = await ethers.getContractAt(UniswapV2RouterAbi, config.uniswapV2.router);
