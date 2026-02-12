@@ -94,8 +94,11 @@ contract StrategyERC4626 is BaseAllToNativeFactoryStrat {
         // if the share balance is greater than the required shares, redeem the difference
         if (shares > requiredShares) {
             uint256 sharesToRedeem = shares - requiredShares;
-            uint256 redeemedAmount = erc4626.redeem(sharesToRedeem, address(this), address(this));
-            _swap(want, native, redeemedAmount);
+            uint256 redeemedAmount = erc4626.previewRedeem(sharesToRedeem);
+            if (redeemedAmount > minAmounts[want]) {
+                redeemedAmount = erc4626.redeem(sharesToRedeem, address(this), address(this));
+                _swap(want, native, redeemedAmount);
+            }
         }
         super._swapRewardsToNative();
     }
