@@ -17,6 +17,12 @@ import "../interfaces/beefy/IStrategyV7.sol";
 contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    error ProposalNotValid(); 
+    error DifferentWant(); 
+    error NoCandidate(); 
+    error DelayNotPassed();
+    error NotTheToken(); 
+
     struct StratCandidate {
         address implementation;
         uint proposedTime;
@@ -105,7 +111,7 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
         earn();
         uint256 _after = balance();
         _amount = _after - _pool; // Additional check for deflationary tokens
-        uint256 shares = 0;
+        uint256 shares;
         if (totalSupply() == 0) {
             shares = _amount;
         } else {
@@ -142,12 +148,15 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
 
         uint b = want().balanceOf(address(this));
         if (b < r) {
-            uint _withdraw = r - b;
+            uint _withdraw; 
+            unchecked {
+                _withdraw = r - b;
+            }
             strategy.withdraw(_withdraw);
             uint _after = want().balanceOf(address(this));
             uint _diff = _after - b;
             if (_diff < _withdraw) {
-                r = b + _diff;
+                r = _after;
             }
         }
 
@@ -159,8 +168,13 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
      * @param _implementation The address of the candidate strategy.  
      */
     function proposeStrat(address _implementation) public onlyOwner {
-        require(address(this) == IStrategyV7(_implementation).vault(), "Proposal not valid for this Vault");
-        require(want() == IStrategyV7(_implementation).want(), "Different want");
+        if(address(this) != IStrategyV7(_implementation).vault()) {
+            revert ProposalNotValid();
+        }
+
+        if(want() != IStrategyV7(_implementation).want()) {
+            revert DifferentWant(); 
+        }
         stratCandidate = StratCandidate({
             implementation: _implementation,
             proposedTime: block.timestamp
@@ -174,10 +188,14 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
      * candidate implementation is set to the 0x00 address, and proposedTime to a time 
      * happening in +100 years for safety. 
      */
-
     function upgradeStrat() public onlyOwner {
-        require(stratCandidate.implementation != address(0), "There is no candidate");
-        require(stratCandidate.proposedTime + approvalDelay < block.timestamp, "Delay has not passed");
+        if(stratCandidate.implementation == address(0)) {
+            revert NoCandidate(); 
+        }
+
+        if(stratCandidate.proposedTime + approvalDelay >= block.timestamp) {
+            revert DelayNotPassed();
+        }
 
         emit UpgradeStrat(stratCandidate.implementation);
 
@@ -194,7 +212,9 @@ contract BeefyVaultV7 is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUp
      * @param _token address of the token to rescue.
      */
     function inCaseTokensGetStuck(address _token) external onlyOwner {
-        require(_token != address(want()), "!token");
+        if(_token == address(want())) {
+            revert NotTheToken();
+        }
 
         uint256 amount = IERC20Upgradeable(_token).balanceOf(address(this));
         IERC20Upgradeable(_token).safeTransfer(msg.sender, amount);
