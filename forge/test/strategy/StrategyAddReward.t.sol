@@ -22,12 +22,4 @@ contract StrategyAddRewardTest is BaseAllToNativeFactoryTest {
 
         return address(strategy);
     }
-
-    function claimRewardsToStrat() internal override {
-        (bool success, bytes memory res) = address(strategy).staticcall(abi.encodeWithSignature("gauge()"));
-        if (success) {
-            address gauge = abi.decode(res, (address));
-            IRewardsGauge(gauge).claim_rewards(address(strategy));
-        }
-    }
 }

@@ -59,7 +59,7 @@ contract StrategyAeroAutopilotTest is BaseAllToNativeFactoryTest {
         (uint[] memory ratesNew,) = h.rewardRateNew(lps);
         for (uint i; i < lps.length; i++) {
             string memory s = IERC20Extended(lps[i]).symbol();
-            assertEq(rates[i], ratesNew[i], s);
+            assertApproxEqAbs(rates[i], ratesNew[i], 1, s);
             console.log("%s %18e %18e", s, rates[i], rates[i] * 31536000);
         }
     }

@@ -91,6 +91,8 @@ contract StrategyAeroAutopilot is BaseAllToNativeFactoryStrat {
         (uint actual0, uint actual1) = lp.previewMint(lpAmount);
         if (lp0Bal < actual0 || lp1Bal < actual1) {
             lpAmount--;
+            // TODO
+            // lpAmount = lpAmount / 10 * 10;
         }
         return lpAmount;
     }
