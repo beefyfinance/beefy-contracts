@@ -77,7 +77,7 @@ contract UpgradeMorpho is Test {
             uint vaultBalAfterUpgrade = vault.balance();
             uint ppsAfterUpgrade = vault.getPricePerFullShare();
             assertEq(vaultBalAfterUpgrade, vaultBalance[i], "Vault balance changed");
-            assertGe(ppsAfterUpgrade, pps[i], "Vault pps changed");
+            assertEq(ppsAfterUpgrade, pps[i], "Vault pps changed");
 
             skip(1 days);
             console.log("Harvest");
@@ -119,6 +119,9 @@ contract UpgradeMorpho is Test {
     }
 
     function test_multisig() public {
+        address multisig = 0x34fEf5DA92c59d6aC21d0A75ce90B351D0Fb6CE6;
+        TimelockController t = TimelockController(payable(factory.owner()));
+
         uint[] memory bals = new uint[](strats.length);
         for (uint i; i < strats.length; i++) {
             StrategyMorpho strategy = StrategyMorpho(payable(strats[i]));
@@ -139,8 +142,7 @@ contract UpgradeMorpho is Test {
             payloads[i] = setStoredBalance;
         }
 
-        TimelockController t = TimelockController(payable(0x1c9270ac5C42E51611d7b97b1004313D52c80293));
-        vm.prank(0x34fEf5DA92c59d6aC21d0A75ce90B351D0Fb6CE6);
+        vm.prank(multisig);
         t.scheduleBatch(targets, values, payloads, 0x00, 0x00, 21600);
         skip(1 days);
         vm.prank(factory.keeper());
@@ -150,6 +152,7 @@ contract UpgradeMorpho is Test {
             assertGt(StrategyMorpho(payable(strats[i])).balanceOf(), bals[i]);
         }
 
+        console.log("owner:", address(t));
         console.log("targets:");
         console.log(Utils.addrToStr(targets));
         console.log("payloads:");

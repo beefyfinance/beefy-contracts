@@ -29,11 +29,7 @@ contract CommonBaseTest is BaseAllToNativeFactoryTest {
         return strategy;
     }
 
-    function claimRewardsToStrat() internal override {
-        BaseAllToNativeFactoryStrat(payable(strategy)).claim();
-    }
-
-    function beforeHarvest() internal override {
+    function beforeHarvest() internal virtual override {
 //        deal(BaseAllToNativeFactoryStrat(payable(strategy)).rewards(0), address(strategy), 1000e18);
     }
 

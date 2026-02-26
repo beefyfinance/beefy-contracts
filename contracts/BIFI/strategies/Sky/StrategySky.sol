@@ -25,6 +25,7 @@ contract StrategySky is BaseAllToNativeFactoryStrat {
     ILockstake public lockstake;
     IVat public vat;
     bytes32 public ilk;
+    address public urn;
 
     function initialize(
         address _lockstake,
@@ -37,7 +38,7 @@ contract StrategySky is BaseAllToNativeFactoryStrat {
         vat = IVat(lockstake.vat());
         ilk = lockstake.ilk();
 
-        lockstake.open(0);
+        urn = lockstake.open(0);
         lockstake.selectFarm(address(this), 0, _farm, 0);
 
         __BaseStrategy_init(_addresses, _rewards);
@@ -45,13 +46,11 @@ contract StrategySky is BaseAllToNativeFactoryStrat {
     }
 
     function stratName() public pure override returns (string memory) {
-        return "SkyLockstake";
+        return "SkyLockstakeV2";
     }
 
-    function balanceOfPool() public view override returns (uint) {
-        address urn = lockstake.ownerUrns(address(this), 0);
-        (uint ink,) = vat.urns(ilk, urn);
-        return ink;
+    function balanceOfPool() public view override returns (uint ink) {
+        (ink,) = vat.urns(ilk, urn);
     }
 
     function _deposit(uint amount) internal override {
@@ -70,10 +69,21 @@ contract StrategySky is BaseAllToNativeFactoryStrat {
     }
 
     function _claim() internal override {
-        address urn = lockstake.ownerUrns(address(this), 0);
         address farm = lockstake.urnFarms(urn);
         lockstake.getReward(address(this), 0, farm, address(this));
     }
 
     function _verifyRewardToken(address token) internal view override {}
+
+    function addWantAsReward() external onlyOwner {
+        rewards.push(want);
+    }
+
+    function currentFarm() external view returns(address) {
+        return lockstake.urnFarms(urn);
+    }
+
+    function selectFarm(address _farm) external onlyManager {
+        lockstake.selectFarm(address(this), 0, _farm, 0);
+    }
 }
