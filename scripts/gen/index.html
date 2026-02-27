@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decode ABI</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        .left-panel {
+            width: 340px;
+            min-width: 340px;
+            padding: 2rem;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+        }
+        .right-panel {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+        h1 {
+            margin-bottom: 1rem;
+            color: #a78bfa;
+            font-size: 1.5rem;
+        }
+        textarea {
+            width: 100%;
+            flex: 1;
+            min-height: 100px;
+            padding: 0.75rem 1rem;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #16213e;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            resize: none;
+        }
+        textarea:focus { outline: none; border-color: #a78bfa; }
+        #findBtn {
+            display: block;
+            width: 100%;
+            margin-top: 0.75rem;
+            padding: 0.7rem;
+            background: #a78bfa;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+        #findBtn:hover { background: #8b5cf6; }
+        #status {
+            text-align: center;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            color: #888;
+            flex-shrink: 0;
+        }
+        #results {
+            min-height: 0;
+        }
+        .result-item {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        .selector-key {
+            font-family: 'Courier New', monospace;
+            color: #7dd3fc;
+            font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+        }
+        .signature {
+            color: #fbbf24;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .files-label {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 0.25rem;
+        }
+        .file-tag {
+            display: inline-block;
+            background: #2d2b55;
+            color: #c4b5fd;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin: 0.15rem 0.25rem 0.15rem 0;
+            font-family: 'Courier New', monospace;
+        }
+        .not-found {
+            color: #f87171;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            padding: 0.25rem 0;
+        }
+        .decoded-section {
+            margin-top: 0.75rem;
+            border-top: 1px solid #333;
+            padding-top: 0.75rem;
+        }
+        .param {
+            margin-bottom: 0.5rem;
+        }
+        .param-name {
+            color: #a78bfa;
+            font-size: 0.85rem;
+            font-family: 'Courier New', monospace;
+        }
+        .param-type {
+            color: #666;
+            font-size: 0.75rem;
+        }
+        .param-value {
+            color: #7dd3fc;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            word-break: break-all;
+            margin-top: 0.1rem;
+        }
+        .decode-btn {
+            padding: 0.05rem 0.35rem;
+            margin-left: 0.4rem;
+            background: #334155;
+            color: #a78bfa;
+            border: 1px solid #a78bfa;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            vertical-align: middle;
+            transition: background 0.2s;
+        }
+        .decode-btn:hover { background: #475569; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="left-panel">
+<!--        <h1>Selector Finder</h1>-->
+        <textarea id="input" placeholder="Paste selectors, one per line (e.g. 0xe8f98f88)"></textarea>
+        <button id="findBtn">Find</button>
+        <div id="status">Loading selectors.json…</div>
+    </div>
+    <div class="right-panel">
+        <div id="results"></div>
+    </div>
+</div>
+
+<script type="module">
+  import { decodeFunctionData } from 'https://esm.sh/viem@2.21.54';
+
+  let selectors = null;
+
+  fetch('selectors.json')
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        selectors = data;
+        const count = Object.keys(selectors).length;
+        document.getElementById('status').textContent = `Loaded ${count} selectors`;
+      })
+      .catch(err => {
+        document.getElementById('status').textContent = `Error loading selectors.json: ${err.message}`;
+      });
+
+  /* ---- Rendering ---- */
+
+  function renderValue(value, abiInput, indent) {
+    indent = indent || 0;
+    const ml = indent * 24;
+    const t = abiInput.type;
+    let html = '';
+
+    // Tuple (struct)
+    if (t === 'tuple') {
+      const label = abiInput.internalType ? abiInput.internalType.replace(/^struct\s+/, '') : 'struct';
+      html += '<div class="param" style="margin-left:' + ml + 'px">'
+          + '<div class="param-name">' + esc(abiInput.name) + ' <span class="param-type">(' + esc(label) + ')</span></div>'
+          + '</div>';
+      abiInput.components.forEach((comp, i) => {
+        const v = comp.name && value[comp.name] !== undefined ? value[comp.name] : value[i];
+        html += renderValue(v, comp, indent + 1);
+      });
+      return html;
+    }
+
+    // Arrays (fixed or dynamic)
+    const arrMatch = t.match(/^(.+?)(\[(\d*)\])+$/);
+    if (Array.isArray(value) && arrMatch) {
+      // Check if it's a flat array of ints — display inline
+      const innerType = t.replace(/\[\d*\]$/, '');
+      if (/^u?int\d*$/.test(innerType) && !value.some(v => Array.isArray(v))) {
+        const vals = value.map(v => typeof v === 'bigint' ? v.toString() : String(v));
+        html += '<div class="param" style="margin-left:' + ml + 'px">'
+            + '<div class="param-name">' + esc(abiInput.name) + ' <span class="param-type">(' + esc(abiInput.internalType || t) + ')</span></div>'
+            + '<div class="param-value">[' + vals.join(', ') + ']</div>'
+            + '</div>';
+        return html;
+      }
+
+      const label = abiInput.internalType || t;
+      html += '<div class="param" style="margin-left:' + ml + 'px">'
+          + '<div class="param-name">' + esc(abiInput.name) + ' <span class="param-type">(' + esc(label) + ') [' + value.length + ']</span></div>'
+          + '</div>';
+      value.forEach((elem, i) => {
+        html += renderValue(elem, { ...abiInput, name: '[' + i + ']', type: innerType }, indent + 1);
+      });
+      return html;
+    }
+
+    // Scalar values
+    let display;
+    if (typeof value === 'bigint') {
+      display = value.toString();
+    } else if (typeof value === 'boolean') {
+      display = value ? 'true' : 'false';
+    } else {
+      display = String(value);
+    }
+
+    const isNonEmptyBytes = (t === 'bytes' && display.length > 2 && display !== '0x');
+    const decodeBtn = isNonEmptyBytes
+        ? ' <button class="decode-btn" data-value="' + esc(display) + '">Decode</button>'
+        : '';
+
+    html += '<div class="param" style="margin-left:' + ml + 'px">'
+        + '<div class="param-name">' + esc(abiInput.name) + ' <span class="param-type">(' + esc(t) + ')</span>' + decodeBtn + '</div>'
+        + '<div class="param-value">' + esc(display) + '</div>'
+        + '</div>';
+    return html;
+  }
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  /* ---- Search ---- */
+
+  document.getElementById('findBtn').addEventListener('click', doFind);
+
+  document.getElementById('results').addEventListener('click', (e) => {
+    const btn = e.target.closest('.decode-btn');
+    if (!btn) return;
+    const value = btn.dataset.value;
+    document.getElementById('input').value = value;
+    doFind();
+  });
+
+  function doFind() {
+    if (!selectors) return;
+
+    const raw = document.getElementById('input').value.trim();
+    if (!raw) return;
+
+    const lines = raw.split(/[\s,\n]+/).map(k => k.trim()).filter(Boolean);
+
+    const resultsDiv = document.getElementById('results');
+    resultsDiv.innerHTML = '';
+
+    lines.forEach(line => {
+      const fullInput = line.startsWith('0x') ? line : '0x' + line;
+      const selectorKey = fullInput.slice(0, 10).toLowerCase();
+      const calldataHex = fullInput;
+
+      const entry = selectors[selectorKey];
+      const item = document.createElement('div');
+      item.className = 'result-item';
+
+      if (entry) {
+        const filesHtml = entry.files
+            .map(f => '<span class="file-tag">' + esc(f) + '</span>')
+            .join('');
+
+        let decodedHtml = '';
+        if (entry.abi && entry.abi.inputs && fullInput.length > 10) {
+          try {
+            const abi = [entry.abi];
+            const { args } = decodeFunctionData({ abi, data: calldataHex });
+            let paramsHtml = '';
+            entry.abi.inputs.forEach((inp, i) => {
+              paramsHtml += renderValue(args[i], inp);
+            });
+            decodedHtml = '<div class="decoded-section">' + paramsHtml + '</div>';
+          } catch (e) {
+            decodedHtml = '<div class="decoded-section"><div class="not-found">Decode error: ' + esc(e.message) + '</div></div>';
+          }
+        }
+
+        item.innerHTML =
+            '<div class="selector-key">' + esc(selectorKey) + '</div>'
+            + '<div class="signature">' + esc(entry.signature) + '</div>'
+            + decodedHtml
+            + '<div class="files-label">Files:</div>'
+            + '<div>' + filesHtml + '</div>';
+      } else {
+        item.innerHTML =
+            '<div class="selector-key">' + esc(selectorKey) + '</div>'
+            + '<div class="not-found">Not found</div>';
+      }
+
+      resultsDiv.appendChild(item);
+    });
+  }
+</script>
+</body>
+</html>

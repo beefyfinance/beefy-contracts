@@ -22,6 +22,7 @@
     "flat-hardhat": "hardhat flatten contracts/BIFI/infra/BeefyFeeConfigurator.sol > tmp/flattened.sol",
     "flat": "bin/flatten.sh",
     "flat:chain": "bin/flattenChainContracts.sh",
+    "genAbiSelectors": "ts-node ./scripts/gen/genAbiSelectors.js",
     "installForge": ". scripts/forge/installForge.sh",
     "forgeTest:vault": "forge test --force --fork-url http://localhost:8545 --match-contract ProdVaultTest",
     "forgeTest:wrapper": "forge test --force --fork-url https://sonic-rpc.publicnode.com --match-contract WrapperTest",
