@@ -1,10 +1,10 @@
-import hardhat, { ethers, web3 } from "hardhat";
-import { addressBook } from "blockchain-addressbook";
+import hardhat, { ethers } from "hardhat";
+import { addressBook } from "@beefyfinance/blockchain-addressbook";
 import vaultV7 from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7.sol/BeefyVaultV7.json";
 import vaultV7Factory from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
 import strategyFactory from "../../artifacts/contracts/BIFI/infra/StrategyFactory.sol/StrategyFactory.json"
 import stratAbi from "../../artifacts/contracts/BIFI/strategies/Tokemak/StrategyTokemak.sol/StrategyTokemak.json";
-import { symbolName } from "typescript";
+import { getAddress } from "viem";
 
 const {
   platforms: { beefyfinance },
@@ -14,8 +14,8 @@ const {
 } = addressBook.ethereum;
 
 
-const want = web3.utils.toChecksumAddress("0xE800e3760FC20aA98c5df6A9816147f190455AF3");
-const rewardPool = web3.utils.toChecksumAddress("0x9597C17f323160D8462c194D72FAAcF7b4CBCd2b");
+const want = getAddress("0xE800e3760FC20aA98c5df6A9816147f190455AF3");
+const rewardPool = getAddress("0x9597C17f323160D8462c194D72FAAcF7b4CBCd2b");
 
 const platform = "Tokemak";
 const tokens = "autoLRT";

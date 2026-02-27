@@ -1,9 +1,10 @@
-import hardhat, { ethers, web3 } from "hardhat";
-import { addressBook } from "blockchain-addressbook";
+import hardhat, { ethers } from "hardhat";
+import { addressBook } from "@beefyfinance/blockchain-addressbook";
 import vaultV7 from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7.sol/BeefyVaultV7.json";
 import vaultV7Factory from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
 import strategyFactory from "../../artifacts/contracts/BIFI/infra/StrategyFactory.sol/StrategyFactory.json"
 import stratAbi from "../../artifacts/contracts/BIFI/strategies/Balancer/StrategyBalancer.sol/StrategyBalancer.json";
+import { getAddress } from "viem";
 
 const {
   platforms: { beefyfinance, balancer },
@@ -16,9 +17,9 @@ const {
 
 const BEETS = "0x2D0E0814E62D80056181F5cd932274405966e4f0";
 
-const want = web3.utils.toChecksumAddress("0x21FeD4063BF8ebf4F51f4ADF4ECFC9717aa4cA9D");
-const gauge = web3.utils.toChecksumAddress("0xf6a0071f5607f589DF253E0991Ba6aBdDE7a6d32");
-const booster = web3.utils.toChecksumAddress(ethers.constants.AddressZero);
+const want = getAddress("0x21FeD4063BF8ebf4F51f4ADF4ECFC9717aa4cA9D");
+const gauge = getAddress("0xf6a0071f5607f589DF253E0991Ba6aBdDE7a6d32");
+const booster = getAddress(ethers.constants.AddressZero);
 
 const platform = "BeethovenX";
 const tokens = ["BEETS", "stS", "LUDWIG"]

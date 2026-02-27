@@ -1,8 +1,9 @@
-import hardhat, { ethers, web3 } from "hardhat";
-import { addressBook } from "blockchain-addressbook";
+import hardhat, { ethers } from "hardhat";
+import { addressBook } from "@beefyfinance/blockchain-addressbook";
 import vaultV7 from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7.sol/BeefyVaultV7.json";
 import vaultV7Factory from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
 import stratAbi from "../../artifacts/contracts/BIFI/strategies/Balancer/StrategyAuraGyroMainnet.sol/StrategyAuraGyroMainnet.json";
+import { getAddress } from "viem";
 
 const {
   platforms: { balancer, beefyfinance },
@@ -18,8 +19,8 @@ const {
 
 const bytes0 = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
-const booster = web3.utils.toChecksumAddress("0xA57b8d98dAE62B26Ec3bcC4a365338157060B234");
-const want = web3.utils.toChecksumAddress("0xf01b0684C98CD7aDA480BFDF6e43876422fa1Fc1");
+const booster = getAddress("0xA57b8d98dAE62B26Ec3bcC4a365338157060B234");
+const want = getAddress("0xf01b0684C98CD7aDA480BFDF6e43876422fa1Fc1");
 
 const vaultParams = {
   mooName: "Moo Aura Gyro wstETH-ETH",

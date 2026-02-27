@@ -1,4 +1,4 @@
-import hardhat, { ethers, web3 } from "hardhat";
+import hardhat from "hardhat";
 import swapperAbi from "../../artifacts/contracts/BIFI/infra/BeefySwapper.sol/BeefySwapper.json";
 import UniswapV2RouterAbi from "../../data/abi/UniswapV2Router.json";
 import UniswapV3RouterAbi from "../../data/abi/UniswapV3Router.json";

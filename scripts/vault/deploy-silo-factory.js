@@ -1,9 +1,10 @@
-import hardhat, { ethers, web3 } from "hardhat";
-import { addressBook } from "blockchain-addressbook";
+import hardhat, { ethers } from "hardhat";
+import { addressBook } from "@beefyfinance/blockchain-addressbook";
 import vaultV7 from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7.sol/BeefyVaultV7.json";
 import vaultV7Factory from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
 import strategyFactory from "../../artifacts/contracts/BIFI/infra/StrategyFactory.sol/StrategyFactory.json"
 import stratAbi from "../../artifacts/contracts/BIFI/strategies/Silo/StrategySiloV2.sol/StrategySiloV2.json";
+import { getAddress } from "viem";
 
 const {
   platforms: { beefyfinance, balancer },
@@ -14,8 +15,8 @@ const {
 
 
 const want = USDC;
-const gauge = web3.utils.toChecksumAddress(ethers.constants.AddressZero);
-const silo = web3.utils.toChecksumAddress("0x2514A2Ce842705EAD703d02fABFd8250BfCfb8bd");
+const gauge = getAddress(ethers.constants.AddressZero);
+const silo = getAddress("0x2514A2Ce842705EAD703d02fABFd8250BfCfb8bd");
 
 const platform = "SiloV2";
 const tokens = ["USDC"]

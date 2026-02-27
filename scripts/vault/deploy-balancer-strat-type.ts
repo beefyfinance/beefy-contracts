@@ -1,5 +1,5 @@
-import hardhat, { ethers, web3 } from "hardhat";
-import { addressBook } from "blockchain-addressbook";
+import hardhat, { ethers } from "hardhat";
+import { addressBook } from "@beefyfinance/blockchain-addressbook";
 import vaultV7 from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7.sol/BeefyVaultV7.json";
 import vaultV7Factory from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
 import stratAbi from "../../artifacts/contracts/BIFI/strategies/Balancer/StrategyBalancerMultiRewardGaugeUniV3.sol/StrategyBalancerMultiRewardGaugeUniV3.json";
@@ -23,8 +23,8 @@ const bbrfETH = "0xdd89c7cd0613c1557b2daac6ae663282900204f1";
 const bbrfOP = "0xA4e597c1bD01859B393b124ce18427Aa4426A871";
 const bbUSDplus = "0x88D07558470484c03d3bb44c3ECc36CAfCF43253";
 
-const gauge = web3.utils.toChecksumAddress("0x6341B7472152D7b7F9af3158C6A42349a2cA6c72");
-const want = web3.utils.toChecksumAddress("0x7B50775383d3D6f0215A8F290f2C9e2eEBBEceb2");
+const gauge = getAddress("0x6341B7472152D7b7F9af3158C6A42349a2cA6c72");
+const want = getAddress("0x7B50775383d3D6f0215A8F290f2C9e2eEBBEceb2");
 
 const vaultParams = {
   mooName: "Moo Beets Shanghai Shakedown",

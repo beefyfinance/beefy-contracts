@@ -1,9 +1,9 @@
-import hardhat, { ethers, web3 } from "hardhat";
+import hardhat from "hardhat";
 import BeefyOracleAbi from "../../data/abi/BeefyOracle.json";
 import UniswapV3FactoryAbi from "../../data/abi/UniswapV3Factory.json";
 import UniswapV2FactoryAbi from "../../data/abi/UniswapV2Factory.json";
 import VelodromeFactoryAbi from "../../data/abi/VelodromeFactory.json";
-import { addressBook } from "blockchain-addressbook";
+import { addressBook } from "@beefyfinance/blockchain-addressbook";
 
 const {
   platforms: { beefyfinance },

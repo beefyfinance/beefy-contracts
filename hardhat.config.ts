@@ -1,11 +1,6 @@
-import "@nomiclabs/hardhat-waffle";
-import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
 import "@nomicfoundation/hardhat-verify";
 import "@openzeppelin/hardhat-upgrades";
-import "hardhat-gas-reporter";
-import "hardhat-contract-sizer";
-// import "@typechain/hardhat";
 import "./tasks";
 
 import { HardhatUserConfig } from "hardhat/config";

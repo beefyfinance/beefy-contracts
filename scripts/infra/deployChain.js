@@ -1,6 +1,6 @@
 const hardhat = require("hardhat");
 const { upgrades } = require("hardhat");
-const { addressBook } = require("blockchain-addressbook");
+import { addressBook } from "@beefyfinance/blockchain-addressbook";
 
 /**
  * Script used to deploy the basic infrastructure needed to run Beefy.
