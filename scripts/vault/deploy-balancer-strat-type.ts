@@ -4,6 +4,7 @@ import vaultV7 from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7.sol/Beef
 import vaultV7Factory from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
 import stratAbi from "../../artifacts/contracts/BIFI/strategies/Balancer/StrategyBalancerMultiRewardGaugeUniV3.sol/StrategyBalancerMultiRewardGaugeUniV3.json";
 import stratComAbi from "../../artifacts/contracts/BIFI/strategies/Balancer/StrategyBalancerComposableMultiRewardGaugeUniV3.sol/StrategyBalancerComposableMultiRewardGaugeUniV3.json";
+import { getAddress } from "viem";
 
 const {
   platforms: { beethovenX, beefyfinance },
