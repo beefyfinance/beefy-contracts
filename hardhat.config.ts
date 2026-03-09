@@ -259,8 +259,17 @@ const config: HardhatUserConfig = {
       lisk: "abc",
       sonic: process.env.MAINNET_API_KEY!,
       plasma: process.env.MAINNET_API_KEY!,
+      monad: process.env.MAINNET_API_KEY!,
     },
     customChains: [
+      {
+        network: "monad",
+        chainId: 143,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=143",
+          browserURL: "https://monadscan.com",
+        },
+      },
       {
         network: "scroll",
         chainId: 534352,
