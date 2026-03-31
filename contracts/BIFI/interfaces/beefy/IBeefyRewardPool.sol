@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.19;
+pragma solidity ^0.8.0;
 
 interface IBeefyRewardPool {
     function stake(uint256 amount) external;
@@ -12,4 +12,8 @@ interface IBeefyRewardPool {
     function rescueTokens(address token, address recipient) external;
     function setWhitelist(address manager, bool whitelisted) external;
     function transferOwnership(address owner) external;
+    function stakedToken() external view returns (address);
+    function whitelisted(address) external view returns (bool);
+    function name() external view returns (string memory);
+    function symbol() external view returns (string memory);
 }

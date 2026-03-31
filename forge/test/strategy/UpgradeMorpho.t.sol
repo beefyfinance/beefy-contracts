@@ -15,19 +15,21 @@ import {TimelockController} from "../../../node_modules/@openzeppelin-4/contract
 contract UpgradeMorpho is Test {
 
     address[] strats = [
-    0x3d4C4cD9Ca34741464FA3AE4f095b0c39d7BbBB4,
-    0xCB7041bf0e0c3756781c3C81147A8D28C25c2033,
-    0xEA1C8999C20f76aFAFCe34ED6265890EFF8b3B36,
-    0x730EB1e054ad08b390E29A648DE134c35270cE72,
-    0xdCEe3AE4f82Bd085fF147B87a754517d8CAafF3b
+    0xC02ceF879331834a7823f2AfAD6a1DF7d9DB6C05,
+    0xD612Bb264F973076ea934f2080BAc1fC2e7d8238,
+    0x38233654FB0843c8024527682352A5d41E7f7324,
+    0xbFC232804610D7C02B9E4b271f0935a99e36d4fb,
+    0x5Ac5BDb5DCe41f6fE7cb78bA7ad53367B98749B8,
+    0xD42b606021305024A40fB77B04eBe7DDD189Df48
     ];
+//    address newImpl = address(new StrategyMorpho());
+    address newImpl = 0x5cf364aFD3ebb8a1964BeF44cB60847267E81DBF;
+    address multisig = 0x6FfaCA7C3B38Ec2d631D86e15f328ee6eF6C6226;
 
     string stratName;
-    address newImpl;
     StrategyFactory factory;
 
     function setUp() public {
-        newImpl = 0xCc17Dc7ce896ee8969118B46Ab1001bFA13e8431; //address(new StrategyMorpho());
         StrategyMorpho strategy = StrategyMorpho(payable(strats[0]));
         factory = StrategyFactory(address(strategy.factory()));
         stratName = strategy.stratName();
@@ -90,7 +92,8 @@ contract UpgradeMorpho is Test {
             assertGt(vaultBalAfterHarvest, vaultBalAfterUpgrade, "Harvested 0");
             assertGt(ppsAfterHarvest, ppsAfterUpgrade, "Expected ppsAfterHarvest > upgraded");
 
-            if (address(strategy) == 0xCB7041bf0e0c3756781c3C81147A8D28C25c2033) {
+//            if (address(strategy) == 0xCB7041bf0e0c3756781c3C81147A8D28C25c2033) {
+            if (address(strategy) == 0x38233654FB0843c8024527682352A5d41E7f7324) {
                 console.log("Panic");
                 vm.startPrank(strategy.keeper());
                 vm.expectRevert(bytes4(hex'4323a555'));
@@ -119,7 +122,6 @@ contract UpgradeMorpho is Test {
     }
 
     function test_multisig() public {
-        address multisig = 0x34fEf5DA92c59d6aC21d0A75ce90B351D0Fb6CE6;
         TimelockController t = TimelockController(payable(factory.owner()));
 
         uint[] memory bals = new uint[](strats.length);
