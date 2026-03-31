@@ -39,6 +39,9 @@ fs_permissions = [{ access = "read", path = "./"}]
 # These^ are all the available config options
 # Docs at https://github.com/gakonst/foundry/tree/master/config
 
+[lint]
+lint_on_build=false
+
 [rpc_endpoints]
 eth = "${ETH_RPC}"
 mainnet = "${ETH_RPC}"
