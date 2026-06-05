@@ -15,6 +15,8 @@ interface IStrategyConcLiq {
     function lpToken1() external view returns (address);
     function isCalm() external view returns (bool);
     function swapFee() external view returns (uint256);
+    function owner() external view returns (address);
+    function native() external view returns (address);
 
     /// @notice The current price of the pool in token1, encoded with `36 + lpToken1.decimals - lpToken0.decimals`.
     /// @return _price The current price of the pool in token1.

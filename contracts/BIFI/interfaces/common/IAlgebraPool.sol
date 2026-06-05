@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 interface IAlgebraPool {
     function token0() external view returns (address);
     function token1() external view returns (address);
+    function plugin() external view returns (address);
     function getTimepoints(uint32[] calldata secondsAgos)
         external
         view
@@ -14,4 +15,14 @@ interface IAlgebraPool {
             uint112[] memory volatilityCumulatives,
             uint256[] memory volumePerAvgLiquiditys
         );
+}
+
+interface IAlgebraPlugin {
+    function getTimepoints(uint32[] calldata secondsAgos)
+    external
+    view
+    returns (
+        int56[] memory tickCumulatives,
+        uint112[] memory volatilityCumulatives
+    );
 }
