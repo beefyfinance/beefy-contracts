@@ -16,6 +16,7 @@
     "deploy:timelock": "hardhat run scripts/infra/deployTimelockController.js --network",
     "deploy:chain": "hardhat run scripts/infra/deployChain.js --network",
     "deploy:contract": "hardhat run scripts/infra/deployContract.js --network",
+    "deploy:oracles": "hardhat run scripts/infra/deployOracles.js --network",
     "deploy:appMulticallv2": "hardhat run scripts/infra/deployAppMulticall.js --network",
     "setOracle": "hardhat run ./scripts/manage/setOracle.js --network",
     "setSwapInfo": "hardhat run ./scripts/manage/setSwapInfo.js --network",
