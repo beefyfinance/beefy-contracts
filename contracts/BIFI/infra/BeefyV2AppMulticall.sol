@@ -106,17 +106,26 @@ contract BeefyV2AppMulticall {
 
         for (uint i = 0; i < vaults.length; i++) {
             IBeefyVault vault = IBeefyVault(vaults[i]);
-            IBeefyStrategy strat = vault.strategy();
-            bool paused;
-            try strat.paused() returns (bool _paused) {
-                paused = _paused;
+
+            try this.getVaultInfo(vault) returns (VaultInfo memory _vaultInfo) {
+                results[i] = _vaultInfo;
             } catch {
-                paused = false;
+                results[i] = VaultInfo(0, 0, address(0), false);
             }
-            results[i] = VaultInfo(vault.balance(), vault.getPricePerFullShare(), address(strat), paused);
         }
 
         return results;
+    }
+
+    function getVaultInfo(IBeefyVault vault) external view returns (VaultInfo memory) {
+        IBeefyStrategy strat = vault.strategy();
+        bool paused;
+        try strat.paused() returns (bool _paused) {
+            paused = _paused;
+        } catch {
+            paused = false;
+        }
+        return VaultInfo(vault.balance(), vault.getPricePerFullShare(), address(strat), paused);
     }
 
     function getCowVaultInfo(address[] calldata vaults) external view returns (CowVaultInfo[] memory) {
@@ -193,7 +202,6 @@ contract BeefyV2AppMulticall {
                 (address[] memory rewardTokens, ) = govVault.earned(0x0000000000000000000000000000000000000000);
                 rewardCount = rewardTokens.length;
             }
-
             RewardInfo[] memory rewards = new RewardInfo[](rewardCount);
             for (uint j = 0; j < rewardCount; j++) {
                 (address rewardAddress, uint256 periodFinish, , , uint256 rate) = govVault.rewardInfo(j);
