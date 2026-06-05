@@ -6,12 +6,13 @@ import "../interfaces/IVault.sol";
 import "../interfaces/IStrategy.sol";
 import "./BaseAllToNativeFactoryTest.t.sol";
 import "../../../contracts/BIFI/interfaces/common/IRewardPool.sol";
-import {StrategyCurveConvex} from "../../../contracts/BIFI/strategies/Curve/StrategyCurveConvex.sol";
+import {StrategyCurveConvexFactory} from "../../../contracts/BIFI/strategies/Curve/StrategyCurveConvexFactory.sol";
 import "../utils/Utils.sol";
 
 contract StrategySetConvexPid is BaseAllToNativeFactoryTest {
 
     IStrategy strategy;
+    StrategyCurveConvexFactory curveStrat;
     uint pid;
 
     function createStrategy(address) internal override returns (address) {
@@ -21,13 +22,15 @@ contract StrategySetConvexPid is BaseAllToNativeFactoryTest {
 
         pid = vm.envUint("PID");
         vm.prank(strategy.owner());
-        StrategyCurveConvex(address(strategy)).setConvexPid(pid);
+
+        curveStrat = StrategyCurveConvexFactory(payable(address(strategy)));
+        curveStrat.setConvexPid(pid);
 
         return address(strategy);
     }
 
     function claimRewardsToStrat() internal override {
-        IRewardPool(StrategyCurveConvex(address(strategy)).rewardPool()).getReward(address(strategy));
+        IRewardPool(curveStrat.rewardPool()).getReward(address(strategy));
     }
 
 
@@ -36,7 +39,7 @@ contract StrategySetConvexPid is BaseAllToNativeFactoryTest {
 
         console.log("\nCall:");
         console.log("target:", address(strategy));
-        bytes memory data = abi.encodeCall(StrategyCurveConvex.setConvexPid, pid);
+        bytes memory data = abi.encodeWithSignature("setConvexPid(uint256)", pid);
         console.log("data:", Utils.bytesToStr(data));
     }
 }

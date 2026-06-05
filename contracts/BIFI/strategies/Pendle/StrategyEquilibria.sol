@@ -31,7 +31,7 @@ contract StrategyEquilibria is BaseAllToNativeFactoryStrat {
         xEqb = IXEqb(_booster.xEqb());
         booster = _booster;
         pid = _pid;
-        redeemEqb = true;
+        redeemEqb = false;
         redeemDelay = 1 days;
 
         if (_pid != NO_PID) {

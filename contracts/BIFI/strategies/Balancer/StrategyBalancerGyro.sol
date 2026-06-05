@@ -5,7 +5,6 @@ import "../Common/BaseAllToNativeFactoryStrat.sol";
 import "../../interfaces/beefy/IBeefySwapper.sol";
 import "../../interfaces/curve/IRewardsGauge.sol";
 import "../../interfaces/aura/IAuraRewardPool.sol";
-import "../../interfaces/curve/IStreamer.sol";
 import "../../interfaces/aura/IAuraBooster.sol";
 import "../../interfaces/beethovenx/IBalancerVault.sol";
 

@@ -12,10 +12,11 @@ jobs:
       # get repo code
       - uses: actions/checkout@v2
       # install node
-      - name: Use Node.js 16.x
-        uses: actions/setup-node@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '16.x'
+          node-version-file: '.nvmrc'
+          cache: 'yarn'        
       # install packages
       - run: yarn --frozen-lockfile
       # run compile test

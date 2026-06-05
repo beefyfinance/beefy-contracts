@@ -219,7 +219,6 @@ abstract contract BaseStrategyTest is Test {
     /*         */
 
     function _depositIntoVault(VaultUser user_, uint amount) internal {
-        console.log("Approving want");
         user_.infiniteApprove(address(want), address(vault));
         console.log("Depositing want into vault", amount);
         user_.deposit(vault, amount);

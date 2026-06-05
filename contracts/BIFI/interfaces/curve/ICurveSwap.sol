@@ -25,4 +25,6 @@ interface ICurveSwap {
     function add_liquidity(address _pool, uint256[6] memory amounts, uint256 min_mint_amount) external payable;
 
     function exchange(uint256 i, uint256 j, uint256 dx, uint256 min_dy) external;
+
+    function exchange(address[11] calldata _route,uint[4][5] calldata _swap_params,uint _amount,uint _expected) external returns(uint);
 }

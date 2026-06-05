@@ -16,6 +16,8 @@ interface IStrategy {
     event Unpaused(address account);
     event Withdraw(uint256 tvl);
 
+    error StrategyPaused();
+
     // All strats
 
     function MAX_CALL_FEE() external view returns (uint256);

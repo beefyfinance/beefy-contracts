@@ -1,31 +1,28 @@
-import hardhat, { ethers, web3 } from "hardhat";
-import { addressBook } from "blockchain-addressbook";
+import hardhat, { ethers } from "hardhat";
+import { addressBook } from "@beefyfinance/blockchain-addressbook";
 import vaultV7 from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7.sol/BeefyVaultV7.json";
 import vaultV7Factory from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
 import strategyFactory from "../../artifacts/contracts/BIFI/infra/StrategyFactory.sol/StrategyFactory.json"
 import stratAbi from "../../artifacts/contracts/BIFI/strategies/Silo/StrategySiloV2.sol/StrategySiloV2.json";
+import { getAddress } from "viem";
 
 const {
   platforms: { beefyfinance, balancer },
   tokens: {
-   /* USDC: { address: USDC },
-    BAL: { address: BAL },
-    AURA: { address: AURA }*/
-    S: { address: S },
-    USDCe: { address: USDCe }
+    USDC: { address: USDC },
   },
-} = addressBook.sonic;
+} = addressBook.arbitrum;
 
 
-const want = USDCe;
-const gauge = web3.utils.toChecksumAddress(ethers.constants.AddressZero);
-const silo = web3.utils.toChecksumAddress("0x4E216C15697C1392fE59e1014B009505E05810Df");
+const want = USDC;
+const gauge = getAddress(ethers.constants.AddressZero);
+const silo = getAddress("0x2514A2Ce842705EAD703d02fABFd8250BfCfb8bd");
 
 const platform = "SiloV2";
-const tokens = ["USDC.e"]
-const tokensCombined = "USDC.e (wS Market)";
-const chain = "Sonic";
-const id = "silov2-sonic-usdce-ws";
+const tokens = ["USDC"]
+const tokensCombined = "USDC (Optima)";
+const chain = "Arbitrum";
+const id = "silov2-arbitrum-usdc-optima";
 
 const vaultParams = {
   mooName: "Moo " + platform + " " + chain + " " + tokensCombined,
@@ -38,7 +35,7 @@ const strategyParams = {
   gauge: gauge,
   silo: silo,
   swapper: beefyfinance.beefySwapper,
-  depositToken: want,
+  depositToken: ethers.constants.AddressZero,
   strategist: "0xdad00eCa971D7B22e0dE1B874fbae30471B75354", // some address
   keeper: beefyfinance.keeper,
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
@@ -47,7 +44,7 @@ const strategyParams = {
   rewards: [],
   beefyVaultProxy: beefyfinance.vaultFactory,
   stratFactory: beefyfinance.strategyFactory,
-  strategyImplementationName: "StrategySiloV2",
+  strategyImplementationName: "StrategySiloVault",
   useVaultProxy: true,
  // ensId
 };
@@ -64,8 +61,6 @@ async function main() {
   await hardhat.run("compile");
 
   console.log("Deploying:", vaultParams.mooName);
-
-  console.log(vaultParams, strategyParams)
 
   const factory = await ethers.getContractAt(vaultV7Factory.abi, strategyParams.beefyVaultProxy);
   const stratFactory = await ethers.getContractAt(strategyFactory.abi, strategyParams.stratFactory);

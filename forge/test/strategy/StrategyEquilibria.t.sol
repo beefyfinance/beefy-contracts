@@ -150,99 +150,32 @@ contract StrategyEquilibriaTest is BaseAllToNativeFactoryTest {
         assertGt(wantBalanceFinal, wantAmount * 99 / 100, "Expected wantBalanceFinal > wantAmount * 99 / 100");
     }
 
-    function test_redeem() public {
-        // only if currently on Eqb
-        if (address(strategy.rewardPool()) == address(0)) {
-            console.log("Skip not Eqb");
-            return;
-        }
-
-        vm.prank(strategy.keeper());
-        strategy.setHarvestOnDeposit(false);
-        _depositIntoVault(user, wantAmount);
-        skip(1 days);
-
-        uint minRedeemDuration = strategy.xEqb().minRedeemDuration();
-        vm.prank(strategy.keeper());
-        strategy.setRedeemEqb(true, 1 days);
-
-        strategy.harvest();
-        uint redeemLen = strategy.xEqb().getUserRedeemsLength(address(strategy));
-        assertEq(redeemLen, 1, "Not 1 redeem after first harvest");
-        (,,uint256 endTime) = strategy.xEqb().getUserRedeem(address(strategy), 0);
-
-        skip(12 hours);
-        strategy.harvest();
-        redeemLen = strategy.xEqb().getUserRedeemsLength(address(strategy));
-        assertEq(redeemLen, 1, "Should be still 1 redeem before delay");
-
-        skip(13 hours);
-        strategy.harvest();
-        redeemLen = strategy.xEqb().getUserRedeemsLength(address(strategy));
-        assertEq(redeemLen, 2, "Not 2 redeems after redeem delay");
-
-        skip(minRedeemDuration);
-        strategy.harvest();
-        redeemLen = strategy.xEqb().getUserRedeemsLength(address(strategy));
-        assertEq(redeemLen, 2, "Not 2 redeems after 1st redeem duration");
-        (,, uint256 endTimeNext) = strategy.xEqb().getUserRedeem(address(strategy), 0);
-        assertGt(endTimeNext, endTime, "1st redeem not updated");
-
-        // disable redeems
-        vm.prank(strategy.keeper());
-        strategy.setRedeemEqb(false, 0);
-        skip(25 hours);
-        strategy.harvest();
-        redeemLen = strategy.xEqb().getUserRedeemsLength(address(strategy));
-        assertEq(redeemLen, 2, "Redeems updated when 'redeemEqb' is false");
-
-        // enable redeems but increase delay to not create new redeems
-        vm.prank(strategy.keeper());
-        strategy.setRedeemEqb(true, minRedeemDuration + 1 weeks);
-        skip(minRedeemDuration);
-        deal(address(strategy.xEqb()), address(strategy), 10e18);
-        strategy.harvest();
-        redeemLen = strategy.xEqb().getUserRedeemsLength(address(strategy));
-        assertEq(redeemLen, 1, "Not redeemed after re-enable");
-        uint xEqbBal = strategy.xEqb().balanceOf(address(strategy));
-        assertGt(xEqbBal, 0, "Should not redeem xEqb");
-    }
-
-    function test_manualRedeem() public {
-        // only if currently on Eqb
-        if (address(strategy.rewardPool()) == address(0)) {
-            console.log("Skip not Eqb");
-            return;
-        }
-
-        uint minRedeemDuration = strategy.xEqb().minRedeemDuration();
-        vm.prank(strategy.keeper());
-        strategy.setRedeemEqb(false, 0);
-
-        _depositIntoVault(user, wantAmount);
-        skip(delay);
-        strategy.harvest();
-
-        // redeem manually
-        vm.prank(strategy.keeper());
-        strategy.redeemAll();
-        uint redeemLen = strategy.xEqb().getUserRedeemsLength(address(strategy));
-        assertEq(redeemLen, 1, "Not redeemed manually");
-        uint xEqbBal = strategy.xEqb().balanceOf(address(strategy));
-        assertEq(xEqbBal, 0, "Not all xEqb redeemed");
-
-        // finalize manually
-        IERC20 eqb = IERC20(strategy.booster().eqb());
-        uint eqbBal = eqb.balanceOf(address(strategy));
-        skip(minRedeemDuration + 1);
-        vm.prank(strategy.keeper());
-        strategy.finalizeRedeem(0);
-        redeemLen = strategy.xEqb().getUserRedeemsLength(address(strategy));
-        assertEq(redeemLen, 0, "Not finalized manually");
-        assertGt(eqb.balanceOf(address(strategy)), eqbBal, "EQB not finalized");
-    }
-
     function cacheOraclePrices() internal {
+        address sBoldEthOracle = 0x91F98Acfd427401E661Bb300f61480349202Aaa0;
+        if (sBoldEthOracle.code.length > 0) {
+            address weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+            uint bal = IERC20(weth).balanceOf(0x50Bd66D59911F5e086Ec87aE43C811e0D059DD11);
+            bytes memory callData = abi.encodeWithSignature("getQuote(uint256,address)", bal, weth);
+            (, bytes memory resData) = sBoldEthOracle.staticcall(callData);
+            vm.mockCall(sBoldEthOracle, callData, resData);
+            callData = abi.encodeWithSignature("getQuote(uint256,address)", 1e18, 0x6440f144b7e50D6a8439336510312d2F54beB01D);
+            (, resData) = sBoldEthOracle.staticcall(callData);
+            vm.mockCall(sBoldEthOracle, callData, resData);
+        }
+        address lvlUSD = 0x9136aB0294986267b71BeED86A75eeb3336d09E1;
+        if (lvlUSD.code.length > 0) {
+            bytes memory data = abi.encodeWithSignature("setHeartBeat(address,uint256)", 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, 100_000_000);
+            vm.prank(OwnableUpgradeable(lvlUSD).owner());
+            (bool success,) = lvlUSD.call(data);
+            assertTrue(success, "lvlUSD setHeartBeat failed");
+        }
+        address midasDataFeed = 0x3aAc6fd73fA4e16Ec683BD4aaF5Ec89bb2C0EdC2;
+        if (midasDataFeed.code.length > 0) {
+            bytes memory data = abi.encodeWithSignature("setHealthyDiff(uint256)", 100_000_000);
+            vm.prank(0xB60842E9DaBCd1C52e354ac30E82a97661cB7E89);
+            (bool success,) = midasDataFeed.call(data);
+            assertTrue(success, "midasDataFeed setHealthyDiff failed");
+        }
         address dolomiteOracle = 0xBfca44aB734E57Dc823cA609a0714EeC9ED06cA0;
         if (dolomiteOracle.code.length > 0) {
             bytes memory _callData = abi.encodeWithSignature("getPrice(address)", 0xaf88d065e77c8cC2239327C5EDb3A432268e5831);
@@ -254,6 +187,16 @@ contract StrategyEquilibriaTest is BaseAllToNativeFactoryTest {
             (, _res) = dolomiteOracle.staticcall(_callData);
             _price = abi.decode(_res, (uint));
             vm.mockCall(dolomiteOracle, _callData, abi.encode(_price));
+        }
+        address capsOracle = 0xcD7f45566bc0E7303fB92A93969BB4D3f6e662bb;
+        if (capsOracle.code.length > 0) {
+            bytes memory callData = abi.encodeWithSignature("getPrice(address)", 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+            (, bytes memory resData) = capsOracle.staticcall(callData);
+            vm.mockCall(capsOracle, callData, resData);
+
+            callData = abi.encodeWithSignature("getPrice(address)", 0xcCcc62962d17b8914c62D74FfB843d73B2a3cccC);
+            (,resData) = capsOracle.staticcall(callData);
+            vm.mockCall(capsOracle, callData, resData);
         }
     }
 

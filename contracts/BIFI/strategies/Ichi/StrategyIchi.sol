@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./Ichi.sol";
 import "../../interfaces/common/IRewardPool.sol";
 import "../Common/BaseAllToNativeFactoryStrat.sol";
+import {IMerklClaimer} from "../../interfaces/merkl/IMerklClaimer.sol";
 
 contract StrategyIchi is BaseAllToNativeFactoryStrat {
     using SafeERC20 for IERC20;
@@ -70,5 +71,15 @@ contract StrategyIchi is BaseAllToNativeFactoryStrat {
 
         IERC20(depositToken).forceApprove(want, depositBal);
         IchiVault(want).deposit(amount0, amount1, address(this));
+    }
+
+    function merklClaim(
+        address claimer,
+        address[] calldata users,
+        address[] calldata tokens,
+        uint256[] calldata amounts,
+        bytes32[][] calldata proofs
+    ) external {
+        IMerklClaimer(claimer).claim(users, tokens, amounts, proofs);
     }
 }

@@ -1,5 +1,5 @@
 import hardhat, { ethers } from "hardhat";
-import { addressBook } from "blockchain-addressbook";
+import { addressBook } from "@beefyfinance/blockchain-addressbook";
 import { verifyContract } from "../../utils/verifyContract";
 
 const {

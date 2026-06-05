@@ -1,10 +1,10 @@
-import hardhat, { ethers, web3 } from "hardhat";
-import { addressBook } from "blockchain-addressbook";
+import hardhat, { ethers } from "hardhat";
+import { addressBook } from "@beefyfinance/blockchain-addressbook";
 import vaultV7 from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7.sol/BeefyVaultV7.json";
 import vaultV7Factory from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
 import strategyFactory from "../../artifacts/contracts/BIFI/infra/StrategyFactory.sol/StrategyFactory.json"
 import stratAbi from "../../artifacts/contracts/BIFI/strategies/Velodrome/StrategyVelodromeFactory.sol/StrategyVelodromeFactory.json";
-import { symbolName } from "typescript";
+import { getAddress } from "viem";
 
 const {
   platforms: { beefyfinance, equalizer },
@@ -19,8 +19,8 @@ const BRUSH = "0xE51EE9868C1f0d6cd968A8B8C8376Dc2991BFE44";
 const stS = "0xE5DA20F15420aD15DE0fa650600aFc998bbE3955";
 const scUSD = "0xd3DCe716f3eF535C5Ff8d041c1A41C3bd89b97aE";
 
-const want = web3.utils.toChecksumAddress("0xB78CdF29F7E563ea447feBB5b48DDe9bC3278Ba4");
-const rewardPool = web3.utils.toChecksumAddress("0x8c030811a8C5E1890dAd1F5E581D28ac8740c532");
+const want = getAddress("0xB78CdF29F7E563ea447feBB5b48DDe9bC3278Ba4");
+const rewardPool = getAddress("0x8c030811a8C5E1890dAd1F5E581D28ac8740c532");
 
 const platform = "Equalizer";
 const tokens = ["scUSD", "USDC.e"]

@@ -1,7 +1,5 @@
-const { getContractAddress } = require("@openzeppelin/hardhat-upgrades/dist/utils");
 const hardhat = require("hardhat");
-const { startingEtherPerAccount } = require("../../utils/configInit");
-import { addressBook } from "blockchain-addressbook";
+import { addressBook } from "@beefyfinance/blockchain-addressbook";
 const {
     platforms: { beefyfinance },
     tokens: {

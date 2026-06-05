@@ -6,6 +6,7 @@ import "../../interfaces/common/IWrappedNative.sol";
 import "../../interfaces/convex/IConvex.sol";
 import "../../interfaces/curve/ICrvMinter.sol";
 import "../../interfaces/curve/IRewardsGauge.sol";
+import "../../interfaces/merkl/IMerklClaimer.sol";
 import "../Common/BaseAllToNativeFactoryStrat.sol";
 
 // Curve L2 strategy switchable between Curve and Convex
@@ -16,7 +17,6 @@ contract StrategyCurveConvexL2Factory is BaseAllToNativeFactoryStrat {
     uint constant public NO_PID = 42069;
 
     IConvexBoosterL2 public constant booster = IConvexBoosterL2(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
-    ICrvMinter public constant minter = ICrvMinter(0xabC000d88f23Bb45525E447528DBF656A9D55bf5);
 
     address public gauge; // curve gauge
     address public rewardPool; // convex base reward pool
@@ -47,7 +47,7 @@ contract StrategyCurveConvexL2Factory is BaseAllToNativeFactoryStrat {
     }
 
     function stratName() public pure override returns (string memory) {
-        return "CurveConvexL2_v1";
+        return "CurveConvexL2";
     }
 
     function balanceOfPool() public view override returns (uint) {
@@ -93,7 +93,7 @@ contract StrategyCurveConvexL2Factory is BaseAllToNativeFactoryStrat {
         if (rewardPool != address(0)) {
             IConvexRewardPool(rewardPool).getReward(address(this));
         } else {
-            if (isCrvMintable) minter.mint(gauge);
+            if (isCrvMintable) minter().mint(gauge);
             if (isCurveRewardsClaimable) IRewardsGauge(gauge).claim_rewards(address(this));
         }
     }
@@ -101,6 +101,10 @@ contract StrategyCurveConvexL2Factory is BaseAllToNativeFactoryStrat {
     function _verifyRewardToken(address token) internal view override {
         require(token != gauge, "!gauge");
         require(token != rewardPool, "!rewardPool");
+    }
+
+    function minter() public view returns (ICrvMinter) {
+        return ICrvMinter(IRewardsGauge(gauge).factory());
     }
 
     function setConvexPid(uint _pid) external onlyManager {
@@ -133,4 +137,13 @@ contract StrategyCurveConvexL2Factory is BaseAllToNativeFactoryStrat {
         isCurveRewardsClaimable = _isCurveRewardsClaimable;
     }
 
+    function merklClaim(
+        address claimer,
+        address[] calldata users,
+        address[] calldata tokens,
+        uint256[] calldata amounts,
+        bytes32[][] calldata proofs
+    ) external {
+        IMerklClaimer(claimer).claim(users, tokens, amounts, proofs);
+    }
 }

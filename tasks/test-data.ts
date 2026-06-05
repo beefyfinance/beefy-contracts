@@ -1,6 +1,6 @@
 import { task } from "hardhat/config";
 import { HttpNetworkConfig } from "hardhat/types";
-import { addressBook } from "blockchain-addressbook";
+import { addressBook } from "@beefyfinance/blockchain-addressbook";
 
 task("test-data:network-config", "Exports the current HardHat config to inject in forge tests").setAction(
   async (taskArgs: { data: "networks" | "addressbook" }, hre, runSuper) => {

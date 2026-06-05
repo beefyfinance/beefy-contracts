@@ -1,8 +1,9 @@
-import hardhat, { ethers, web3 } from "hardhat";
-import { addressBook } from "blockchain-addressbook";
+import hardhat, { ethers } from "hardhat";
+import { addressBook } from "@beefyfinance/blockchain-addressbook";
 import vaultV7 from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7.sol/BeefyVaultV7.json";
 import vaultV7Factory from "../../artifacts/contracts/BIFI/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
 import stratAbi from "../../artifacts/contracts/BIFI/strategies/Velodrome/StrategyCommonVelodromeGaugeV2.sol/StrategyCommonVelodromeGaugeV2.json";
+import { getAddress } from "viem";
 
 const {
   platforms: { velodrome, beefyfinance },
@@ -19,8 +20,8 @@ const {
 
 const nullAddress = "0x0000000000000000000000000000000000000000";
 
-const want = web3.utils.toChecksumAddress("0x4d7959d17B9710BE87e3657e69d946914221BB88");
-const gauge = web3.utils.toChecksumAddress("0x172a58D5E8c11Ee554B09D924D5e2c3aFADd44C0");
+const want = getAddress("0x4d7959d17B9710BE87e3657e69d946914221BB88");
+const gauge = getAddress("0x172a58D5E8c11Ee554B09D924D5e2c3aFADd44C0");
 
 const vaultParams = {
   mooName: "Moo VeloV2 USDC-alUSD",

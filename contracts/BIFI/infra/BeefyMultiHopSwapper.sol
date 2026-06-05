@@ -13,6 +13,7 @@ contract BeefyMultiHopSwapper is OwnableUpgradeable {
     error Slippage(uint amountOut, uint minAmountOut);
 
     function initialize(address _swapper) initializer external {
+        __Ownable_init();
         swapper = IBeefySwapper(_swapper);
     }
 

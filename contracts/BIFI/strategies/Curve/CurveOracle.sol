@@ -14,8 +14,8 @@ contract CurveOracle {
     address public baseToken;
     address public beefyOracle;
 
-    constructor(ICurvePool _pool, address _token, address _baseToken, address _beefyOracle) {
-        pool = _pool;
+    constructor(address _pool, address _token, address _baseToken, address _beefyOracle) {
+        pool = ICurvePool(_pool);
         token = _token;
         baseToken = _baseToken;
         beefyOracle = _beefyOracle;

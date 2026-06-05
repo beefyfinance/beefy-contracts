@@ -1,32 +1,23 @@
 // SPDX-License-Identifier: MIT
 
-pragma experimental ABIEncoderV2;
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "../../interfaces/common/ISolidlyRouter.sol";
 import "../../interfaces/common/IMasterChef.sol";
 import "../../interfaces/stargate/IStargateRouterETH.sol";
-import "../../interfaces/common/IWrappedNative.sol";
-import "../Common/StratManager.sol";
-import "../Common/FeeManager.sol";
+import "../Common/StratFeeManager.sol";
 import "../../utils/StringUtils.sol";
-import "../../utils/GasThrottler.sol";
-import "../../utils/UniswapV3Utils.sol";
+import "../../utils/GasFeeThrottler.sol";
 
-contract StrategyStargateOpNative is StratManager, FeeManager, GasThrottler {
+interface IWrappedNative {
+    function withdraw(uint256) external;
+}
+
+contract StrategyStargateOpNative is StratFeeManager, GasFeeThrottler {
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
-
-    struct StratManagerParams {
-        address keeper;
-        address strategist;
-        address unirouter;
-        address vault;
-        address beefyFeeRecipient;
-    }
 
     // Tokens used
     address public native;
@@ -42,8 +33,8 @@ contract StrategyStargateOpNative is StratManager, FeeManager, GasThrottler {
     uint256 public lastHarvest;
     string public pendingRewardsFunctionName;
 
-    // Uniswap V3 paths
-    bytes public outputToNativePath;
+    // Routes
+    ISolidlyRouter.Routes[] public outputToNativeRoute;
 
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
@@ -55,18 +46,25 @@ contract StrategyStargateOpNative is StratManager, FeeManager, GasThrottler {
         uint256 _poolId,
         address _chef,
         address _stargateRouter,
-        address[] memory _outputToNativeRoute,
-        uint24[] memory _outputToNativeFee,
-        StratManagerParams memory _stratManager
-    ) StratManager(_stratManager.keeper, _stratManager.strategist, _stratManager.unirouter, _stratManager.vault, _stratManager.beefyFeeRecipient) public {
+        CommonAddresses memory _commonAddresses,
+        address[][] memory _outputToNativeRoute,
+        bool[] memory _stables
+    ) StratFeeManager(_commonAddresses) {
         want = _want;
         poolId = _poolId;
         chef = _chef;
         stargateRouter = _stargateRouter;
 
-        output = _outputToNativeRoute[0];
-        native = _outputToNativeRoute[_outputToNativeRoute.length - 1];
-        outputToNativePath = UniswapV3Utils.routeToPath(_outputToNativeRoute, _outputToNativeFee);
+        for (uint i; i < _outputToNativeRoute.length; ++i) {
+            outputToNativeRoute.push(ISolidlyRouter.Routes({
+                from: _outputToNativeRoute[i][0],
+                to: _outputToNativeRoute[i][1],
+                stable: _stables[i]
+            }));
+        }
+
+        output = outputToNativeRoute[0].from;
+        native = outputToNativeRoute[outputToNativeRoute.length -1].to;
 
         _giveAllowances();
     }
@@ -87,7 +85,7 @@ contract StrategyStargateOpNative is StratManager, FeeManager, GasThrottler {
         uint256 wantBal = IERC20(want).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IMasterChef(chef).withdraw(poolId, _amount.sub(wantBal));
+            IMasterChef(chef).withdraw(poolId, _amount - wantBal);
             wantBal = IERC20(want).balanceOf(address(this));
         }
 
@@ -96,8 +94,8 @@ contract StrategyStargateOpNative is StratManager, FeeManager, GasThrottler {
         }
 
         if (tx.origin != owner() && !paused()) {
-            uint256 withdrawalFeeAmount = wantBal.mul(withdrawalFee).div(WITHDRAWAL_MAX);
-            wantBal = wantBal.sub(withdrawalFeeAmount);
+            uint256 withdrawalFeeAmount = wantBal * withdrawalFee / WITHDRAWAL_MAX;
+            wantBal = wantBal - withdrawalFeeAmount;
         }
 
         IERC20(want).safeTransfer(vault, wantBal);
@@ -105,7 +103,7 @@ contract StrategyStargateOpNative is StratManager, FeeManager, GasThrottler {
         emit Withdraw(balanceOf());
     }
 
-    function beforeDeposit() external override {
+    function beforeDeposit() external virtual override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
             _harvest(tx.origin);
@@ -141,18 +139,21 @@ contract StrategyStargateOpNative is StratManager, FeeManager, GasThrottler {
 
     // performance fees
     function chargeFees(address callFeeRecipient) internal {
-        uint256 toNative = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        UniswapV3Utils.swap(unirouter, outputToNativePath, toNative);
+        IFeeConfig.FeeCategory memory fees = getFees();
+        uint256 toNative = IERC20(output).balanceOf(address(this));
+        ISolidlyRouter(unirouter).swapExactTokensForTokens(
+            toNative, 0, outputToNativeRoute, address(this), block.timestamp
+        );
 
-        uint256 nativeBal = IERC20(native).balanceOf(address(this));
+        uint256 nativeBal = IERC20(native).balanceOf(address(this)) * fees.total / DIVISOR;
 
-        uint256 callFeeAmount = nativeBal.mul(callFee).div(MAX_FEE);
+        uint256 callFeeAmount = nativeBal * fees.call / DIVISOR;
         IERC20(native).safeTransfer(callFeeRecipient, callFeeAmount);
 
-        uint256 beefyFeeAmount = nativeBal.mul(beefyFee).div(MAX_FEE);
+        uint256 beefyFeeAmount = nativeBal * fees.beefy / DIVISOR;
         IERC20(native).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
 
-        uint256 strategistFeeAmount = nativeBal.mul(STRATEGIST_FEE).div(MAX_FEE);
+        uint256 strategistFeeAmount = nativeBal * fees.strategist / DIVISOR;
         IERC20(native).safeTransfer(strategist, strategistFeeAmount);
 
         emit ChargedFees(callFeeAmount, beefyFeeAmount, strategistFeeAmount);
@@ -160,9 +161,6 @@ contract StrategyStargateOpNative is StratManager, FeeManager, GasThrottler {
 
     // Adds liquidity to AMM and gets more LP tokens.
     function addLiquidity() internal {
-        uint256 outputBal = IERC20(output).balanceOf(address(this));
-        UniswapV3Utils.swap(unirouter, outputToNativePath, outputBal);
-
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
         IWrappedNative(native).withdraw(nativeBal);
 
@@ -172,7 +170,7 @@ contract StrategyStargateOpNative is StratManager, FeeManager, GasThrottler {
 
     // calculate the total underlaying 'want' held by the strat.
     function balanceOf() public view returns (uint256) {
-        return balanceOfWant().add(balanceOfPool());
+        return balanceOfWant() + balanceOfPool();
     }
 
     // it calculates how much 'want' this contract holds.
@@ -184,13 +182,6 @@ contract StrategyStargateOpNative is StratManager, FeeManager, GasThrottler {
     function balanceOfPool() public view returns (uint256) {
         (uint256 _amount,) = IMasterChef(chef).userInfo(poolId, address(this));
         return _amount;
-    }
-
-    // change encoded path for swapping output to native
-    function setNativePath(address[] memory _route, uint24[] memory _fee) external onlyOwner {
-        require(_route[0] == output, '!output');
-        require(_route[_route.length - 1] == native, '!native');
-        outputToNativePath = UniswapV3Utils.routeToPath(_route, _fee);
     }
 
     function setPendingRewardsFunctionName(string calldata _pendingRewardsFunctionName) external onlyManager {
@@ -212,9 +203,15 @@ contract StrategyStargateOpNative is StratManager, FeeManager, GasThrottler {
     }
 
     // native reward amount for calling harvest
-    // no "view" functions in Uniswap V3 to quote amounts
-    function callReward() external pure returns (uint256) {
-        return 0;
+    function callReward() public view returns (uint256) {
+        IFeeConfig.FeeCategory memory fees = getFees();
+        uint256 outputBal = rewardsAvailable();
+        uint256 nativeOut;
+        if (outputBal > 0) {
+            (nativeOut,) = ISolidlyRouter(unirouter).getAmountOut(outputBal, output, native);
+        }
+
+        return nativeOut * fees.total / DIVISOR * fees.call / DIVISOR;
     }
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
@@ -262,17 +259,13 @@ contract StrategyStargateOpNative is StratManager, FeeManager, GasThrottler {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).safeApprove(chef, uint256(-1));
-        IERC20(output).safeApprove(unirouter, uint256(-1));
+        IERC20(want).safeApprove(chef, type(uint).max);
+        IERC20(output).safeApprove(unirouter, type(uint).max);
     }
 
     function _removeAllowances() internal {
         IERC20(want).safeApprove(chef, 0);
         IERC20(output).safeApprove(unirouter, 0);
-    }
-
-    function outputToNative() external view returns (address[] memory) {
-        return UniswapV3Utils.pathToRoute(outputToNativePath);
     }
 
     // this contract needs to accept ETH
