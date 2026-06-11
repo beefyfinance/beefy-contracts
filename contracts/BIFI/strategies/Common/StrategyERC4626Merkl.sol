@@ -32,6 +32,23 @@ contract StrategyERC4626Merkl is BaseAllToNativeFactoryStrat {
         return erc4626Vault.convertToAssets(erc4626Vault.balanceOf(address(this)));
     }
 
+    /// @dev Idle want is excluded as it is either in-flight to the pool or an un-harvested reward,
+    /// it is only counted when paused as funds sit idle after an emergency withdraw
+    function balanceOf() public view override returns (uint256) {
+        if (paused()) return balanceOfWant() + balanceOfPool() - lockedProfit();
+        return balanceOfPool() - lockedProfit();
+    }
+
+    /// @dev Harvested want is deposited into the pool so it is counted in the balance before the
+    /// vault calculates the shares to mint for the depositor
+    function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            require(msg.sender == vault, "!vault");
+            _harvest(tx.origin, true);
+            deposit();
+        }
+    }
+
     function _deposit(uint amount) internal override {
         IERC20(want).forceApprove(address(erc4626Vault), amount);
         erc4626Vault.deposit(amount, address(this));

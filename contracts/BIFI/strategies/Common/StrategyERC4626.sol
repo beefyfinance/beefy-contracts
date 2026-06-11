@@ -49,6 +49,25 @@ contract StrategyERC4626 is BaseAllToNativeFactoryStrat {
         return storedBalance;
     }
 
+    /// @notice The total underlying 'want' held by the strategy
+    /// @dev Idle want is excluded as it is either in-flight to the pool or an un-harvested reward,
+    /// it is only counted when paused as funds sit idle after an emergency withdraw
+    /// @return The total underlying 'want' held by the strategy
+    function balanceOf() public view override returns (uint256) {
+        if (paused()) return balanceOfWant() + balanceOfPool() - lockedProfit();
+        return balanceOfPool() - lockedProfit();
+    }
+
+    /// @dev Harvested want is deposited into the pool so it is counted in the balance before the
+    /// vault calculates the shares to mint for the depositor
+    function beforeDeposit() external override {
+        if (harvestOnDeposit) {
+            require(msg.sender == vault, "!vault");
+            _harvest(tx.origin, true);
+            deposit();
+        }
+    }
+
     /// @dev Assets are deposited into the ERC4626 vault using the `mint` function to prevent dust from being lost.
     /// @param amount The amount of assets to deposit
     function _deposit(uint amount) internal override {

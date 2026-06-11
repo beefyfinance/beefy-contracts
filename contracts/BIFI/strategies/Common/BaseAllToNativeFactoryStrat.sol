@@ -146,9 +146,9 @@ abstract contract BaseAllToNativeFactoryStrat is OwnableUpgradeable, PausableUpg
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient, bool onDeposit) internal ifNotPaused {
-        uint beforeBal = balanceOfWant();
         _claim();
         _swapRewardsToNative();
+        uint beforeBal = balanceOfWant();
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
         if (nativeBal > minAmounts[native]) {
             _chargeFees(callFeeRecipient);
@@ -262,7 +262,7 @@ abstract contract BaseAllToNativeFactoryStrat is OwnableUpgradeable, PausableUpg
     }
 
     // calculate the total underlaying 'want' held by the strat.
-    function balanceOf() public view returns (uint256) {
+    function balanceOf() public view virtual returns (uint256) {
         return balanceOfWant() + balanceOfPool() - lockedProfit();
     }
 
