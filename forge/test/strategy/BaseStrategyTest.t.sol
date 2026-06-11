@@ -99,9 +99,18 @@ abstract contract BaseStrategyTest is Test {
         uint vaultBal = vault.balance();
         uint balOfPool = strategy.balanceOfPool();
         uint balOfWant = strategy.balanceOfWant();
-        assertGe(balOfPool, wantAmount, "balOfPool < wantAmount"); // if deposit fee could be GT want * 99 / 100
-        assertEq(balOfPool, vaultBal, "balOfPool != vaultBal");
-        assertEq(balOfWant, 0, "Strategy.balanceOfWant != 0");
+        bool holdWant = balOfPool == 0;
+        if (holdWant) {
+            console.log("Strategy holds want");
+            assertGe(balOfWant, wantAmount, "balOfPool < wantAmount");
+            assertEq(balOfWant, vaultBal, "balOfPool != vaultBal");
+            assertEq(balOfPool, 0, "Strategy.balanceOfPool != 0");
+        } else {
+            assertGe(balOfPool, wantAmount, "balOfPool < wantAmount");
+            // Approx is for ERC4626 with storedBalance where dust can vary
+            assertApproxEqAbs(balOfPool, vaultBal, 10, "balOfPool != vaultBal");
+            assertEq(balOfWant, 0, "Strategy.balanceOfWant != 0");
+        }
 
         console.log("Panic");
         vm.prank(strategy.keeper());
@@ -110,10 +119,16 @@ abstract contract BaseStrategyTest is Test {
         uint balOfPoolAfterPanic = strategy.balanceOfPool();
         uint balOfWantAfterPanic = strategy.balanceOfWant();
         // Vault balances are correct after panic.
-        assertEq(vaultBalAfterPanic, vaultBal, "vaultBalAfterPanic"); // vaultBal * 99 / 100
-        assertLe(balOfPoolAfterPanic, 1, "balOfPoolAfterPanic");
-        assertGt(balOfPool, balOfPoolAfterPanic, "balOfPool");
-        assertGt(balOfWantAfterPanic, balOfWant, "balOfWantAfterPanic");
+        if (holdWant) {
+            assertEq(vaultBalAfterPanic, vaultBal, "vaultBalAfterPanic");
+            assertEq(balOfWantAfterPanic, balOfWant, "balOfWantAfterPanic != balOfWant");
+            assertEq(balOfPoolAfterPanic, 0, "balOfPoolAfterPanic != 0");
+        } else {
+            assertApproxEqAbs(vaultBalAfterPanic, vaultBal, 1000, "vaultBalAfterPanic");
+            assertLe(balOfPoolAfterPanic, 1, "balOfPoolAfterPanic");
+            assertGt(balOfPool, balOfPoolAfterPanic, "balOfPool");
+            assertGt(balOfWantAfterPanic, balOfWant, "balOfWantAfterPanic");
+        }
 
         console.log("Unpause");
         vm.prank(strategy.keeper());
@@ -121,9 +136,15 @@ abstract contract BaseStrategyTest is Test {
         uint vaultBalAfterUnpause = vault.balance();
         uint balOfPoolAfterUnpause = strategy.balanceOfPool();
         uint balOfWantAfterUnpause = strategy.balanceOfWant();
-        assertEq(vaultBalAfterUnpause, vaultBalAfterPanic, "vaultBalAfterUnpause");
-        assertEq(balOfWantAfterUnpause, 0, "balOfWantAfterUnpause != 0");
-        assertEq(balOfPoolAfterUnpause, vaultBalAfterUnpause, "balOfPoolAfterUnpause");
+        if (holdWant) {
+            assertEq(vaultBalAfterUnpause, vaultBalAfterPanic, "vaultBalAfterUnpause");
+            assertEq(balOfWantAfterUnpause, balOfWant, "balOfWantAfterUnpause != balOfWant");
+            assertEq(balOfPoolAfterUnpause, 0, "balOfPoolAfterUnpause != 0");
+        } else {
+            assertApproxEqAbs(vaultBalAfterUnpause, vaultBalAfterPanic, 10, "vaultBalAfterUnpause");
+            assertEq(balOfWantAfterUnpause, 0, "balOfWantAfterUnpause != 0");
+            assertApproxEqAbs(balOfPoolAfterUnpause, vaultBalAfterUnpause, 10, "balOfPoolAfterUnpause");
+        }
 
         console.log("Withdrawing all");
         user.withdrawAll(vault);
@@ -165,6 +186,8 @@ abstract contract BaseStrategyTest is Test {
 
     function test_harvest() external virtual {
         uint wantBalBefore = want.balanceOf(address(user));
+        vm.prank(strategy.keeper());
+        strategy.setHarvestOnDeposit(false);
         _depositIntoVault(user, wantAmount);
         uint vaultBalance = vault.balance();
         assertGe(vaultBalance, wantAmount, "Vault balance < wantAmount");

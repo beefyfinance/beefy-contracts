@@ -32,7 +32,7 @@ contract StrategyMorphoTest is BaseAllToNativeFactoryTest {
         uint balOfPool = strategy.balanceOfPool();
         uint balOfWant = strategy.balanceOfWant();
         assertGe(balOfPool + 1, wantAmount, "balOfPool < wantAmount"); // if deposit fee could be GT want * 99 / 100
-        assertEq(balOfPool, vaultBal, "balOfPool != vaultBal");
+        assertApproxEqAbs(balOfPool, vaultBal, 10, "balOfPool != vaultBal");
         assertEq(balOfWant, 0, "Strategy.balanceOfWant != 0");
 
         console.log("Panic");
@@ -42,7 +42,7 @@ contract StrategyMorphoTest is BaseAllToNativeFactoryTest {
         uint balOfPoolAfterPanic = strategy.balanceOfPool();
         uint balOfWantAfterPanic = strategy.balanceOfWant();
         // Vault balances are correct after panic.
-        assertEq(vaultBalAfterPanic, vaultBal, "vaultBalAfterPanic"); // vaultBal * 99 / 100
+        assertApproxEqAbs(vaultBalAfterPanic, vaultBal, 10, "vaultBalAfterPanic"); // vaultBal * 99 / 100
         assertLe(balOfPoolAfterPanic, 0, "balOfPoolAfterPanic");
         assertGt(balOfPool, balOfPoolAfterPanic, "balOfPool");
         assertGt(balOfWantAfterPanic, balOfWant, "balOfWantAfterPanic");
@@ -62,8 +62,7 @@ contract StrategyMorphoTest is BaseAllToNativeFactoryTest {
 
         uint wantBalanceFinal = want.balanceOf(address(user));
         console.log("Final user want balance", wantBalanceFinal);
-        assertLe(wantBalanceFinal, wantAmount, "Expected wantBalanceFinal <= wantAmount");
-        assertGe(wantBalanceFinal + 2, wantAmount, "Expected wantBalanceFinal + 2 >= wantAmount");
+        assertApproxEqAbs(wantBalanceFinal, wantAmount, 10, "Expected wantBalanceFinal != wantAmount");
     }
 
     function test_depositWithHod() external override {

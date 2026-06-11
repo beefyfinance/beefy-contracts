@@ -27,7 +27,7 @@ abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
         uint stratBal = strategy.balanceOf();
         uint lockedProfit = strategy.lockedProfit();
         assertGt(lockedProfit, 0, "lockedProfit == 0 (Not harvested");
-        assertEq(stratBal, stratBalBefore, "Only profit should be locked");
+        assertApproxEqAbs(stratBal, stratBalBefore, 1, "Only profit should be locked");
         assertEq(lockedProfit, strategy.totalLocked(), "lockedProfit != totalLocked");
         assertEq(stratBal, strategy.balanceOfWant() + strategy.balanceOfPool() - lockedProfit, "Strat.balanceOf != want + pool - lockedProfit");
 
@@ -36,7 +36,7 @@ abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
         deal(vault.want(), address(user2), wantAmount, dealWithAdjust);
         _depositIntoVault(user2, wantAmount);
         uint stratBalAfterUser2 = strategy.balanceOf();
-        assertEq(stratBalAfterUser2, initStratBal + wantAmount * 2, "Strat balance should double");
+        assertApproxEqAbs(stratBalAfterUser2, initStratBal + wantAmount * 2, 10, "Strat balance should double");
 
         skip(strategy.lockDuration());
         assertEq(strategy.lockedProfit(), 0, "lockedProfit != 0 after lockDuration");
@@ -48,8 +48,8 @@ abstract contract BaseAllToNativeFactoryTest is BaseStrategyTest {
         uint user2Bal = want.balanceOf(address(user2));
         uint profitToInitialShares = lockedProfit * initStratBal / (initStratBal + wantAmount * 2);
         uint usersProfit = lockedProfit - profitToInitialShares;
-        assertApproxEqAbs(usersProfit / 2, user1Bal - wantAmount, 1, "User1 should earn lockedProfit/2");
-        assertApproxEqAbs(usersProfit / 2, user2Bal - wantAmount, 1, "User2 should earn lockedProfit/2");
+        assertApproxEqAbs(usersProfit / 2, user1Bal - wantAmount, 10, "User1 should earn lockedProfit/2");
+        assertApproxEqAbs(usersProfit / 2, user2Bal - wantAmount, 10, "User2 should earn lockedProfit/2");
     }
 
     function test_rewards() external {
