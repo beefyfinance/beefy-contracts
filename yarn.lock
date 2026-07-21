@@ -40,10 +40,10 @@
   dependencies:
     tslib "^2.3.1"
 
-"@beefyfinance/blockchain-addressbook@^0.54.192":
-  version "0.54.192"
-  resolved "https://registry.yarnpkg.com/@beefyfinance/blockchain-addressbook/-/blockchain-addressbook-0.54.192.tgz#a52aedee716f0103d2786cebe31e47f2ea9e8625"
-  integrity sha512-e8qqf+NAHW3DdrWiI4D1gs2ildi/Y4eFxBtUU3F3y3QhxcGmc3FIOqzTTGsZ99QkCkYPp/vQcwqH9ivfwHx3DA==
+"@beefyfinance/blockchain-addressbook@^0.56.5":
+  version "0.56.5"
+  resolved "https://registry.yarnpkg.com/@beefyfinance/blockchain-addressbook/-/blockchain-addressbook-0.56.5.tgz#4492e6af1328c0a78f6f90a624f230d1a340be3c"
+  integrity sha512-yeQQLOx9f09oiy9eK33zJl7Ep6u2OQV2SLTQW2uyyEexmDrnziR+I8VQd1olJCkTa5OlcAkT+FnTX5TshXcRog==
 
 "@bytecodealliance/preview2-shim@0.17.0":
   version "0.17.0"

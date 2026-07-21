@@ -18,6 +18,7 @@ contract AddressBook is CommonBase {
         address keeper;
         address strategyOwner;
         address vaultOwner;
+        address beefySwapper;
     }
 
     mapping(string => BeefyPlatform) _beefyPlatformDataCache;

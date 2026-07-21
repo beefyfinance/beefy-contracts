@@ -231,6 +231,16 @@ const config: HardhatUserConfig = {
       chainId: 143,
       accounts,
     },
+    megaeth: {
+      url: process.env.MEGAETH_RPC || "https://mainnet.megaeth.com/rpc",
+      chainId: 4326,
+      accounts,
+    },
+    robinhood: {
+      url: process.env.ROBINHOOD_RPC || "https://rpc.mainnet.chain.robinhood.com",
+      chainId: 4663,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan

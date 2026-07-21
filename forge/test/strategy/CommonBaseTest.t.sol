@@ -30,7 +30,14 @@ contract CommonBaseTest is BaseAllToNativeFactoryTest {
     }
 
     function beforeHarvest() internal virtual override {
-//        deal(BaseAllToNativeFactoryStrat(payable(strategy)).rewards(0), address(strategy), 1000e18);
+        uint amount = vm.envOr("DEAL_REWARD", uint(0));
+        if (amount > 0) {
+            deal(BaseAllToNativeFactoryStrat(payable(strategy)).rewards(0), address(strategy), amount);
+        }
+        amount = vm.envOr("DEAL_NATIVE", uint(0));
+        if (amount > 0) {
+            deal(BaseAllToNativeFactoryStrat(payable(strategy)).native(), address(strategy), amount);
+        }
     }
 
     function cacheOraclePrices() internal {

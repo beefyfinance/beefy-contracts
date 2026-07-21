@@ -18,7 +18,6 @@ contract StrategyPendleTest is BaseAllToNativeFactoryTest {
 
     function beforeHarvest() internal override {
         vm.roll(block.number + 1); // pass lastRewardBlock check in PendleMarket
-        strategy.claim();
     }
 
     // custom test as balanceOfPool is always 0 as strat simply holds want

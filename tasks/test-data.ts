@@ -37,6 +37,7 @@ task("test-data:addressbook:beefy", "Fetch beefy addressbook to inject platform 
       keeper: beefyfinance.keeper,
       strategyOwner: beefyfinance.strategyOwner,
       vaultOwner: beefyfinance.vaultOwner,
+      beefySwapper: beefyfinance.beefySwapper,
     };
     console.log(JSON.stringify(data, null, 2));
   });
