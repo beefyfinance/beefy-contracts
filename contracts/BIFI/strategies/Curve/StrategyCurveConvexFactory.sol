@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import "../../interfaces/convex/IConvex.sol";
 import "../../interfaces/curve/ICrvMinter.sol";
 import "../../interfaces/curve/IRewardsGauge.sol";
+import "../../interfaces/merkl/IMerklClaimer.sol";
 import "../Common/BaseAllToNativeFactoryStrat.sol";
 
 // Curve L1 strategy switchable between Curve and Convex
@@ -127,6 +128,16 @@ contract StrategyCurveConvexFactory is BaseAllToNativeFactoryStrat {
 
     function setSkipEarmarkRewards(bool _skipEarmarkRewards) external onlyManager {
         skipEarmarkRewards = _skipEarmarkRewards;
+    }
+
+    function merklClaim(
+        address claimer,
+        address[] calldata users,
+        address[] calldata tokens,
+        uint256[] calldata amounts,
+        bytes32[][] calldata proofs
+    ) external {
+        IMerklClaimer(claimer).claim(users, tokens, amounts, proofs);
     }
 
 }
