@@ -21,7 +21,7 @@ contract SwapperSwap {
             address from = route[i];
             address to = route[i + 1];
             uint bal = IERC20(from).balanceOf(address(this));
-            IERC20(from).approve(swapper, bal);
+            IERC20(from).forceApprove(swapper, bal);
             IBeefySwapper(swapper).swap(from, to, bal);
         }
 

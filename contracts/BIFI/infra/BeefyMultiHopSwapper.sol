@@ -3,10 +3,11 @@
 pragma solidity ^0.8.0;
 
 import { IBeefySwapper } from "../interfaces/beefy/IBeefySwapper.sol";
-import { IERC20 } from "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract BeefyMultiHopSwapper is OwnableUpgradeable {
+    using SafeERC20 for IERC20;
 
     IBeefySwapper public swapper;
 
@@ -23,8 +24,9 @@ contract BeefyMultiHopSwapper is OwnableUpgradeable {
 
         for (uint i; i < _path.length - 1; ++i) {
             IERC20 swapToken = IERC20(_path[i]);
-            uint256 bal = IERC20(_path[i]).balanceOf(address(this));
-            _approve(address(swapToken), address(swapper));
+            uint256 bal = swapToken.balanceOf(address(this));
+            swapToken.safeApprove(address(swapper), 0);
+            swapToken.safeApprove(address(swapper), bal);
             swapper.swap(_path[i], _path[i + 1], bal);
         }
 
@@ -37,10 +39,5 @@ contract BeefyMultiHopSwapper is OwnableUpgradeable {
 
     function setSwapper(address _swapper) external onlyOwner {
         swapper = IBeefySwapper(_swapper);
-    }
-
-    function _approve(address _token, address _spender) private {
-        IERC20(_token).approve(_spender, 0);
-        IERC20(_token).approve(_spender, type(uint).max);
     }
 }
