@@ -108,7 +108,7 @@ contract StrategySolidlyRewardPool is BaseAllToNativeFactoryStrat {
         _approve(want, address(rewardPool), 0);
         _approve(native, address(swapper), 0);
         _approve(lpToken0, address(solidlyRouter), 0);
-        _approve(lpToken0, address(solidlyRouter), 0);
+        _approve(lpToken1, address(solidlyRouter), 0);
     }
 
     function panic() public override onlyManager {
