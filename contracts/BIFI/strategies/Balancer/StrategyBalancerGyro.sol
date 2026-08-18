@@ -178,7 +178,7 @@ contract StrategyBalancerGyro is BaseAllToNativeFactoryStrat {
 
 
     function _approve(address _token, address _spender, uint amount) internal {
-        IERC20(_token).approve(_spender, amount);
+        IERC20(_token).safeApprove(_spender, amount);
     }
 
     function _multiJoin(address _want, bytes32 _poolId, address _token0In, address _token1In, uint256 _amount0In, uint256 _amount1In) internal {

@@ -200,8 +200,8 @@ contract StrategyConvexStaking is StratFeeManagerInitializable {
         require(token != address(staking), "!staked");
 
         rewards.push(CurveRoute(_rewardToNativeRoute, _swapParams, _minAmount));
-        IERC20(token).approve(curveRouter, 0);
-        IERC20(token).approve(curveRouter, type(uint).max);
+        IERC20(token).safeApprove(curveRouter, 0);
+        IERC20(token).safeApprove(curveRouter, type(uint).max);
     }
 
     function addRewardV3(bytes memory _rewardToNativePath, uint _minAmount) external onlyOwner {
@@ -212,8 +212,8 @@ contract StrategyConvexStaking is StratFeeManagerInitializable {
         require(token != address(staking), "!staked");
 
         rewardsV3.push(RewardV3(token, _rewardToNativePath, _minAmount));
-        IERC20(token).approve(unirouter, 0);
-        IERC20(token).approve(unirouter, type(uint).max);
+        IERC20(token).safeApprove(unirouter, 0);
+        IERC20(token).safeApprove(unirouter, type(uint).max);
     }
 
     function resetRewards() external onlyManager {
@@ -353,17 +353,17 @@ contract StrategyConvexStaking is StratFeeManagerInitializable {
     }
 
     function _giveAllowances() internal {
-        IERC20(want).approve(address(staking), type(uint).max);
-        IERC20(native).approve(curveRouter, type(uint).max);
-        IERC20(crv).approve(crvPool, type(uint).max);
-        IERC20(cvx).approve(cvxPool, type(uint).max);
+        IERC20(want).safeApprove(address(staking), type(uint).max);
+        IERC20(native).safeApprove(curveRouter, type(uint).max);
+        IERC20(crv).safeApprove(crvPool, type(uint).max);
+        IERC20(cvx).safeApprove(cvxPool, type(uint).max);
     }
 
     function _removeAllowances() internal {
-        IERC20(want).approve(address(staking), 0);
-        IERC20(native).approve(curveRouter, 0);
-        IERC20(crv).approve(crvPool, 0);
-        IERC20(cvx).approve(cvxPool, 0);
+        IERC20(want).safeApprove(address(staking), 0);
+        IERC20(native).safeApprove(curveRouter, 0);
+        IERC20(crv).safeApprove(crvPool, 0);
+        IERC20(cvx).safeApprove(cvxPool, 0);
     }
 
     receive() external payable {}

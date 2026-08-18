@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin-4/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // NG pools use dynamic arrays not compatible with curveRouter-v1.0
 // this contract adapts add_liquidity(uint256[2] amounts) to add_liquidity(uint256[] amounts)
@@ -13,6 +14,7 @@ interface CurveStableSwapNg {
 }
 
 contract CurveNgAdapter {
+    using SafeERC20 for IERC20;
 
     CurveStableSwapNg public pool;
     IERC20 public t0;
@@ -22,8 +24,8 @@ contract CurveNgAdapter {
         pool = CurveStableSwapNg(_pool);
         t0 = IERC20(pool.coins(0));
         t1 = IERC20(pool.coins(1));
-        t0.approve(_pool, type(uint).max);
-        t1.approve(_pool, type(uint).max);
+        t0.safeApprove(_pool, type(uint).max);
+        t1.safeApprove(_pool, type(uint).max);
     }
 
     function add_liquidity(uint256[2] memory _amounts, uint256 min_mint_amount) external {

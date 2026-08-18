@@ -15,11 +15,11 @@ contract mPendleToNativeSwap {
 
     function swap(uint amount) external {
         IERC20(mPendle).safeTransferFrom(msg.sender, address(this), amount);
-        IERC20(mPendle).approve(swapper, amount);
+        IERC20(mPendle).safeApprove(swapper, amount);
         IBeefySwapper(swapper).swap(mPendle, pendle, amount);
 
         uint bal = IERC20(pendle).balanceOf(address(this));
-        IERC20(pendle).approve(swapper, bal);
+        IERC20(pendle).safeApprove(swapper, bal);
         IBeefySwapper(swapper).swap(pendle, native, bal);
 
         IERC20(native).safeTransfer(msg.sender, IERC20(native).balanceOf(address(this)));

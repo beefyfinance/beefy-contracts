@@ -20,7 +20,7 @@ contract scUSDTostkscUSD {
 
     function swap(uint amount) external {
         IERC20(scUSD).safeTransferFrom(msg.sender, address(this), amount);
-        IERC20(scUSD).approve(stkscUSD, amount);
+        IERC20(scUSD).safeApprove(stkscUSD, amount);
         teller.deposit(scUSD, amount, 0);
         IERC20(stkscUSD).safeTransfer(msg.sender, IERC20(stkscUSD).balanceOf(address(this)));
     }

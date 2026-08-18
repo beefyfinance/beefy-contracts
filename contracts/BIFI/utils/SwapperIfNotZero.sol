@@ -20,7 +20,7 @@ contract SwapperIfNotZero {
         IERC20(from).safeTransferFrom(msg.sender, address(this), amount);
         uint bal = IERC20(from).balanceOf(address(this));
 
-        IERC20(from).approve(swapper, bal);
+        IERC20(from).safeApprove(swapper, bal);
         IBeefySwapper(swapper).swap(from, to, bal);
 
         IERC20 out = IERC20(to);

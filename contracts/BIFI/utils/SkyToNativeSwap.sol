@@ -22,15 +22,15 @@ contract SkyToNativeSwap {
 
     function swap(uint amount) external {
         IERC20(sky).safeTransferFrom(msg.sender, address(this), amount);
-        IERC20(sky).approve(swapper, amount);
+        IERC20(sky).safeApprove(swapper, amount);
         IBeefySwapper(swapper).swap(sky, usds, amount);
 
         uint bal = IERC20(usds).balanceOf(address(this));
-        IERC20(usds).approve(daiUsds, bal);
+        IERC20(usds).safeApprove(daiUsds, bal);
         IDaiUsds(daiUsds).usdsToDai(address(this), bal);
 
         bal = IERC20(dai).balanceOf(address(this));
-        IERC20(dai).approve(swapper, bal);
+        IERC20(dai).safeApprove(swapper, bal);
         IBeefySwapper(swapper).swap(dai, native, bal);
 
         IERC20(native).safeTransfer(msg.sender, IERC20(native).balanceOf(address(this)));

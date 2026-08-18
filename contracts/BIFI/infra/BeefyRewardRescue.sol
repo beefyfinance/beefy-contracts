@@ -4,9 +4,11 @@ pragma solidity ^0.8.0;
 
 
 import "@openzeppelin-4/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/beefy/IBeefySwapper.sol";
 
 contract BeefyRewardRescue {
+    using SafeERC20 for IERC20;
     struct SingleSwap {
         bytes32 poolId;
         SwapKind kind;
@@ -44,7 +46,7 @@ contract BeefyRewardRescue {
     IERC20 public native = IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     constructor() {
-        silo.approve(address(beefySwapper), type(uint).max);
+        silo.safeApprove(address(beefySwapper), type(uint).max);
     }
 
     function batchSwap(

@@ -104,7 +104,7 @@ contract StrategySiloV2 is BaseAllToNativeFactoryStrat {
 
 
     function _approve(address _token, address _spender, uint amount) internal {
-        IERC20(_token).approve(_spender, amount);
+        IERC20(_token).safeApprove(_spender, amount);
     }
 
     function _verifyRewardToken(address token) internal view override {}

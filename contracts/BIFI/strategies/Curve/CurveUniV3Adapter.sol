@@ -3,9 +3,11 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin-4/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin-4/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../utils/UniV3Actions.sol";
 
 contract CurveUniV3Adapter {
+    using SafeERC20 for IERC20;
 
     address public router;
     IERC20 public token;
@@ -18,7 +20,7 @@ contract CurveUniV3Adapter {
         token = IERC20(_token);
         path = _path;
         withDeadline = _deadline;
-        token.approve(_router, type(uint).max);
+        token.safeApprove(_router, type(uint).max);
     }
 
     function exchange(uint, uint, uint dx, uint) external {
