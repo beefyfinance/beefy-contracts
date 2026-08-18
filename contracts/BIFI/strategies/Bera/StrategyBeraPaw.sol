@@ -11,6 +11,7 @@ import "./IKodiak.sol";
 import "./IRewardVault.sol";
 import "./IBGT.sol";
 import "./IBeraPaw.sol";
+import "../../utils/UniswapV3OracleLibrary.sol";
 
 contract StrategyBeraPaw is BaseAllToNativeFactoryStrat {
     using SafeERC20 for IERC20;
@@ -116,11 +117,12 @@ contract StrategyBeraPaw is BaseAllToNativeFactoryStrat {
         BalancerActionsLib.balancerJoin(balancerVault, balancerPoolId, depositToken, bal);
     }
 
+    uint32 public constant TWAP_WINDOW = 1800;
+
     function _buildKodiakLp(address output) internal {
         (uint amount0, uint amount1) = IKodiakIsland(want).getUnderlyingBalances();
-        (uint160 sqrtPriceX96,,,,,,) = pool.slot0();
-        uint price = (uint(sqrtPriceX96) * 1e18 / (2 ** 96)) ** 2;
-        uint amount0inLp1 = amount0 * price / 1e36;
+        (int24 arithmeticMeanTick,) = UniswapV3OracleLibrary.consult(address(pool), TWAP_WINDOW);
+        uint256 amount0inLp1 = UniswapV3OracleLibrary.getQuoteAtTick(arithmeticMeanTick, amount0);
         uint outputBal = IERC20(output).balanceOf(address(this));
         uint toLp0 = outputBal * amount0inLp1 / (amount0inLp1 + amount1);
         uint toLp1 = outputBal - toLp0;
