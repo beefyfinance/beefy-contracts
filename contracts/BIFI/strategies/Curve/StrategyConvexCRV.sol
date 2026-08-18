@@ -91,7 +91,7 @@ contract StrategyConvexCRV is StratFeeManagerInitializable {
             wantBal = _amount;
         }
 
-        if (tx.origin != owner() && !paused()) {
+        if (msg.sender != owner() && !paused()) {
             uint256 withdrawalFeeAmount = wantBal * withdrawalFee / WITHDRAWAL_MAX;
             wantBal = wantBal - withdrawalFeeAmount;
         }
@@ -104,12 +104,12 @@ contract StrategyConvexCRV is StratFeeManagerInitializable {
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
-            _harvest(tx.origin, true);
+            _harvest(msg.sender, true);
         }
     }
 
     function harvest() external virtual {
-        _harvest(tx.origin, false);
+        _harvest(msg.sender, false);
     }
 
     function harvest(address callFeeRecipient) external virtual {

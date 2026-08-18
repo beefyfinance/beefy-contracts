@@ -128,13 +128,13 @@ contract StrategyBeefy is StratFeeManagerInitializable {
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
-            _harvest(tx.origin);
+            _harvest(msg.sender);
         }
     }
 
     /// @notice Harvest rewards and collect a call fee reward
     function harvest() external {
-        _harvest(tx.origin);
+        _harvest(msg.sender);
     }
 
     /// @notice Harvest rewards and send the call fee reward to a specified recipient

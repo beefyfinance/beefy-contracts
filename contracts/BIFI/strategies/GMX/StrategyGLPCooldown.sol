@@ -80,7 +80,7 @@ contract StrategyGLPCooldown is StratFeeManagerInitializable {
             wantBal = _amount;
         }
 
-        if (tx.origin != owner() && !paused()) {
+        if (msg.sender != owner() && !paused()) {
             uint256 withdrawalFeeAmount = wantBal * withdrawalFee / WITHDRAWAL_MAX;
             wantBal = wantBal - withdrawalFeeAmount;
         }
@@ -93,12 +93,12 @@ contract StrategyGLPCooldown is StratFeeManagerInitializable {
     function beforeDeposit() external virtual override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
-            _harvest(tx.origin);
+            _harvest(msg.sender);
         }
     }
 
     function harvest() external virtual {
-        _harvest(tx.origin);
+        _harvest(msg.sender);
     }
 
     function harvest(address callFeeRecipient) external virtual {
@@ -106,7 +106,7 @@ contract StrategyGLPCooldown is StratFeeManagerInitializable {
     }
 
     function managerHarvest() external onlyManager {
-        _harvest(tx.origin);
+        _harvest(msg.sender);
     }
 
     // compounds earnings and charges performance fee

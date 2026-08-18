@@ -87,7 +87,7 @@ contract StrategyStargateV2 is StratFeeManagerInitializable {
             wantBal = _amount;
         }
 
-        if (tx.origin != owner() && !paused()) {
+        if (msg.sender != owner() && !paused()) {
             uint256 withdrawalFeeAmount = wantBal * withdrawalFee / WITHDRAWAL_MAX;
             wantBal = wantBal - withdrawalFeeAmount;
         }
@@ -100,7 +100,7 @@ contract StrategyStargateV2 is StratFeeManagerInitializable {
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
-            _harvest(tx.origin);
+            _harvest(msg.sender);
         }
     }
 
@@ -109,7 +109,7 @@ contract StrategyStargateV2 is StratFeeManagerInitializable {
     }
 
     function harvest() external virtual {
-        _harvest(tx.origin);
+        _harvest(msg.sender);
     }
 
     function harvest(address callFeeRecipient) external virtual {

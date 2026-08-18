@@ -148,7 +148,7 @@ contract StrategyCommonSingleStakingFactory is OwnableUpgradeable, PausableUpgra
     function beforeDeposit() external virtual {
         if (harvestOnDeposit) {
             require(msg.sender == vault, "!vault");
-            _harvest(tx.origin, true);
+            _harvest(msg.sender, true);
         }
     }
 
@@ -157,7 +157,7 @@ contract StrategyCommonSingleStakingFactory is OwnableUpgradeable, PausableUpgra
     }
 
     function harvest() external virtual {
-        _harvest(tx.origin, false);
+        _harvest(msg.sender, false);
     }
 
     function harvest(address callFeeRecipient) external virtual {
