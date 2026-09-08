@@ -26,5 +26,7 @@ interface IStrategyConcLiq {
     function maxTickDeviation() external view returns (int56);
     function twapInterval() external view returns (uint32);
     function range() external view returns (uint, uint);
+    function positionMain() external view returns (int24, int24);
+    function positionAlt() external view returns (int24, int24);
 
 }
