@@ -103,13 +103,14 @@ abstract contract BaseAllToNativeStrat is StratFeeManagerInitializable {
 
     // compounds earnings and charges performance fee
     function _harvest(address callFeeRecipient, bool onDeposit) internal whenNotPaused {
+        uint256 beforeBal = balanceOfWant();
         _claim();
         _swapRewardsToNative();
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
         if (nativeBal > minAmounts[native]) {
             _chargeFees(callFeeRecipient);
             _swapNativeToWant();
-            uint256 wantHarvested = balanceOfWant();
+            uint256 wantHarvested = balanceOfWant() - beforeBal;
             totalLocked = wantHarvested + lockedProfit();
             lastHarvest = block.timestamp;
 
