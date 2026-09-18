@@ -11,7 +11,6 @@ contract UniV4Swapper {
     using SafeERC20 for IERC20;
 
     error InvalidEthSender();
-    error EthTransferFailed();
 
     struct PathKey {
         address intermediateCurrency;
@@ -39,11 +38,11 @@ contract UniV4Swapper {
     }
 
     function swap(address tokenIn, address tokenOut, uint amount, uint minAmount, PathKey[] calldata path) external {
+        uint value;
         if (tokenIn == address(0)) {
             IERC20(native).safeTransferFrom(msg.sender, address(this), amount);
             IWrappedNative(native).withdraw(amount);
-            (bool success, ) = router.call{value: amount}("");
-            if (!success) revert EthTransferFailed();
+            value = amount;
         } else {
             IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amount);
             IERC20(tokenIn).forceApprove(permit2, amount);
@@ -66,7 +65,7 @@ contract UniV4Swapper {
         params[2] = abi.encode(tokenOut, minAmount);
         inputs[0] = abi.encode(actions, params);
 
-        IUniversalRouter(router).execute(commands, inputs);
+        IUniversalRouter(router).execute{value: value}(commands, inputs);
 
         if (tokenOut == address(0)) {
             IWrappedNative(native).deposit{value: address(this).balance}();
