@@ -31,6 +31,7 @@ contract UniV4SwapperForkTest is Test {
     int24 internal tickSpacing;
     address internal hooks;
     uint256 internal amount; // native amount; the TOKEN amount is its spot-price equivalent
+    bool internal nativeIsMirrored;
 
     address internal user = makeAddr("user");
     UniV4Swapper internal swapper;
@@ -46,10 +47,11 @@ contract UniV4SwapperForkTest is Test {
         tickSpacing = int24(vm.envOr("UNIV4_TICK_SPACING", int256(10)));
         hooks = vm.envOr("UNIV4_HOOKS", address(0));
         amount = vm.envOr("UNIV4_AMOUNT", uint256(1 ether));
+        nativeIsMirrored = vm.envOr("UNIV4_NATIVE_IS_MIRRORED", false);
 
         if (forkBlock == 0) vm.createSelectFork(rpc);
         else vm.createSelectFork(rpc, forkBlock);
-        swapper = new UniV4Swapper(permit2, router, native);
+        swapper = new UniV4Swapper(permit2, router, native, nativeIsMirrored);
     }
 
     function test_swap_nativeIn() public {
