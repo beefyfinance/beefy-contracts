@@ -55,22 +55,18 @@ contract UniV4Swapper {
         }
     }
 
+    /// @notice Swap along a v4 path
+    /// @dev Amounts are always in the decimals of the ERC20 the caller pays or receives (not native)
+    /// @param tokenIn Token swapped from, or address(0) to pay the native currency, taken as ERC20 `native`.
+    /// @param tokenOut Token swapped to, or address(0) to receive the native currency, paid as ERC20 `native`.
+    /// @param amount Amount of tokenIn to swap, in tokenIn's decimals (ERC20 `native`'s for address(0)).
+    /// @param minAmount Minimum tokenOut to accept, in tokenOut's decimals (ERC20 `native`'s for address(0)).
+    /// @param path Currencies to swap through, after tokenIn.
     function swap(address tokenIn, address tokenOut, uint amount, uint minAmount, PathKey[] calldata path) external {
-        uint routerAmount = tokenIn == address(0) ? _toNativeUnits(amount) : amount;
-        uint routerMinAmount = tokenOut == address(0) ? _toNativeUnits(minAmount) : minAmount;
-        uint value;
-        if (routerAmount > type(uint128).max) revert AmountTooLarge(routerAmount);
-        if (routerMinAmount > type(uint128).max) revert AmountTooLarge(routerMinAmount);
+        uint routerAmount = _toRouterUnits(tokenIn, amount);
+        uint routerMinAmount = _toRouterUnits(tokenOut, minAmount);
 
-        if (tokenIn == address(0)) {
-            IERC20(native).safeTransferFrom(msg.sender, address(this), amount);
-            if (!nativeIsMirrored) IWrappedNative(native).withdraw(amount);
-            value = routerAmount;
-        } else {
-            IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amount);
-            IERC20(tokenIn).forceApprove(permit2, amount);
-            IPermit2(permit2).approve(tokenIn, router, uint160(amount), uint48(block.timestamp));
-        }
+        _receiveInput(tokenIn, amount);
 
         bytes memory commands = hex'10'; // V4_SWAP
         bytes[] memory inputs = new bytes[](1);
@@ -89,8 +85,28 @@ contract UniV4Swapper {
         params[2] = abi.encode(tokenOut, routerMinAmount);
         inputs[0] = abi.encode(actions, params);
 
-        IUniversalRouter(router).execute{value: value}(commands, inputs);
+        IUniversalRouter(router).execute{value: tokenIn == address(0) ? routerAmount : 0}(commands, inputs);
 
+        _payOutput(tokenOut);
+    }
+
+    /// @dev Pulls the input from the caller. Callers always pay in ERC20, so for a native tokenIn it
+    ///      is `native` that is pulled, then unwrapped unless it already mirrors the gas token. Any
+    ///      other tokenIn is pulled as-is and approved to the router through permit2.
+    function _receiveInput(address tokenIn, uint amount) private {
+        if (tokenIn == address(0)) {
+            IERC20(native).safeTransferFrom(msg.sender, address(this), amount);
+            if (!nativeIsMirrored) IWrappedNative(native).withdraw(amount);
+        } else {
+            IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amount);
+            IERC20(tokenIn).forceApprove(permit2, amount);
+            IPermit2(permit2).approve(tokenIn, router, uint160(amount), uint48(block.timestamp));
+        }
+    }
+
+    /// @dev Sends the whole output balance to the caller, likewise always as ERC20: native output is
+    ///      paid as `native`, wrapping it first unless it already mirrors the gas token.
+    function _payOutput(address tokenOut) private {
         if (tokenOut == address(0)) {
             if (!nativeIsMirrored) IWrappedNative(native).deposit{value: address(this).balance}();
             IERC20(native).safeTransfer(msg.sender, IERC20(native).balanceOf(address(this)));
@@ -99,8 +115,10 @@ contract UniV4Swapper {
         }
     }
 
-    function _toNativeUnits(uint amount) private view returns (uint) {
-        return amount * nativeScale;
+    /// @dev Converts an amount from caller units to router units, in native wei for the native currency.
+    function _toRouterUnits(address token, uint amount) private view returns (uint routerAmount) {
+        routerAmount = token == address(0) ? amount * nativeScale : amount;
+        if (routerAmount > type(uint128).max) revert AmountTooLarge(routerAmount);
     }
 
     receive() external payable {
