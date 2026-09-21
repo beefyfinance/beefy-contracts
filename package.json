@@ -30,6 +30,7 @@
     "forgeTest:oracle": "forge test --force --fork-url https://polygon-rpc.com --match-contract Oracle",
     "forgeTest:univ4Swapper:base": "forge test --match-path forge/test/swapper/UniV4Swapper.fork.t.sol",
     "forgeTest:univ4Swapper:monad": "UNIV4_RPC=https://rpc.monad.xyz UNIV4_FORK_BLOCK=105910000 UNIV4_ROUTER=0xa6CE4F10d83dBdDAc17E68e1837ca9cE6a1b596e UNIV4_NATIVE=0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A UNIV4_TOKEN=0x754704Bc059F8C67012fEd69BC8A327a5aafb603 UNIV4_TOKEN2=0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a UNIV4_TOKEN2_FEE=50 UNIV4_TOKEN2_TICK_SPACING=1 UNIV4_AMOUNT=1000000000000000000000 forge test --match-path forge/test/swapper/UniV4Swapper.fork.t.sol",
+    "forgeTest:univ4Swapper:arc": "forge test --match-path forge/test/swapper/UniV4SwapperArc.fork.t.sol",
     "forgeTest:aura": "forge test --force --fork-url https://rpc.ankr.com/eth --match-contract StrategyAuraGyroTest",
     "deploy:vaultFactory": "hardhat run scripts/deploy-vault-proxyFactory.js --network",
     "fork:bsc": "hardhat node --fork bsc",
