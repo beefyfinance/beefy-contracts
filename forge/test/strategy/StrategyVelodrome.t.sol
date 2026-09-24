@@ -10,7 +10,6 @@ contract StrategyVelodromeGaugeV2Test is BaseStrategyTest {
     StrategyVelodromeGaugeV2 strategy;
 
     function createStrategy(address _impl) internal override returns (address) {
-        wantAmount = 50 ether;
         if (_impl == a0) strategy = new StrategyVelodromeGaugeV2();
         else strategy = StrategyVelodromeGaugeV2(_impl);
         return address(strategy);
