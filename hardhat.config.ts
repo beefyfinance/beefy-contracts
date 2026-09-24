@@ -241,6 +241,11 @@ const config: HardhatUserConfig = {
       chainId: 4663,
       accounts,
     },
+    arc: {
+      url: process.env.ARC_RPC || "https://rpc.mainnet.arc.io",
+      chainId: 5042,
+      accounts,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
