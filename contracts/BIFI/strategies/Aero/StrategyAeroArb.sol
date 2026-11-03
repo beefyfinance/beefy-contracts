@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.24;
+pragma solidity ^0.8.0;
 
 import {StrategyAero} from "./StrategyAero.sol";
 import {IArbSys} from "../../interfaces/arbitrum/IArbSys.sol";
