@@ -6,11 +6,8 @@ import {
     SafeERC20Upgradeable as SafeERC20
 } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import {MathUpgradeable as Math} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
-import "../../interfaces/aero/IAeroRouter.sol";
-import "../../interfaces/aero/IAeroPair.sol";
-import "../../interfaces/aero/IAeroGauge.sol";
-import "../../interfaces/aero/IAeroFactoryRegistry.sol";
-import "../../interfaces/aero/IAeroGaugeFactory.sol";
+import "../../interfaces/aero/IAero.sol";
+import "../../interfaces/arbitrum/IArbSys.sol";
 import "../../interfaces/beefy/IBeefySwapper.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 
@@ -18,6 +15,7 @@ import "../Common/StratFeeManagerInitializable.sol";
 contract StrategyAero is StratFeeManagerInitializable {
     using SafeERC20 for IERC20;
 
+    address private constant AERO_ROUTER = 0x0fEf9e88A7b76BCDBF451780C6774FE32965Ee98;
     bytes32 private constant V2_STABLE = bytes32("V2_STABLE");
     bytes32 private constant V2_VOLATILE = bytes32("V2_VOLATILE");
 
@@ -44,29 +42,23 @@ contract StrategyAero is StratFeeManagerInitializable {
     error InvalidLiquidity();
     error ActionLocked(uint256 unlockBlock);
 
-    /// @param _output Gauge emission token, validated against the Metarouter.
-    /// @param _aeroRouter Aero Metarouter used only for adding liquidity.
     /// @param _commonAddresses The common unirouter is the Beefy Swapper.
-    function initialize(
-        address _want,
-        address _gauge,
-        address _output,
-        address _native,
-        address _aeroRouter,
-        bool _harvestOnDeposit,
-        CommonAddresses calldata _commonAddresses
-    ) external initializer {
-        if (
-            _want == address(0) || _gauge == address(0) || _output == address(0) || _native == address(0)
-                || _aeroRouter == address(0) || _commonAddresses.unirouter == address(0)
-                || _commonAddresses.vault == address(0) || _output == _want || _native == _want
-        ) revert InvalidInput();
+    function initialize(address _want, CommonAddresses calldata _commonAddresses) external initializer {
+        if (_want == address(0) || _commonAddresses.unirouter == address(0) || _commonAddresses.vault == address(0)) {
+            revert InvalidInput();
+        }
         __StratFeeManager_init(_commonAddresses);
+        IAeroRouter router = IAeroRouter(AERO_ROUTER);
         want = _want;
-        gauge = _gauge;
-        output = _output;
-        native = _native;
-        aeroRouter = _aeroRouter;
+        aeroRouter = AERO_ROUTER;
+        gauge = IAeroFactoryRegistry(router.FACTORY_REGISTRY()).targetToGauge(want);
+        output = router.EMISSION_TOKEN();
+        native = router.WETH();
+        require(gauge != address(0), "!gauge");
+        require(IAeroGauge(gauge).isPool(), "!pool gauge");
+        require(IAeroGauge(gauge).stakingToken() == want, "!staking token");
+        require(IAeroGauge(gauge).voter() == router.LEAF_VOTER(), "!voter");
+        if (output == address(0) || native == address(0) || output == want || native == want) revert InvalidInput();
 
         bytes32 poolType = IAeroPair(want).POOL_TYPE();
         if (poolType != V2_STABLE && poolType != V2_VOLATILE) revert UnsupportedPoolType(poolType);
@@ -74,15 +66,6 @@ contract StrategyAero is StratFeeManagerInitializable {
         factory = IAeroPair(want).factory();
         lpToken0 = IAeroPair(want).token0();
         lpToken1 = IAeroPair(want).token1();
-
-        IAeroRouter router = IAeroRouter(payable(aeroRouter));
-        if (
-            !IAeroGauge(gauge).isPool() || IAeroGauge(gauge).stakingToken() != want
-                || IAeroGauge(gauge).voter() != router.LEAF_VOTER() || output != router.EMISSION_TOKEN()
-                || IAeroFactoryRegistry(router.FACTORY_REGISTRY()).targetToGauge(want) != gauge
-        ) revert InvalidInput();
-
-        setHarvestOnDeposit(_harvestOnDeposit);
     }
 
     function deposit() public whenNotPaused {
@@ -100,8 +83,6 @@ contract StrategyAero is StratFeeManagerInitializable {
         uint256 wantBal = balanceOfWant();
         if (wantBal < _amount) {
             _enforceActionDelay();
-            // Direct withdrawals also claim emissions to this strategy. The next
-            // harvest processes the full output balance, including these claims.
             IAeroGauge(gauge).withdraw(_amount - wantBal);
             wantBal = balanceOfWant();
         }
@@ -218,9 +199,6 @@ contract StrategyAero is StratFeeManagerInitializable {
             })
         );
         IAeroRouter(payable(aeroRouter)).execute(hex"22", inputs, block.timestamp);
-        // The Metarouter may trim the funded amounts. Clear any unspent approval.
-        IERC20(lpToken0).forceApprove(aeroRouter, 0);
-        IERC20(lpToken1).forceApprove(aeroRouter, 0);
     }
 
     function balanceOf() public view returns (uint256) {
@@ -240,7 +218,7 @@ contract StrategyAero is StratFeeManagerInitializable {
     }
 
     function callReward() public view returns (uint256) {
-        if (block.number < actionableBlock()) return 0;
+        if (_blockNumber() < actionableBlock()) return 0;
         IFeeConfig.FeeCategory memory fees = getFees();
         uint256 nativeOut = _quote(output, native, rewardsAvailable());
         uint256 feeAmount = Math.mulDiv(nativeOut, fees.total, DIVISOR);
@@ -268,12 +246,16 @@ contract StrategyAero is StratFeeManagerInitializable {
     }
 
     function actionable() external view returns (bool) {
-        return block.number >= actionableBlock();
+        return _blockNumber() >= actionableBlock();
     }
 
     function _enforceActionDelay() internal view {
         uint256 unlockBlock = actionableBlock();
-        if (block.number < unlockBlock) revert ActionLocked(unlockBlock);
+        if (_blockNumber() < unlockBlock) revert ActionLocked(unlockBlock);
+    }
+
+    function _blockNumber() internal view virtual returns (uint256) {
+        return block.chainid == 4663 || block.chainid == 42161 ? IArbSys(address(0x64)).arbBlockNumber() : block.number;
     }
 
     function retireStrat() external {
@@ -285,9 +267,13 @@ contract StrategyAero is StratFeeManagerInitializable {
     }
 
     /// @notice Emergency exit, accepting any penalty on accrued emissions.
+    /// @dev Where gauge factory emergency policy is enabled, uses emergencyWithdraw 
+    ///      to avoid emissions settlement. Otherwise, withdraws normally.
     function panic() external onlyManager {
         if (!paused()) _pause();
         uint256 staked = balanceOfPool();
+        if(IAeroGaugeFactory(IAeroGauge(gauge).gaugeFactory()).emergencyWithdrawEnabled() && staked > 0) IAeroGauge(gauge).emergencyWithdraw(staked);
+        else
         if (staked > 0) IAeroGauge(gauge).withdraw(staked);
     }
 

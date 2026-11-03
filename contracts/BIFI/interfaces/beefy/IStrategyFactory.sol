@@ -2,7 +2,10 @@
 pragma solidity ^0.8.0;
 
 interface IStrategyFactory {
+    event ProxyCreated(string strategyName, address proxy);
     function createStrategy(string calldata _strategyName) external returns (address);
+    function instances(string calldata _strategyName) external view returns (address);
+    function getImplementation(string calldata _strategyName) external view returns (address);
     function native() external view returns (address);
     function keeper() external view returns (address);
     function beefyFeeRecipient() external view returns (address);

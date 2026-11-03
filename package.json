@@ -13,6 +13,7 @@
     "test": "hardhat test --network localhost",
     "deploy:balancer": "hardhat run scripts/vault/deploy-balancer-strat-type.ts --network",
     "deploy:aura": "hardhat run scripts/vault/deploy-balancer-strat-eth.ts --network",
+    "deploy:aero": "node scripts/vault/deploy-aero-cli.js",
     "deploy:timelock": "hardhat run scripts/infra/deployTimelockController.js --network",
     "deploy:chain": "hardhat run scripts/infra/deployChain.js --network",
     "deploy:contract": "hardhat run scripts/infra/deployContract.js --network",
