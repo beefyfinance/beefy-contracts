@@ -12,6 +12,7 @@ const tokenArtifact = require('../../artifacts-forge/IERC20Extended.sol/IERC20Ex
 const swapperArtifact = require('../../artifacts-forge/IBeefySwapper.sol/IBeefySwapper.json');
 const feeConfigArtifact = require('../../artifacts-forge/IFeeConfig.sol/IFeeConfig.json');
 const strategyArtifact = require('../../artifacts-forge/StrategyAero.sol/StrategyAero.json');
+const strategyArbArtifact = require('../../artifacts-forge/StrategyAeroArb.sol/StrategyAeroArb.json');
 const vaultArtifact = require('../../artifacts-forge/BeefyVaultV7.sol/BeefyVaultV7.json');
 const beaconProxyArtifact = require('../../artifacts-forge/BeaconProxy.sol/BeaconProxy.json');
 
@@ -42,6 +43,8 @@ function beaconProxyRuntime(runtime, beacon) {
 async function main() {
   const [deployer] = await ethers.getSigners();
   if (!deployer) throw new Error('Configure DEPLOYER_PK for the selected Hardhat network');
+  const isArbitrumStrategy = [42161, 4663].includes(Number((await ethers.provider.getNetwork()).chainId));
+  const selectedStrategyArtifact = isArbitrumStrategy ? strategyArbArtifact : strategyArtifact;
   const beefyfinance = addressBook[network.name]?.platforms?.beefyfinance;
   if (!beefyfinance) throw new Error(`No Beefy address book entry for ${network.name}`);
   const want = requiredAddress(process.env.AERO_WANT, 'pool address');
@@ -115,7 +118,7 @@ async function main() {
   const stratFactory = await ethers.getContractAt(strategyFactoryArtifact.abi, strategyParams.strategyFactory);
   const beacon = requiredAddress(await stratFactory.instances(strategyParams.strategyImplementationName), 'registered Aero beacon');
   const registeredImplementation = requiredAddress(await stratFactory.getImplementation(strategyParams.strategyImplementationName), 'registered Aero implementation');
-  const strategyRuntime = typeof strategyArtifact.deployedBytecode === 'string' ? strategyArtifact.deployedBytecode : strategyArtifact.deployedBytecode?.object;
+  const strategyRuntime = typeof selectedStrategyArtifact.deployedBytecode === 'string' ? selectedStrategyArtifact.deployedBytecode : selectedStrategyArtifact.deployedBytecode?.object;
   if (!strategyRuntime || (await ethers.provider.getCode(registeredImplementation)).toLowerCase() !== strategyRuntime.toLowerCase()) {
     throw new Error('Registered Aero implementation does not match the local Forge artifact');
   }
@@ -136,7 +139,7 @@ async function main() {
     if (!same(storedBeacon, ethers.utils.hexZeroPad(beacon, 32))) throw new Error('Resumed strategy beacon does not match the registered Aero beacon');
     const runtime = beaconProxyArtifact.deployedBytecode;
     if (!same(await ethers.provider.getCode(strat), beaconProxyRuntime(runtime, beacon))) throw new Error('Resumed strategy is not the expected BeaconProxy');
-    existingStrategy = await ethers.getContractAt(strategyArtifact.abi, strat, deployer);
+    existingStrategy = await ethers.getContractAt(selectedStrategyArtifact.abi, strat, deployer);
     const owner = await existingStrategy.owner();
     if (same(owner, ethers.constants.AddressZero)) {
       if (!vault) throw new Error('An uninitialized resumed strategy requires AERO_RESUME_VAULT');
@@ -191,7 +194,7 @@ async function main() {
     console.log(`Strategy: ${strat}`);
   }
   const vaultContract = await ethers.getContractAt(vaultArtifact.abi, vault, deployer);
-  const stratContract = await ethers.getContractAt(strategyArtifact.abi, strat, deployer);
+  const stratContract = await ethers.getContractAt(selectedStrategyArtifact.abi, strat, deployer);
   const vaultArguments = [strat, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay];
   const strategyArguments = [want, [vault, strategyParams.unirouter, strategyParams.keeper,
     strategyParams.strategist, strategyParams.beefyFeeRecipient, strategyParams.beefyFeeConfig]];

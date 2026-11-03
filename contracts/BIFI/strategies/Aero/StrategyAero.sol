@@ -11,6 +11,8 @@ import "../../interfaces/arbitrum/IArbSys.sol";
 import "../../interfaces/beefy/IBeefySwapper.sol";
 import "../Common/StratFeeManagerInitializable.sol";
 
+/// @title Beefy Autocompounding Vault. Version: Aero
+/// @author jackgale.eth, Beefy
 /// @notice Compounds Aero V2 gauge emissions into the staked LP token.
 contract StrategyAero is StratFeeManagerInitializable {
     using SafeERC20 for IERC20;
@@ -270,7 +272,7 @@ contract StrategyAero is StratFeeManagerInitializable {
     }
 
     function _blockNumber() internal view virtual returns (uint256) {
-        return block.chainid == 4663 || block.chainid == 42161 ? IArbSys(address(0x64)).arbBlockNumber() : block.number;
+        return block.number;
     }
 
     function retireStrat() external {
