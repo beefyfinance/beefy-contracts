@@ -31,6 +31,8 @@ contract StrategyAero is StratFeeManagerInitializable {
     bool public stable;
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
+    uint256 public totalLocked;
+    uint256 public lockDuration;
 
     event StratHarvest(address indexed harvester, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
@@ -66,6 +68,7 @@ contract StrategyAero is StratFeeManagerInitializable {
         factory = IAeroPair(want).factory();
         lpToken0 = IAeroPair(want).token0();
         lpToken1 = IAeroPair(want).token1();
+        lockDuration = 1 days;
     }
 
     function deposit() public whenNotPaused {
@@ -122,9 +125,9 @@ contract StrategyAero is StratFeeManagerInitializable {
         uint256 wantBefore = balanceOfWant();
         _addLiquidity(remaining);
         uint256 wantHarvested = balanceOfWant() - wantBefore;
-        if (_stake) deposit();
-
+        totalLocked = wantHarvested + lockedProfit();
         lastHarvest = block.timestamp;
+        if (_stake) deposit();
         emit StratHarvest(msg.sender, wantHarvested, balanceOf());
     }
 
@@ -201,8 +204,15 @@ contract StrategyAero is StratFeeManagerInitializable {
         IAeroRouter(payable(aeroRouter)).execute(hex"22", inputs, block.timestamp);
     }
 
+    function lockedProfit() public view returns (uint256) {
+        if (lockDuration == 0) return 0;
+        uint256 elapsed = block.timestamp - lastHarvest;
+        uint256 remaining = elapsed < lockDuration ? lockDuration - elapsed : 0;
+        return totalLocked * remaining / lockDuration;
+    }
+
     function balanceOf() public view returns (uint256) {
-        return balanceOfWant() + balanceOfPool();
+        return balanceOfWant() + balanceOfPool() - lockedProfit();
     }
 
     function balanceOfWant() public view returns (uint256) {
@@ -227,7 +237,12 @@ contract StrategyAero is StratFeeManagerInitializable {
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) public onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
+        lockDuration = _harvestOnDeposit ? 0 : 1 days;
         setWithdrawalFee(_harvestOnDeposit ? 0 : 10);
+    }
+
+    function setLockDuration(uint256 _duration) external onlyManager {
+        lockDuration = _duration;
     }
 
     function lastGaugeDepositBlock() public view returns (uint256) {

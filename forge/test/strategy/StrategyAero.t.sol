@@ -16,7 +16,6 @@ import {
 import {IFeeConfig} from "../../../contracts/BIFI/interfaces/common/IFeeConfig.sol";
 import {IERC20Extended} from "../../../contracts/BIFI/interfaces/common/IERC20Extended.sol";
 import {IStrategyFactory} from "../../../contracts/BIFI/interfaces/beefy/IStrategyFactory.sol";
-import {IBeefyVaultFactory} from "../../../contracts/BIFI/interfaces/beefy/IBeefyVaultFactory.sol";
 import {BeefyVaultV7} from "../../../contracts/BIFI/vaults/BeefyVaultV7.sol";
 import {IStrategyV7} from "../../../contracts/BIFI/interfaces/beefy/IStrategyV7.sol";
 
@@ -318,6 +317,7 @@ contract StrategyAeroTest is Test {
         assertEq(strategy.native(), address(native));
         assertEq(strategy.aeroRouter(), ROUTER);
         assertFalse(strategy.harvestOnDeposit());
+        assertEq(strategy.lockDuration(), 1 days);
         assertEq(strategy.withdrawFee(), 10);
     }
 
@@ -376,6 +376,56 @@ contract StrategyAeroTest is Test {
         assertEq(native.balanceOf(BEEF), 16 ether);
         assertEq(strategy.balanceOfPool(), 1.45 ether);
         assertEq(strategy.actionableBlock(), 114);
+    }
+
+    function testProfitUnlocksAndCarriesOverOnNextHarvest() public {
+        _deposit(100 ether);
+        vm.roll(107);
+        gauge.setEarned(address(strategy), 100 ether);
+        strategy.harvest();
+        assertEq(strategy.totalLocked(), 0.45 ether);
+        assertEq(strategy.lockedProfit(), 0.45 ether);
+        assertEq(strategy.balanceOf(), 100 ether);
+
+        vm.warp(block.timestamp + 12 hours);
+        assertEq(strategy.lockedProfit(), 0.225 ether);
+        assertEq(strategy.balanceOf(), 100.225 ether);
+        vm.roll(114);
+        gauge.setEarned(address(strategy), 100 ether);
+        strategy.harvest();
+        assertEq(strategy.totalLocked(), 0.675 ether);
+        assertEq(strategy.balanceOf(), 100.225 ether);
+
+        vm.warp(block.timestamp + 1 days);
+        assertEq(strategy.lockedProfit(), 0);
+        assertEq(strategy.balanceOf(), 100.9 ether);
+    }
+
+    function testProfitLockAffectsVaultShares() public {
+        _deposit(100 ether);
+        vm.roll(107);
+        gauge.setEarned(address(strategy), 100 ether);
+        strategy.harvest();
+        vm.roll(114);
+        pair.mint(address(0xB0B), 100 ether);
+        vm.startPrank(address(0xB0B), address(0xB0B));
+        pair.approve(address(vault), 100 ether);
+        vault.deposit(100 ether);
+        vm.stopPrank();
+        assertEq(vault.balanceOf(address(0xB0B)), 100 ether);
+        vm.warp(block.timestamp + 1 days);
+        assertEq(strategy.balanceOf(), 200.45 ether);
+    }
+
+    function testLockDurationPermissionsAndHarvestOnDeposit() public {
+        vm.prank(ALICE);
+        vm.expectRevert("!manager");
+        strategy.setLockDuration(1 hours);
+        strategy.setLockDuration(1 hours);
+        strategy.setHarvestOnDeposit(true);
+        assertEq(strategy.lockDuration(), 0);
+        strategy.setHarvestOnDeposit(false);
+        assertEq(strategy.lockDuration(), 1 days);
     }
 
     function testHarvestOnDepositPricesSharesAfterHarvest() public {
