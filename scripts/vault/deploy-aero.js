@@ -18,6 +18,30 @@ const beaconProxyArtifact = require('../../artifacts-forge/BeaconProxy.sol/Beaco
 
 const AERO_ROUTER = '0x0fEf9e88A7b76BCDBF451780C6774FE32965Ee98';
 const BEACON_SLOT = '0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50';
+const RPC_RETRY_DELAY_MS = 2000;
+const RPC_READ_ATTEMPTS = 6;
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function waitForRead(label, read, ready, wait = sleep) {
+  let lastError;
+  for (let attempt = 1; attempt <= RPC_READ_ATTEMPTS; attempt++) {
+    try {
+      const value = await read();
+      if (ready(value)) return value;
+      lastError = new Error(`${label} returned a value that is not yet visible`);
+    } catch (error) {
+      const transient = ['NETWORK_ERROR', 'SERVER_ERROR', 'TIMEOUT', 'CALL_EXCEPTION'].includes(error.code) ||
+        /timeout|timed out|rate limit|too many requests|socket hang up|ECONNRESET|ECONNREFUSED/i.test(String(error.message));
+      if (!transient) throw error;
+      lastError = error;
+    }
+    if (attempt < RPC_READ_ATTEMPTS) {
+      console.log(`${label} not ready (attempt ${attempt}/${RPC_READ_ATTEMPTS}); retrying in 2 seconds.`);
+      await wait(RPC_RETRY_DELAY_MS);
+    }
+  }
+  throw new Error(`${label} failed after ${RPC_READ_ATTEMPTS} attempts: ${lastError.message}`);
+}
 
 function requiredAddress(value, name) {
   if (!ethers.utils.isAddress(value || '') || value === ethers.constants.AddressZero) {
@@ -40,6 +64,52 @@ function beaconProxyRuntime(runtime, beacon) {
   return '0x' + expected;
 }
 
+function stripSolidityMetadata(code) {
+  const hex = code.replace(/^0x/, '');
+  if (!/^(?:[0-9a-f]{2})+$/i.test(hex) || hex.length < 4) throw new Error('Invalid proxy bytecode');
+  const metadataBytes = parseInt(hex.slice(-4), 16);
+  const metadataStart = hex.length - (metadataBytes + 2) * 2;
+  if (metadataStart <= 0) throw new Error('Invalid proxy bytecode metadata');
+  return '0x' + hex.slice(0, metadataStart);
+}
+
+async function estimateOwnershipTransfer(vault, owner, expectedOwner, wait = ms => new Promise(resolve => setTimeout(resolve, ms))) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await vault.estimateGas.transferOwnership(owner);
+    } catch (error) {
+      if (attempt >= 4 || !String(error.message).includes('Ownable: caller is not the owner')) throw error;
+      const actualOwner = await vault.owner();
+      if (actualOwner.toLowerCase() !== expectedOwner.toLowerCase()) throw error;
+      console.log('Ownership transfer estimate disagreed with the owner read; retrying in 2 seconds.');
+      await wait(2000);
+    }
+  }
+}
+
+async function verifyDeployment(stratContract, vaultContract, expected, wait = ms => new Promise(resolve => setTimeout(resolve, ms))) {
+  const fields = [
+    ['strategy.vault', () => stratContract.vault(), expected.vault],
+    ['vault.strategy', () => vaultContract.strategy(), expected.strat],
+    ['strategy.want', () => stratContract.want(), expected.want],
+    ['vault.want', () => vaultContract.want(), expected.want],
+    ['strategy.owner', () => stratContract.owner(), expected.signer],
+    ['vault.owner', () => vaultContract.owner(), expected.vaultOwner],
+    ['strategy.harvestOnDeposit', () => stratContract.harvestOnDeposit(), false],
+  ];
+  for (let attempt = 0; ; attempt++) {
+    const actual = await Promise.all(fields.map(([, read]) => read()));
+    const mismatches = fields.flatMap(([name, , value], i) => {
+      const matches = typeof value === 'string' ? actual[i].toLowerCase() === value.toLowerCase() : actual[i] === value;
+      return matches ? [] : [`${name}: expected ${value}, got ${actual[i]}`];
+    });
+    if (!mismatches.length) return;
+    if (attempt >= 4) throw new Error(`Post-deployment verification failed: ${mismatches.join('; ')}`);
+    console.log(`Verification mismatch (${mismatches.join('; ')}); retrying in 2 seconds.`);
+    await wait(2000);
+  }
+}
+
 async function main() {
   const [deployer] = await ethers.getSigners();
   if (!deployer) throw new Error('Configure DEPLOYER_PK for the selected Hardhat network');
@@ -48,7 +118,7 @@ async function main() {
   const beefyfinance = addressBook[network.name]?.platforms?.beefyfinance;
   if (!beefyfinance) throw new Error(`No Beefy address book entry for ${network.name}`);
   const want = requiredAddress(process.env.AERO_WANT, 'pool address');
-  const strategist = requiredAddress(process.env.STRATEGIST_ADDRESS, 'STRATEGIST_ADDRESS');
+  const strategist = requiredAddress(process.env.STRATEGIST_ADDRESS || process.env.STRATEGIST, 'STRATEGIST_ADDRESS or STRATEGIST');
   const pair = await ethers.getContractAt(pairArtifact.abi, want);
   const router = await ethers.getContractAt(routerArtifact.abi, AERO_ROUTER);
   const [kind, token0, token1, poolFactory, registryAddress, output, native, voter] = await Promise.all([
@@ -78,7 +148,7 @@ async function main() {
     beefyFeeConfig: requiredAddress(beefyfinance.beefyFeeConfig, 'beefyFeeConfig'),
     beefyVaultProxy: requiredAddress(beefyfinance.vaultFactory, 'vaultFactory'),
     strategyFactory: requiredAddress(beefyfinance.strategyFactory, 'strategyFactory'),
-    strategyImplementationName: process.env.AERO_STRATEGY_NAME || 'Aero',
+    strategyImplementationName: process.env.AERO_STRATEGY_NAME || 'StrategyAero',
     vaultOwner: requiredAddress(beefyfinance.vaultOwner, 'vaultOwner'),
   };
   const registry = await ethers.getContractAt(registryArtifact.abi, registryAddress);
@@ -138,7 +208,7 @@ async function main() {
     const storedBeacon = await ethers.provider.getStorageAt(strat, BEACON_SLOT);
     if (!same(storedBeacon, ethers.utils.hexZeroPad(beacon, 32))) throw new Error('Resumed strategy beacon does not match the registered Aero beacon');
     const runtime = beaconProxyArtifact.deployedBytecode;
-    if (!same(await ethers.provider.getCode(strat), beaconProxyRuntime(runtime, beacon))) throw new Error('Resumed strategy is not the expected BeaconProxy');
+    if (!same(stripSolidityMetadata(await ethers.provider.getCode(strat)), stripSolidityMetadata(beaconProxyRuntime(runtime, beacon)))) throw new Error('Resumed strategy is not the expected BeaconProxy');
     existingStrategy = await ethers.getContractAt(selectedStrategyArtifact.abi, strat, deployer);
     const owner = await existingStrategy.owner();
     if (same(owner, ethers.constants.AddressZero)) {
@@ -195,6 +265,9 @@ async function main() {
   }
   const vaultContract = await ethers.getContractAt(vaultArtifact.abi, vault, deployer);
   const stratContract = await ethers.getContractAt(selectedStrategyArtifact.abi, strat, deployer);
+  for (const [label, addr] of [['Vault', vault], ['Strategy', strat]]) {
+    await waitForRead(`${label} contract code`, () => ethers.provider.getCode(addr), code => code !== '0x');
+  }
   const vaultArguments = [strat, vaultParams.mooName, vaultParams.mooSymbol, vaultParams.delay];
   const strategyArguments = [want, [vault, strategyParams.unirouter, strategyParams.keeper,
     strategyParams.strategist, strategyParams.beefyFeeRecipient, strategyParams.beefyFeeConfig]];
@@ -202,23 +275,30 @@ async function main() {
     const tx = await promise;
     console.log(`${label}: ${tx.hash}`);
     await tx.wait();
+    console.log(`${label} confirmed; waiting 2 seconds for RPC state to catch up.`);
+    await sleep(RPC_RETRY_DELAY_MS);
   }
-  if (same(await stratContract.owner(), ethers.constants.AddressZero)) await send('Initialize strategy', stratContract.initialize(...strategyArguments));
-  if (same(await vaultContract.owner(), ethers.constants.AddressZero)) await send('Initialize vault', vaultContract.initialize(...vaultArguments));
+  const readOwner = (label, contract) => waitForRead(`${label} owner`, () => contract.owner(), () => true);
+  const strategyOwner = await readOwner('Strategy', stratContract);
+  if (!same(strategyOwner, ethers.constants.AddressZero) && !same(strategyOwner, signerAddress)) throw new Error('Strategy is not owned by the deployer');
+  if (same(strategyOwner, ethers.constants.AddressZero)) {
+    await send('Initialize strategy', stratContract.initialize(...strategyArguments));
+    await waitForRead('Initialized strategy owner', () => stratContract.owner(), owner => same(owner, signerAddress));
+  }
+  const currentVaultOwner = await readOwner('Vault', vaultContract);
+  if (!same(currentVaultOwner, ethers.constants.AddressZero) && !same(currentVaultOwner, signerAddress) && !same(currentVaultOwner, strategyParams.vaultOwner)) throw new Error('Unexpected vault owner');
+  if (same(currentVaultOwner, ethers.constants.AddressZero)) {
+    await send('Initialize vault', vaultContract.initialize(...vaultArguments));
+    await waitForRead('Initialized vault owner', () => vaultContract.owner(), owner => same(owner, signerAddress));
+  }
   await checkFees(strat);
-  if (!same(await vaultContract.owner(), strategyParams.vaultOwner)) await send('Transfer vault ownership', vaultContract.transferOwnership(strategyParams.vaultOwner));
-  const [sv, vs, sw, vw, so, vo, hod] = await Promise.all([
-    stratContract.vault(), vaultContract.strategy(), stratContract.want(), vaultContract.want(),
-    stratContract.owner(), vaultContract.owner(), stratContract.harvestOnDeposit(),
-  ]);
-  if (sv.toLowerCase() !== vault.toLowerCase() || vs.toLowerCase() !== strat.toLowerCase() ||
-      sw.toLowerCase() !== want.toLowerCase() || vw.toLowerCase() !== want.toLowerCase() ||
-      so.toLowerCase() !== signerAddress.toLowerCase() ||
-      vo.toLowerCase() !== strategyParams.vaultOwner.toLowerCase() || hod) {
-    throw new Error('Post-deployment verification failed; inspect the printed transactions');
+  if (!same(await vaultContract.owner(), strategyParams.vaultOwner)) {
+    const gasLimit = await estimateOwnershipTransfer(vaultContract, strategyParams.vaultOwner, signerAddress);
+    await send('Transfer vault ownership', vaultContract.transferOwnership(strategyParams.vaultOwner, { gasLimit: gasLimit.mul(120).div(100) }));
   }
+  await verifyDeployment(stratContract, vaultContract, { vault, strat, want, signer: signerAddress, vaultOwner: strategyParams.vaultOwner });
   console.log('Verified vault, strategy, ownership and harvest-on-deposit configuration.');
 }
 
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
-module.exports = { main, requiredAddress, cloneImplementation, beaconProxyRuntime };
+module.exports = { main, requiredAddress, cloneImplementation, beaconProxyRuntime, stripSolidityMetadata, estimateOwnershipTransfer, verifyDeployment, waitForRead };
