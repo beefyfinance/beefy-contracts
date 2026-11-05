@@ -236,6 +236,10 @@ contract AeroHarness is StrategyAero {
     function split(uint256 amount) external view returns (uint256, uint256) {
         return _liquiditySplit(amount);
     }
+
+    function setLegacyWithdrawalFee(uint256 fee) external {
+        withdrawalFee = fee;
+    }
 }
 
 contract StrategyAeroTest is Test {
@@ -318,7 +322,7 @@ contract StrategyAeroTest is Test {
         assertEq(strategy.aeroRouter(), ROUTER);
         assertFalse(strategy.harvestOnDeposit());
         assertEq(strategy.lockDuration(), 1 days);
-        assertEq(strategy.withdrawFee(), 10);
+        assertEq(strategy.withdrawFee(), 0);
     }
 
     function testInitializationValidation() public {
@@ -363,7 +367,46 @@ contract StrategyAeroTest is Test {
         vm.roll(107);
         vm.prank(ALICE, ALICE);
         vault.withdrawAll();
-        assertEq(pair.balanceOf(ALICE), 0.999 ether);
+        assertEq(pair.balanceOf(ALICE), 1 ether);
+    }
+
+    function testWithdrawalFeeRemainsZero() public {
+        strategy.setHarvestOnDeposit(true);
+        assertEq(strategy.withdrawFee(), 0);
+        strategy.setHarvestOnDeposit(false);
+        assertEq(strategy.withdrawFee(), 0);
+        strategy.setWithdrawalFee(10);
+        assertEq(strategy.withdrawFee(), 0);
+    }
+
+    function testFuzzConfiguredWithdrawalFeeIsNotCharged(uint256 fee) public {
+        fee = bound(fee, 0, strategy.WITHDRAWAL_FEE_CAP());
+        strategy.setWithdrawalFee(fee);
+        assertEq(strategy.withdrawFee(), 0);
+        assertEq(strategy.getAllFees().withdraw, 0);
+        _deposit(1 ether);
+        vm.roll(107);
+        vm.prank(ALICE, ALICE);
+        vault.withdrawAll();
+        assertEq(pair.balanceOf(ALICE), 1 ether);
+    }
+
+    function testWithdrawalFeeSetterRequiresManager() public {
+        vm.prank(ALICE);
+        vm.expectRevert(bytes("!manager"));
+        strategy.setWithdrawalFee(0);
+    }
+
+    function testFuzzLegacyFeeDoesNotAffectWithdrawals(bool harvestOnDeposit) public {
+        strategy.setHarvestOnDeposit(harvestOnDeposit);
+        strategy.setLegacyWithdrawalFee(10);
+        assertEq(strategy.withdrawFee(), 0);
+        assertEq(strategy.getAllFees().withdraw, 0);
+        _deposit(1 ether);
+        vm.roll(107);
+        vm.prank(ALICE, ALICE);
+        vault.withdrawAll();
+        assertEq(pair.balanceOf(ALICE), 1 ether);
     }
 
     function testHarvestRewardsAndFees() public {
@@ -544,7 +587,7 @@ contract StrategyAeroTest is Test {
         vm.expectRevert("!vault");
         strategy.beforeDeposit();
         strategy.setHarvestOnDeposit(false);
-        assertEq(strategy.withdrawFee(), 10);
+        assertEq(strategy.withdrawFee(), 0);
     }
 
     function testRetirementWaitsForUnlock() public {
