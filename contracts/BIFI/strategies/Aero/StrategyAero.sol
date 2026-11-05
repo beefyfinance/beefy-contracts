@@ -52,6 +52,7 @@ contract StrategyAero is StratFeeManagerInitializable {
             revert InvalidInput();
         }
         __StratFeeManager_init(_commonAddresses);
+        withdrawalFee = 0;
         IAeroRouter router = IAeroRouter(AERO_ROUTER);
         want = _want;
         aeroRouter = AERO_ROUTER;
@@ -92,7 +93,6 @@ contract StrategyAero is StratFeeManagerInitializable {
             wantBal = balanceOfWant();
         }
         if (wantBal > _amount) wantBal = _amount;
-        if (tx.origin != owner() && !paused()) wantBal -= wantBal * withdrawalFee / WITHDRAWAL_MAX;
         IERC20(want).safeTransfer(vault, wantBal);
         emit Withdraw(balanceOf());
     }
@@ -240,7 +240,15 @@ contract StrategyAero is StratFeeManagerInitializable {
     function setHarvestOnDeposit(bool _harvestOnDeposit) public onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
         lockDuration = _harvestOnDeposit ? 0 : 1 days;
-        setWithdrawalFee(_harvestOnDeposit ? 0 : 10);
+    }
+
+    function setWithdrawalFee(uint256 _fee) public override onlyManager {
+        require(_fee == 0, "!fee");
+        super.setWithdrawalFee(0);
+    }
+
+    function withdrawFee() public pure override returns (uint256) {
+        return 0;
     }
 
     function setLockDuration(uint256 _duration) external onlyManager {
