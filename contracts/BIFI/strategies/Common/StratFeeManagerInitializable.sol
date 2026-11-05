@@ -81,7 +81,7 @@ contract StratFeeManagerInitializable is OwnableUpgradeable, PausableUpgradeable
     }
 
     // adjust withdrawal fee
-    function setWithdrawalFee(uint256 _fee) public virtual onlyManager {
+    function setWithdrawalFee(uint256 _fee) public onlyManager {
         require(_fee <= WITHDRAWAL_FEE_CAP, "!cap");
         withdrawalFee = _fee;
         emit SetWithdrawalFee(_fee);

@@ -375,16 +375,20 @@ contract StrategyAeroTest is Test {
         assertEq(strategy.withdrawFee(), 0);
         strategy.setHarvestOnDeposit(false);
         assertEq(strategy.withdrawFee(), 0);
-        strategy.setWithdrawalFee(0);
-        vm.expectRevert(bytes("!fee"));
-        strategy.setWithdrawalFee(1);
+        strategy.setWithdrawalFee(10);
         assertEq(strategy.withdrawFee(), 0);
     }
 
-    function testFuzzNonzeroWithdrawalFeeRejected(uint256 fee) public {
-        vm.assume(fee > 0);
-        vm.expectRevert(bytes("!fee"));
+    function testFuzzConfiguredWithdrawalFeeIsNotCharged(uint256 fee) public {
+        fee = bound(fee, 0, strategy.WITHDRAWAL_FEE_CAP());
         strategy.setWithdrawalFee(fee);
+        assertEq(strategy.withdrawFee(), 0);
+        assertEq(strategy.getAllFees().withdraw, 0);
+        _deposit(1 ether);
+        vm.roll(107);
+        vm.prank(ALICE, ALICE);
+        vault.withdrawAll();
+        assertEq(pair.balanceOf(ALICE), 1 ether);
     }
 
     function testWithdrawalFeeSetterRequiresManager() public {

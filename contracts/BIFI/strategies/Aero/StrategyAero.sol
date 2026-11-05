@@ -242,11 +242,6 @@ contract StrategyAero is StratFeeManagerInitializable {
         lockDuration = _harvestOnDeposit ? 0 : 1 days;
     }
 
-    function setWithdrawalFee(uint256 _fee) public override onlyManager {
-        require(_fee == 0, "!fee");
-        super.setWithdrawalFee(0);
-    }
-
     function withdrawFee() public pure override returns (uint256) {
         return 0;
     }
