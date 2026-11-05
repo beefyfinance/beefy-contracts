@@ -262,7 +262,7 @@ abstract contract BaseAllToNativeFactoryStrat is OwnableUpgradeable, PausableUpg
     }
 
     // calculate the total underlaying 'want' held by the strat.
-    function balanceOf() public view returns (uint256) {
+    function balanceOf() public view virtual returns (uint256) {
         return balanceOfWant() + balanceOfPool() - lockedProfit();
     }
 
@@ -271,7 +271,7 @@ abstract contract BaseAllToNativeFactoryStrat is OwnableUpgradeable, PausableUpg
         return IERC20(want).balanceOf(address(this));
     }
 
-    function setHarvestOnDeposit(bool _harvestOnDeposit) public onlyManager {
+    function setHarvestOnDeposit(bool _harvestOnDeposit) public virtual onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
         if (harvestOnDeposit) {
             lockDuration = 0;
@@ -280,7 +280,7 @@ abstract contract BaseAllToNativeFactoryStrat is OwnableUpgradeable, PausableUpg
         }
     }
 
-    function setLockDuration(uint _duration) external onlyManager {
+    function setLockDuration(uint _duration) external virtual onlyManager {
         lockDuration = _duration;
     }
 
